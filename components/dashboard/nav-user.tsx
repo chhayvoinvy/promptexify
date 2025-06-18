@@ -1,18 +1,13 @@
-"use client"
+"use client";
 
 import {
   IconCreditCard,
   IconDotsVertical,
-  IconLogout,
   IconNotification,
   IconUserCircle,
-} from "@tabler/icons-react"
+} from "@tabler/icons-react";
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,24 +16,54 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
+import { LogoutButton } from "@/components/auth/logout-button";
+import { Badge } from "@/components/ui/badge";
 
-export function NavUser({
-  user,
-}: {
-  user: {
-    name: string
-    email: string
-    avatar: string
-  }
-}) {
-  const { isMobile } = useSidebar()
+interface UserData {
+  id: string;
+  email: string;
+  name?: string | null;
+  avatar?: string | null;
+  type: "FREE" | "PREMIUM";
+  role: "USER" | "ADMIN";
+  oauth: "GOOGLE" | "EMAIL";
+}
+
+interface User {
+  email?: string;
+  userData?: UserData | null;
+}
+
+export function NavUser({ user }: { user: User }) {
+  const { isMobile } = useSidebar();
+
+  // Get user data from userData or fallback to email
+  const userData = user.userData;
+  const displayName = userData?.name || user.email?.split("@")[0] || "User";
+  const displayEmail = userData?.email || user.email || "";
+  const avatar = userData?.avatar;
+  const userType = userData?.type || "FREE";
+  const userRole = userData?.role || "USER";
+
+  // Get user initials for avatar fallback
+  const getInitials = (name?: string | null, email?: string) => {
+    if (name) {
+      return name
+        .split(" ")
+        .map((word) => word[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2);
+    }
+    return email ? email[0].toUpperCase() : "U";
+  };
 
   return (
     <SidebarMenu>
@@ -49,14 +74,16 @@ export function NavUser({
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <Avatar className="h-8 w-8 rounded-lg grayscale">
-                <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+              <Avatar className="h-8 w-8 rounded-lg">
+                <AvatarImage src={avatar || undefined} alt={displayName} />
+                <AvatarFallback className="rounded-lg">
+                  {getInitials(displayName, displayEmail)}
+                </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{user.name}</span>
+                <span className="truncate font-medium">{displayName}</span>
                 <span className="text-muted-foreground truncate text-xs">
-                  {user.email}
+                  {displayEmail}
                 </span>
               </div>
               <IconDotsVertical className="ml-auto size-4" />
@@ -71,14 +98,29 @@ export function NavUser({
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                  <AvatarImage src={avatar || undefined} alt={displayName} />
+                  <AvatarFallback className="rounded-lg">
+                    {getInitials(displayName, displayEmail)}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user.name}</span>
+                  <span className="truncate font-medium">{displayName}</span>
                   <span className="text-muted-foreground truncate text-xs">
-                    {user.email}
+                    {displayEmail}
                   </span>
+                  <div className="flex gap-1 mt-1">
+                    <Badge
+                      variant={userType === "PREMIUM" ? "default" : "secondary"}
+                      className="text-xs"
+                    >
+                      {userType}
+                    </Badge>
+                    {userRole === "ADMIN" && (
+                      <Badge variant="outline" className="text-xs">
+                        Admin
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </div>
             </DropdownMenuLabel>
@@ -98,13 +140,12 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <IconLogout />
-              Log out
-            </DropdownMenuItem>
+            <div className="p-1">
+              <LogoutButton variant="ghost" size="sm" />
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
-  )
+  );
 }
