@@ -107,8 +107,17 @@ export function PostModal({ post, onClose }: PostModalProps) {
     incrementView();
   }, [post.id]);
 
+  const handleClose = () => {
+    if (onClose) {
+      onClose();
+    } else {
+      // If no onClose handler, navigate to home page (for direct URL access)
+      window.location.href = "/";
+    }
+  };
+
   return (
-    <Dialog open={true} onOpenChange={onClose || (() => {})}>
+    <Dialog open={true} onOpenChange={handleClose}>
       <DialogContent className="fixed z-50 left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] w-[95vw] max-w-3xl h-[60vh] max-h-[700px] flex flex-col p-0 gap-0 sm:w-[90vw] md:w-[80vw] lg:w-[70vw]">
         <DialogHeader className="px-6 pt-4">
           <DialogTitle className="text-sm font-bold text-left text-zinc-700 dark:text-zinc-300">

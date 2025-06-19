@@ -1,4 +1,4 @@
-import { AppSidebar } from "@/components/dashboard/app-sidebar";
+import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +19,7 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getAllCategories, getAllTags } from "@/lib/content";
 import { redirect } from "next/navigation";
-import { createPostAction } from "@/app/actions";
+import { createPostAction } from "@/actions";
 
 // Force dynamic rendering for this page
 export const dynamic = "force-dynamic";

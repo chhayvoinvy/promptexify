@@ -34,10 +34,15 @@ export function PostMasonryGrid({ posts }: PostMasonryGridProps) {
       ...prev,
       [post.id]: (prev[post.id] || post.viewCount) + 1,
     }));
+
+    // Update URL for shareable links while keeping modal open
+    window.history.pushState(null, "", `/entry/${post.id}?modal=true`);
   };
 
   const handleCloseModal = () => {
     setSelectedPost(null);
+    // Go back in history to remove modal URL
+    window.history.back();
   };
 
   const getDisplayViewCount = (post: PostWithInteractions) => {

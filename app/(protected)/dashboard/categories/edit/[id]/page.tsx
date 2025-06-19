@@ -1,4 +1,4 @@
-import { AppSidebar } from "@/components/dashboard/app-sidebar";
+import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,7 +18,7 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getAllCategories } from "@/lib/content";
 import { redirect, notFound } from "next/navigation";
-import { updateCategoryAction } from "@/app/actions";
+import { updateCategoryAction } from "@/actions";
 import { PrismaClient } from "@/lib/generated/prisma";
 
 const prisma = new PrismaClient();

@@ -1,0 +1,185 @@
+"use server";
+
+import { PrismaClient } from "@/lib/generated/prisma";
+import { getCurrentUser } from "@/lib/auth";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { handleAuthRedirect } from "./auth";
+
+const prisma = new PrismaClient();
+
+// Category management actions
+export async function createCategoryAction(formData: FormData) {
+  try {
+    // Get the current user
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.userData) {
+      handleAuthRedirect();
+    }
+
+    // Temporarily disabled for testing - uncomment to re-enable admin protection
+    // if (currentUser.userData.role !== "ADMIN") {
+    //   throw new Error("Unauthorized: Admin access required");
+    // }
+
+    // Extract form data
+    const name = formData.get("name") as string;
+    const slug =
+      (formData.get("slug") as string) ||
+      name
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^\w-]/g, "");
+    const description = formData.get("description") as string;
+    const parentId = formData.get("parentId") as string;
+
+    // Validate required fields
+    if (!name) {
+      throw new Error("Category name is required");
+    }
+
+    // Check if slug is unique
+    const existingCategory = await prisma.category.findUnique({
+      where: { slug },
+    });
+
+    if (existingCategory) {
+      throw new Error("A category with this slug already exists");
+    }
+
+    // Create the category
+    await prisma.category.create({
+      data: {
+        name,
+        slug,
+        description: description || null,
+        parentId: parentId && parentId !== "none" ? parentId : null,
+      },
+    });
+
+    revalidatePath("/dashboard/categories");
+    redirect("/dashboard/categories");
+  } catch (error) {
+    // Check if this is a Next.js redirect
+    if (error && typeof error === "object" && "digest" in error) {
+      const errorDigest = (error as { digest?: string }).digest;
+      if (
+        typeof errorDigest === "string" &&
+        errorDigest.includes("NEXT_REDIRECT")
+      ) {
+        // This is a redirect - re-throw it to allow the redirect to proceed
+        throw error;
+      }
+    }
+
+    console.error("Error creating category:", error);
+    throw new Error("Failed to create category");
+  }
+}
+
+export async function updateCategoryAction(formData: FormData) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      throw new Error("Authentication required");
+    }
+
+    // Temporarily disabled for testing - uncomment to re-enable admin protection
+    // if (user.userData?.role !== "ADMIN") {
+    //   throw new Error("Admin access required");
+    // }
+
+    const id = formData.get("id") as string;
+    const name = formData.get("name") as string;
+    const slug = formData.get("slug") as string;
+    const description = formData.get("description") as string;
+    let parentId = formData.get("parentId") as string;
+
+    // Input validation
+    if (!id || !name || !slug) {
+      throw new Error("ID, name, and slug are required");
+    }
+
+    // Handle "none" parent selection
+    if (parentId === "none") {
+      parentId = "";
+    }
+
+    // Prevent circular references
+    if (parentId === id) {
+      throw new Error("A category cannot be its own parent");
+    }
+
+    // Check if category exists
+    const existingCategory = await prisma.category.findUnique({
+      where: { id },
+    });
+
+    if (!existingCategory) {
+      throw new Error("Category not found");
+    }
+
+    // Check for slug conflicts (excluding current category)
+    const slugConflict = await prisma.category.findFirst({
+      where: {
+        slug,
+        id: { not: id },
+      },
+    });
+
+    if (slugConflict) {
+      throw new Error("A category with this slug already exists");
+    }
+
+    // If setting a parent, validate it exists and doesn't create circular reference
+    if (parentId) {
+      const parentCategory = await prisma.category.findUnique({
+        where: { id: parentId },
+        include: {
+          parent: true,
+        },
+      });
+
+      if (!parentCategory) {
+        throw new Error("Parent category not found");
+      }
+
+      // Check if the parent is a child of this category (would create circular reference)
+      if (parentCategory.parent?.id === id) {
+        throw new Error(
+          "Cannot create circular reference in category hierarchy"
+        );
+      }
+    }
+
+    // Update the category
+    await prisma.category.update({
+      where: { id },
+      data: {
+        name,
+        slug,
+        description: description || null,
+        parentId: parentId || null,
+        updatedAt: new Date(),
+      },
+    });
+
+    revalidatePath("/dashboard/categories");
+    redirect("/dashboard/categories");
+  } catch (error) {
+    // Check if this is a Next.js redirect
+    if (error && typeof error === "object" && "digest" in error) {
+      const errorDigest = (error as { digest?: string }).digest;
+      if (
+        typeof errorDigest === "string" &&
+        errorDigest.includes("NEXT_REDIRECT")
+      ) {
+        // This is a redirect - re-throw it to allow the redirect to proceed
+        throw error;
+      }
+    }
+
+    console.error("Error updating category:", error);
+    throw new Error("Failed to update category");
+  }
+}

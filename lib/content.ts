@@ -388,13 +388,17 @@ export async function deleteMDXFile(post: PostWithDetails): Promise<void> {
 }
 
 export async function getAllCategories() {
-  return await prisma.category.findMany({
+  const categories = await prisma.category.findMany({
     include: {
       parent: true,
       children: true,
       _count: {
         select: {
-          posts: true,
+          posts: {
+            where: {
+              isPublished: true,
+            },
+          },
         },
       },
     },
@@ -402,6 +406,36 @@ export async function getAllCategories() {
       name: "asc",
     },
   });
+
+  // For parent categories, calculate total posts including children
+  const categoriesWithTotalCounts = await Promise.all(
+    categories.map(async (category) => {
+      if (category.children.length > 0) {
+        // This is a parent category, count posts from all children
+        const totalChildPosts = await prisma.post.count({
+          where: {
+            isPublished: true,
+            category: {
+              parentId: category.id,
+            },
+          },
+        });
+
+        return {
+          ...category,
+          _count: {
+            ...category._count,
+            posts: totalChildPosts,
+          },
+        };
+      }
+
+      // Child category or category without children, return as is
+      return category;
+    })
+  );
+
+  return categoriesWithTotalCounts;
 }
 
 export async function getAllTags() {
@@ -507,6 +541,90 @@ export async function getPostsWithInteractions(
 
 export type SortOption = "latest" | "trending" | "popular";
 
+export interface PaginatedResult<T> {
+  data: T[];
+  totalCount: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+export async function getPostsPaginated(
+  page: number = 1,
+  pageSize: number = 10,
+  includeUnpublished = false
+): Promise<PaginatedResult<PostWithDetails>> {
+  // Ensure valid page and pageSize values
+  const validPage = Math.max(1, page);
+  const validPageSize = Math.max(1, Math.min(100, pageSize)); // Max 100 items per page
+  const skip = (validPage - 1) * validPageSize;
+
+  // Use Promise.all for parallel execution to improve performance
+  const [totalCount, posts] = await Promise.all([
+    // Get total count for pagination metadata
+    prisma.post.count({
+      where: includeUnpublished ? {} : { isPublished: true },
+    }),
+    // Get paginated posts
+    prisma.post.findMany({
+      where: includeUnpublished ? {} : { isPublished: true },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar: true,
+          },
+        },
+        category: {
+          include: {
+            parent: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+        },
+        tags: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        _count: {
+          select: {
+            views: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      skip,
+      take: validPageSize,
+    }),
+  ]);
+
+  // Calculate total pages
+  const totalPages = Math.ceil(totalCount / validPageSize);
+
+  return {
+    data: posts,
+    totalCount,
+    totalPages,
+    currentPage: validPage,
+    pageSize: validPageSize,
+    hasNextPage: validPage < totalPages,
+    hasPreviousPage: validPage > 1,
+  };
+}
+
 export async function getPostsWithSorting(
   userId?: string,
   sortBy: SortOption = "latest",
@@ -584,5 +702,113 @@ export async function getPostsWithSorting(
     isFavorited: userId ? post.favorites.length > 0 : false,
     bookmarks: undefined, // Remove bookmarks from the response
     favorites: undefined, // Remove favorites from the response
+  })) as PostWithInteractions[];
+}
+
+export async function getRelatedPosts(
+  currentPostId: string,
+  currentPost: PostWithDetails,
+  userId?: string,
+  limit: number = 6
+): Promise<PostWithInteractions[]> {
+  // Get the current post's tags and category for matching
+  const tagIds = currentPost.tags.map((tag) => tag.id);
+  const categoryId = currentPost.category.id;
+  const parentCategoryId = currentPost.category.parent?.id;
+
+  const posts = await prisma.post.findMany({
+    where: {
+      AND: [
+        { isPublished: true },
+        { id: { not: currentPostId } }, // Exclude current post
+        {
+          OR: [
+            // Same category
+            { categoryId: categoryId },
+            // Same parent category
+            ...(parentCategoryId ? [{ categoryId: parentCategoryId }] : []),
+            // Shared tags
+            ...(tagIds.length > 0
+              ? [
+                  {
+                    tags: {
+                      some: {
+                        id: { in: tagIds },
+                      },
+                    },
+                  },
+                ]
+              : []),
+          ],
+        },
+      ],
+    },
+    include: {
+      author: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          avatar: true,
+        },
+      },
+      category: {
+        include: {
+          parent: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+            },
+          },
+        },
+      },
+      tags: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        },
+      },
+      bookmarks: userId
+        ? {
+            where: {
+              userId: userId,
+            },
+            select: {
+              id: true,
+            },
+          }
+        : false,
+      favorites: userId
+        ? {
+            where: {
+              userId: userId,
+            },
+            select: {
+              id: true,
+            },
+          }
+        : false,
+      _count: {
+        select: {
+          views: true,
+        },
+      },
+    },
+    orderBy: [
+      // Prioritize posts with more shared tags
+      { viewCount: "desc" },
+      { createdAt: "desc" },
+    ],
+    take: limit,
+  });
+
+  return posts.map((post) => ({
+    ...post,
+    isBookmarked: userId ? post.bookmarks.length > 0 : false,
+    isFavorited: userId ? post.favorites.length > 0 : false,
+    bookmarks: undefined,
+    favorites: undefined,
   })) as PostWithInteractions[];
 }

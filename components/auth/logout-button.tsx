@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { LogOut, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { signOutAction } from "@/app/actions";
+import { signOutAction } from "@/actions";
 
 interface LogoutButtonProps {
   variant?:

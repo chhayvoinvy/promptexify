@@ -1,20 +1,12 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardFooter, CardHeader } from "@/components/ui/card";
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Search, Filter } from "lucide-react";
+import { Search } from "lucide-react";
 import Link from "next/link";
 import { getAllPosts, getAllCategories } from "@/lib/content";
 import { Suspense } from "react";
 import { PostMasonryGrid } from "@/components/post-masonry-grid";
 import { PostMasonrySkeleton } from "@/components/post-masonry-skeleton";
+import { DirectoryFilters } from "@/components/directory-filters";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface DirectoryPageProps {
   searchParams: Promise<{
@@ -22,6 +14,49 @@ interface DirectoryPageProps {
     category?: string;
     premium?: string;
   }>;
+}
+
+// Directory page skeleton that matches the full layout
+function DirectoryPageSkeleton() {
+  return (
+    <div className="container mx-auto px-4 py-8">
+      {/* Header Skeleton */}
+      <div className="mb-8">
+        <Skeleton className="h-10 w-80 mb-4" />
+        <Skeleton className="h-6 w-full max-w-2xl" />
+      </div>
+
+      {/* Filters Skeleton */}
+      <div className="mb-8">
+        <div className="flex flex-col md:flex-row gap-4">
+          {/* Search skeleton */}
+          <div className="relative flex-1">
+            <Skeleton className="h-10 w-full" />
+          </div>
+
+          {/* Category filter skeleton */}
+          <Skeleton className="h-10 w-full md:w-48" />
+
+          {/* Premium filter skeleton */}
+          <Skeleton className="h-10 w-full md:w-32" />
+
+          {/* Buttons skeleton */}
+          <div className="flex gap-2">
+            <Skeleton className="h-10 w-20" />
+            <Skeleton className="h-10 w-16" />
+          </div>
+        </div>
+      </div>
+
+      {/* Results summary skeleton */}
+      <div className="mb-6">
+        <Skeleton className="h-5 w-48" />
+      </div>
+
+      {/* Posts grid skeleton */}
+      <PostMasonrySkeleton count={16} />
+    </div>
+  );
 }
 
 async function DirectoryContent({
@@ -71,8 +106,6 @@ async function DirectoryContent({
     return true;
   });
 
-  const parentCategories = categories.filter((cat) => !cat.parent);
-
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
@@ -87,52 +120,7 @@ async function DirectoryContent({
       </div>
 
       {/* Search and Filters */}
-      <div className="mb-8">
-        <form method="GET" className="flex flex-col md:flex-row gap-4">
-          {/* Search */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              name="q"
-              placeholder="Search prompts..."
-              defaultValue={searchQuery}
-              className="pl-10"
-            />
-          </div>
-
-          {/* Category Filter */}
-          <Select name="category" defaultValue={categoryFilter || "all"}>
-            <SelectTrigger className="w-full md:w-48">
-              <SelectValue placeholder="All Categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {parentCategories.map((category) => (
-                <SelectItem key={category.id} value={category.slug}>
-                  {category.name} ({category._count.posts})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Premium Filter */}
-          <Select name="premium" defaultValue={premiumFilter || "all"}>
-            <SelectTrigger className="w-full md:w-32">
-              <SelectValue placeholder="All Types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="free">Free</SelectItem>
-              <SelectItem value="premium">Premium</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Button type="submit" className="flex items-center gap-2">
-            <Filter className="h-4 w-4" />
-            Filter
-          </Button>
-        </form>
-      </div>
+      <DirectoryFilters categories={categories} />
 
       {/* Results Summary */}
       <div className="mb-6">
@@ -166,7 +154,7 @@ async function DirectoryContent({
 
 export default function DirectoryPage({ searchParams }: DirectoryPageProps) {
   return (
-    <Suspense fallback={<PostMasonrySkeleton count={16} />}>
+    <Suspense fallback={<DirectoryPageSkeleton />}>
       <DirectoryContent searchParams={searchParams} />
     </Suspense>
   );

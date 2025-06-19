@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getUserFavoritesAction } from "@/app/actions";
+import { getUserFavoritesAction } from "@/actions";
 import { FavoriteButton } from "@/components/favorite-button";
 import { BookmarkButton } from "@/components/bookmark-button";
 import Image from "next/image";

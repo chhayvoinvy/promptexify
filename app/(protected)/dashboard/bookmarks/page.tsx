@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth";
-import { getUserBookmarksAction } from "@/app/actions";
+import { getUserBookmarksAction } from "@/actions";
 import { PostGridWithModal } from "@/components/post-grid-with-modal";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

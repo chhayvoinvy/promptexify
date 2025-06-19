@@ -119,7 +119,7 @@ export function SignUpForm() {
           <Separator className="w-full" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-2 text-muted-foreground">
+          <span className="bg-card px-5 text-muted-foreground">
             Or create account with
           </span>
         </div>

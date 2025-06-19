@@ -30,7 +30,8 @@ export function PostMasonrySkeleton({ count = 12 }: PostMasonrySkeletonProps) {
     <>
       <div className="masonry-container">
         {Array.from({ length: count }).map((_, i) => (
-          <Card key={i} className="masonry-item overflow-hidden mb-4">
+          <Card key={i} className="masonry-item overflow-hidden mb-4 py-0">
+            {/* Featured Image Skeleton */}
             <div className="relative" style={getRandomAspectRatio(i)}>
               <Skeleton className="h-full w-full" />
               {/* Premium badge skeleton on every 3rd item */}
@@ -40,26 +41,39 @@ export function PostMasonrySkeleton({ count = 12 }: PostMasonrySkeletonProps) {
                 </div>
               )}
             </div>
+
+            {/* Card Header Skeleton */}
             <CardHeader className="p-4">
+              {/* Category badges */}
               <div className="flex items-center gap-2 mb-2">
-                <Skeleton className="h-4 w-16" />
-                <Skeleton className="h-4 w-12" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+                <Skeleton className="h-5 w-12 rounded-full" />
               </div>
+
+              {/* Title */}
               <Skeleton className="h-6 w-full mb-2" />
+
+              {/* Description */}
               <div className="space-y-1">
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-3/4" />
               </div>
             </CardHeader>
 
+            {/* Card Footer Skeleton */}
             <CardFooter className="p-4 pt-0 flex items-center justify-between">
-              <div className="flex items-center gap-1">
-                <Skeleton className="h-3 w-3" />
-                <Skeleton className="h-4 w-8" />
+              {/* Left side - View count */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1">
+                  <Skeleton className="h-3 w-3" />
+                  <Skeleton className="h-4 w-8" />
+                </div>
               </div>
+
+              {/* Right side - Action buttons */}
               <div className="flex items-center gap-2">
-                <Skeleton className="h-6 w-6 rounded" />
-                <Skeleton className="h-6 w-6 rounded" />
+                <Skeleton className="h-8 w-8 rounded" />
+                <Skeleton className="h-8 w-8 rounded" />
                 <Skeleton className="h-8 w-12 rounded" />
               </div>
             </CardFooter>

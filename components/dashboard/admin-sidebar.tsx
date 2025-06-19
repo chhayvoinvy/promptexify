@@ -63,11 +63,6 @@ const navigationData = {
       icon: IconBookmark,
     },
     {
-      title: "Favorites",
-      url: "/dashboard/favorites",
-      icon: IconHeart,
-    },
-    {
       title: "Analytics",
       url: "/dashboard/analytics",
       icon: IconChartBar,

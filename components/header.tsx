@@ -27,7 +27,7 @@ export function Header() {
     <header
       className={`sticky top-0 z-50 w-full border-b transition-all duration-200 ${
         isScrolled
-          ? "border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+          ? "border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90"
           : "border-transparent bg-transparent"
       }`}
     >
@@ -48,7 +48,7 @@ export function Header() {
           ) : (
             <Link
               href="/signin"
-              className="text-sm font-medium text-foreground/60 transition-colors hover:text-foreground/80"
+              className="text-sm font-medium text-foreground border border-border rounded-md px-4 py-2 transition-colors hover:text-foreground/80"
             >
               Sign In
             </Link>
