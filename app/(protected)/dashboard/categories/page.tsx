@@ -42,9 +42,9 @@ export default async function CategoriesManagementPage() {
   }
 
   // Temporarily disabled for testing - uncomment to re-enable admin protection
-  // if (user.userData?.role !== "ADMIN") {
-  //   redirect("/dashboard");
-  // }
+  if (user.userData?.role !== "ADMIN") {
+    redirect("/dashboard");
+  }
 
   const categories = await getAllCategories();
 
@@ -64,7 +64,7 @@ export default async function CategoriesManagementPage() {
       <AppSidebar variant="inset" user={user} />
       <SidebarInset>
         <SiteHeader />
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        <div className="flex flex-1 flex-col gap-4 p-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold">Categories Management</h1>

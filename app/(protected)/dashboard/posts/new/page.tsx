@@ -32,10 +32,9 @@ export default async function NewPostPage() {
     redirect("/signin");
   }
 
-  // Temporarily disabled for testing - uncomment to re-enable admin protection
-  // if (user.userData?.role !== "ADMIN") {
-  //   redirect("/dashboard");
-  // }
+  if (user.userData?.role !== "ADMIN") {
+    redirect("/dashboard");
+  }
 
   const [categories, tags] = await Promise.all([
     getAllCategories(),
@@ -57,7 +56,7 @@ export default async function NewPostPage() {
       <AppSidebar variant="inset" user={user} />
       <SidebarInset>
         <SiteHeader />
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        <div className="flex flex-1 flex-col gap-4 p-4">
           <div className="flex items-center gap-4">
             <Link href="/dashboard/posts">
               <Button variant="outline" size="sm">

@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { LogOut, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { signOut } from "@/lib/auth";
+import { signOutAction } from "@/app/actions";
 
 interface LogoutButtonProps {
   variant?:
@@ -31,9 +31,25 @@ export function LogoutButton({
   function handleSignOut() {
     startTransition(async () => {
       try {
-        await signOut();
-        toast.success("Signed out successfully");
-      } catch {
+        const result = await signOutAction();
+        if (result?.error) {
+          toast.error(result.error);
+        }
+        // Don't show success message as user will be redirected immediately
+      } catch (error) {
+        // Check if this is a Next.js redirect (which means successful sign out)
+        if (error && typeof error === "object" && "digest" in error) {
+          const errorDigest = (error as { digest?: string }).digest;
+          if (
+            typeof errorDigest === "string" &&
+            errorDigest.includes("NEXT_REDIRECT")
+          ) {
+            // This is a successful sign out with redirect - don't show error
+            return;
+          }
+        }
+
+        // This is an actual error
         toast.error("Failed to sign out");
       }
     });

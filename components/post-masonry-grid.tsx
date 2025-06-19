@@ -98,7 +98,7 @@ export function PostMasonryGrid({ posts }: PostMasonryGridProps) {
         {posts.map((post) => (
           <Card
             key={post.id}
-            className="masonry-item overflow-hidden hover:shadow-lg transition-shadow cursor-pointer mb-4"
+            className="masonry-item overflow-hidden hover:shadow-lg transition-shadow cursor-pointer mb-4 py-0"
             onClick={() => handleViewPost(post)}
           >
             {post.featuredImage && (

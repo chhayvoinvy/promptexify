@@ -20,6 +20,7 @@ import {
   IconBookmark,
   IconHeart,
 } from "@tabler/icons-react";
+import Link from "next/link";
 
 import { NavDocuments } from "@/components/dashboard/nav-documents";
 import { NavMain } from "@/components/dashboard/nav-main";
@@ -68,7 +69,7 @@ const navigationData = {
     },
     {
       title: "Analytics",
-      url: "#",
+      url: "/dashboard/analytics",
       icon: IconChartBar,
     },
   ],
@@ -77,45 +78,45 @@ const navigationData = {
       title: "Capture",
       icon: IconCamera,
       isActive: true,
-      url: "#",
+      url: "/dashboard/capture",
       items: [
         {
           title: "Active Proposals",
-          url: "#",
+          url: "/dashboard/capture/active",
         },
         {
           title: "Archived",
-          url: "#",
+          url: "/dashboard/capture/archived",
         },
       ],
     },
     {
       title: "Proposal",
       icon: IconFileDescription,
-      url: "#",
+      url: "/dashboard/proposals",
       items: [
         {
           title: "Active Proposals",
-          url: "#",
+          url: "/dashboard/proposals/active",
         },
         {
           title: "Archived",
-          url: "#",
+          url: "/dashboard/proposals/archived",
         },
       ],
     },
     {
       title: "Prompts",
       icon: IconFileAi,
-      url: "#",
+      url: "/dashboard/prompts",
       items: [
         {
           title: "Active Proposals",
-          url: "#",
+          url: "/dashboard/prompts/active",
         },
         {
           title: "Archived",
-          url: "#",
+          url: "/dashboard/prompts/archived",
         },
       ],
     },
@@ -123,34 +124,34 @@ const navigationData = {
   navSecondary: [
     {
       title: "Settings",
-      url: "#",
+      url: "/dashboard/settings",
       icon: IconSettings,
     },
     {
       title: "Get Help",
-      url: "#",
+      url: "/dashboard/help",
       icon: IconHelp,
     },
     {
       title: "Search",
-      url: "#",
+      url: "/directory",
       icon: IconSearch,
     },
   ],
-  documents: [
+  pages: [
     {
-      name: "Data Library",
-      url: "#",
+      name: "About us",
+      url: "/about",
       icon: IconDatabase,
     },
     {
-      name: "Reports",
-      url: "#",
+      name: "Contact us",
+      url: "/contact",
       icon: IconReport,
     },
     {
-      name: "Word Assistant",
-      url: "#",
+      name: "Privacy Policy",
+      url: "/privacy",
       icon: IconFileWord,
     },
   ],
@@ -187,17 +188,17 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <a href="/dashboard">
+              <Link href="/dashboard">
                 <IconInnerShadowTop className="!size-5" />
                 <span className="text-base font-semibold">Promptexify</span>
-              </a>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={navigationData.navMain} />
-        <NavDocuments items={navigationData.documents} />
+        <NavDocuments items={navigationData.pages} />
         {user.userData?.role === "ADMIN" && (
           <NavDocuments
             items={navigationData.contentManagement.map((item) => ({

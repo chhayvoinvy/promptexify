@@ -30,21 +30,18 @@ import { getCurrentUser } from "@/lib/auth";
 import { getAllTags } from "@/lib/content";
 import { redirect } from "next/navigation";
 
-// Force dynamic rendering for this page
 export const dynamic = "force-dynamic";
 
 export default async function TagsManagementPage() {
   const user = await getCurrentUser();
 
-  // Check if user is authenticated and has admin role
   if (!user) {
     redirect("/signin");
   }
 
-  // Temporarily disabled for testing - uncomment to re-enable admin protection
-  // if (user.userData?.role !== "ADMIN") {
-  //   redirect("/dashboard");
-  // }
+  if (user.userData?.role !== "ADMIN") {
+    redirect("/dashboard");
+  }
 
   const tags = await getAllTags();
 
@@ -60,7 +57,7 @@ export default async function TagsManagementPage() {
       <AppSidebar variant="inset" user={user} />
       <SidebarInset>
         <SiteHeader />
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        <div className="flex flex-1 flex-col gap-4 p-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold">Tags Management</h1>

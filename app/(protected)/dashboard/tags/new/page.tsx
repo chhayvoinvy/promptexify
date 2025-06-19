@@ -22,10 +22,9 @@ export default async function NewTagPage() {
     redirect("/signin");
   }
 
-  // Temporarily disabled for testing - uncomment to re-enable admin protection
-  // if (user.userData?.role !== "ADMIN") {
-  //   redirect("/dashboard");
-  // }
+  if (user.userData?.role !== "ADMIN") {
+    redirect("/dashboard");
+  }
 
   return (
     <SidebarProvider
@@ -39,7 +38,7 @@ export default async function NewTagPage() {
       <AppSidebar variant="inset" user={user} />
       <SidebarInset>
         <SiteHeader />
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        <div className="flex flex-1 flex-col gap-4 p-4">
           <div className="flex items-center gap-4">
             <Link href="/dashboard/tags">
               <Button variant="outline" size="icon">

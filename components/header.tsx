@@ -1,13 +1,36 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
-import { getCurrentUser } from "@/lib/auth";
 import { UserProfileDropdown } from "@/components/user-profile-dropdown";
+import { useAuth } from "@/hooks/use-auth";
 
-export async function Header() {
-  const user = await getCurrentUser();
+export function Header() {
+  const [isScrolled, setIsScrolled] = useState(false);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollY = window.scrollY;
+      setIsScrolled(scrollY > 0);
+    };
+
+    // Set initial state
+    handleScroll();
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header
+      className={`sticky top-0 z-50 w-full border-b transition-all duration-200 ${
+        isScrolled
+          ? "border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+          : "border-transparent bg-transparent"
+      }`}
+    >
       <div className="container flex h-14 max-w-7xl mx-auto items-center justify-between">
         <div className="flex items-center space-x-2">
           <Link href="/" className="mr-6 flex items-center space-x-2">

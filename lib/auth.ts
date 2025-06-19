@@ -154,10 +154,28 @@ export async function signOut() {
   const supabase = await createClient();
 
   try {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error("Supabase sign out error:", error);
+      return { error: error.message };
+    }
+
     revalidatePath("/", "layout");
     redirect("/signin");
   } catch (error) {
+    // Check if this is a Next.js redirect (which is expected)
+    if (error && typeof error === "object" && "digest" in error) {
+      const errorDigest = (error as { digest?: string }).digest;
+      if (
+        typeof errorDigest === "string" &&
+        errorDigest.includes("NEXT_REDIRECT")
+      ) {
+        // This is an expected redirect, re-throw it
+        throw error;
+      }
+    }
+
     console.error("Sign out error:", error);
     return { error: "An unexpected error occurred during sign out." };
   }

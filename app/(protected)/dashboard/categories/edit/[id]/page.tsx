@@ -44,9 +44,9 @@ export default async function EditCategoryPage({
   }
 
   // Temporarily disabled for testing - uncomment to re-enable admin protection
-  // if (user.userData?.role !== "ADMIN") {
-  //   redirect("/dashboard");
-  // }
+  if (user.userData?.role !== "ADMIN") {
+    redirect("/dashboard");
+  }
 
   const [category, allCategories] = await Promise.all([
     prisma.category.findUnique({
@@ -85,7 +85,7 @@ export default async function EditCategoryPage({
       <AppSidebar variant="inset" user={user} />
       <SidebarInset>
         <SiteHeader />
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        <div className="flex flex-1 flex-col gap-4 p-4">
           <div className="flex items-center gap-4">
             <Link href="/dashboard/categories">
               <Button variant="outline" size="sm">
@@ -93,12 +93,6 @@ export default async function EditCategoryPage({
                 Back to Categories
               </Button>
             </Link>
-            <div>
-              <h1 className="text-3xl font-bold">Edit Category</h1>
-              <p className="text-muted-foreground">
-                Update your existing category.
-              </p>
-            </div>
           </div>
 
           <div className="max-w-2xl">

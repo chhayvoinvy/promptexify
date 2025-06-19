@@ -41,7 +41,28 @@ export async function oauthAction(provider: "google") {
 }
 
 export async function signOutAction() {
-  return await signOut();
+  try {
+    await signOut();
+    // If we reach here, there was no redirect (shouldn't happen)
+    return { success: true };
+  } catch (error) {
+    // Check if this is a Next.js redirect (which means success)
+    if (error && typeof error === "object" && "digest" in error) {
+      const errorDigest = (error as { digest?: string }).digest;
+      if (
+        typeof errorDigest === "string" &&
+        errorDigest.includes("NEXT_REDIRECT")
+      ) {
+        // This is a successful sign out with redirect - don't return anything
+        // The redirect will handle the navigation
+        throw error; // Re-throw to allow the redirect to proceed
+      }
+    }
+
+    // This is an actual error
+    console.error("Sign out action error:", error);
+    return { error: "Failed to sign out" };
+  }
 }
 
 // Bookmark actions

@@ -24,15 +24,13 @@ export default async function EditTagPage({ params }: EditTagPageProps) {
   const { id } = await params;
   const user = await getCurrentUser();
 
-  // Check if user is authenticated and has admin role
   if (!user) {
     redirect("/signin");
   }
 
-  // Temporarily disabled for testing - uncomment to re-enable admin protection
-  // if (user.userData?.role !== "ADMIN") {
-  //   redirect("/dashboard");
-  // }
+  if (user.userData?.role !== "ADMIN") {
+    redirect("/dashboard");
+  }
 
   const tag = await getTagById(id);
 
@@ -52,7 +50,7 @@ export default async function EditTagPage({ params }: EditTagPageProps) {
       <AppSidebar variant="inset" user={user} />
       <SidebarInset>
         <SiteHeader />
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        <div className="flex flex-1 flex-col gap-4 p-4">
           <div className="flex items-center gap-4">
             <Link href="/dashboard/tags">
               <Button variant="outline" size="icon">
@@ -60,7 +58,6 @@ export default async function EditTagPage({ params }: EditTagPageProps) {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold">Edit Tag</h1>
               <p className="text-muted-foreground">
                 Update tag information and settings.
               </p>

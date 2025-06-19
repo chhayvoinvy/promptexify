@@ -50,7 +50,7 @@ export function GoogleOneTap() {
               });
 
               if (!error) {
-                window.location.href = "/dashboard";
+                window.location.href = "/";
               }
 
               if (error) {
