@@ -16,7 +16,19 @@ export const magicLinkSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
 });
 
+// Bookmark schemas
+export const bookmarkSchema = z.object({
+  postId: z.string().uuid("Invalid post ID"),
+});
+
+// Favorite schemas
+export const favoriteSchema = z.object({
+  postId: z.string().uuid("Invalid post ID"),
+});
+
 // Type exports
 export type SignInData = z.infer<typeof signInSchema>;
 export type SignUpData = z.infer<typeof signUpSchema>;
 export type MagicLinkData = z.infer<typeof magicLinkSchema>;
+export type BookmarkData = z.infer<typeof bookmarkSchema>;
+export type FavoriteData = z.infer<typeof favoriteSchema>;

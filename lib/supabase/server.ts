@@ -24,6 +24,11 @@ export async function createClient() {
           }
         },
       },
+      global: {
+        headers: {
+          "X-Client-Info": "supabase-ssr-nextjs",
+        },
+      },
     }
   );
 }

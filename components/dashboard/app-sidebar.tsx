@@ -9,14 +9,16 @@ import {
   IconFileAi,
   IconFileDescription,
   IconFileWord,
-  IconFolder,
   IconHelp,
   IconInnerShadowTop,
-  IconListDetails,
   IconReport,
   IconSearch,
   IconSettings,
-  IconUsers,
+  IconEdit,
+  IconTags,
+  IconCategory,
+  IconBookmark,
+  IconHeart,
 } from "@tabler/icons-react";
 
 import { NavDocuments } from "@/components/dashboard/nav-documents";
@@ -51,28 +53,23 @@ const navigationData = {
   navMain: [
     {
       title: "Dashboard",
-      url: "#",
+      url: "/dashboard",
       icon: IconDashboard,
     },
     {
-      title: "Lifecycle",
-      url: "#",
-      icon: IconListDetails,
+      title: "Bookmarks",
+      url: "/dashboard/bookmarks",
+      icon: IconBookmark,
+    },
+    {
+      title: "Favorites",
+      url: "/dashboard/favorites",
+      icon: IconHeart,
     },
     {
       title: "Analytics",
       url: "#",
       icon: IconChartBar,
-    },
-    {
-      title: "Projects",
-      url: "#",
-      icon: IconFolder,
-    },
-    {
-      title: "Team",
-      url: "#",
-      icon: IconUsers,
     },
   ],
   navClouds: [
@@ -157,6 +154,23 @@ const navigationData = {
       icon: IconFileWord,
     },
   ],
+  contentManagement: [
+    {
+      title: "Posts",
+      url: "/dashboard/posts",
+      icon: IconEdit,
+    },
+    {
+      title: "Categories",
+      url: "/dashboard/categories",
+      icon: IconCategory,
+    },
+    {
+      title: "Tags",
+      url: "/dashboard/tags",
+      icon: IconTags,
+    },
+  ],
 };
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
@@ -173,7 +187,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <a href="#">
+              <a href="/dashboard">
                 <IconInnerShadowTop className="!size-5" />
                 <span className="text-base font-semibold">Promptexify</span>
               </a>
@@ -184,6 +198,15 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
       <SidebarContent>
         <NavMain items={navigationData.navMain} />
         <NavDocuments items={navigationData.documents} />
+        {user.userData?.role === "ADMIN" && (
+          <NavDocuments
+            items={navigationData.contentManagement.map((item) => ({
+              name: item.title,
+              url: item.url,
+              icon: item.icon,
+            }))}
+          />
+        )}
         <NavSecondary items={navigationData.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>

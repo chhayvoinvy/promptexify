@@ -26,8 +26,119 @@ model User {
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
+  // Relations
+  posts     Post[]
+  bookmarks Bookmark[]
+  favorites Favorite[]
+
   @@map("users")
 }
+
+model Category {
+  id          String     @id @default(uuid())
+  name        String     @unique
+  slug        String     @unique
+  description String?
+  parentId    String?
+  parent      Category?  @relation("CategoryParent", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryParent")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  posts Post[]
+
+  @@map("categories")
+}
+
+model Tag {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  posts Post[]
+
+  @@map("tags")
+}
+
+model Post {
+  id            String   @id @default(uuid())
+  title         String
+  slug          String   @unique
+  description   String?
+  content       String   @db.Text // MDX content
+  featuredImage String? // S3 URL
+  isPremium     Boolean  @default(false)
+  isPublished   Boolean  @default(false)
+  viewCount     Int      @default(0)
+  authorId      String
+  categoryId    String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  author    User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  category  Category   @relation(fields: [categoryId], references: [id])
+  tags      Tag[]
+  views     View[]
+  bookmarks Bookmark[]
+  favorites Favorite[]
+
+  @@map("posts")
+}
+
+model Bookmark {
+  id        String   @id @default(uuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  // Prevent duplicate bookmarks for the same user and post
+  @@unique([userId, postId])
+  @@map("bookmarks")
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  // Prevent duplicate favorites for the same user and post
+  @@unique([userId, postId])
+  @@map("favorites")
+}
+
+model View {
+  id        String   @id @default(uuid())
+  postId    String
+  ipAddress String
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, ipAddress])
+  @@map("views")
+}
+
+/**
+ * ===============================================
+ * // ENUMS
+ * ===============================================
+ */
 
 enum UserType {
   FREE
