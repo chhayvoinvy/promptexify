@@ -19,6 +19,7 @@ export function NavMain({
     title: string;
     url: string;
     icon?: Icon;
+    adminOnly?: boolean;
   }[];
 }) {
   const pathname = usePathname();

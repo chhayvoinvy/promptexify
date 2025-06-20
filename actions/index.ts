@@ -32,3 +32,6 @@ export { createCategoryAction, updateCategoryAction } from "./categories";
 
 // Tag management actions
 export { createTagAction, updateTagAction } from "./tags";
+
+// User profile actions
+export { updateUserProfileAction, getUserProfileAction } from "./users";

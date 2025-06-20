@@ -238,6 +238,23 @@ export async function requireRole(allowedRoles: Array<"USER" | "ADMIN">) {
   return user;
 }
 
+export async function requireUserAccess(allowedPaths: string[]) {
+  const user = await requireAuth();
+  const userRole = user.userData?.role;
+
+  if (userRole === "USER") {
+    // For USER role, only allow access to specific paths
+    const allowedUserPaths = ["/dashboard/bookmarks", "/dashboard/account"];
+    const currentPath = allowedPaths[0] || "";
+
+    if (!allowedUserPaths.includes(currentPath)) {
+      redirect("/dashboard/bookmarks");
+    }
+  }
+
+  return user;
+}
+
 // Helper function to create/update user in Prisma database
 async function upsertUserInDatabase(supabaseUser: {
   id: string;

@@ -13,6 +13,7 @@ import {
   IconCategory,
   IconBookmark,
   IconHeart,
+  IconUser,
 } from "@tabler/icons-react";
 import Link from "next/link";
 
@@ -71,15 +72,22 @@ const navigationData = {
   ],
 
   navSecondary: [
+    // {
+    //   title: "Account",
+    //   url: "/dashboard/account",
+    //   icon: IconUser,
+    // },
     {
       title: "Settings",
       url: "/dashboard/settings",
       icon: IconSettings,
+      adminOnly: true,
     },
     {
       title: "Get Help",
       url: "/dashboard/help",
       icon: IconHelp,
+      adminOnly: true,
     },
     {
       title: "Search",
@@ -134,6 +142,10 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
     (item) => !item.adminOnly || isAdmin
   );
 
+  const filteredNavSecondary = navigationData.navSecondary.filter(
+    (item) => !item.adminOnly || isAdmin
+  );
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -163,7 +175,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
             }))}
           />
         )}
-        <NavSecondary items={navigationData.navSecondary} className="mt-auto" />
+        <NavSecondary items={filteredNavSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={user} />
