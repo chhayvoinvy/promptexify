@@ -95,6 +95,7 @@ export async function getUserFavoritesAction() {
               select: {
                 id: true,
                 name: true,
+                email: true,
                 avatar: true,
               },
             },

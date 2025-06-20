@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { requireAuth } from "@/lib/auth";
-import { getUserBookmarksAction } from "@/actions";
+import { getUserBookmarksAction, getUserFavoritesAction } from "@/actions";
 import { PostMasonryGrid } from "@/components/post-masonry-grid";
 import { PostMasonrySkeleton } from "@/components/post-masonry-skeleton";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,10 +18,13 @@ async function BookmarksContent() {
   const user = await requireAuth();
   const userType = user?.userData?.type || null;
 
-  // Get user's bookmarks
-  const result = await getUserBookmarksAction();
+  // Get user's bookmarks and favorites in parallel
+  const [bookmarksResult, favoritesResult] = await Promise.all([
+    getUserBookmarksAction(),
+    getUserFavoritesAction(),
+  ]);
 
-  if (!result.success) {
+  if (!bookmarksResult.success) {
     return (
       <Card className="col-span-full">
         <CardContent className="flex flex-col items-center justify-center py-8">
@@ -30,7 +33,7 @@ async function BookmarksContent() {
             Unable to Load Bookmarks
           </h3>
           <p className="text-muted-foreground text-center">
-            {result.error ||
+            {bookmarksResult.error ||
               "There was an error loading your bookmarks. Please try again."}
           </p>
         </CardContent>
@@ -38,7 +41,15 @@ async function BookmarksContent() {
     );
   }
 
-  const bookmarks = result.bookmarks || [];
+  const bookmarks = bookmarksResult.bookmarks || [];
+  const favorites = favoritesResult.success
+    ? favoritesResult.favorites || []
+    : [];
+
+  // Create a set of favorited post IDs for quick lookup
+  const favoritedPostIds = new Set(
+    favorites.map((favorite) => favorite.postId)
+  );
 
   if (bookmarks.length === 0) {
     return (
@@ -55,16 +66,15 @@ async function BookmarksContent() {
     );
   }
 
-  // Transform bookmarks to posts with bookmark status
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const postsWithBookmarks = bookmarks.map((bookmark: any) => ({
+  // Transform bookmarks to posts with bookmark and favorite status
+  const postsWithBookmarks = bookmarks.map((bookmark) => ({
     ...bookmark.post,
     isBookmarked: true,
+    isFavorited: favoritedPostIds.has(bookmark.post.id),
     _count: {
       views: bookmark.post.viewCount || 0,
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  })) as any[];
+  }));
 
   return (
     <div className="space-y-6">
@@ -119,7 +129,7 @@ export default async function BookmarksPage() {
       <AppSidebar variant="inset" user={user} />
       <SidebarInset>
         <SiteHeader />
-        <div className="flex flex-1 flex-col gap-4 p-4">
+        <div className="flex flex-1 flex-col gap-4 p-6 lg:p-6">
           <Suspense fallback={<BookmarksLoading />}>
             <BookmarksContent />
           </Suspense>

@@ -95,6 +95,7 @@ export async function getUserBookmarksAction() {
               select: {
                 id: true,
                 name: true,
+                email: true,
                 avatar: true,
               },
             },

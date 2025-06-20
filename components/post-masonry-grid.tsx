@@ -8,7 +8,7 @@ import { PostWithInteractions } from "@/lib/content";
 import { PostModal } from "@/components/post-modal";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { FavoriteButton } from "@/components/favorite-button";
-import { LockIcon } from "lucide-react";
+import { LockIcon, UnlockIcon } from "lucide-react";
 
 interface PostMasonryGridProps {
   posts: PostWithInteractions[];
@@ -40,15 +40,10 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
 
   const handleViewPost = (post: PostWithInteractions) => {
     setSelectedPost(post);
-
-    // Update URL for shareable links while keeping modal open
-    window.history.pushState(null, "", `/entry/${post.id}?modal=true`);
   };
 
   const handleCloseModal = () => {
     setSelectedPost(null);
-    // Go back in history to remove modal URL
-    window.history.back();
   };
 
   // const getDisplayViewCount = (post: PostWithInteractions) => {
@@ -255,7 +250,11 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                     {post.isPremium && (
                       <div className="absolute top-2 right-2 flex items-center gap-2 z-10">
                         <Badge className="text-foreground bg-gradient-to-r from-teal-500 to-sky-500">
-                          <LockIcon className="w-4 h-4" />
+                          {userType === "PREMIUM" ? (
+                            <UnlockIcon className="w-4 h-4" />
+                          ) : (
+                            <LockIcon className="w-4 h-4" />
+                          )}
                           Premium
                         </Badge>
                       </div>
@@ -265,6 +264,8 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                       <div
                         className="flex items-bottom justify-end gap-2"
                         onClick={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
+                        onTouchEnd={(e) => e.stopPropagation()}
                       >
                         <FavoriteButton
                           postId={post.id}

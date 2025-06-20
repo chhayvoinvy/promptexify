@@ -25,7 +25,9 @@ export function BookmarkButton({
   const [isBookmarked, setIsBookmarked] = useState(initialBookmarked);
   const [isPending, startTransition] = useTransition();
 
-  const handleToggleBookmark = () => {
+  const handleToggleBookmark = (e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation(); // Prevent event from bubbling up to parent
+    e.preventDefault(); // Prevent default touch behavior
     startTransition(async () => {
       try {
         const result = await toggleBookmarkAction({ postId });
@@ -54,6 +56,8 @@ export function BookmarkButton({
       variant={variant}
       size={size}
       onClick={handleToggleBookmark}
+      onTouchStart={handleToggleBookmark}
+      onTouchEnd={(e) => e.stopPropagation()}
       disabled={isPending}
       className={cn(
         "transition-colors duration-300",

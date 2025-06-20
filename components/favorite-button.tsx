@@ -25,7 +25,9 @@ export function FavoriteButton({
   const [isFavorited, setIsFavorited] = useState(initialFavorited);
   const [isPending, startTransition] = useTransition();
 
-  const handleToggleFavorite = () => {
+  const handleToggleFavorite = (e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation(); // Prevent event from bubbling up to parent
+    e.preventDefault(); // Prevent default touch behavior
     startTransition(async () => {
       try {
         const result = await toggleFavoriteAction({ postId });
@@ -33,7 +35,9 @@ export function FavoriteButton({
         if (result.success) {
           setIsFavorited(result.favorited ?? false);
           toast.success(
-            result.favorited ? "Added to favorites" : "Removed from favorites"
+            result.favorited
+              ? "You liked this prompt"
+              : "You unliked this prompt"
           );
         } else {
           toast.error(result.error || "Failed to update favorite");
@@ -50,6 +54,8 @@ export function FavoriteButton({
       variant={variant}
       size={size}
       onClick={handleToggleFavorite}
+      onTouchStart={handleToggleFavorite}
+      onTouchEnd={(e) => e.stopPropagation()}
       disabled={isPending}
       className={cn(
         "transition-colors duration-300",

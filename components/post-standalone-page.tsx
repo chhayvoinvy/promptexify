@@ -15,6 +15,8 @@ import {
   Share2,
   Home,
   ChevronRight,
+  LockIcon,
+  UnlockIcon,
 } from "lucide-react";
 
 import { PostWithInteractions } from "@/lib/content";
@@ -24,11 +26,13 @@ import { FavoriteButton } from "@/components/favorite-button";
 interface PostStandalonePageProps {
   post: PostWithInteractions;
   relatedPosts?: PostWithInteractions[];
+  userType?: "FREE" | "PREMIUM" | null;
 }
 
 export function PostStandalonePage({
   post,
   relatedPosts = [],
+  userType,
 }: PostStandalonePageProps) {
   const [isCopied, setIsCopied] = useState(false);
   const [isShared, setIsShared] = useState(false);
@@ -200,7 +204,12 @@ export function PostStandalonePage({
                     )}
                   </div>
                   {post.isPremium && (
-                    <Badge className="bg-gradient-to-r from-purple-500 to-pink-500">
+                    <Badge className="bg-gradient-to-r from-teal-500 to-sky-500 text-foreground">
+                      {userType === "PREMIUM" ? (
+                        <UnlockIcon className="w-4 h-4 mr-1" />
+                      ) : (
+                        <LockIcon className="w-4 h-4 mr-1" />
+                      )}
                       Premium
                     </Badge>
                   )}
