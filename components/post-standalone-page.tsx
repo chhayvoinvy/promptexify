@@ -321,7 +321,7 @@ export function PostStandalonePage({
 
           {/* Related posts sidebar */}
           <div className="lg:col-span-1">
-            <Card className="sticky top-6">
+            <Card className="sticky top-20">
               <CardHeader>
                 <CardTitle className="text-lg">Related Prompts</CardTitle>
               </CardHeader>

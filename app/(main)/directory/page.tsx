@@ -271,7 +271,7 @@ async function DirectoryContent({
         <h1 className="text-3xl md:text-4xl font-bold mb-4">
           Prompt Directory
         </h1>
-        <p className="text-lg text-muted-foreground">
+        <p className="text-lg text-muted-foreground max-w-2xl">
           Explore our complete collection of AI prompts. Find the perfect prompt
           for your creative projects.
         </p>
