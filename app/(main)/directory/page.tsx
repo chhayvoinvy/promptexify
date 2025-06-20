@@ -1,12 +1,76 @@
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import Link from "next/link";
-import { getAllPosts, getAllCategories } from "@/lib/content";
+import { getAllCategories } from "@/lib/content";
+import { getCurrentUser } from "@/lib/auth";
 import { Suspense } from "react";
-import { PostMasonryGrid } from "@/components/post-masonry-grid";
 import { PostMasonrySkeleton } from "@/components/post-masonry-skeleton";
 import { DirectoryFilters } from "@/components/directory-filters";
 import { Skeleton } from "@/components/ui/skeleton";
+import { InfinitePostGrid } from "@/components/infinite-post-grid";
+import { PrismaClient } from "@/lib/generated/prisma";
+
+const prisma = new PrismaClient();
+
+interface WhereClause {
+  isPublished: boolean;
+  OR?: Array<{
+    title?: { contains: string; mode: "insensitive" };
+    description?: { contains: string; mode: "insensitive" };
+    content?: { contains: string; mode: "insensitive" };
+    tags?: {
+      some: {
+        name: { contains: string; mode: "insensitive" };
+      };
+    };
+    category?: {
+      slug?: string;
+      parent?: { slug: string };
+    };
+  }>;
+  isPremium?: boolean;
+}
+
+interface PostWithBookmarksAndFavorites {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  content: string;
+  featuredImage: string | null;
+  isPremium: boolean;
+  isPublished: boolean;
+  viewCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+  bookmarks: Array<{ id: string }>;
+  favorites: Array<{ id: string }>;
+  _count: {
+    views: number;
+    favorites: number;
+  };
+  author: {
+    id: string;
+    name: string | null;
+    email: string;
+    avatar: string | null;
+  };
+  category: {
+    id: string;
+    name: string;
+    slug: string;
+    parent: {
+      id: string;
+      name: string;
+      slug: string;
+    } | null;
+  };
+  tags: Array<{
+    id: string;
+    name: string;
+    slug: string;
+  }>;
+}
 
 interface DirectoryPageProps {
   searchParams: Promise<{
@@ -64,10 +128,10 @@ async function DirectoryContent({
 }: {
   searchParams: DirectoryPageProps["searchParams"];
 }) {
-  const [posts, categories, params] = await Promise.all([
-    getAllPosts(),
+  const [categories, params, currentUser] = await Promise.all([
     getAllCategories(),
     searchParams,
+    getCurrentUser(),
   ]);
 
   const {
@@ -76,35 +140,128 @@ async function DirectoryContent({
     premium: premiumFilter,
   } = params;
 
-  const filteredPosts = posts.filter((post) => {
-    // Search query filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      const matchesQuery =
-        post.title.toLowerCase().includes(query) ||
-        post.description?.toLowerCase().includes(query) ||
-        post.tags.some((tag) => tag.name.toLowerCase().includes(query));
+  const userId = currentUser?.userData?.id;
 
-      if (!matchesQuery) return false;
+  // Build where clause for filtering (same as API)
+  const whereClause: WhereClause = {
+    isPublished: true,
+  };
+
+  // Search filter
+  if (searchQuery) {
+    whereClause.OR = [
+      { title: { contains: searchQuery, mode: "insensitive" } },
+      { description: { contains: searchQuery, mode: "insensitive" } },
+      { content: { contains: searchQuery, mode: "insensitive" } },
+      {
+        tags: {
+          some: {
+            name: { contains: searchQuery, mode: "insensitive" },
+          },
+        },
+      },
+    ];
+  }
+
+  // Category filter
+  if (categoryFilter && categoryFilter !== "all") {
+    whereClause.OR = whereClause.OR || [];
+    whereClause.OR.push(
+      { category: { slug: categoryFilter } },
+      { category: { parent: { slug: categoryFilter } } }
+    );
+  }
+
+  // Premium filter
+  if (premiumFilter) {
+    if (premiumFilter === "free") {
+      whereClause.isPremium = false;
+    } else if (premiumFilter === "premium") {
+      whereClause.isPremium = true;
     }
+  }
 
-    // Category filter
-    if (categoryFilter && categoryFilter !== "all") {
-      const matchesCategory =
-        post.category.slug === categoryFilter ||
-        post.category.parent?.slug === categoryFilter;
+  // Get initial posts (first page) and total count
+  const [initialPosts, totalCount] = await Promise.all([
+    prisma.post.findMany({
+      where: whereClause,
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar: true,
+          },
+        },
+        category: {
+          include: {
+            parent: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+        },
+        tags: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        bookmarks: userId
+          ? {
+              where: {
+                userId: userId,
+              },
+              select: {
+                id: true,
+              },
+            }
+          : false,
+        favorites: userId
+          ? {
+              where: {
+                userId: userId,
+              },
+              select: {
+                id: true,
+              },
+            }
+          : false,
+        _count: {
+          select: {
+            views: true,
+            favorites: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 12, // Initial page size
+    }),
+    prisma.post.count({
+      where: whereClause,
+    }),
+  ]);
 
-      if (!matchesCategory) return false;
-    }
+  // Transform posts to include interaction status
+  const transformedPosts = initialPosts.map(
+    (post: PostWithBookmarksAndFavorites) => ({
+      ...post,
+      isBookmarked: userId ? post.bookmarks.length > 0 : false,
+      isFavorited: userId ? post.favorites.length > 0 : false,
+      viewCount: post._count.views,
+      bookmarks: undefined, // Remove from response
+      favorites: undefined, // Remove from response
+    })
+  );
 
-    // Premium filter
-    if (premiumFilter) {
-      if (premiumFilter === "free" && post.isPremium) return false;
-      if (premiumFilter === "premium" && !post.isPremium) return false;
-    }
-
-    return true;
-  });
+  const hasNextPage = totalCount > 12;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -125,16 +282,20 @@ async function DirectoryContent({
       {/* Results Summary */}
       <div className="mb-6">
         <p className="text-muted-foreground">
-          Showing {filteredPosts.length} of {posts.length} prompts
+          Showing {Math.min(transformedPosts.length, totalCount)} of{" "}
+          {totalCount} prompts
           {searchQuery && <span> for &ldquo;{searchQuery}&rdquo;</span>}
         </p>
       </div>
 
-      {/* Posts Grid */}
-      <PostMasonryGrid posts={filteredPosts} />
-
-      {/* No Results */}
-      {filteredPosts.length === 0 && (
+      {/* Posts Grid with Infinite Scroll */}
+      {transformedPosts.length > 0 ? (
+        <InfinitePostGrid
+          initialPosts={transformedPosts}
+          totalCount={totalCount}
+          hasNextPage={hasNextPage}
+        />
+      ) : (
         <div className="text-center py-12">
           <div className="mb-4">
             <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />

@@ -7,6 +7,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 import {
   Copy,
   Check,
@@ -15,6 +16,7 @@ import {
   Home,
   ChevronRight,
 } from "lucide-react";
+
 import { PostWithInteractions } from "@/lib/content";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { FavoriteButton } from "@/components/favorite-button";
@@ -227,10 +229,22 @@ export function PostStandalonePage({
                     )}
                   </Button>
 
+                  <FavoriteButton
+                    postId={post.id}
+                    initialFavorited={post.isFavorited}
+                    variant="outline"
+                  />
+
+                  <BookmarkButton
+                    postId={post.id}
+                    initialBookmarked={post.isBookmarked}
+                    variant="outline"
+                  />
+
                   <Button
                     onClick={sharePost}
                     variant="outline"
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 ml-auto"
                   >
                     {isShared ? (
                       <>
@@ -244,31 +258,19 @@ export function PostStandalonePage({
                       </>
                     )}
                   </Button>
-
-                  <FavoriteButton
-                    postId={post.id}
-                    initialFavorited={post.isFavorited}
-                    variant="outline"
-                  />
-
-                  <BookmarkButton
-                    postId={post.id}
-                    initialBookmarked={post.isBookmarked}
-                    variant="outline"
-                  />
                 </div>
 
                 {/* Prompt content with fixed height and scroll */}
                 <div className="bg-muted/30 rounded-lg border">
-                  <div className="flex items-center justify-between px-6 py-4 border-b">
-                    <h3 className="text-lg font-semibold">Prompt Content:</h3>
+                  <div className="px-8 flex items-center justify-between py-4">
+                    <h3 className="text-lg font-semibold">Prompt:</h3>
                     <Badge variant="secondary" className="text-xs">
                       {post.content?.length || 0} characters
                     </Badge>
                   </div>
                   <div className="h-96 overflow-y-auto">
-                    <div className="p-6">
-                      <div className="whitespace-pre-wrap text-sm leading-relaxed break-words bg-background rounded p-4 border">
+                    <div className="px-8 pb-6">
+                      <div className="whitespace-pre-wrap text-sm leading-relaxed break-words bg-card/20">
                         {post.content ||
                           "No content available for this prompt."}
                       </div>
@@ -356,16 +358,19 @@ export function PostStandalonePage({
                     <p className="text-sm">No related prompts found</p>
                   </div>
                 )}
+                {/* Related actions */}
+                <div className="text-left">
+                  <Button
+                    onClick={() => router.push("/")}
+                    variant="outline"
+                    size="lg"
+                  >
+                    Discover More Prompts
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </div>
-        </div>
-
-        {/* Related actions */}
-        <div className="text-center">
-          <Button onClick={() => router.push("/")} variant="outline" size="lg">
-            Discover More Prompts
-          </Button>
         </div>
       </div>
     </div>

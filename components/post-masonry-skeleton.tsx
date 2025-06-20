@@ -27,59 +27,57 @@ export function PostMasonrySkeleton({ count = 12 }: PostMasonrySkeletonProps) {
   };
 
   return (
-    <>
-      <div className="masonry-container">
-        {Array.from({ length: count }).map((_, i) => (
-          <Card key={i} className="masonry-item overflow-hidden mb-4 py-0">
-            {/* Featured Image Skeleton */}
-            <div className="relative" style={getRandomAspectRatio(i)}>
-              <Skeleton className="h-full w-full" />
-              {/* Premium badge skeleton on every 3rd item */}
-              {i % 3 === 0 && (
-                <div className="absolute top-2 right-2">
-                  <Skeleton className="h-5 w-16 rounded-full" />
-                </div>
-              )}
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {Array.from({ length: count }).map((_, i) => (
+        <Card key={i} className="overflow-hidden">
+          {/* Featured Image Skeleton */}
+          <div className="relative" style={getRandomAspectRatio(i)}>
+            <Skeleton className="h-full w-full" />
+            {/* Premium badge skeleton on every 3rd item */}
+            {i % 3 === 0 && (
+              <div className="absolute top-2 right-2">
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
+            )}
+          </div>
+
+          {/* Card Header Skeleton */}
+          <CardHeader className="p-4">
+            {/* Category badges */}
+            <div className="flex items-center gap-2 mb-2">
+              <Skeleton className="h-5 w-16 rounded-full" />
+              <Skeleton className="h-5 w-12 rounded-full" />
             </div>
 
-            {/* Card Header Skeleton */}
-            <CardHeader className="p-4">
-              {/* Category badges */}
-              <div className="flex items-center gap-2 mb-2">
-                <Skeleton className="h-5 w-16 rounded-full" />
-                <Skeleton className="h-5 w-12 rounded-full" />
-              </div>
+            {/* Title */}
+            <Skeleton className="h-6 w-full mb-2" />
 
-              {/* Title */}
-              <Skeleton className="h-6 w-full mb-2" />
+            {/* Description */}
+            <div className="space-y-1">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
+            </div>
+          </CardHeader>
 
-              {/* Description */}
-              <div className="space-y-1">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-3/4" />
+          {/* Card Footer Skeleton */}
+          <CardFooter className="p-4 pt-0 flex items-center justify-between">
+            {/* Left side - View count */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1">
+                <Skeleton className="h-3 w-3" />
+                <Skeleton className="h-4 w-8" />
               </div>
-            </CardHeader>
+            </div>
 
-            {/* Card Footer Skeleton */}
-            <CardFooter className="p-4 pt-0 flex items-center justify-between">
-              {/* Left side - View count */}
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1">
-                  <Skeleton className="h-3 w-3" />
-                  <Skeleton className="h-4 w-8" />
-                </div>
-              </div>
-
-              {/* Right side - Action buttons */}
-              <div className="flex items-center gap-2">
-                <Skeleton className="h-8 w-8 rounded" />
-                <Skeleton className="h-8 w-8 rounded" />
-                <Skeleton className="h-8 w-12 rounded" />
-              </div>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
-    </>
+            {/* Right side - Action buttons */}
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-8 w-8 rounded" />
+              <Skeleton className="h-8 w-8 rounded" />
+              <Skeleton className="h-8 w-12 rounded" />
+            </div>
+          </CardFooter>
+        </Card>
+      ))}
+    </div>
   );
 }

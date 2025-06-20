@@ -90,7 +90,7 @@ export default async function PostPage({
   }
 
   // Get related posts for standalone page
-  const relatedPosts = await getRelatedPosts(id, post, userId, 6);
+  const relatedPosts = await getRelatedPosts(id, post, userId, 3);
 
   return <PostStandalonePage post={post} relatedPosts={relatedPosts} />;
 }

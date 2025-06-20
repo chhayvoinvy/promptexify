@@ -343,7 +343,7 @@ async function PostsManagementContent({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem asChild>
-                            <Link href={`/entry/${post.id}`}>
+                            <Link href={`/entry/${post.id}`} target="_blank">
                               <Eye className="mr-2 h-4 w-4" />
                               View
                             </Link>
