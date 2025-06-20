@@ -459,10 +459,16 @@ async function PostsManagementContent({
 export default async function PostsManagementPage({
   searchParams,
 }: PostsManagementPageProps) {
+  // Get current user and check role
   const user = await getCurrentUser();
 
-  if (!user || user.userData?.role !== "ADMIN") {
-    redirect("/dashboard");
+  if (!user) {
+    redirect("/signin");
+  }
+
+  // Only ADMIN can access posts management
+  if (user.userData?.role !== "ADMIN") {
+    redirect("/dashboard/bookmarks");
   }
 
   return (

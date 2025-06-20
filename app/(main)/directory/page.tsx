@@ -141,6 +141,7 @@ async function DirectoryContent({
   } = params;
 
   const userId = currentUser?.userData?.id;
+  const userType = currentUser?.userData?.type || null;
 
   // Build where clause for filtering (same as API)
   const whereClause: WhereClause = {
@@ -279,21 +280,13 @@ async function DirectoryContent({
       {/* Search and Filters */}
       <DirectoryFilters categories={categories} />
 
-      {/* Results Summary */}
-      <div className="mb-6">
-        <p className="text-muted-foreground">
-          Showing {Math.min(transformedPosts.length, totalCount)} of{" "}
-          {totalCount} prompts
-          {searchQuery && <span> for &ldquo;{searchQuery}&rdquo;</span>}
-        </p>
-      </div>
-
       {/* Posts Grid with Infinite Scroll */}
       {transformedPosts.length > 0 ? (
         <InfinitePostGrid
           initialPosts={transformedPosts}
           totalCount={totalCount}
           hasNextPage={hasNextPage}
+          userType={userType}
         />
       ) : (
         <div className="text-center py-12">

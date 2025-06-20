@@ -54,7 +54,7 @@ export function FavoriteButton({
       className={cn(
         "transition-colors duration-300",
         isFavorited &&
-          "text-zinc-700 dark:text-zinc-300 hover:text-zinc-400 dark:hover:text-zinc-500 transition-colors duration-300",
+          "text-zinc-700 dark:text-zinc-300 hover:text-zinc-400 dark:hover:text-zinc-200 transition-colors duration-300",
         className
       )}
       aria-label={isFavorited ? "Remove from favorites" : "Add to favorites"}

@@ -31,7 +31,7 @@ export function Header() {
           : "border-transparent bg-transparent"
       }`}
     >
-      <div className="container flex h-14 max-w-7xl mx-auto items-center justify-between">
+      <div className="container px-4 flex h-14 max-w-7xl mx-auto items-center justify-between">
         <div className="flex items-center space-x-2">
           <Link href="/" className="mr-6 flex items-center space-x-2">
             <span className="hidden font-bold sm:inline-block">/</span>

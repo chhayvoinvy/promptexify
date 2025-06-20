@@ -13,10 +13,16 @@ import data from "./data.json";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
+  // Get current user and check authentication
   const user = await getCurrentUser();
 
   if (!user) {
     redirect("/signin");
+  }
+
+  // Redirect USER role to bookmarks - only ADMIN can access main dashboard
+  if (user.userData?.role === "USER") {
+    redirect("/dashboard/bookmarks");
   }
 
   return (

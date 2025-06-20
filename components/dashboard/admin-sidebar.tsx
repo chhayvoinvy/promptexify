@@ -2,23 +2,16 @@
 
 import * as React from "react";
 import {
-  IconCamera,
   IconChartBar,
   IconDashboard,
-  IconDatabase,
-  IconFileAi,
-  IconFileDescription,
-  IconFileWord,
   IconHelp,
   IconInnerShadowTop,
-  IconReport,
   IconSearch,
   IconSettings,
   IconEdit,
   IconTags,
   IconCategory,
   IconBookmark,
-  IconHeart,
 } from "@tabler/icons-react";
 import Link from "next/link";
 
@@ -56,6 +49,7 @@ const navigationData = {
       title: "Dashboard",
       url: "/dashboard",
       icon: IconDashboard,
+      adminOnly: true,
     },
     {
       title: "Bookmarks",
@@ -63,59 +57,18 @@ const navigationData = {
       icon: IconBookmark,
     },
     {
+      title: "Favorites",
+      url: "/dashboard/favorites",
+      icon: IconBookmark,
+    },
+    {
       title: "Analytics",
       url: "/dashboard/analytics",
       icon: IconChartBar,
+      adminOnly: true,
     },
   ],
-  navClouds: [
-    {
-      title: "Capture",
-      icon: IconCamera,
-      isActive: true,
-      url: "/dashboard/capture",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "/dashboard/capture/active",
-        },
-        {
-          title: "Archived",
-          url: "/dashboard/capture/archived",
-        },
-      ],
-    },
-    {
-      title: "Proposal",
-      icon: IconFileDescription,
-      url: "/dashboard/proposals",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "/dashboard/proposals/active",
-        },
-        {
-          title: "Archived",
-          url: "/dashboard/proposals/archived",
-        },
-      ],
-    },
-    {
-      title: "Prompts",
-      icon: IconFileAi,
-      url: "/dashboard/prompts",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "/dashboard/prompts/active",
-        },
-        {
-          title: "Archived",
-          url: "/dashboard/prompts/archived",
-        },
-      ],
-    },
-  ],
+
   navSecondary: [
     {
       title: "Settings",
@@ -133,23 +86,23 @@ const navigationData = {
       icon: IconSearch,
     },
   ],
-  pages: [
-    {
-      name: "About us",
-      url: "/about",
-      icon: IconDatabase,
-    },
-    {
-      name: "Contact us",
-      url: "/contact",
-      icon: IconReport,
-    },
-    {
-      name: "Privacy Policy",
-      url: "/privacy",
-      icon: IconFileWord,
-    },
-  ],
+  // pages: [
+  //   {
+  //     name: "About us",
+  //     url: "/dashboard/about",
+  //     icon: IconDatabase,
+  //   },
+  //   {
+  //     name: "Contact us",
+  //     url: "/dashboard/contact",
+  //     icon: IconReport,
+  //   },
+  //   {
+  //     name: "Privacy Policy",
+  //     url: "/privacy",
+  //     icon: IconFileWord,
+  //   },
+  // ],
   contentManagement: [
     {
       title: "Posts",
@@ -174,6 +127,12 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 }
 
 export function AppSidebar({ user, ...props }: AppSidebarProps) {
+  const isAdmin = user.userData?.role === "ADMIN";
+
+  const filteredNavMain = navigationData.navMain.filter(
+    (item) => !item.adminOnly || isAdmin
+  );
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -183,7 +142,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <Link href="/dashboard">
+              <Link href={isAdmin ? "/dashboard" : "/dashboard/bookmarks"}>
                 <IconInnerShadowTop className="!size-5" />
                 <span className="text-base font-semibold">Promptexify</span>
               </Link>
@@ -192,9 +151,9 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={navigationData.navMain} />
-        <NavDocuments items={navigationData.pages} />
-        {user.userData?.role === "ADMIN" && (
+        <NavMain items={filteredNavMain} />
+
+        {isAdmin && (
           <NavDocuments
             items={navigationData.contentManagement.map((item) => ({
               name: item.title,

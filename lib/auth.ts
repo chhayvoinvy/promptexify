@@ -206,6 +206,38 @@ export async function getCurrentUser() {
   }
 }
 
+// Role-based access control utilities
+export async function requireAuth() {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/signin");
+  }
+  return user;
+}
+
+export async function requireAdmin() {
+  const user = await requireAuth();
+  if (user.userData?.role !== "ADMIN") {
+    redirect("/dashboard/bookmarks");
+  }
+  return user;
+}
+
+export async function requireRole(allowedRoles: Array<"USER" | "ADMIN">) {
+  const user = await requireAuth();
+  const userRole = user.userData?.role;
+
+  if (!userRole || !allowedRoles.includes(userRole)) {
+    // Redirect based on user role
+    if (userRole === "USER") {
+      redirect("/dashboard/bookmarks");
+    } else {
+      redirect("/dashboard");
+    }
+  }
+  return user;
+}
+
 // Helper function to create/update user in Prisma database
 async function upsertUserInDatabase(supabaseUser: {
   id: string;

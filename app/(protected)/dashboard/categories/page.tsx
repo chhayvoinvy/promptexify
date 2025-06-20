@@ -1,6 +1,3 @@
-import { AppSidebar } from "@/components/dashboard/admin-sidebar";
-import { SiteHeader } from "@/components/dashboard/site-header";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -9,6 +6,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -17,33 +15,40 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, Edit, Trash2, FolderTree } from "lucide-react";
+import { Plus, MoreHorizontal, Folder } from "lucide-react";
 import Link from "next/link";
+import { AppSidebar } from "@/components/dashboard/admin-sidebar";
+import { SiteHeader } from "@/components/dashboard/site-header";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getCurrentUser } from "@/lib/auth";
 import { getAllCategories } from "@/lib/content";
 import { redirect } from "next/navigation";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 // Force dynamic rendering for this page
 export const dynamic = "force-dynamic";
 
 export default async function CategoriesManagementPage() {
+  // Get current user and check role
   const user = await getCurrentUser();
 
-  // Check if user is authenticated and has admin role
   if (!user) {
     redirect("/signin");
   }
 
-  // Temporarily disabled for testing - uncomment to re-enable admin protection
+  // Only ADMIN can access categories management
   if (user.userData?.role !== "ADMIN") {
-    redirect("/dashboard");
+    redirect("/dashboard/bookmarks");
   }
 
   const categories = await getAllCategories();
@@ -87,7 +92,7 @@ export default async function CategoriesManagementPage() {
                 <CardTitle className="text-sm font-medium">
                   Total Categories
                 </CardTitle>
-                <FolderTree className="h-4 w-4 text-muted-foreground" />
+                <Folder className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{categories.length}</div>
@@ -98,7 +103,7 @@ export default async function CategoriesManagementPage() {
                 <CardTitle className="text-sm font-medium">
                   Parent Categories
                 </CardTitle>
-                <FolderTree className="h-4 w-4 text-muted-foreground" />
+                <Folder className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
@@ -111,7 +116,7 @@ export default async function CategoriesManagementPage() {
                 <CardTitle className="text-sm font-medium">
                   Sub Categories
                 </CardTitle>
-                <FolderTree className="h-4 w-4 text-muted-foreground" />
+                <Folder className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
@@ -124,7 +129,7 @@ export default async function CategoriesManagementPage() {
                 <CardTitle className="text-sm font-medium">
                   Total Posts
                 </CardTitle>
-                <FolderTree className="h-4 w-4 text-muted-foreground" />
+                <Folder className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
@@ -183,28 +188,34 @@ export default async function CategoriesManagementPage() {
                         {new Date(category.createdAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
                             <Button variant="ghost" className="h-8 w-8 p-0">
                               <span className="sr-only">Open menu</span>
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                              <Link
-                                href={`/dashboard/categories/edit/${category.id}`}
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                Are you sure you want to delete this category?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() =>
+                                  console.log("Delete category:", category.id)
+                                }
                               >
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -262,28 +273,34 @@ export default async function CategoriesManagementPage() {
                         {new Date(category.createdAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
                             <Button variant="ghost" className="h-8 w-8 p-0">
                               <span className="sr-only">Open menu</span>
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                              <Link
-                                href={`/dashboard/categories/edit/${category.id}`}
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                Are you sure you want to delete this category?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() =>
+                                  console.log("Delete category:", category.id)
+                                }
                               >
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </TableCell>
                     </TableRow>
                   ))}

@@ -58,7 +58,7 @@ export function BookmarkButton({
       className={cn(
         "transition-colors duration-300",
         isBookmarked &&
-          "text-zinc-700 dark:text-zinc-300 hover:text-zinc-400 dark:hover:text-zinc-500 transition-colors duration-300",
+          "text-zinc-700 dark:text-zinc-300 hover:text-zinc-400 dark:hover:text-zinc-200 transition-colors duration-300",
         className
       )}
       aria-label={isBookmarked ? "Remove bookmark" : "Add bookmark"}

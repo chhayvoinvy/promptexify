@@ -26,6 +26,7 @@ async function PostGrid({
   // Get current user to determine bookmark status
   const currentUser = await getCurrentUser();
   const userId = currentUser?.userData?.id;
+  const userType = currentUser?.userData?.type || null;
 
   const posts = await getPostsWithSorting(userId, sortBy);
 
@@ -40,7 +41,7 @@ async function PostGrid({
       )
     : posts.slice(0, 12); // Show latest 12 posts on home
 
-  return <PostMasonryGrid posts={filteredPosts} />;
+  return <PostMasonryGrid posts={filteredPosts} userType={userType} />;
 }
 
 function FilterButtons({ currentSort }: { currentSort: SortOption }) {

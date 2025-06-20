@@ -11,6 +11,7 @@ interface InfinitePostGridProps {
   initialPosts: PostWithInteractions[];
   totalCount: number;
   hasNextPage: boolean;
+  userType?: "FREE" | "PREMIUM" | null;
 }
 
 interface PostsResponse {
@@ -28,6 +29,7 @@ export function InfinitePostGrid({
   initialPosts,
   totalCount,
   hasNextPage: initialHasNextPage,
+  userType,
 }: InfinitePostGridProps) {
   const [posts, setPosts] = useState<PostWithInteractions[]>(initialPosts);
   const [currentPage, setCurrentPage] = useState(1);
@@ -266,7 +268,7 @@ export function InfinitePostGrid({
     <div className="space-y-6">
       {/* Posts Grid with stable key */}
       <div key={`posts-${searchParamsKey}`}>
-        <PostMasonryGrid posts={memoizedPosts} />
+        <PostMasonryGrid posts={memoizedPosts} userType={userType} />
       </div>
 
       {/* Loading indicator and load more button */}

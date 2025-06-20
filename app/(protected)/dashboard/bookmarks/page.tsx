@@ -1,21 +1,22 @@
 import { Suspense } from "react";
-import { getCurrentUser } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
 import { getUserBookmarksAction } from "@/actions";
-import { PostGridWithModal } from "@/components/post-grid-with-modal";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { PostMasonryGrid } from "@/components/post-masonry-grid";
+import { PostMasonrySkeleton } from "@/components/post-masonry-skeleton";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Bookmark, BookmarkX } from "lucide-react";
-import { redirect } from "next/navigation";
+import { AppSidebar } from "@/components/dashboard/admin-sidebar";
+import { SiteHeader } from "@/components/dashboard/site-header";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
 // Force dynamic rendering for this page
 export const dynamic = "force-dynamic";
 
 async function BookmarksContent() {
-  // Get current user
-  const currentUser = await getCurrentUser();
-  if (!currentUser?.userData) {
-    redirect("/signin");
-  }
+  // Get current user info
+  const user = await requireAuth();
+  const userType = user?.userData?.type || null;
 
   // Get user's bookmarks
   const result = await getUserBookmarksAction();
@@ -81,7 +82,7 @@ async function BookmarksContent() {
         </Badge>
       </div>
 
-      <PostGridWithModal posts={postsWithBookmarks} />
+      <PostMasonryGrid posts={postsWithBookmarks} userType={userType} />
     </div>
   );
 }
@@ -97,34 +98,33 @@ function BookmarksLoading() {
         <div className="h-6 w-16 bg-muted rounded animate-pulse" />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <Card key={i} className="overflow-hidden">
-            <div className="aspect-video bg-muted animate-pulse" />
-            <CardHeader className="p-4">
-              <div className="h-4 w-16 bg-muted rounded animate-pulse mb-2" />
-              <div className="h-5 w-full bg-muted rounded animate-pulse" />
-              <div className="h-4 w-3/4 bg-muted rounded animate-pulse mt-2" />
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <div className="flex gap-1 mb-3">
-                <div className="h-4 w-12 bg-muted rounded animate-pulse" />
-                <div className="h-4 w-16 bg-muted rounded animate-pulse" />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <PostMasonrySkeleton count={8} />
     </div>
   );
 }
 
-export default function BookmarksPage() {
+export default async function BookmarksPage() {
+  // Require authentication - both USER and ADMIN can access bookmarks
+  const user = await requireAuth();
+
   return (
-    <div className="container mx-auto py-6">
-      <Suspense fallback={<BookmarksLoading />}>
-        <BookmarksContent />
-      </Suspense>
-    </div>
+    <SidebarProvider
+      style={
+        {
+          "--sidebar-width": "calc(var(--spacing) * 72)",
+          "--header-height": "calc(var(--spacing) * 12)",
+        } as React.CSSProperties
+      }
+    >
+      <AppSidebar variant="inset" user={user} />
+      <SidebarInset>
+        <SiteHeader />
+        <div className="flex flex-1 flex-col gap-4 p-4">
+          <Suspense fallback={<BookmarksLoading />}>
+            <BookmarksContent />
+          </Suspense>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

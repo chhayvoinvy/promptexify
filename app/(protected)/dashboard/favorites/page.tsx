@@ -13,6 +13,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getUserFavoritesAction } from "@/actions";
 import { FavoriteButton } from "@/components/favorite-button";
 import { BookmarkButton } from "@/components/bookmark-button";
+import { AppSidebar } from "@/components/dashboard/admin-sidebar";
+import { SiteHeader } from "@/components/dashboard/site-header";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { requireAuth } from "@/lib/auth";
 import Image from "next/image";
 
 // Force dynamic rendering for this page
@@ -170,19 +174,37 @@ function FavoritesLoading() {
   );
 }
 
-export default function FavoritesPage() {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">My Favorites</h1>
-        <p className="text-muted-foreground">
-          Posts you&apos;ve marked as favorites
-        </p>
-      </div>
+export default async function FavoritesPage() {
+  // Require authentication - both USER and ADMIN can access favorites
+  const user = await requireAuth();
 
-      <Suspense fallback={<FavoritesLoading />}>
-        <FavoritesList />
-      </Suspense>
-    </div>
+  return (
+    <SidebarProvider
+      style={
+        {
+          "--sidebar-width": "calc(var(--spacing) * 72)",
+          "--header-height": "calc(var(--spacing) * 12)",
+        } as React.CSSProperties
+      }
+    >
+      <AppSidebar variant="inset" user={user} />
+      <SidebarInset>
+        <SiteHeader />
+        <div className="flex flex-1 flex-col gap-4 p-4">
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-3xl font-bold">Favorites</h1>
+              <p className="text-muted-foreground">
+                Posts you&apos;ve marked as favorites
+              </p>
+            </div>
+
+            <Suspense fallback={<FavoritesLoading />}>
+              <FavoritesList />
+            </Suspense>
+          </div>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

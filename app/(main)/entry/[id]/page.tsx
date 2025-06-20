@@ -82,11 +82,12 @@ export default async function PostPage({
   // Get current user for bookmarks/favorites
   const currentUser = await getCurrentUser();
   const userId = currentUser?.userData?.id;
+  const userType = currentUser?.userData?.type || null;
 
   // If modal parameter is present, show modal (for internal navigation)
   // Otherwise, show full page (for direct URL access)
   if (modal === "true") {
-    return <PostModal post={post} />;
+    return <PostModal post={post} userType={userType} />;
   }
 
   // Get related posts for standalone page

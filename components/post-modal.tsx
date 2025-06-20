@@ -16,13 +16,36 @@ import { Copy, Check } from "lucide-react";
 import { PostWithInteractions } from "@/lib/content";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { FavoriteButton } from "@/components/favorite-button";
+import { PremiumUpgradeModal } from "@/components/premium-upgrade-modal";
 
 interface PostModalProps {
   post: PostWithInteractions;
+  userType?: "FREE" | "PREMIUM" | null;
   onClose?: () => void;
 }
 
-export function PostModal({ post, onClose }: PostModalProps) {
+export function PostModal({ post, userType, onClose }: PostModalProps) {
+  // Check if user should see premium upgrade modal
+  const shouldShowUpgradeModal =
+    post.isPremium && (userType === "FREE" || userType === null);
+
+  // If user is free and content is premium, show upgrade modal
+  if (shouldShowUpgradeModal) {
+    return <PremiumUpgradeModal post={post} onClose={onClose} />;
+  }
+
+  // Otherwise, render the full content modal
+  return <PostContentModal post={post} onClose={onClose} />;
+}
+
+// Separate component for the actual post modal content to avoid hooks issues
+function PostContentModal({
+  post,
+  onClose,
+}: {
+  post: PostWithInteractions;
+  onClose?: () => void;
+}) {
   const [isCopied, setIsCopied] = useState(false);
   const viewTracked = useRef(false);
 
@@ -118,7 +141,7 @@ export function PostModal({ post, onClose }: PostModalProps) {
 
   return (
     <Dialog open={true} onOpenChange={handleClose}>
-      <DialogContent className="fixed z-50 left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] w-[95vw] max-w-3xl h-[60vh] max-h-[700px] flex flex-col p-0 gap-0 sm:w-[90vw] md:w-[80vw] lg:w-[70vw]">
+      <DialogContent className="fixed z-50 left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] w-[95vw] max-w-4xl h-[70vh] max-h-[800px] flex flex-col p-0 gap-0 sm:w-[90vw] md:w-[90vw] lg:w-[80vw]">
         <DialogHeader className="px-6 pt-4">
           <DialogTitle className="text-sm font-bold text-left text-zinc-700 dark:text-zinc-300">
             {post.title}

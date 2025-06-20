@@ -1,24 +1,18 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Eye } from "lucide-react";
 import Image from "next/image";
 import { PostWithInteractions } from "@/lib/content";
 import { PostModal } from "@/components/post-modal";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { FavoriteButton } from "@/components/favorite-button";
+import { LockIcon } from "lucide-react";
 
 interface PostMasonryGridProps {
   posts: PostWithInteractions[];
+  userType?: "FREE" | "PREMIUM" | null;
 }
 
 interface PostPosition {
@@ -28,11 +22,10 @@ interface PostPosition {
   height: number;
 }
 
-export function PostMasonryGrid({ posts }: PostMasonryGridProps) {
+export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
   const [selectedPost, setSelectedPost] = useState<PostWithInteractions | null>(
     null
   );
-  const [viewCounts, setViewCounts] = useState<Record<string, number>>({});
   const [postPositions, setPostPositions] = useState<PostPosition[]>([]);
   const [containerHeight, setContainerHeight] = useState(0);
   const [columnWidth, setColumnWidth] = useState(0);
@@ -47,11 +40,6 @@ export function PostMasonryGrid({ posts }: PostMasonryGridProps) {
 
   const handleViewPost = (post: PostWithInteractions) => {
     setSelectedPost(post);
-    // Optimistically update view count
-    setViewCounts((prev) => ({
-      ...prev,
-      [post.id]: (prev[post.id] || post.viewCount) + 1,
-    }));
 
     // Update URL for shareable links while keeping modal open
     window.history.pushState(null, "", `/entry/${post.id}?modal=true`);
@@ -63,9 +51,9 @@ export function PostMasonryGrid({ posts }: PostMasonryGridProps) {
     window.history.back();
   };
 
-  const getDisplayViewCount = (post: PostWithInteractions) => {
-    return viewCounts[post.id] || post.viewCount;
-  };
+  // const getDisplayViewCount = (post: PostWithInteractions) => {
+  //   return viewCounts[post.id] || post.viewCount;
+  // };
 
   // Function to handle image load and calculate aspect ratio
   const handleImageLoad = (
@@ -234,98 +222,103 @@ export function PostMasonryGrid({ posts }: PostMasonryGridProps) {
           const position = postPositions.find((p) => p.id === post.id);
 
           return (
-            <Card
+            <div
               key={post.id}
               ref={(el) => {
                 if (el) postRefs.current[post.id] = el;
               }}
-              className="absolute overflow-hidden hover:shadow-lg cursor-pointer"
+              className="absolute"
               style={{
                 width: columnWidth,
                 left: position?.x || 0,
                 top: position?.y || 0,
               }}
-              onClick={() => handleViewPost(post)}
             >
-              {post.featuredImage && (
-                <div
-                  className="relative"
-                  style={getDynamicAspectRatio(post.id)}
-                >
-                  <Image
-                    src={post.featuredImage}
-                    alt={post.title}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    onLoad={(e) => handleImageLoad(post.id, e)}
-                  />
-                  {post.isPremium && (
-                    <Badge className="absolute top-2 right-2 bg-gradient-to-r from-purple-500 to-pink-500">
-                      Premium
-                    </Badge>
-                  )}
-                </div>
-              )}
-              <CardHeader className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge variant="secondary" className="text-xs">
-                    {post.category.parent?.name || post.category.name}
-                  </Badge>
-                  {post.category.parent && (
-                    <Badge variant="outline" className="text-xs">
-                      {post.category.name}
-                    </Badge>
-                  )}
-                </div>
-                <CardTitle className="line-clamp-2 text-lg">
-                  {post.title}
-                </CardTitle>
-                {post.description && (
-                  <CardDescription className="line-clamp-3 text-sm">
-                    {post.description}
-                  </CardDescription>
-                )}
-              </CardHeader>
-
-              <CardFooter className="p-4 pt-0 flex items-center justify-between text-sm text-muted-foreground">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1">
-                    <Eye className="h-3 w-3" />
-                    <span>{getDisplayViewCount(post)}</span>
-                  </div>
-                </div>
-                <div
-                  className="flex items-center gap-2"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <FavoriteButton
-                    postId={post.id}
-                    initialFavorited={post.isFavorited || false}
-                  />
-                  <BookmarkButton
-                    postId={post.id}
-                    initialBookmarked={post.isBookmarked || false}
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleViewPost(post);
-                    }}
+              <Card
+                className="overflow-hidden hover:shadow-lg cursor-pointer py-0 shadow-lg"
+                onClick={() => handleViewPost(post)}
+              >
+                {post.featuredImage && (
+                  <div
+                    className="relative"
+                    style={getDynamicAspectRatio(post.id)}
                   >
-                    View
-                  </Button>
+                    <Image
+                      src={post.featuredImage}
+                      alt={post.title}
+                      fill
+                      className="object-cover rounded-b-lg absolute"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      onLoad={(e) => handleImageLoad(post.id, e)}
+                    />
+
+                    {post.isPremium && (
+                      <div className="absolute top-2 right-2 flex items-center gap-2 z-10">
+                        <Badge className="text-foreground bg-gradient-to-r from-teal-500 to-sky-500">
+                          <LockIcon className="w-4 h-4" />
+                          Premium
+                        </Badge>
+                      </div>
+                    )}
+                    {/* Action buttons overlay */}
+                    <div className="absolute bottom-3 left-0 right-0 px-3 flex gap-2 items-end justify-between">
+                      <div
+                        className="flex items-bottom justify-end gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <FavoriteButton
+                          postId={post.id}
+                          className="border-1 border-white/20 backdrop-blur-lg bg-background"
+                          initialFavorited={post.isFavorited || false}
+                        />
+                        <BookmarkButton
+                          postId={post.id}
+                          className="border-1 border-white/20 backdrop-blur-lg bg-background"
+                          initialBookmarked={post.isBookmarked || false}
+                        />
+                      </div>
+                      <div className="flex items-bottom gap-2">
+                        <Badge variant="secondary" className="text-xs">
+                          {post.category.parent?.name || post.category.name}
+                        </Badge>
+                        {post.category.parent && (
+                          <Badge variant="secondary" className="text-xs">
+                            {post.category.name}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </Card>
+
+              {/* Content overlay positioned outside the Card */}
+              <div className="z-10 mx-3 border border-t-0 rounded-b-lg border-white/20">
+                <div className="bg-black/70 backdrop-blur-sm rounded-b-lg px-4 py-2 text-xs text-muted-foreground">
+                  <span className="line-clamp-2">
+                    <span className="font-medium">Prompt: </span>
+
+                    {post.content
+                      ? post.content
+                          .replace(/^# .+\n\n/, "")
+                          .replace(/\n+/g, " ")
+                          .substring(0, 100) +
+                        (post.content.length > 100 ? "..." : "")
+                      : post.description}
+                  </span>
                 </div>
-              </CardFooter>
-            </Card>
+              </div>
+            </div>
           );
         })}
       </div>
 
       {selectedPost && (
-        <PostModal post={selectedPost} onClose={handleCloseModal} />
+        <PostModal
+          post={selectedPost}
+          userType={userType}
+          onClose={handleCloseModal}
+        />
       )}
     </>
   );

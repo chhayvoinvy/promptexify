@@ -37,13 +37,17 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Protected routes
+  // Protected routes - require authentication
   if (request.nextUrl.pathname.startsWith("/dashboard") && !user) {
     // Redirect to signin if accessing protected route without authentication
     const url = request.nextUrl.clone();
     url.pathname = "/signin";
     return NextResponse.redirect(url);
   }
+
+  // For authenticated users, we'll handle role-based redirects in the pages themselves
+  // since we can't access Prisma in middleware. This is more performant anyway.
+  // The main authentication check is done above.
 
   // Redirect authenticated users away from auth pages
   if (
