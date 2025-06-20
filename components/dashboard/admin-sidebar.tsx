@@ -12,6 +12,7 @@ import {
   IconTags,
   IconCategory,
   IconBookmark,
+  IconHeart,
 } from "@tabler/icons-react";
 import Link from "next/link";
 
@@ -59,7 +60,7 @@ const navigationData = {
     {
       title: "Favorites",
       url: "/dashboard/favorites",
-      icon: IconBookmark,
+      icon: IconHeart,
     },
     {
       title: "Analytics",

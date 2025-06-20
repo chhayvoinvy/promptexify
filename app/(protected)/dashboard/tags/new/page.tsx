@@ -38,7 +38,7 @@ export default async function NewTagPage() {
       <AppSidebar variant="inset" user={user} />
       <SidebarInset>
         <SiteHeader />
-        <div className="flex flex-1 flex-col gap-4 p-4">
+        <div className="flex flex-1 flex-col gap-4 p-6 lg:p-6">
           <div className="flex items-center gap-4">
             <Link href="/dashboard/tags">
               <Button variant="outline" size="icon">
@@ -46,7 +46,6 @@ export default async function NewTagPage() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold">Create New Tag</h1>
               <p className="text-muted-foreground">
                 Add a new tag to organize your content.
               </p>

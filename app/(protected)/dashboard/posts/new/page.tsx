@@ -56,7 +56,7 @@ export default async function NewPostPage() {
       <AppSidebar variant="inset" user={user} />
       <SidebarInset>
         <SiteHeader />
-        <div className="flex flex-1 flex-col gap-4 p-4">
+        <div className="flex flex-1 flex-col gap-4 p-6 lg:p-6">
           <div className="flex items-center gap-4">
             <Link href="/dashboard/posts">
               <Button variant="outline" size="sm">
@@ -65,7 +65,6 @@ export default async function NewPostPage() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold">Create New Post</h1>
               <p className="text-muted-foreground">
                 Add a new prompt to your directory.
               </p>
