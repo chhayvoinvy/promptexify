@@ -38,8 +38,10 @@ export function InfinitePostGrid({
   const searchParams = useSearchParams();
   const previousSearchParamsRef = useRef<string>("");
   const hasUserScrolledRef = useRef(false);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isLoadingRequestRef = useRef(false);
+  const lastRequestPageRef = useRef<number>(0);
+  const hasNextPageRef = useRef(initialHasNextPage);
+  const currentPageRef = useRef(1);
 
   // Create a stable key for the search params to detect changes
   const searchParamsKey = useMemo(() => {
@@ -55,6 +57,16 @@ export function InfinitePostGrid({
     return params.toString();
   }, [searchParams]);
 
+  // Update hasNextPageRef whenever hasNextPage state changes
+  useEffect(() => {
+    hasNextPageRef.current = hasNextPage;
+  }, [hasNextPage]);
+
+  // Update currentPageRef whenever currentPage state changes
+  useEffect(() => {
+    currentPageRef.current = currentPage;
+  }, [currentPage]);
+
   // Reset posts when search params change
   useEffect(() => {
     if (previousSearchParamsRef.current !== searchParamsKey) {
@@ -62,33 +74,56 @@ export function InfinitePostGrid({
       setCurrentPage(1);
       setHasNextPage(initialHasNextPage);
       setError(null);
-      hasUserScrolledRef.current = false; // Reset scroll state on search change
-      isLoadingRequestRef.current = false; // Reset loading state
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-        loadingTimeoutRef.current = null;
-      }
+      hasUserScrolledRef.current = false;
+      isLoadingRequestRef.current = false;
+      lastRequestPageRef.current = 0;
+      hasNextPageRef.current = initialHasNextPage;
+      currentPageRef.current = 1; // Update ref
       previousSearchParamsRef.current = searchParamsKey;
     }
   }, [initialPosts, initialHasNextPage, searchParamsKey]);
 
+  // Stable load more function - use refs for current values
   const loadMorePosts = useCallback(async () => {
-    // Prevent multiple simultaneous requests
-    if (isLoading || !hasNextPage || isLoadingRequestRef.current) return;
+    // Get the current page from ref at execution time
+    const currentPageValue = currentPageRef.current;
+    const nextPage = currentPageValue + 1;
+    const currentHasNextPage = hasNextPageRef.current;
 
-    // Clear any pending timeout
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-      loadingTimeoutRef.current = null;
+    console.log("LoadMorePosts called:", {
+      currentPage: currentPageValue,
+      nextPage,
+      hasNextPage: currentHasNextPage,
+      isLoading: isLoadingRequestRef.current,
+      lastRequested: lastRequestPageRef.current,
+    });
+
+    // Prevent multiple simultaneous requests and duplicate page requests
+    if (
+      isLoadingRequestRef.current ||
+      !currentHasNextPage ||
+      lastRequestPageRef.current >= nextPage
+    ) {
+      console.log("Request blocked:", {
+        isLoading: isLoadingRequestRef.current,
+        hasNextPage: currentHasNextPage,
+        lastRequested: lastRequestPageRef.current,
+        nextPage,
+      });
+      return;
     }
 
+    console.log(`Loading page ${nextPage}...`);
+
+    // Mark this page as being requested
+    lastRequestPageRef.current = nextPage;
     isLoadingRequestRef.current = true;
     setIsLoading(true);
     setError(null);
 
     try {
       const params = new URLSearchParams();
-      params.set("page", (currentPage + 1).toString());
+      params.set("page", nextPage.toString());
       params.set("limit", "12");
 
       // Add current search parameters
@@ -108,6 +143,10 @@ export function InfinitePostGrid({
 
       const data: PostsResponse = await response.json();
 
+      console.log(
+        `Received page ${data.pagination.currentPage} with ${data.posts.length} posts`
+      );
+
       // Use functional update to ensure we're working with the latest state
       setPosts((prevPosts) => {
         // Create a Set of existing post IDs to avoid duplicates
@@ -115,6 +154,12 @@ export function InfinitePostGrid({
 
         // Filter out any posts that already exist (safety check)
         const newPosts = data.posts.filter((post) => !existingIds.has(post.id));
+
+        console.log(
+          `Adding ${newPosts.length} new posts (${
+            data.posts.length - newPosts.length
+          } duplicates filtered)`
+        );
 
         // Return the combined array maintaining order
         return [...prevPosts, ...newPosts];
@@ -125,84 +170,67 @@ export function InfinitePostGrid({
     } catch (error) {
       console.error("Error loading more posts:", error);
       setError("Failed to load more posts. Please try again.");
+      // Reset the last requested page on error so user can retry
+      lastRequestPageRef.current = currentPageValue;
     } finally {
       setIsLoading(false);
       isLoadingRequestRef.current = false;
     }
-  }, [currentPage, hasNextPage, isLoading, searchParams]);
+  }, [searchParams]); // No state dependencies - all values accessed via refs
 
-  // Debounced loading function
-  const debouncedLoadMore = useCallback(() => {
-    // Clear any existing timeout
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
-
-    // Set a new timeout
-    loadingTimeoutRef.current = setTimeout(() => {
-      loadMorePosts();
-    }, 300); // 300ms debounce
-  }, [loadMorePosts]);
-
-  // Intersection Observer for automatic loading
+  // Stable intersection observer with direct loading (no debouncing)
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const target = entries[0];
-        if (
-          target.isIntersecting &&
-          hasNextPage &&
-          !isLoading &&
-          hasUserScrolledRef.current &&
-          !isLoadingRequestRef.current
-        ) {
-          debouncedLoadMore();
-        }
-      },
-      {
-        threshold: 0.1,
-        rootMargin: "100px", // Reduced margin - only load when very close to the loading element
+    if (!loadingRef.current) return;
+
+    const handleIntersection = (entries: IntersectionObserverEntry[]) => {
+      const target = entries[0];
+
+      // Only proceed if element is intersecting and user has scrolled
+      if (!target.isIntersecting || !hasUserScrolledRef.current) {
+        return;
       }
-    );
 
-    if (loadingRef.current) {
-      observer.observe(loadingRef.current);
-    }
+      // Use refs to get current values (not stale closure values)
+      const currentHasNextPage = hasNextPageRef.current;
+      const currentIsLoading = isLoadingRequestRef.current;
 
-    return () => {
-      if (loadingRef.current) {
-        observer.unobserve(loadingRef.current);
+      console.log("Intersection observer check:", {
+        isIntersecting: target.isIntersecting,
+        hasScrolled: hasUserScrolledRef.current,
+        hasNextPage: currentHasNextPage,
+        isLoading: currentIsLoading,
+      });
+
+      // Check if we can load more
+      if (currentHasNextPage && !currentIsLoading) {
+        console.log("Intersection observer triggered - loading more posts");
+        // Call loadMorePosts directly without debouncing
+        loadMorePosts();
       }
     };
-  }, [debouncedLoadMore, hasNextPage, isLoading]);
 
-  // Additional scroll-based loading trigger for better UX
+    const observer = new IntersectionObserver(handleIntersection, {
+      threshold: 0.1,
+      rootMargin: "10px", // Very small margin to ensure precise triggering
+    });
+
+    const currentRef = loadingRef.current;
+    observer.observe(currentRef);
+
+    return () => {
+      observer.unobserve(currentRef);
+    };
+  }, []); // Empty dependencies - create observer once and never recreate
+
+  // Simple scroll detection to mark user interaction
   useEffect(() => {
     const handleScroll = () => {
-      // Mark that user has scrolled at least once
       if (!hasUserScrolledRef.current) {
-        hasUserScrolledRef.current = true;
-        return; // Don't load on first scroll detection
-      }
-
-      // Only trigger if we're not already loading and have more content
-      if (isLoading || !hasNextPage || isLoadingRequestRef.current) return;
-
-      const scrollTop =
-        window.pageYOffset || document.documentElement.scrollTop;
-      const windowHeight = window.innerHeight;
-      const documentHeight = document.documentElement.scrollHeight;
-
-      // Only trigger if there's actually scrollable content and user has scrolled meaningfully
-      if (documentHeight <= windowHeight || scrollTop < 200) return;
-
-      // Calculate how much content is left below the viewport
-      const remainingContent = documentHeight - (scrollTop + windowHeight);
-
-      // Only trigger when there's less than 300px of content remaining
-      // This ensures loading happens near the actual bottom, not at 80% of a short page
-      if (remainingContent < 300) {
-        debouncedLoadMore();
+        const scrollTop =
+          window.pageYOffset || document.documentElement.scrollTop;
+        if (scrollTop > 100) {
+          hasUserScrolledRef.current = true;
+        }
       }
     };
 
@@ -218,25 +246,18 @@ export function InfinitePostGrid({
       }
     };
 
-    // Add a small delay before attaching scroll listener to prevent immediate firing
-    const timer = setTimeout(() => {
-      window.addEventListener("scroll", throttledScroll, { passive: true });
-    }, 2000); // Increased delay to 2 seconds
+    window.addEventListener("scroll", throttledScroll, { passive: true });
 
     return () => {
-      clearTimeout(timer);
       window.removeEventListener("scroll", throttledScroll);
     };
-  }, [debouncedLoadMore, hasNextPage, isLoading]);
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    };
   }, []);
+
+  // Manual load more function for button clicks
+  const handleManualLoadMore = useCallback(() => {
+    console.log("Manual load more clicked");
+    loadMorePosts();
+  }, [loadMorePosts]);
 
   // Memoize the posts array to prevent unnecessary re-renders
   const memoizedPosts = useMemo(() => posts, [posts]);
@@ -261,7 +282,7 @@ export function InfinitePostGrid({
           <div className="text-center space-y-2">
             <p className="text-destructive text-sm">{error}</p>
             <Button
-              onClick={loadMorePosts}
+              onClick={handleManualLoadMore}
               variant="outline"
               size="sm"
               disabled={isLoading || isLoadingRequestRef.current}
@@ -273,7 +294,7 @@ export function InfinitePostGrid({
 
         {hasNextPage && !isLoading && !error && (
           <Button
-            onClick={debouncedLoadMore}
+            onClick={handleManualLoadMore}
             variant="outline"
             size="lg"
             disabled={isLoading || isLoadingRequestRef.current}
