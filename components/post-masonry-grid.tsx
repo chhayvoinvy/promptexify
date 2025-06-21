@@ -280,13 +280,33 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                           initialBookmarked={post.isBookmarked || false}
                         />
                       </div>
-                      <div className="flex items-bottom gap-2">
+                      <div className="flex items-bottom gap-2 flex-wrap">
                         <Badge variant="secondary" className="text-xs">
                           {post.category.parent?.name || post.category.name}
                         </Badge>
                         {post.category.parent && (
                           <Badge variant="secondary" className="text-xs">
                             {post.category.name}
+                          </Badge>
+                        )}
+                        {/* Show up to 5 tags */}
+                        {post.tags &&
+                          post.tags.slice(0, 5).map((tag) => (
+                            <Badge
+                              key={tag.id}
+                              variant="outline"
+                              className="text-xs bg-background/80"
+                            >
+                              {tag.name}
+                            </Badge>
+                          ))}
+                        {/* Show "+" indicator if more than 5 tags */}
+                        {post.tags && post.tags.length > 5 && (
+                          <Badge
+                            variant="outline"
+                            className="text-xs bg-background/80"
+                          >
+                            +{post.tags.length - 5}
                           </Badge>
                         )}
                       </div>

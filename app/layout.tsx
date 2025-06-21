@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { GeistMono } from "geist/font/mono";
-import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeProvider } from "@/components/ui/theme";
 import { Toaster } from "@/components/ui/sonner";
 import { GoogleOneTap } from "@/components/google-one-tap";
 import "./globals.css";

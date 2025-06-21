@@ -202,14 +202,22 @@ function PostContentModal({
             </div>
           </div>
 
-          {/* Tags Row */}
+          {/* Tags Row - Show up to 5 tags */}
           {post.tags.length > 0 && (
             <div className="flex flex-wrap gap-2 shrink-0">
-              {post.tags.map((tag) => (
+              {post.tags.slice(0, 5).map((tag) => (
                 <Badge key={tag.id} variant="outline" className="text-xs">
                   {tag.name}
                 </Badge>
               ))}
+              {post.tags.length > 5 && (
+                <Badge
+                  variant="outline"
+                  className="text-xs text-muted-foreground"
+                >
+                  +{post.tags.length - 5} more
+                </Badge>
+              )}
             </div>
           )}
         </div>

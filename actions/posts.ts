@@ -222,3 +222,120 @@ export async function updatePostAction(formData: FormData) {
     throw new Error("Failed to update post");
   }
 }
+
+export async function togglePostPublishAction(postId: string) {
+  try {
+    // Get the current user
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.userData) {
+      handleAuthRedirect();
+    }
+
+    // Check admin permission
+    if (currentUser.userData.role !== "ADMIN") {
+      throw new Error("Unauthorized: Admin access required");
+    }
+
+    // Validate post ID
+    if (!postId || typeof postId !== "string") {
+      throw new Error("Invalid post ID");
+    }
+
+    // Get current post status
+    const existingPost = await prisma.post.findUnique({
+      where: { id: postId },
+      select: { id: true, isPublished: true, title: true },
+    });
+
+    if (!existingPost) {
+      throw new Error("Post not found");
+    }
+
+    // Toggle the published status
+    await prisma.post.update({
+      where: { id: postId },
+      data: {
+        isPublished: !existingPost.isPublished,
+        updatedAt: new Date(),
+      },
+    });
+
+    // Revalidate relevant paths
+    revalidatePath("/dashboard/posts");
+    revalidatePath(`/entry/${postId}`);
+    revalidatePath("/"); // Home page might show published posts
+
+    return {
+      success: true,
+      message: `Post ${
+        existingPost.isPublished ? "unpublished" : "published"
+      } successfully`,
+    };
+  } catch (error) {
+    console.error("Error toggling post publish status:", error);
+    throw new Error(
+      error instanceof Error ? error.message : "Failed to update post status"
+    );
+  }
+}
+
+export async function deletePostAction(postId: string) {
+  try {
+    // Get the current user
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.userData) {
+      handleAuthRedirect();
+    }
+
+    // Check admin permission
+    if (currentUser.userData.role !== "ADMIN") {
+      throw new Error("Unauthorized: Admin access required");
+    }
+
+    // Validate post ID
+    if (!postId || typeof postId !== "string") {
+      throw new Error("Invalid post ID");
+    }
+
+    // Check if post exists
+    const existingPost = await prisma.post.findUnique({
+      where: { id: postId },
+      select: {
+        id: true,
+        title: true,
+        _count: {
+          select: {
+            bookmarks: true,
+            favorites: true,
+            views: true,
+          },
+        },
+      },
+    });
+
+    if (!existingPost) {
+      throw new Error("Post not found");
+    }
+
+    // Delete post and all related data (cascading delete should handle this)
+    // The database schema should handle the cascade deletion of related records
+    await prisma.post.delete({
+      where: { id: postId },
+    });
+
+    // Revalidate relevant paths
+    revalidatePath("/dashboard/posts");
+    revalidatePath("/"); // Home page might show this post
+    revalidatePath("/directory"); // Directory page might show this post
+
+    return {
+      success: true,
+      message: `Post "${existingPost.title}" deleted successfully`,
+    };
+  } catch (error) {
+    console.error("Error deleting post:", error);
+    throw new Error(
+      error instanceof Error ? error.message : "Failed to delete post"
+    );
+  }
+}

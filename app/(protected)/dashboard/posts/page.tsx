@@ -35,13 +35,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, Edit, Trash2, Eye, EyeOff } from "lucide-react";
+import { Plus } from "lucide-react";
+import { PostActionsDropdown } from "@/components/dashboard/post-actions-dropdown";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
@@ -334,45 +329,7 @@ async function PostsManagementContent({
                       {new Date(post.createdAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link href={`/entry/${post.id}`} target="_blank">
-                              <Eye className="mr-2 h-4 w-4" />
-                              View
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <Link href={`/dashboard/posts/edit/${post.id}`}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            {post.isPublished ? (
-                              <>
-                                <EyeOff className="mr-2 h-4 w-4" />
-                                Unpublish
-                              </>
-                            ) : (
-                              <>
-                                <Eye className="mr-2 h-4 w-4" />
-                                Publish
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <PostActionsDropdown post={post} />
                     </TableCell>
                   </TableRow>
                 ))}

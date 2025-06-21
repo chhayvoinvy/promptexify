@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { Button } from "@/components/ui/button";
@@ -16,30 +19,144 @@ import {
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { getCurrentUser } from "@/lib/auth";
-import { getAllCategories, getAllTags } from "@/lib/content";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { ImageUpload } from "@/components/image-upload";
+import { TagSelector } from "@/components/tag-selector";
 import { createPostAction } from "@/actions";
+import { useAuth } from "@/hooks/use-auth";
 
-// Force dynamic rendering for this page
-export const dynamic = "force-dynamic";
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  parent?: string;
+}
 
-export default async function NewPostPage() {
-  const user = await getCurrentUser();
+interface Tag {
+  id: string;
+  name: string;
+  slug: string;
+}
 
-  // Check if user is authenticated and has admin role
-  if (!user) {
-    redirect("/signin");
+export default function NewPostPage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [featuredImageUrl, setFeaturedImageUrl] = useState("");
+  const [postTitle, setPostTitle] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Redirect if not authenticated or not admin
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        router.push("/signin");
+        return;
+      }
+      if (user.userData?.role !== "ADMIN") {
+        router.push("/dashboard");
+        return;
+      }
+    }
+  }, [user, loading, router]);
+
+  // Fetch categories and tags
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        // Fetch categories
+        const categoriesRes = await fetch("/api/categories");
+        const categoriesData = await categoriesRes.json();
+
+        // Fetch tags
+        const tagsRes = await fetch("/api/tags");
+        const tagsData = await tagsRes.json();
+
+        setCategories(categoriesData);
+        setTags(tagsData);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    }
+
+    if (user?.userData?.role === "ADMIN") {
+      fetchData();
+    }
+  }, [user]);
+
+  // Handle form submission
+  async function handleSubmit(formData: FormData) {
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+
+    try {
+      // Add the featured image URL to form data
+      if (featuredImageUrl) {
+        formData.set("featuredImage", featuredImageUrl);
+      }
+
+      // Add the selected tags to form data
+      formData.set("tags", selectedTags.join(", "));
+
+      await createPostAction(formData);
+
+      // Redirect to posts list on success
+      router.push("/dashboard/posts");
+    } catch (error) {
+      console.error("Error creating post:", error);
+      // Handle error (could add toast notification here)
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
+  // Handle image upload
+  function handleImageUploaded(imageUrl: string) {
+    setFeaturedImageUrl(imageUrl);
+  }
+
+  // Handle tag changes
+  function handleTagsChange(newTags: string[]) {
+    setSelectedTags(newTags);
+  }
+
+  // Auto-generate slug from title
+  function handleTitleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const title = e.target.value;
+    setPostTitle(title);
+
+    // Auto-generate slug
+    const slug = title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+    const slugInput = document.getElementById("slug") as HTMLInputElement;
+    if (slugInput) {
+      slugInput.value = slug;
+    }
+  }
+
+  // Show loading state
+  if (loading || !user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        Loading...
+      </div>
+    );
+  }
+
+  // Show unauthorized if not admin
   if (user.userData?.role !== "ADMIN") {
-    redirect("/dashboard");
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        Unauthorized
+      </div>
+    );
   }
-
-  const [categories, tags] = await Promise.all([
-    getAllCategories(),
-    getAllTags(),
-  ]);
 
   // Get parent categories for main category selection
   const parentCategories = categories.filter((cat) => !cat.parent);
@@ -71,7 +188,7 @@ export default async function NewPostPage() {
             </div>
           </div>
 
-          <form action={createPostAction} className="space-y-6">
+          <form action={handleSubmit} className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Post Details</CardTitle>
@@ -84,6 +201,8 @@ export default async function NewPostPage() {
                       id="title"
                       name="title"
                       placeholder="Enter post title..."
+                      value={postTitle}
+                      onChange={handleTitleChange}
                       required
                     />
                   </div>
@@ -119,15 +238,12 @@ export default async function NewPostPage() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="featuredImage">Featured Image URL</Label>
-                  <Input
-                    id="featuredImage"
-                    name="featuredImage"
-                    type="url"
-                    placeholder="https://example.com/image.jpg"
-                  />
-                </div>
+                <ImageUpload
+                  onImageUploaded={handleImageUploaded}
+                  currentImageUrl={featuredImageUrl}
+                  title={postTitle || "untitled"}
+                  disabled={isSubmitting}
+                />
               </CardContent>
             </Card>
 
@@ -172,17 +288,14 @@ export default async function NewPostPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="tags">Tags</Label>
-                  <Input
-                    id="tags"
-                    name="tags"
-                    placeholder="Enter tags separated by commas"
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Available tags: {tags.map((tag) => tag.name).join(", ")}
-                  </p>
-                </div>
+                {/* Replace the old tags input with the new TagSelector */}
+                <TagSelector
+                  availableTags={tags}
+                  selectedTags={selectedTags}
+                  onTagsChange={handleTagsChange}
+                  maxTags={15}
+                  disabled={isSubmitting}
+                />
               </CardContent>
             </Card>
 
@@ -214,8 +327,8 @@ export default async function NewPostPage() {
             </Card>
 
             <div className="flex gap-4">
-              <Button type="submit" className="flex-1">
-                Create Post
+              <Button type="submit" className="flex-1" disabled={isSubmitting}>
+                {isSubmitting ? "Creating..." : "Create Post"}
               </Button>
               <Button type="button" variant="outline" asChild>
                 <Link href="/dashboard/posts">Cancel</Link>
