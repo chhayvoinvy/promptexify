@@ -59,6 +59,7 @@ model Post {
   description   String?
   content       String
   featuredImage String?
+  featuredVideo String?
   isPremium     Boolean    @default(false)
   isPublished   Boolean    @default(false)
   viewCount     Int        @default(0)

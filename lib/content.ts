@@ -11,6 +11,7 @@ export interface PostWithDetails {
   description: string | null;
   content: string;
   featuredImage: string | null;
+  featuredVideo: string | null;
   isPremium: boolean;
   isPublished: boolean;
   viewCount: number;
@@ -362,6 +363,7 @@ category: "${post.category.slug}"
 parentCategory: "${post.category.parent?.slug || post.category.slug}"
 tags: [${post.tags.map((tag) => `"${tag.name}"`).join(", ")}]
 featuredImage: "${post.featuredImage || ""}"
+featuredVideo: "${post.featuredVideo || ""}"
 isPremium: ${post.isPremium}
 isPublished: ${post.isPublished}
 publishedAt: "${post.createdAt.toISOString()}"

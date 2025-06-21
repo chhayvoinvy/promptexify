@@ -17,6 +17,10 @@ import {
   ChevronRight,
   LockIcon,
   UnlockIcon,
+  Play,
+  Pause,
+  Eye,
+  FileText,
 } from "lucide-react";
 
 import { PostWithInteractions } from "@/lib/content";
@@ -36,7 +40,11 @@ export function PostStandalonePage({
 }: PostStandalonePageProps) {
   const [isCopied, setIsCopied] = useState(false);
   const [isShared, setIsShared] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [playingVideo, setPlayingVideo] = useState<string | null>(null);
   const viewTracked = useRef(false);
+  const videoRefs = useRef<Record<string, HTMLVideoElement>>({});
   const router = useRouter();
 
   const copyToClipboard = async () => {
@@ -100,6 +108,18 @@ export function PostStandalonePage({
     }
   };
 
+  const togglePreview = () => {
+    if (isAnimating) return;
+
+    setIsAnimating(true);
+    setShowPreview(!showPreview);
+
+    // Reset animation state after transition completes
+    setTimeout(() => {
+      setIsAnimating(false);
+    }, 600);
+  };
+
   const goBack = () => {
     // Check if there's a previous page in history
     if (window.history.length > 1) {
@@ -108,6 +128,21 @@ export function PostStandalonePage({
       // If no history, go to home page
       router.push("/");
     }
+  };
+
+  const handleVideoPlay = (videoId: string) => {
+    // Pause all other videos
+    if (playingVideo && playingVideo !== videoId) {
+      const currentVideo = videoRefs.current[playingVideo];
+      if (currentVideo) {
+        currentVideo.pause();
+      }
+    }
+    setPlayingVideo(videoId);
+  };
+
+  const handleVideoPause = () => {
+    setPlayingVideo(null);
   };
 
   // Track view when page loads - only once
@@ -250,6 +285,28 @@ export function PostStandalonePage({
                     variant="outline"
                   />
 
+                  {/* Toggle Preview Button */}
+                  {(post.featuredImage || post.featuredVideo) && (
+                    <Button
+                      onClick={togglePreview}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                      disabled={isAnimating}
+                    >
+                      {showPreview ? (
+                        <>
+                          <FileText className="h-4 w-4" />
+                          Show Prompt
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="h-4 w-4" />
+                          Show Preview
+                        </>
+                      )}
+                    </Button>
+                  )}
+
                   <Button
                     onClick={sharePost}
                     variant="outline"
@@ -269,19 +326,79 @@ export function PostStandalonePage({
                   </Button>
                 </div>
 
-                {/* Prompt content with fixed height and scroll */}
-                <div className="bg-muted/30 rounded-lg border">
+                {/* Content container with smooth transitions */}
+                <div className="bg-muted/30 rounded-lg border overflow-hidden">
                   <div className="px-8 flex items-center justify-between py-4">
-                    <h3 className="text-lg font-semibold">Prompt:</h3>
-                    <Badge variant="secondary" className="text-xs">
-                      {post.content?.length || 0} characters
-                    </Badge>
+                    <h3 className="text-lg font-semibold">
+                      {showPreview ? "Preview:" : "Prompt:"}
+                    </h3>
+                    {!showPreview && (
+                      <Badge variant="secondary" className="text-xs">
+                        {post.content?.length || 0} characters
+                      </Badge>
+                    )}
                   </div>
-                  <div className="h-96 overflow-y-auto">
-                    <div className="px-8 pb-6">
-                      <div className="whitespace-pre-wrap text-sm leading-relaxed break-words bg-card/20">
-                        {post.content ||
-                          "No content available for this prompt."}
+
+                  <div className="relative h-96">
+                    {/* Prompt content */}
+                    <div
+                      className={`absolute inset-0 transition-all duration-500 ease-in-out ${
+                        showPreview
+                          ? "opacity-0 translate-y-4 pointer-events-none"
+                          : "opacity-100 translate-y-0"
+                      }`}
+                    >
+                      <div className="h-full overflow-y-auto">
+                        <div className="px-8 pb-6">
+                          <div className="whitespace-pre-wrap text-sm leading-relaxed break-words bg-card/20">
+                            {post.content ||
+                              "No content available for this prompt."}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Preview content */}
+                    <div
+                      className={`absolute inset-0 transition-all duration-500 ease-in-out ${
+                        showPreview
+                          ? "opacity-100 translate-y-0"
+                          : "opacity-0 -translate-y-4 pointer-events-none"
+                      }`}
+                    >
+                      <div className="h-full overflow-y-auto">
+                        <div className="px-8 pb-6">
+                          {post.featuredVideo ? (
+                            <div className="w-full rounded-lg overflow-hidden">
+                              <video
+                                controls
+                                className="w-full h-auto max-h-80 object-contain"
+                                preload="metadata"
+                              >
+                                <source
+                                  src={post.featuredVideo}
+                                  type="video/mp4"
+                                />
+                                Your browser does not support the video tag.
+                              </video>
+                            </div>
+                          ) : post.featuredImage ? (
+                            <div className="relative w-full rounded-lg overflow-hidden">
+                              <Image
+                                src={post.featuredImage}
+                                alt={post.title}
+                                width={800}
+                                height={400}
+                                className="w-full h-auto max-h-80 object-contain"
+                                priority
+                              />
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center h-32 text-muted-foreground">
+                              <p className="text-sm">No preview available</p>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -334,15 +451,67 @@ export function PostStandalonePage({
                       onClick={() => router.push(`/entry/${relatedPost.id}`)}
                     >
                       <div className="flex items-start gap-3">
-                        {relatedPost.featuredImage && (
+                        {(relatedPost.featuredImage ||
+                          relatedPost.featuredVideo) && (
                           <div className="w-12 h-12 rounded overflow-hidden flex-shrink-0 relative">
-                            <Image
-                              src={relatedPost.featuredImage}
-                              alt={relatedPost.title}
-                              fill
-                              className="object-cover"
-                              sizes="48px"
-                            />
+                            {relatedPost.featuredVideo ? (
+                              <>
+                                <video
+                                  ref={(el) => {
+                                    if (el)
+                                      videoRefs.current[
+                                        `related-${relatedPost.id}`
+                                      ] = el;
+                                  }}
+                                  className="w-full h-full object-cover"
+                                  preload="metadata"
+                                  muted
+                                  onPlay={() =>
+                                    handleVideoPlay(`related-${relatedPost.id}`)
+                                  }
+                                  onPause={handleVideoPause}
+                                >
+                                  <source
+                                    src={relatedPost.featuredVideo}
+                                    type="video/mp4"
+                                  />
+                                </video>
+                                <div className="absolute inset-0 top-1 left-1 pointer-events-none z-10">
+                                  <button
+                                    className="bg-white/90 hover:bg-white rounded-full p-1 transition-colors pointer-events-auto"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const video =
+                                        videoRefs.current[
+                                          `related-${relatedPost.id}`
+                                        ];
+                                      if (video) {
+                                        if (video.paused) {
+                                          video.play();
+                                        } else {
+                                          video.pause();
+                                        }
+                                      }
+                                    }}
+                                  >
+                                    {playingVideo ===
+                                    `related-${relatedPost.id}` ? (
+                                      <Pause className="h-2 w-2 text-gray-800" />
+                                    ) : (
+                                      <Play className="h-2 w-2 text-gray-800" />
+                                    )}
+                                  </button>
+                                </div>
+                              </>
+                            ) : (
+                              <Image
+                                src={relatedPost.featuredImage!}
+                                alt={relatedPost.title}
+                                fill
+                                className="object-cover"
+                                sizes="48px"
+                              />
+                            )}
                           </div>
                         )}
                         <div className="flex-1 min-w-0">

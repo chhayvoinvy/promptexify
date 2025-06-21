@@ -20,7 +20,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ImageUpload } from "@/components/image-upload";
+import { MediaUpload } from "@/components/media-upload";
 import { TagSelector } from "@/components/tag-selector";
 import { createPostAction } from "@/actions";
 import { useAuth } from "@/hooks/use-auth";
@@ -44,6 +44,7 @@ export default function NewPostPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [featuredImageUrl, setFeaturedImageUrl] = useState("");
+  const [featuredVideoUrl, setFeaturedVideoUrl] = useState("");
   const [postTitle, setPostTitle] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -93,9 +94,12 @@ export default function NewPostPage() {
     setIsSubmitting(true);
 
     try {
-      // Add the featured image URL to form data
+      // Add the featured media URLs to form data
       if (featuredImageUrl) {
         formData.set("featuredImage", featuredImageUrl);
+      }
+      if (featuredVideoUrl) {
+        formData.set("featuredVideo", featuredVideoUrl);
       }
 
       // Add the selected tags to form data
@@ -113,9 +117,15 @@ export default function NewPostPage() {
     }
   }
 
-  // Handle image upload
-  function handleImageUploaded(imageUrl: string) {
-    setFeaturedImageUrl(imageUrl);
+  // Handle media upload
+  function handleMediaUploaded(mediaUrl: string, mediaType: "image" | "video") {
+    if (mediaType === "image") {
+      setFeaturedImageUrl(mediaUrl);
+      setFeaturedVideoUrl(""); // Clear video when image is uploaded
+    } else {
+      setFeaturedVideoUrl(mediaUrl);
+      setFeaturedImageUrl(""); // Clear image when video is uploaded
+    }
   }
 
   // Handle tag changes
@@ -238,9 +248,10 @@ export default function NewPostPage() {
                   />
                 </div>
 
-                <ImageUpload
-                  onImageUploaded={handleImageUploaded}
+                <MediaUpload
+                  onMediaUploaded={handleMediaUploaded}
                   currentImageUrl={featuredImageUrl}
+                  currentVideoUrl={featuredVideoUrl}
                   title={postTitle || "untitled"}
                   disabled={isSubmitting}
                 />

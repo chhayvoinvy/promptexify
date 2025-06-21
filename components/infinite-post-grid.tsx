@@ -213,7 +213,7 @@ export function InfinitePostGrid({
 
     const observer = new IntersectionObserver(handleIntersection, {
       threshold: 0.1,
-      rootMargin: "10px", // Very small margin to ensure precise triggering
+      rootMargin: "0px 0px 700px 0px", // Large bottom margin to trigger at ~80% scroll progress
     });
 
     const currentRef = loadingRef.current;
@@ -257,7 +257,6 @@ export function InfinitePostGrid({
 
   // Manual load more function for button clicks
   const handleManualLoadMore = useCallback(() => {
-    console.log("Manual load more clicked");
     loadMorePosts();
   }, [loadMorePosts]);
 

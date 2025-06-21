@@ -247,3 +247,154 @@ export function extractImageFilename(imageUrl: string): string {
     return "";
   }
 }
+
+/**
+ * Generates a secure random filename with specified format for videos
+ * @param title - The title to use in filename (will be slugified)
+ * @returns string - Random filename in format: video-title-sample-XXXXXXXX.mp4
+ */
+export function generateVideoFilename(title: string): string {
+  // Slugify title: lowercase, replace spaces/special chars with dashes, limit length
+  const slugTitle =
+    title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .substring(0, 30) || "untitled";
+
+  // Generate 8 random alphanumeric characters
+  const randomId = Array.from(
+    { length: 8 },
+    () => "0123456789abcdefghijklmnopqrstuvwxyz"[Math.floor(Math.random() * 36)]
+  ).join("");
+
+  return `video-${slugTitle}-${randomId}.mp4`;
+}
+
+/**
+ * Validates video file type and size
+ * @param file - File to validate
+ * @returns boolean - true if valid
+ */
+export function validateVideoFile(file: File): {
+  isValid: boolean;
+  error?: string;
+} {
+  const maxSize = 100 * 1024 * 1024; // 100MB limit for videos
+  const allowedTypes = [
+    "video/mp4",
+    "video/webm",
+    "video/quicktime",
+    "video/x-msvideo", // .avi
+  ];
+
+  if (!allowedTypes.includes(file.type)) {
+    return {
+      isValid: false,
+      error:
+        "Invalid file type. Only MP4, WebM, QuickTime, and AVI videos are allowed.",
+    };
+  }
+
+  if (file.size > maxSize) {
+    return {
+      isValid: false,
+      error: "File size too large. Maximum size is 100MB.",
+    };
+  }
+
+  return { isValid: true };
+}
+
+/**
+ * Uploads video to S3 with secure configuration
+ * @param videoBuffer - Video file buffer
+ * @param filename - Generated filename
+ * @returns Promise<string> - Public URL of uploaded video
+ */
+export async function uploadVideoToS3(
+  videoBuffer: Buffer,
+  filename: string
+): Promise<string> {
+  const key = `videos/${filename}`;
+
+  const uploadParams = {
+    Bucket: BUCKET_NAME,
+    Key: key,
+    Body: videoBuffer,
+    ContentType: "video/mp4",
+    // Security headers
+    ServerSideEncryption: ServerSideEncryption.AES256,
+    CacheControl: "public, max-age=31536000", // Cache for 1 year
+    // Prevent hotlinking and ensure proper content handling
+    ContentDisposition: "inline",
+  };
+
+  try {
+    await s3Client.send(new PutObjectCommand(uploadParams));
+
+    // Return CDN URL if available, otherwise S3 URL
+    return `${CDN_URL}/${key}`;
+  } catch (error) {
+    console.error("Error uploading video to S3:", error);
+    throw new Error("Failed to upload video to storage");
+  }
+}
+
+/**
+ * Complete video processing and upload pipeline
+ * @param file - Input video file
+ * @param title - Title for filename generation
+ * @returns Promise<string> - Public URL of uploaded video
+ */
+export async function processAndUploadVideo(
+  file: File,
+  title: string
+): Promise<string> {
+  // Validate input
+  const validation = validateVideoFile(file);
+  if (!validation.isValid) {
+    throw new Error(validation.error);
+  }
+
+  try {
+    // Convert file to buffer
+    const arrayBuffer = await file.arrayBuffer();
+    const videoBuffer = Buffer.from(arrayBuffer);
+
+    // Generate secure filename
+    const filename = generateVideoFilename(title);
+
+    // Upload to S3
+    const videoUrl = await uploadVideoToS3(videoBuffer, filename);
+
+    return videoUrl;
+  } catch (error) {
+    console.error("Error processing video:", error);
+    throw new Error("Failed to process and upload video");
+  }
+}
+
+/**
+ * Deletes a video from S3
+ * @param videoUrl - Full URL of the video to delete
+ * @returns Promise<boolean> - true if deleted successfully
+ */
+export async function deleteVideoFromS3(videoUrl: string): Promise<boolean> {
+  try {
+    // Extract the key from the URL
+    const url = new URL(videoUrl);
+    const key = url.pathname.substring(1); // Remove leading slash
+
+    const deleteParams = {
+      Bucket: BUCKET_NAME,
+      Key: key,
+    };
+
+    await s3Client.send(new DeleteObjectCommand(deleteParams));
+    return true;
+  } catch (error) {
+    console.error("Error deleting video from S3:", error);
+    return false;
+  }
+}

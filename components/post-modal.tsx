@@ -264,8 +264,8 @@ function PostContentModal({
                     </>
                   ) : (
                     <>
-                      <Copy className="h-3 w-3" />
-                      Link
+                      <Share className="h-3 w-3" />
+                      Share
                     </>
                   )}
                 </Button>

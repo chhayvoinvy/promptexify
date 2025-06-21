@@ -8,7 +8,7 @@ import { PostWithInteractions } from "@/lib/content";
 import { PostModal } from "@/components/post-modal";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { FavoriteButton } from "@/components/favorite-button";
-import { LockIcon, UnlockIcon } from "lucide-react";
+import { LockIcon, UnlockIcon, Play, Pause } from "lucide-react";
 
 interface PostMasonryGridProps {
   posts: PostWithInteractions[];
@@ -31,41 +31,89 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
   const [columnWidth, setColumnWidth] = useState(0);
   const [columnCount, setColumnCount] = useState(1);
   const [previousPostCount, setPreviousPostCount] = useState(0);
+  const [playingVideo, setPlayingVideo] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const postRefs = useRef<Record<string, HTMLDivElement>>({});
+  const videoRefs = useRef<Record<string, HTMLVideoElement>>({});
   const [imageDimensions, setImageDimensions] = useState<
     Record<string, { width: number; height: number }>
   >({});
 
   const handleViewPost = (post: PostWithInteractions) => {
     setSelectedPost(post);
+
+    // Update URL for shareable links while keeping modal open
+    // DO NOT REMOVE THIS LINE
+    window.history.pushState(null, "", `/entry/${post.id}?modal=true`);
   };
 
   const handleCloseModal = () => {
     setSelectedPost(null);
+    // DO NOT REMOVE THIS LINE
+    window.history.pushState(null, "", "/");
   };
 
-  // const getDisplayViewCount = (post: PostWithInteractions) => {
-  //   return viewCounts[post.id] || post.viewCount;
-  // };
+  // Handle video play/pause
+  const handleVideoPlay = useCallback(
+    (postId: string, event: React.MouseEvent) => {
+      event.stopPropagation();
+      const video = videoRefs.current[postId];
+      if (!video) return;
 
-  // Function to handle image load and calculate aspect ratio
-  const handleImageLoad = (
+      if (playingVideo === postId) {
+        video.pause();
+        setPlayingVideo(null);
+      } else {
+        // Pause any currently playing video
+        if (playingVideo) {
+          const currentVideo = videoRefs.current[playingVideo];
+          if (currentVideo) {
+            currentVideo.pause();
+          }
+        }
+        video.play();
+        setPlayingVideo(postId);
+      }
+    },
+    [playingVideo]
+  );
+
+  // Handle video ended
+  const handleVideoEnded = useCallback(
+    (postId: string) => {
+      if (playingVideo === postId) {
+        setPlayingVideo(null);
+      }
+    },
+    [playingVideo]
+  );
+
+  // Function to handle image/video load and calculate aspect ratio
+  const handleMediaLoad = (
     postId: string,
-    event: React.SyntheticEvent<HTMLImageElement>
+    event: React.SyntheticEvent<HTMLImageElement | HTMLVideoElement>
   ) => {
-    const img = event.currentTarget;
+    const media = event.currentTarget;
+    let width: number, height: number;
+
+    if (media instanceof HTMLImageElement) {
+      width = media.naturalWidth;
+      height = media.naturalHeight;
+    } else if (media instanceof HTMLVideoElement) {
+      width = media.videoWidth;
+      height = media.videoHeight;
+    } else {
+      return;
+    }
+
     setImageDimensions((prev) => ({
       ...prev,
-      [postId]: {
-        width: img.naturalWidth,
-        height: img.naturalHeight,
-      },
+      [postId]: { width, height },
     }));
   };
 
-  // Function to get dynamic aspect ratio style based on actual image dimensions
+  // Function to get dynamic aspect ratio style based on actual media dimensions
   const getDynamicAspectRatio = (postId: string) => {
     const dimensions = imageDimensions[postId];
     if (!dimensions) {
@@ -233,24 +281,59 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                 className="overflow-hidden hover:shadow-lg cursor-pointer py-0 shadow-lg"
                 onClick={() => handleViewPost(post)}
               >
-                {post.featuredImage && (
+                {(post.featuredImage || post.featuredVideo) && (
                   <div
                     className="relative"
                     style={getDynamicAspectRatio(post.id)}
                   >
-                    <Image
-                      src={post.featuredImage}
-                      alt={post.title}
-                      fill
-                      className="object-cover rounded-b-lg absolute"
-                      loading="lazy"
-                      blurDataURL={post.featuredImage}
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      onLoad={(e) => handleImageLoad(post.id, e)}
-                    />
+                    {post.featuredImage ? (
+                      <Image
+                        src={post.featuredImage}
+                        alt={post.title}
+                        fill
+                        className="object-cover rounded-b-lg absolute"
+                        loading="lazy"
+                        blurDataURL={post.featuredImage}
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        onLoad={(e) => handleMediaLoad(post.id, e)}
+                      />
+                    ) : post.featuredVideo ? (
+                      <>
+                        <video
+                          ref={(el) => {
+                            if (el) videoRefs.current[post.id] = el;
+                          }}
+                          src={post.featuredVideo}
+                          className="w-full h-full object-cover rounded-b-lg absolute"
+                          muted
+                          loop
+                          playsInline
+                          onLoadedMetadata={(e) => handleMediaLoad(post.id, e)}
+                          onEnded={() => handleVideoEnded(post.id)}
+                        />
+
+                        {/* Video play/pause button */}
+                        <div className="absolute inset-0 top-4 left-4 pointer-events-none z-10">
+                          <button
+                            className="bg-white/90 hover:bg-white rounded-full p-2 transition-colors pointer-events-auto"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              handleVideoPlay(post.id, e);
+                            }}
+                          >
+                            {playingVideo === post.id ? (
+                              <Pause className="w-6 h-6 text-black" />
+                            ) : (
+                              <Play className="w-6 h-6 text-black" />
+                            )}
+                          </button>
+                        </div>
+                      </>
+                    ) : null}
 
                     {post.isPremium && (
-                      <div className="absolute top-2 right-2 flex items-center gap-2 z-10">
+                      <div className="absolute top-2 right-2 flex items-center gap-2 z-20">
                         <Badge className="text-foreground bg-gradient-to-r from-teal-500 to-sky-500">
                           {userType === "PREMIUM" ? (
                             <UnlockIcon className="w-4 h-4" />
@@ -263,7 +346,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                     )}
 
                     {/* Action buttons overlay */}
-                    <div className="absolute bottom-3 left-0 right-0 px-3 flex gap-2 items-end justify-between z-10">
+                    <div className="absolute bottom-3 left-0 right-0 px-3 flex gap-2 items-end justify-between z-20">
                       <div
                         className="flex items-bottom justify-end gap-2"
                         onClick={(e) => e.stopPropagation()}

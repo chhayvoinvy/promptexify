@@ -34,6 +34,7 @@ export async function createPostAction(formData: FormData) {
     const description = formData.get("description") as string;
     const content = formData.get("content") as string;
     const featuredImage = formData.get("featuredImage") as string;
+    const featuredVideo = formData.get("featuredVideo") as string;
     const category = formData.get("category") as string;
     const tags = formData.get("tags") as string;
     const isPublished = formData.get("isPublished") === "on";
@@ -83,6 +84,7 @@ export async function createPostAction(formData: FormData) {
         description: description || null,
         content,
         featuredImage: featuredImage || null,
+        featuredVideo: featuredVideo || null,
         isPremium,
         isPublished,
         authorId: user.id,
@@ -133,6 +135,7 @@ export async function updatePostAction(formData: FormData) {
     const description = formData.get("description") as string;
     const content = formData.get("content") as string;
     const featuredImage = formData.get("featuredImage") as string;
+    const featuredVideo = formData.get("featuredVideo") as string;
     const category = formData.get("category") as string;
     const tags = formData.get("tags") as string;
     const isPublished = formData.get("isPublished") === "on";
@@ -192,6 +195,7 @@ export async function updatePostAction(formData: FormData) {
         description: description || null,
         content,
         featuredImage: featuredImage || null,
+        featuredVideo: featuredVideo || null,
         isPremium,
         isPublished,
         categoryId: categoryRecord.id,

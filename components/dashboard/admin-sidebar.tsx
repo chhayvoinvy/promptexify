@@ -20,7 +20,7 @@ import { NavDocuments } from "@/components/dashboard/nav-documents";
 import { NavMain } from "@/components/dashboard/nav-main";
 import { NavSecondary } from "@/components/dashboard/nav-secondary";
 import { NavUser } from "@/components/dashboard/nav-user";
-import { LogoIcon } from "@/components/ui/logo";
+import { LogoCompact } from "@/components/ui/logo";
 import {
   Sidebar,
   SidebarContent,
@@ -152,11 +152,10 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              className="data-[slot=sidebar-menu-button]:!p-1.5"
+              className="data-[slot=sidebar-menu-button]:!p-2"
             >
-              <Link href="/dashboard" className="flex items-center gap-2">
-                <LogoIcon href="" className="!w-6 !h-6" />
-                <span className="text-base font-semibold">Promptexify</span>
+              <Link href="/dashboard" className="flex items-center gap-3">
+                <LogoCompact href="" className="!w-20 !h-auto" />
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
