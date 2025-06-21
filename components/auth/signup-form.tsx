@@ -37,7 +37,8 @@ const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 export function SignUpForm() {
-  const [isPending, startTransition] = useTransition();
+  const [isMagicLinkPending, startMagicLinkTransition] = useTransition();
+  const [isGooglePending, startGoogleTransition] = useTransition();
   const [emailSent, setEmailSent] = useState(false);
   const router = useRouter();
 
@@ -50,7 +51,7 @@ export function SignUpForm() {
   });
 
   async function handleMagicLinkSignUp(data: MagicLinkData) {
-    startTransition(async () => {
+    startMagicLinkTransition(async () => {
       const result = await signInWithMagicLink(data);
 
       if (result.error) {
@@ -63,7 +64,7 @@ export function SignUpForm() {
   }
 
   async function handleGoogleSignUp() {
-    startTransition(async () => {
+    startGoogleTransition(async () => {
       const result = await signInWithOAuth("google");
 
       if (result.error) {
@@ -112,10 +113,10 @@ export function SignUpForm() {
       <Button
         variant="outline"
         onClick={handleGoogleSignUp}
-        disabled={isPending}
+        disabled={isGooglePending || isMagicLinkPending}
         className="w-full"
       >
-        {isPending ? (
+        {isGooglePending ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Signing up with Google...
@@ -152,7 +153,7 @@ export function SignUpForm() {
             type="text"
             placeholder="John Doe"
             required
-            disabled={isPending}
+            disabled={isMagicLinkPending || isGooglePending}
           />
 
           <InputForm
@@ -162,11 +163,15 @@ export function SignUpForm() {
             type="email"
             placeholder="you@example.com"
             required
-            disabled={isPending}
+            disabled={isMagicLinkPending || isGooglePending}
           />
 
-          <Button type="submit" disabled={isPending} className="w-full">
-            {isPending ? (
+          <Button
+            type="submit"
+            disabled={isMagicLinkPending || isGooglePending}
+            className="w-full"
+          >
+            {isMagicLinkPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Sending link...
