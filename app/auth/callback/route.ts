@@ -48,11 +48,29 @@ async function upsertUserInDatabase(supabaseUser: {
   };
   app_metadata?: {
     provider?: string;
+    providers?: string[];
   };
 }) {
   try {
-    const provider = supabaseUser.app_metadata?.provider || "email";
-    const oauthProvider = provider === "google" ? "GOOGLE" : "EMAIL";
+    // Determine OAuth provider - prioritize EMAIL for Magic Link
+    const providers = supabaseUser.app_metadata?.providers || [];
+    const primaryProvider = supabaseUser.app_metadata?.provider;
+
+    let oauthProvider: "GOOGLE" | "EMAIL" = "EMAIL";
+
+    // Check if Google is among the providers
+    if (providers.includes("google") || primaryProvider === "google") {
+      oauthProvider = "GOOGLE";
+    }
+    // For email/Magic Link authentication, use EMAIL
+    else if (
+      providers.includes("email") ||
+      primaryProvider === "email" ||
+      !primaryProvider
+    ) {
+      oauthProvider = "EMAIL";
+    }
+
     const email = supabaseUser.email || "";
     const name =
       supabaseUser.user_metadata?.name ||
@@ -80,6 +98,10 @@ async function upsertUserInDatabase(supabaseUser: {
         role: "USER",
       },
     });
+
+    console.log(
+      `Successfully upserted user: ${email} with provider: ${oauthProvider}`
+    );
   } catch (error) {
     console.error("Database upsert error in callback:", error);
     // Don't throw here to avoid breaking auth flow

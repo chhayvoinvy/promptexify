@@ -5,23 +5,15 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Loader2, Mail } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { InputForm } from "@/components/ui/input-form";
 import { Separator } from "@/components/ui/separator";
-import {
-  signInWithPassword,
-  signInWithMagicLink,
-  signInWithOAuth,
-} from "@/lib/auth";
-import {
-  signInSchema,
-  magicLinkSchema,
-  type SignInData,
-  type MagicLinkData,
-} from "@/lib/schemas";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { signInWithMagicLink, signInWithOAuth } from "@/lib/auth";
+import { magicLinkSchema, type MagicLinkData } from "@/lib/schemas";
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" {...props}>
@@ -44,41 +36,18 @@ const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-type AuthMode = "password" | "magic-link";
-
 export function SignInForm() {
-  const [mode, setMode] = useState<AuthMode>("password");
-  const [showPassword, setShowPassword] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [emailSent, setEmailSent] = useState(false);
   const router = useRouter();
 
-  const passwordForm = useForm<SignInData>({
-    resolver: zodResolver(signInSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  });
-
-  const magicLinkForm = useForm<MagicLinkData>({
+  const form = useForm<MagicLinkData>({
     resolver: zodResolver(magicLinkSchema),
     defaultValues: {
       email: "",
+      name: "",
     },
   });
-
-  async function handlePasswordSignIn(data: SignInData) {
-    startTransition(async () => {
-      const result = await signInWithPassword(data);
-
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        toast.success("Welcome back!");
-        router.push("/");
-      }
-    });
-  }
 
   async function handleMagicLinkSignIn(data: MagicLinkData) {
     startTransition(async () => {
@@ -87,7 +56,8 @@ export function SignInForm() {
       if (result.error) {
         toast.error(result.error);
       } else {
-        toast.success("Check your email for the magic link!");
+        setEmailSent(true);
+        toast.success(result.message || "Check your email for the magic link!");
       }
     });
   }
@@ -101,6 +71,40 @@ export function SignInForm() {
       }
       // Note: If successful, the page will redirect automatically
     });
+  }
+
+  if (emailSent) {
+    return (
+      <div className="space-y-4">
+        <Alert>
+          <Mail className="h-4 w-4" />
+          <AlertDescription className="ml-2">
+            <strong>Magic link sent!</strong>
+            <br />
+            Check your email and click the link to sign in. The link will expire
+            in 1 hour.
+          </AlertDescription>
+        </Alert>
+
+        <div className="space-y-2">
+          <Button
+            variant="outline"
+            onClick={() => setEmailSent(false)}
+            className="w-full"
+          >
+            Send Another Link
+          </Button>
+
+          <Button
+            variant="ghost"
+            onClick={() => router.push("/")}
+            className="w-full"
+          >
+            Back to Home
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -131,119 +135,52 @@ export function SignInForm() {
         </div>
         <div className="relative flex justify-center text-xs uppercase">
           <span className="bg-card px-5 text-muted-foreground">
-            Or continue with
+            Or continue with email
           </span>
         </div>
       </div>
 
-      {/* Auth Mode Toggle */}
-      <div className="flex gap-2">
-        <Button
-          variant={mode === "password" ? "default" : "ghost"}
-          onClick={() => setMode("password")}
-          className="flex-1"
-          type="button"
-        >
-          Password
-        </Button>
-        <Button
-          variant={mode === "magic-link" ? "default" : "ghost"}
-          onClick={() => setMode("magic-link")}
-          className="flex-1"
-          type="button"
-        >
-          Magic Link
-        </Button>
-      </div>
-
-      {/* Password Form */}
-      {mode === "password" && (
-        <Form {...passwordForm}>
-          <form
-            onSubmit={passwordForm.handleSubmit(handlePasswordSignIn)}
-            className="space-y-4"
-          >
-            <InputForm
-              control={passwordForm.control}
-              name="email"
-              label="Email"
-              type="email"
-              placeholder="you@example.com"
-              required
-              disabled={isPending}
-            />
-
-            <div className="relative">
-              <InputForm
-                control={passwordForm.control}
-                name="password"
-                label="Password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter your password"
-                required
-                disabled={isPending}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-0 top-7 h-9 px-3 py-1 hover:bg-transparent"
-                onClick={() => setShowPassword(!showPassword)}
-                disabled={isPending}
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-
-            <Button type="submit" disabled={isPending} className="w-full">
-              {isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                "Sign In"
-              )}
-            </Button>
-          </form>
-        </Form>
-      )}
-
       {/* Magic Link Form */}
-      {mode === "magic-link" && (
-        <Form {...magicLinkForm}>
-          <form
-            onSubmit={magicLinkForm.handleSubmit(handleMagicLinkSignIn)}
-            className="space-y-4"
-          >
-            <InputForm
-              control={magicLinkForm.control}
-              name="email"
-              label="Email"
-              type="email"
-              placeholder="you@example.com"
-              description="We'll send you a secure link to sign in"
-              required
-              disabled={isPending}
-            />
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit(handleMagicLinkSignIn)}
+          className="space-y-4"
+        >
+          <InputForm
+            control={form.control}
+            name="name"
+            label="Name (Optional)"
+            type="text"
+            placeholder="John Doe"
+            disabled={isPending}
+          />
 
-            <Button type="submit" disabled={isPending} className="w-full">
-              {isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                "Send Magic Link"
-              )}
-            </Button>
-          </form>
-        </Form>
-      )}
+          <InputForm
+            control={form.control}
+            name="email"
+            label="Email"
+            type="email"
+            placeholder="you@example.com"
+            required
+            disabled={isPending}
+            description="We'll send you a secure link to sign in"
+          />
+
+          <Button type="submit" disabled={isPending} className="w-full">
+            {isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Sending link...
+              </>
+            ) : (
+              <>
+                <Mail className="mr-2 h-4 w-4" />
+                Continue with Email
+              </>
+            )}
+          </Button>
+        </form>
+      </Form>
     </div>
   );
 }

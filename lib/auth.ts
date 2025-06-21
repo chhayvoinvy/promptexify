@@ -16,7 +16,46 @@ import {
 
 const prisma = new PrismaClient();
 
-// Server Actions
+// Primary Magic Link Authentication Function
+export async function signInWithMagicLink(data: MagicLinkData) {
+  const supabase = await createClient();
+
+  // Validate input
+  const validatedData = magicLinkSchema.safeParse(data);
+  if (!validatedData.success) {
+    return {
+      error: validatedData.error.errors[0]?.message || "Invalid input",
+    };
+  }
+
+  const { email, name } = validatedData.data;
+
+  try {
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${getBaseUrl()}/auth/callback`,
+        data: {
+          name: name || email.split("@")[0], // Store name in user metadata
+        },
+      },
+    });
+
+    if (error) {
+      return { error: error.message };
+    }
+
+    return {
+      success: true,
+      message: "Check your email for the magic link to sign in!",
+    };
+  } catch (error) {
+    console.error("Magic link error:", error);
+    return { error: "An unexpected error occurred. Please try again." };
+  }
+}
+
+// Legacy functions - keeping for backward compatibility during migration
 export async function signInWithPassword(data: SignInData) {
   const supabase = await createClient();
 
@@ -93,38 +132,6 @@ export async function signUpWithPassword(data: SignUpData) {
     };
   } catch (error) {
     console.error("Sign up error:", error);
-    return { error: "An unexpected error occurred. Please try again." };
-  }
-}
-
-export async function signInWithMagicLink(data: MagicLinkData) {
-  const supabase = await createClient();
-
-  // Validate input
-  const validatedData = magicLinkSchema.safeParse(data);
-  if (!validatedData.success) {
-    return {
-      error: validatedData.error.errors[0]?.message || "Invalid input",
-    };
-  }
-
-  const { email } = validatedData.data;
-
-  try {
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${getBaseUrl()}/auth/callback`,
-      },
-    });
-
-    if (error) {
-      return { error: error.message };
-    }
-
-    return { success: true };
-  } catch (error) {
-    console.error("Magic link error:", error);
     return { error: "An unexpected error occurred. Please try again." };
   }
 }
@@ -280,11 +287,29 @@ async function upsertUserInDatabase(supabaseUser: {
   };
   app_metadata?: {
     provider?: string;
+    providers?: string[];
   };
 }) {
   try {
-    const provider = supabaseUser.app_metadata?.provider || "email";
-    const oauthProvider = provider === "google" ? "GOOGLE" : "EMAIL";
+    // Determine OAuth provider - prioritize EMAIL for Magic Link
+    const providers = supabaseUser.app_metadata?.providers || [];
+    const primaryProvider = supabaseUser.app_metadata?.provider;
+
+    let oauthProvider: "GOOGLE" | "EMAIL" = "EMAIL";
+
+    // Check if Google is among the providers
+    if (providers.includes("google") || primaryProvider === "google") {
+      oauthProvider = "GOOGLE";
+    }
+    // For email/Magic Link authentication, use EMAIL
+    else if (
+      providers.includes("email") ||
+      primaryProvider === "email" ||
+      !primaryProvider
+    ) {
+      oauthProvider = "EMAIL";
+    }
+
     const email = supabaseUser.email || "";
     const name =
       supabaseUser.user_metadata?.name ||

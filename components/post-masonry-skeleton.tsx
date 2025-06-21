@@ -9,9 +9,9 @@ interface PostMasonrySkeletonProps {
 
 export function PostMasonrySkeleton({ count = 12 }: PostMasonrySkeletonProps) {
   // Function to generate random but consistent aspect ratios for skeleton loading
-  const getRandomAspectRatio = (index: number) => {
+  const getSampleAspectRatio = (index: number) => {
     // Seed the randomness with index for consistent skeleton layout
-    const seed = index * 2654435761;
+    const seed = index * 1;
     const pseudoRandom = (seed % 1000) / 1000;
 
     // Generate aspect ratios between 0.67 (2:3 portrait) and 1.8 (wide)
@@ -22,7 +22,7 @@ export function PostMasonrySkeleton({ count = 12 }: PostMasonrySkeletonProps) {
 
     // Convert to width/height format for CSS
     const width = Math.round(aspectRatio * 100);
-    const height = 100;
+    const height = 60;
 
     return { aspectRatio: `${width} / ${height}` };
   };
@@ -33,7 +33,7 @@ export function PostMasonrySkeleton({ count = 12 }: PostMasonrySkeletonProps) {
         <div key={i} className="group">
           <Card className="overflow-hidden hover:shadow-lg cursor-pointer py-0 shadow-lg">
             {/* Featured Image Skeleton */}
-            <div className="relative" style={getRandomAspectRatio(i)}>
+            <div className="relative" style={getSampleAspectRatio(i)}>
               <Skeleton className="h-full w-full rounded-b-lg" />
 
               {/* Premium badge skeleton on every 3rd item */}

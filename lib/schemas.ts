@@ -1,6 +1,12 @@
 import { z } from "zod";
 
-// Authentication schemas
+// Authentication schemas - Updated for Magic Link only
+export const magicLinkSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  name: z.string().min(2, "Name must be at least 2 characters").optional(),
+});
+
+// Legacy schemas - keeping for backward compatibility during migration
 export const signInSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
@@ -10,10 +16,6 @@ export const signUpSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   name: z.string().min(2, "Name must be at least 2 characters").optional(),
-});
-
-export const magicLinkSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
 });
 
 // Bookmark schemas
@@ -27,8 +29,8 @@ export const favoriteSchema = z.object({
 });
 
 // Type exports
+export type MagicLinkData = z.infer<typeof magicLinkSchema>;
 export type SignInData = z.infer<typeof signInSchema>;
 export type SignUpData = z.infer<typeof signUpSchema>;
-export type MagicLinkData = z.infer<typeof magicLinkSchema>;
 export type BookmarkData = z.infer<typeof bookmarkSchema>;
 export type FavoriteData = z.infer<typeof favoriteSchema>;

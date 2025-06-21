@@ -5,15 +5,15 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Eye, EyeOff, Loader2, Check } from "lucide-react";
+import { Loader2, Mail } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { InputForm } from "@/components/ui/input-form";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { signUpWithPassword, signInWithOAuth } from "@/lib/auth";
-import { signUpSchema, type SignUpData } from "@/lib/schemas";
+import { signInWithMagicLink, signInWithOAuth } from "@/lib/auth";
+import { magicLinkSchema, type MagicLinkData } from "@/lib/schemas";
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" {...props}>
@@ -37,32 +37,27 @@ const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 export function SignUpForm() {
-  const [showPassword, setShowPassword] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [needsVerification, setNeedsVerification] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   const router = useRouter();
 
-  const form = useForm<SignUpData>({
-    resolver: zodResolver(signUpSchema),
+  const form = useForm<MagicLinkData>({
+    resolver: zodResolver(magicLinkSchema),
     defaultValues: {
       email: "",
-      password: "",
       name: "",
     },
   });
 
-  async function handleSignUp(data: SignUpData) {
+  async function handleMagicLinkSignUp(data: MagicLinkData) {
     startTransition(async () => {
-      const result = await signUpWithPassword(data);
+      const result = await signInWithMagicLink(data);
 
       if (result.error) {
         toast.error(result.error);
-      } else if (result.needsVerification) {
-        setNeedsVerification(true);
-        toast.success("Please check your email to verify your account!");
       } else {
-        toast.success("Account created successfully!");
-        router.push("/dashboard");
+        setEmailSent(true);
+        toast.success(result.message || "Check your email for the magic link!");
       }
     });
   }
@@ -77,26 +72,36 @@ export function SignUpForm() {
     });
   }
 
-  if (needsVerification) {
+  if (emailSent) {
     return (
       <div className="space-y-4">
         <Alert>
-          <Check className="h-4 w-4" />
+          <Mail className="h-4 w-4" />
           <AlertDescription className="ml-2">
-            <strong>Verification email sent!</strong>
+            <strong>Magic link sent!</strong>
             <br />
-            Please check your email and click the verification link to complete
-            your registration.
+            Check your email and click the link to create your account and sign
+            in. The link will expire in 1 hour.
           </AlertDescription>
         </Alert>
 
-        <Button
-          variant="outline"
-          onClick={() => setNeedsVerification(false)}
-          className="w-full"
-        >
-          Back to Sign Up
-        </Button>
+        <div className="space-y-2">
+          <Button
+            variant="outline"
+            onClick={() => setEmailSent(false)}
+            className="w-full"
+          >
+            Send Another Link
+          </Button>
+
+          <Button
+            variant="ghost"
+            onClick={() => router.push("/")}
+            className="w-full"
+          >
+            Back to Home
+          </Button>
+        </div>
       </div>
     );
   }
@@ -129,20 +134,24 @@ export function SignUpForm() {
         </div>
         <div className="relative flex justify-center text-xs uppercase">
           <span className="bg-card px-5 text-muted-foreground">
-            Or create account with
+            Or create account with email
           </span>
         </div>
       </div>
 
-      {/* Sign Up Form */}
+      {/* Magic Link Form */}
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSignUp)} className="space-y-4">
+        <form
+          onSubmit={form.handleSubmit(handleMagicLinkSignUp)}
+          className="space-y-4"
+        >
           <InputForm
             control={form.control}
             name="name"
             label="Full Name"
             type="text"
             placeholder="John Doe"
+            required
             disabled={isPending}
           />
 
@@ -156,45 +165,27 @@ export function SignUpForm() {
             disabled={isPending}
           />
 
-          <div className="relative">
-            <InputForm
-              control={form.control}
-              name="password"
-              label="Password"
-              type={showPassword ? "text" : "password"}
-              placeholder="Create a strong password"
-              description="Must be at least 8 characters long"
-              required
-              disabled={isPending}
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="absolute right-0 top-7 h-9 px-3 py-1 hover:bg-transparent"
-              onClick={() => setShowPassword(!showPassword)}
-              disabled={isPending}
-            >
-              {showPassword ? (
-                <EyeOff className="h-4 w-4" />
-              ) : (
-                <Eye className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-
           <Button type="submit" disabled={isPending} className="w-full">
             {isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating account...
+                Sending link...
               </>
             ) : (
-              "Create Account"
+              <>
+                <Mail className="mr-2 h-4 w-4" />
+                Continue with Email
+              </>
             )}
           </Button>
         </form>
       </Form>
+
+      <div className="text-center text-sm text-muted-foreground">
+        <p>
+          We&apos;ll send you a secure link to create your account and sign in.
+        </p>
+      </div>
     </div>
   );
 }
