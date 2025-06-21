@@ -261,8 +261,9 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                         </Badge>
                       </div>
                     )}
+
                     {/* Action buttons overlay */}
-                    <div className="absolute bottom-3 left-0 right-0 px-3 flex gap-2 items-end justify-between">
+                    <div className="absolute bottom-3 left-0 right-0 px-3 flex gap-2 items-end justify-between z-10">
                       <div
                         className="flex items-bottom justify-end gap-2"
                         onClick={(e) => e.stopPropagation()}
@@ -280,35 +281,39 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                           initialBookmarked={post.isBookmarked || false}
                         />
                       </div>
-                      <div className="flex items-bottom gap-2 flex-wrap">
-                        <Badge variant="secondary" className="text-xs">
-                          {post.category.parent?.name || post.category.name}
-                        </Badge>
-                        {post.category.parent && (
+                      <div className="flex items-bottom justify-end gap-2 flex-wrap">
+                        <div className="flex items-center gap-1">
                           <Badge variant="secondary" className="text-xs">
-                            {post.category.name}
+                            {post.category.parent?.name || post.category.name}
                           </Badge>
-                        )}
-                        {/* Show up to 5 tags */}
-                        {post.tags &&
-                          post.tags.slice(0, 5).map((tag) => (
+                          {post.category.parent && (
+                            <Badge variant="secondary" className="text-xs">
+                              {post.category.name}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {/* Show up to 5 tags */}
+                          {post.tags &&
+                            post.tags.slice(0, 3).map((tag) => (
+                              <Badge
+                                key={tag.id}
+                                variant="outline"
+                                className="text-xs bg-background/80"
+                              >
+                                {tag.name}
+                              </Badge>
+                            ))}
+                          {/* Show "+" indicator if more than 5 tags */}
+                          {post.tags && post.tags.length > 5 && (
                             <Badge
-                              key={tag.id}
                               variant="outline"
                               className="text-xs bg-background/80"
                             >
-                              {tag.name}
+                              +{post.tags.length - 5}
                             </Badge>
-                          ))}
-                        {/* Show "+" indicator if more than 5 tags */}
-                        {post.tags && post.tags.length > 5 && (
-                          <Badge
-                            variant="outline"
-                            className="text-xs bg-background/80"
-                          >
-                            +{post.tags.length - 5}
-                          </Badge>
-                        )}
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

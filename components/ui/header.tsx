@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Navbar } from "@/components/navbar";
+import { Navbar } from "@/components/ui/navbar";
 import { UserProfileDropdown } from "@/components/user-profile-dropdown";
 import { useAuth } from "@/hooks/use-auth";
 

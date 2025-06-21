@@ -12,7 +12,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, Share } from "lucide-react";
 import { PostWithInteractions } from "@/lib/content";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { FavoriteButton } from "@/components/favorite-button";
@@ -47,6 +47,7 @@ function PostContentModal({
   onClose?: () => void;
 }) {
   const [isCopied, setIsCopied] = useState(false);
+  const [isLinkCopied, setIsLinkCopied] = useState(false);
   const viewTracked = useRef(false);
 
   const copyToClipboard = async () => {
@@ -76,6 +77,38 @@ function PostContentModal({
       // Reset after 10 seconds
       setTimeout(() => {
         setIsCopied(false);
+      }, 10000);
+    }
+  };
+
+  const copyPostLink = async () => {
+    try {
+      // Generate the post URL using the current origin and post ID
+      const postUrl = `${window.location.origin}/entry/${post.id}`;
+
+      await navigator.clipboard.writeText(postUrl);
+      setIsLinkCopied(true);
+      toast.success("Sharable link copied.");
+
+      // Reset after 10 seconds
+      setTimeout(() => {
+        setIsLinkCopied(false);
+      }, 10000);
+    } catch {
+      // Fallback for older browsers or when clipboard API is not available
+      const postUrl = `${window.location.origin}/entry/${post.id}`;
+      const textArea = document.createElement("textarea");
+      textArea.value = postUrl;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      setIsLinkCopied(true);
+      toast.success("Sharable link copied.");
+
+      // Reset after 10 seconds
+      setTimeout(() => {
+        setIsLinkCopied(false);
       }, 10000);
     }
   };
@@ -204,20 +237,39 @@ function PostContentModal({
 
           {/* Tags Row - Show up to 5 tags */}
           {post.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 shrink-0">
-              {post.tags.slice(0, 5).map((tag) => (
-                <Badge key={tag.id} variant="outline" className="text-xs">
-                  {tag.name}
-                </Badge>
-              ))}
-              {post.tags.length > 5 && (
-                <Badge
-                  variant="outline"
-                  className="text-xs text-muted-foreground"
-                >
-                  +{post.tags.length - 5} more
-                </Badge>
-              )}
+            <div className="flex items-top justify-between gap-2">
+              {/* Tags */}
+              <div className="flex items-center gap-1 flex-wrap">
+                {post.tags.slice(0, 3).map((tag) => (
+                  <Badge key={tag.id} variant="outline" className="text-xs">
+                    {tag.name}
+                  </Badge>
+                ))}
+                {post.tags.length > 3 && (
+                  <Badge
+                    variant="outline"
+                    className="text-xs text-muted-foreground"
+                  >
+                    +{post.tags.length - 3} more
+                  </Badge>
+                )}
+              </div>
+              {/* Share Buttons */}
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={copyPostLink}>
+                  {isLinkCopied ? (
+                    <>
+                      <Check className="h-3 w-3" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3 w-3" />
+                      Link
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           )}
         </div>
