@@ -5,7 +5,6 @@ import {
   IconChartBar,
   IconDashboard,
   IconHelp,
-  IconInnerShadowTop,
   IconSearch,
   IconSettings,
   IconEdit,
@@ -21,6 +20,7 @@ import { NavDocuments } from "@/components/dashboard/nav-documents";
 import { NavMain } from "@/components/dashboard/nav-main";
 import { NavSecondary } from "@/components/dashboard/nav-secondary";
 import { NavUser } from "@/components/dashboard/nav-user";
+import { LogoIcon } from "@/components/ui/logo";
 import {
   Sidebar,
   SidebarContent,
@@ -154,8 +154,8 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <Link href="/dashboard">
-                <IconInnerShadowTop className="!size-5" />
+              <Link href="/dashboard" className="flex items-center gap-2">
+                <LogoIcon href="" className="!w-6 !h-6" />
                 <span className="text-base font-semibold">Promptexify</span>
               </Link>
             </SidebarMenuButton>

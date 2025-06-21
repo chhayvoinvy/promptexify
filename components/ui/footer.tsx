@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Github, Twitter, Mail } from "lucide-react";
+import { LogoCompact } from "@/components/ui/logo";
 
 export function Footer() {
   return (
@@ -8,9 +9,7 @@ export function Footer() {
         <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
           {/* Brand and Description */}
           <div className="space-y-4">
-            <Link href="/" className="flex items-center space-x-2">
-              <span className="font-bold text-xl">Promptexify</span>
-            </Link>
+            <LogoCompact />
             <p className="text-xs text-muted-foreground max-w-xs">
               A comprehensive collection of AI prompts to enhance your
               creativity and productivity across various platforms.

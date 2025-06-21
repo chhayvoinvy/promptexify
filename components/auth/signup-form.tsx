@@ -108,7 +108,7 @@ export function SignUpForm() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-sm">
       {/* OAuth Section */}
       <Button
         variant="outline"
@@ -135,7 +135,7 @@ export function SignUpForm() {
         </div>
         <div className="relative flex justify-center text-xs uppercase">
           <span className="bg-card px-5 text-muted-foreground">
-            Or create account with email
+            Or continue with email
           </span>
         </div>
       </div>
@@ -149,10 +149,9 @@ export function SignUpForm() {
           <InputForm
             control={form.control}
             name="name"
-            label="Full Name"
+            label="Name (Optional)"
             type="text"
             placeholder="John Doe"
-            required
             disabled={isMagicLinkPending || isGooglePending}
           />
 
@@ -164,6 +163,7 @@ export function SignUpForm() {
             placeholder="you@example.com"
             required
             disabled={isMagicLinkPending || isGooglePending}
+            description="We'll send you a secure link to create your account and sign in"
           />
 
           <Button
@@ -185,12 +185,6 @@ export function SignUpForm() {
           </Button>
         </form>
       </Form>
-
-      <div className="text-center text-sm text-muted-foreground">
-        <p>
-          We&apos;ll send you a secure link to create your account and sign in.
-        </p>
-      </div>
     </div>
   );
 }

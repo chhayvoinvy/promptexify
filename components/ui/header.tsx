@@ -5,15 +5,43 @@ import Link from "next/link";
 import { Navbar } from "@/components/ui/navbar";
 import { UserProfileDropdown } from "@/components/user-profile-dropdown";
 import { useAuth } from "@/hooks/use-auth";
+import { LogoCompact } from "@/components/ui/logo";
 
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
   const { user } = useAuth();
 
   useEffect(() => {
+    let ticking = false;
+
     const handleScroll = () => {
-      const scrollY = window.scrollY;
-      setIsScrolled(scrollY > 0);
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          const currentScrollY = window.scrollY;
+
+          // Only update state if there's a meaningful change
+          if (Math.abs(currentScrollY - lastScrollY) > 5) {
+            // Determine if header background should be shown
+            setIsScrolled(currentScrollY > 0);
+
+            // Determine scroll direction and visibility
+            if (currentScrollY < lastScrollY || currentScrollY < 10) {
+              // Scrolling up or near top - show header
+              setIsVisible(true);
+            } else if (currentScrollY > lastScrollY && currentScrollY > 80) {
+              // Scrolling down and past threshold - hide header
+              setIsVisible(false);
+            }
+
+            setLastScrollY(currentScrollY);
+          }
+
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
 
     // Set initial state
@@ -21,21 +49,21 @@ export function Header() {
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [lastScrollY]);
 
   return (
     <header
-      className={`sticky top-0 z-50 w-full border-b transition-all duration-200 ${
+      className={`sticky top-0 z-50 w-full border-b transition-all duration-300 ease-in-out transform ${
+        isVisible ? "translate-y-0" : "-translate-y-full"
+      } ${
         isScrolled
-          ? "border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90"
+          ? "border-border/40 bg-background/75 backdrop-blur-sm supports-[backdrop-filter]:bg-background/75"
           : "border-transparent bg-transparent"
       }`}
     >
       <div className="container px-4 flex h-14 max-w-7xl mx-auto items-center justify-between">
         <div className="flex items-center space-x-2">
-          <Link href="/" className="mr-6 flex items-center space-x-2">
-            <span className="hidden font-bold sm:inline-block">/</span>
-          </Link>
+          <LogoCompact className="mr-6" priority />
         </div>
         <div className="flex items-center space-x-2">
           <nav className="flex items-center space-x-4">

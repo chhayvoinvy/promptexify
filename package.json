@@ -69,6 +69,7 @@
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.58.1",
     "react-resizable-panels": "^3.0.3",
+    "react-type-animation": "^3.2.0",
     "recharts": "^2.15.3",
     "rehype-autolink-headings": "^7.1.0",
     "rehype-pretty-code": "^0.14.1",

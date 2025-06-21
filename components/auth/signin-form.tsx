@@ -109,7 +109,7 @@ export function SignInForm() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-sm max-w-sm">
       {/* OAuth Section */}
       <Button
         variant="outline"

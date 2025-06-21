@@ -74,18 +74,18 @@ export function Navbar() {
                 Browse our complete collection of AI prompts.
               </ListItem>
               <ListItem
-                href="/directory?category=chatgpt"
-                title="ChatGPT"
+                href="/directory?category=video"
+                title="Video Generation"
                 isActive={isActive("/directory?category=chatgpt")}
               >
-                Prompts optimized for ChatGPT and text generation.
+                Prompts optimized for Video Generation.
               </ListItem>
               <ListItem
-                href="/directory?category=midjourney"
+                href="/directory?category=image"
                 title="Image Generation"
-                isActive={isActive("/directory?category=midjourney")}
+                isActive={isActive("/directory?category=image")}
               >
-                Creative prompts for Midjourney, DALL-E and more.
+                Creative prompts for Image Generation.
               </ListItem>
             </ul>
           </NavigationMenuContent>
@@ -137,6 +137,37 @@ export function Navbar() {
               >
                 Explore our complete collection of AI prompts across all
                 platforms.
+              </ListItem>
+            </ul>
+          </NavigationMenuContent>
+        </NavigationMenuItem>
+        <NavigationMenuItem>
+          <NavigationMenuTrigger>Rules</NavigationMenuTrigger>
+          <NavigationMenuContent>
+            <ul className="grid w-[200px] gap-2 md:w-[250px] md:grid-cols-1 lg:w-[250px]">
+              <ListItem
+                href="/directory?category=cursor"
+                title="Cursor AI Code Editor"
+                isActive={isActive("/directory?category=cursor")}
+              >
+                Rules for Cursor - AI Code Editor is a powerful tool that allows
+                you to write, edit, and debug code with ease.
+              </ListItem>
+              <ListItem
+                href="/directory?category=windsurf"
+                title="Windsurf AI Code Editor"
+                isActive={isActive("/directory?category=windsurf")}
+              >
+                Rules for Windsurf - AI Code Editor is a powerful tool that
+                allows you to write, edit, and debug code with ease.
+              </ListItem>
+              <ListItem
+                href="/directory?category=trae"
+                title="Trae AI Code Editor"
+                isActive={isActive("/directory?category=trae")}
+              >
+                Rules for Trae - AI Code Editor is a powerful tool that allows
+                you to write, edit, and debug code with ease.
               </ListItem>
             </ul>
           </NavigationMenuContent>

@@ -281,38 +281,27 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                           initialBookmarked={post.isBookmarked || false}
                         />
                       </div>
-                      <div className="flex items-bottom justify-end gap-2 flex-wrap">
+                      <div className="flex items-end justify-end gap-1 flex-col flex-wrap">
                         <div className="flex items-center gap-1">
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge
+                            variant="outline"
+                            className="text-xs bg-background"
+                          >
                             {post.category.parent?.name || post.category.name}
                           </Badge>
-                          {post.category.parent && (
-                            <Badge variant="secondary" className="text-xs">
-                              {post.category.name}
-                            </Badge>
-                          )}
                         </div>
-                        <div className="flex items-center gap-1">
-                          {/* Show up to 5 tags */}
+                        <div className="flex items-end gap-1">
+                          {/* Show up to 2 tags */}
                           {post.tags &&
-                            post.tags.slice(0, 3).map((tag) => (
+                            post.tags.slice(0, 2).map((tag) => (
                               <Badge
                                 key={tag.id}
                                 variant="outline"
-                                className="text-xs bg-background/80"
+                                className="text-xs bg-background"
                               >
                                 {tag.name}
                               </Badge>
                             ))}
-                          {/* Show "+" indicator if more than 5 tags */}
-                          {post.tags && post.tags.length > 5 && (
-                            <Badge
-                              variant="outline"
-                              className="text-xs bg-background/80"
-                            >
-                              +{post.tags.length - 5}
-                            </Badge>
-                          )}
                         </div>
                       </div>
                     </div>
