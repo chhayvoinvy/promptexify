@@ -337,12 +337,9 @@ export default async function FavoritesPage() {
         <SiteHeader />
         <div className="flex flex-1 flex-col gap-4 p-6 lg:p-6">
           <div className="space-y-6">
-            <div>
-              <h1 className="text-3xl font-bold">Favorites</h1>
-              <p className="text-muted-foreground">
-                Posts you&apos;ve marked as favorites, organized by date
-              </p>
-            </div>
+            <p className="text-muted-foreground">
+              Posts you&apos;ve marked as favorites, organized by date
+            </p>
 
             <Suspense fallback={<FavoritesLoading />}>
               <FavoritesList userType={userType} />

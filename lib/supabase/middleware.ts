@@ -37,12 +37,29 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Security headers for all responses
+  supabaseResponse.headers.set("X-Content-Type-Options", "nosniff");
+  supabaseResponse.headers.set("X-Frame-Options", "DENY");
+  supabaseResponse.headers.set("X-XSS-Protection", "1; mode=block");
+  supabaseResponse.headers.set(
+    "Referrer-Policy",
+    "strict-origin-when-cross-origin"
+  );
+
   // Protected routes - require authentication
   if (request.nextUrl.pathname.startsWith("/dashboard") && !user) {
-    // Redirect to signin if accessing protected route without authentication
-    const url = request.nextUrl.clone();
-    url.pathname = "/signin";
-    return NextResponse.redirect(url);
+    // Clear any potentially stale auth cookies on unauthorized access
+    const redirectResponse = NextResponse.redirect(
+      new URL("/signin", request.url)
+    );
+
+    // Clear auth-related cookies for security
+    const authCookieNames = ["sb-access-token", "sb-refresh-token"];
+    authCookieNames.forEach((cookieName) => {
+      redirectResponse.cookies.delete(cookieName);
+    });
+
+    return redirectResponse;
   }
 
   // For authenticated users, we'll handle role-based redirects in the pages themselves

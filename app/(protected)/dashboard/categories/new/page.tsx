@@ -62,7 +62,6 @@ export default async function NewCategoryPage() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold">Create New Category</h1>
               <p className="text-muted-foreground">
                 Add a new category to organize your content.
               </p>

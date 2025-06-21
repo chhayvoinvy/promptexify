@@ -112,8 +112,17 @@ export function SignInForm() {
         disabled={isPending}
         className="w-full"
       >
-        <GoogleIcon className="mr-2 h-4 w-4" />
-        Continue with Google
+        {isPending ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Signing in with Google...
+          </>
+        ) : (
+          <>
+            <GoogleIcon className="mr-2 h-4 w-4" />
+            Continue with Google
+          </>
+        )}
       </Button>
 
       <div className="relative">

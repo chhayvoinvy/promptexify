@@ -13,7 +13,7 @@ import {
   IconCategory,
   IconBookmark,
   IconHeart,
-  IconUser,
+  // IconUser,
 } from "@tabler/icons-react";
 import Link from "next/link";
 
@@ -51,7 +51,6 @@ const navigationData = {
       title: "Dashboard",
       url: "/dashboard",
       icon: IconDashboard,
-      adminOnly: true,
     },
     {
       title: "Bookmarks",
@@ -155,7 +154,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <Link href={isAdmin ? "/dashboard" : "/dashboard/bookmarks"}>
+              <Link href="/dashboard">
                 <IconInnerShadowTop className="!size-5" />
                 <span className="text-base font-semibold">Promptexify</span>
               </Link>

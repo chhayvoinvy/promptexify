@@ -60,7 +60,6 @@ export default async function TagsManagementPage() {
         <div className="flex flex-1 flex-col gap-4 p-6 lg:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Tags Management</h1>
               <p className="text-muted-foreground">
                 Manage content tags for better organization and discoverability.
               </p>

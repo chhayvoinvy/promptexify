@@ -243,6 +243,8 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                       alt={post.title}
                       fill
                       className="object-cover rounded-b-lg absolute"
+                      loading="lazy"
+                      blurDataURL={post.featuredImage}
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       onLoad={(e) => handleImageLoad(post.id, e)}
                     />

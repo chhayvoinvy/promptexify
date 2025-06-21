@@ -1,9 +1,10 @@
 "use server";
 
-import { PrismaClient } from "@prisma/client";
-import { requireAuth } from "@/lib/auth";
+import { PrismaClient } from "@/lib/generated/prisma";
+import { requireAuth, getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { handleAuthRedirect } from "./auth";
 
 const prisma = new PrismaClient();
 
@@ -97,6 +98,149 @@ export async function getUserProfileAction() {
     return {
       success: false,
       error: "Failed to load profile. Please try again.",
+    };
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+/**
+ * Get user dashboard statistics
+ * Returns total bookmarks, joined date, and recent favorite posts
+ */
+export async function getUserDashboardStatsAction() {
+  try {
+    // Get the current user with authentication check
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.userData) {
+      handleAuthRedirect();
+    }
+    const user = currentUser.userData;
+
+    // Execute all queries in parallel for better performance
+    const [totalBookmarks, recentFavorites] = await Promise.all([
+      // Get total bookmarks count
+      prisma.bookmark.count({
+        where: {
+          userId: user.id,
+        },
+      }),
+
+      // Get recent favorite posts (limit 5)
+      prisma.favorite.findMany({
+        where: {
+          userId: user.id,
+        },
+        include: {
+          post: {
+            include: {
+              author: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  avatar: true,
+                },
+              },
+              category: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                },
+              },
+              tags: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 5, // Limit to 5 most recent favorites
+      }),
+    ]);
+
+    return {
+      success: true,
+      data: {
+        totalBookmarks,
+        joinedDate: user.createdAt,
+        recentFavorites,
+        userInfo: {
+          name: user.name,
+          email: user.email,
+          avatar: user.avatar,
+          type: user.type,
+          role: user.role,
+        },
+      },
+    };
+  } catch (error) {
+    // Handle authentication redirects
+    if (error && typeof error === "object" && "digest" in error) {
+      const errorDigest = (error as { digest?: string }).digest;
+      if (
+        typeof errorDigest === "string" &&
+        errorDigest.includes("NEXT_REDIRECT")
+      ) {
+        throw error;
+      }
+    }
+
+    console.error("Error fetching user dashboard stats:", error);
+    return {
+      success: false,
+      error: "Failed to fetch user dashboard statistics",
+    };
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+/**
+ * Get total favorite posts count for user
+ */
+export async function getUserFavoritesCountAction() {
+  try {
+    // Get the current user with authentication check
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.userData) {
+      handleAuthRedirect();
+    }
+    const user = currentUser.userData;
+
+    const totalFavorites = await prisma.favorite.count({
+      where: {
+        userId: user.id,
+      },
+    });
+
+    return {
+      success: true,
+      totalFavorites,
+    };
+  } catch (error) {
+    // Handle authentication redirects
+    if (error && typeof error === "object" && "digest" in error) {
+      const errorDigest = (error as { digest?: string }).digest;
+      if (
+        typeof errorDigest === "string" &&
+        errorDigest.includes("NEXT_REDIRECT")
+      ) {
+        throw error;
+      }
+    }
+
+    console.error("Error fetching user favorites count:", error);
+    return {
+      success: false,
+      error: "Failed to fetch favorites count",
     };
   } finally {
     await prisma.$disconnect();

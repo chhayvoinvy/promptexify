@@ -68,14 +68,11 @@ export function AccountForm({ user }: AccountFormProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Account Settings</h1>
+      <div className="grid gap-6">
         <p className="text-muted-foreground">
           Manage your account information and preferences
         </p>
-      </div>
 
-      <div className="grid gap-6">
         {/* Feedback Alert */}
         {feedback.type && (
           <Alert

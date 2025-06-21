@@ -38,8 +38,10 @@ export async function oauthAction(provider: "google") {
 
 export async function signOutAction() {
   try {
+    // Perform secure logout with comprehensive cleanup
     await signOut();
-    // If we reach here, there was no redirect (shouldn't happen)
+
+    // If we reach here, there was no redirect (shouldn't happen with proper signOut)
     return { success: true };
   } catch (error) {
     // Check if this is a Next.js redirect (which means success)
@@ -49,15 +51,24 @@ export async function signOutAction() {
         typeof errorDigest === "string" &&
         errorDigest.includes("NEXT_REDIRECT")
       ) {
-        // This is a successful sign out with redirect - don't return anything
-        // The redirect will handle the navigation
-        throw error; // Re-throw to allow the redirect to proceed
+        // This is a successful sign out with redirect - re-throw to allow redirect
+        throw error;
       }
     }
 
-    // This is an actual error
-    console.error("Sign out action error:", error);
-    return { error: "Failed to sign out" };
+    // This is an actual error - log securely (don't expose sensitive data)
+    console.error("Sign out action error:", {
+      message: error instanceof Error ? error.message : "Unknown error",
+      timestamp: new Date().toISOString(),
+    });
+
+    // Return secure error message
+    return {
+      error:
+        "Sign out failed. Please try again or contact support if the issue persists.",
+      // Include a security flag to indicate failed logout attempt
+      securityFlag: true,
+    };
   }
 }
 

@@ -468,7 +468,7 @@ export default async function PostsManagementPage({
 
   // Only ADMIN can access posts management
   if (user.userData?.role !== "ADMIN") {
-    redirect("/dashboard/bookmarks");
+    redirect("/dashboard");
   }
 
   return (
@@ -486,7 +486,6 @@ export default async function PostsManagementPage({
         <div className="flex flex-1 flex-col gap-4 p-6 lg:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Posts Management</h1>
               <p className="text-muted-foreground">
                 Manage your content posts, create new prompts, and organize your
                 directory.

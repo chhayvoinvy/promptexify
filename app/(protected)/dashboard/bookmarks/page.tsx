@@ -78,9 +78,12 @@ async function BookmarksContent() {
 
   return (
     <div className="space-y-6">
+      <p className="text-muted-foreground">
+        Posts you&apos;ve marked as bookmarks, organized by date
+      </p>
+
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Your Bookmarks</h1>
           <p className="text-muted-foreground">
             {bookmarks.length}{" "}
             {bookmarks.length === 1 ? "bookmark" : "bookmarks"}

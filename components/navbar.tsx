@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 import {
   NavigationMenu,
@@ -14,6 +16,30 @@ import {
 } from "@/components/ui/navigation-menu";
 
 export function Navbar() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const category = searchParams.get("category");
+
+  const isActive = (href: string) => {
+    // Handle root path
+    if (href === "/" && pathname === "/") {
+      return true;
+    }
+
+    // Handle directory with category
+    if (href.includes("?category=")) {
+      const [path, categoryParam] = href.split("?category=");
+      return pathname === path && category === categoryParam;
+    }
+
+    // Handle directory without category
+    if (href === "/directory") {
+      return pathname === "/directory" && !category;
+    }
+
+    return false;
+  };
+
   return (
     <NavigationMenu viewport={false}>
       <NavigationMenuList>
@@ -24,7 +50,10 @@ export function Navbar() {
               <li className="row-span-3">
                 <NavigationMenuLink asChild>
                   <Link
-                    className="from-muted/50 to-muted flex h-full w-full flex-col justify-end rounded-md bg-gradient-to-b p-6 no-underline outline-none select-none focus:shadow-md"
+                    className={cn(
+                      "from-muted/50 to-muted flex h-full w-full flex-col justify-end rounded-md bg-gradient-to-b p-6 no-underline outline-none select-none focus:shadow-md",
+                      isActive("/") && "ring-2 ring-primary"
+                    )}
                     href="/"
                   >
                     <div className="mt-4 mb-2 text-lg font-medium">
@@ -37,15 +66,24 @@ export function Navbar() {
                   </Link>
                 </NavigationMenuLink>
               </li>
-              <ListItem href="/directory" title="All Prompts">
+              <ListItem
+                href="/directory"
+                title="All Prompts"
+                isActive={isActive("/directory")}
+              >
                 Browse our complete collection of AI prompts.
               </ListItem>
-              <ListItem href="/directory?category=chatgpt" title="ChatGPT">
+              <ListItem
+                href="/directory?category=chatgpt"
+                title="ChatGPT"
+                isActive={isActive("/directory?category=chatgpt")}
+              >
                 Prompts optimized for ChatGPT and text generation.
               </ListItem>
               <ListItem
                 href="/directory?category=midjourney"
                 title="Image Generation"
+                isActive={isActive("/directory?category=midjourney")}
               >
                 Creative prompts for Midjourney, DALL-E and more.
               </ListItem>
@@ -59,6 +97,7 @@ export function Navbar() {
               <ListItem
                 href="/directory?category=chatgpt"
                 title="ChatGPT Prompts"
+                isActive={isActive("/directory?category=chatgpt")}
               >
                 Creative writing, marketing copy, and content generation
                 prompts.
@@ -66,25 +105,36 @@ export function Navbar() {
               <ListItem
                 href="/directory?category=claude"
                 title="Claude Prompts"
+                isActive={isActive("/directory?category=claude")}
               >
                 Data analysis, research, and professional document prompts.
               </ListItem>
               <ListItem
                 href="/directory?category=midjourney"
                 title="Midjourney Prompts"
+                isActive={isActive("/directory?category=midjourney")}
               >
                 Photography styles, artistic concepts, and visual creativity.
               </ListItem>
-              <ListItem href="/directory?category=dalle" title="DALL-E Prompts">
+              <ListItem
+                href="/directory?category=dalle"
+                title="DALL-E Prompts"
+                isActive={isActive("/directory?category=dalle")}
+              >
                 Design concepts, illustrations, and digital art creation.
               </ListItem>
               <ListItem
                 href="/directory?category=gemini"
                 title="Gemini Prompts"
+                isActive={isActive("/directory?category=gemini")}
               >
                 Business strategy, coding, and multilingual content.
               </ListItem>
-              <ListItem href="/directory" title="View All Categories">
+              <ListItem
+                href="/directory"
+                title="View All Categories"
+                isActive={isActive("/directory")}
+              >
                 Explore our complete collection of AI prompts across all
                 platforms.
               </ListItem>
@@ -92,7 +142,13 @@ export function Navbar() {
           </NavigationMenuContent>
         </NavigationMenuItem>
         <NavigationMenuItem>
-          <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
+          <NavigationMenuLink
+            asChild
+            className={cn(
+              navigationMenuTriggerStyle(),
+              isActive("/directory") && "bg-accent text-accent-foreground"
+            )}
+          >
             <Link href="/directory">Directory</Link>
           </NavigationMenuLink>
         </NavigationMenuItem>
@@ -105,12 +161,22 @@ function ListItem({
   title,
   children,
   href,
+  isActive = false,
   ...props
-}: React.ComponentPropsWithoutRef<"li"> & { href: string }) {
+}: React.ComponentPropsWithoutRef<"li"> & {
+  href: string;
+  isActive?: boolean;
+}) {
   return (
     <li {...props}>
       <NavigationMenuLink asChild>
-        <Link href={href}>
+        <Link
+          href={href}
+          className={cn(
+            "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+            isActive && "bg-accent text-accent-foreground"
+          )}
+        >
           <div className="text-sm leading-none font-medium">{title}</div>
           <p className="text-muted-foreground line-clamp-2 text-sm leading-snug">
             {children}

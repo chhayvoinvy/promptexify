@@ -48,7 +48,7 @@ export default async function CategoriesManagementPage() {
 
   // Only ADMIN can access categories management
   if (user.userData?.role !== "ADMIN") {
-    redirect("/dashboard/bookmarks");
+    redirect("/dashboard");
   }
 
   const categories = await getAllCategories();
@@ -72,7 +72,6 @@ export default async function CategoriesManagementPage() {
         <div className="flex flex-1 flex-col gap-4 p-6 lg:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Categories Management</h1>
               <p className="text-muted-foreground">
                 Organize your content with categories and subcategories.
               </p>

@@ -136,6 +136,9 @@ export async function signInWithOAuth(provider: "google") {
     provider,
     options: {
       redirectTo: `${getBaseUrl()}/auth/callback`,
+      queryParams: {
+        prompt: "select_account", // Force account selection screen
+      },
     },
   });
 
@@ -154,14 +157,25 @@ export async function signOut() {
   const supabase = await createClient();
 
   try {
-    const { error } = await supabase.auth.signOut();
+    // 1. Sign out from Supabase (this clears the session and cookies)
+    const { error } = await supabase.auth.signOut({
+      scope: "global", // This ensures sign out across all devices/sessions
+    });
 
     if (error) {
       console.error("Supabase sign out error:", error);
       return { error: error.message };
     }
 
+    // 2. Revalidate all cached data to ensure fresh state
     revalidatePath("/", "layout");
+
+    // 3. Additional cache invalidation for security
+    // This ensures no cached user data remains accessible
+    revalidatePath("/dashboard", "layout");
+    revalidatePath("/api", "layout");
+
+    // 4. Secure redirect to sign-in page
     redirect("/signin");
   } catch (error) {
     // Check if this is a Next.js redirect (which is expected)
@@ -218,7 +232,7 @@ export async function requireAuth() {
 export async function requireAdmin() {
   const user = await requireAuth();
   if (user.userData?.role !== "ADMIN") {
-    redirect("/dashboard/bookmarks");
+    redirect("/dashboard");
   }
   return user;
 }
@@ -230,9 +244,9 @@ export async function requireRole(allowedRoles: Array<"USER" | "ADMIN">) {
   if (!userRole || !allowedRoles.includes(userRole)) {
     // Redirect based on user role
     if (userRole === "USER") {
-      redirect("/dashboard/bookmarks");
-    } else {
       redirect("/dashboard");
+    } else {
+      redirect("/");
     }
   }
   return user;
@@ -248,7 +262,7 @@ export async function requireUserAccess(allowedPaths: string[]) {
     const currentPath = allowedPaths[0] || "";
 
     if (!allowedUserPaths.includes(currentPath)) {
-      redirect("/dashboard/bookmarks");
+      redirect("/dashboard");
     }
   }
 
