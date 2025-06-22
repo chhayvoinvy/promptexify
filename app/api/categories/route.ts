@@ -13,8 +13,8 @@ export async function GET() {
       );
     }
 
-    // Admin role check
-    if (user.userData?.role !== "ADMIN") {
+    // Role check - allow both ADMIN and USER
+    if (user.userData?.role !== "ADMIN" && user.userData?.role !== "USER") {
       return NextResponse.json(
         { error: "Insufficient permissions" },
         { status: 403 }

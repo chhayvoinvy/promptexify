@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { processAndUploadVideo } from "@/lib/s3";
 import { getCurrentUser } from "@/lib/auth";
 
-// Maximum file size: 100MB for videos
-const MAX_FILE_SIZE = 100 * 1024 * 1024;
+// Maximum file size: 10MB for videos
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,8 +16,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Admin role check for additional security
-    if (user.userData?.role !== "ADMIN") {
+    // Role check - allow both ADMIN and USER
+    if (user.userData?.role !== "ADMIN" && user.userData?.role !== "USER") {
       return NextResponse.json(
         { error: "Insufficient permissions" },
         { status: 403 }
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     // File size validation
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { error: "File size too large. Maximum size is 100MB" },
+        { error: "File size too large. Maximum size is 10MB" },
         { status: 400 }
       );
     }
@@ -78,8 +78,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Process and upload video
-    const videoUrl = await processAndUploadVideo(file, sanitizedTitle);
+    // Process and upload video with user ID for path organization
+    const videoUrl = await processAndUploadVideo(file, sanitizedTitle, user.id);
 
     return NextResponse.json({
       success: true,

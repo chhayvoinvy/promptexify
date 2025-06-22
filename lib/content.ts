@@ -14,7 +14,9 @@ export interface PostWithDetails {
   featuredVideo: string | null;
   isPremium: boolean;
   isPublished: boolean;
+  status: string;
   viewCount: number;
+  authorId: string;
   createdAt: Date;
   updatedAt: Date;
   author: {
@@ -61,7 +63,21 @@ export async function getAllPosts(
 ): Promise<PostWithDetails[]> {
   const posts = await prisma.post.findMany({
     where: includeUnpublished ? {} : { isPublished: true },
-    include: {
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      description: true,
+      content: true,
+      featuredImage: true,
+      featuredVideo: true,
+      isPremium: true,
+      isPublished: true,
+      status: true,
+      viewCount: true,
+      authorId: true,
+      createdAt: true,
+      updatedAt: true,
       author: {
         select: {
           id: true,
@@ -553,6 +569,147 @@ export interface PaginatedResult<T> {
   hasPreviousPage: boolean;
 }
 
+export async function getUserPosts(userId: string): Promise<PostWithDetails[]> {
+  const posts = await prisma.post.findMany({
+    where: { authorId: userId },
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      description: true,
+      content: true,
+      featuredImage: true,
+      featuredVideo: true,
+      isPremium: true,
+      isPublished: true,
+      status: true,
+      viewCount: true,
+      authorId: true,
+      createdAt: true,
+      updatedAt: true,
+      author: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          avatar: true,
+        },
+      },
+      category: {
+        include: {
+          parent: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+            },
+          },
+        },
+      },
+      tags: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        },
+      },
+      _count: {
+        select: {
+          views: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  return posts;
+}
+
+export async function getUserPostsPaginated(
+  userId: string,
+  page: number = 1,
+  pageSize: number = 10
+): Promise<PaginatedResult<PostWithDetails>> {
+  const skip = (page - 1) * pageSize;
+
+  const [posts, totalCount] = await Promise.all([
+    prisma.post.findMany({
+      where: { authorId: userId },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        description: true,
+        content: true,
+        featuredImage: true,
+        featuredVideo: true,
+        isPremium: true,
+        isPublished: true,
+        status: true,
+        viewCount: true,
+        authorId: true,
+        createdAt: true,
+        updatedAt: true,
+        author: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar: true,
+          },
+        },
+        category: {
+          include: {
+            parent: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+        },
+        tags: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        _count: {
+          select: {
+            views: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      skip,
+      take: pageSize,
+    }),
+    prisma.post.count({
+      where: { authorId: userId },
+    }),
+  ]);
+
+  const totalPages = Math.ceil(totalCount / pageSize);
+  const hasNextPage = page < totalPages;
+  const hasPreviousPage = page > 1;
+
+  return {
+    data: posts,
+    totalCount,
+    totalPages,
+    currentPage: page,
+    pageSize,
+    hasNextPage,
+    hasPreviousPage,
+  };
+}
+
 export async function getPostsPaginated(
   page: number = 1,
   pageSize: number = 10,
@@ -572,7 +729,21 @@ export async function getPostsPaginated(
     // Get paginated posts
     prisma.post.findMany({
       where: includeUnpublished ? {} : { isPublished: true },
-      include: {
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        description: true,
+        content: true,
+        featuredImage: true,
+        featuredVideo: true,
+        isPremium: true,
+        isPublished: true,
+        status: true,
+        viewCount: true,
+        authorId: true,
+        createdAt: true,
+        updatedAt: true,
         author: {
           select: {
             id: true,

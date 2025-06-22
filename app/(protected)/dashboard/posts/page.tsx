@@ -1,5 +1,5 @@
 import React, { Suspense } from "react";
-import { Metadata } from "next";
+
 import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { Button } from "@/components/ui/button";
@@ -40,22 +40,20 @@ import { PostActionsDropdown } from "@/components/dashboard/post-actions-dropdow
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
-import { getPostsPaginated, getAllPosts } from "@/lib/content";
+import {
+  getPostsPaginated,
+  getAllPosts,
+  getUserPostsPaginated,
+  getUserPosts,
+} from "@/lib/content";
 import { redirect } from "next/navigation";
+import { IconCircleCheckFilled, IconLoader } from "@tabler/icons-react";
 
 // Force dynamic rendering for this page
 export const dynamic = "force-dynamic";
 
-// Metadata for the page
-export const metadata: Metadata = {
-  title: "Posts Management | Dashboard",
-  description:
-    "Manage your content posts, create new prompts, and organize your directory.",
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
+// Dynamic metadata will be handled by the page component
+// since we need to check user role for appropriate title
 
 interface PostsManagementPageProps {
   searchParams: Promise<{
@@ -171,10 +169,18 @@ function PageSizeSelector({
   );
 }
 
+interface UserData {
+  id: string;
+  role: string;
+  email: string;
+  name: string | null;
+}
+
 // Main content component
 async function PostsManagementContent({
   searchParams,
-}: PostsManagementPageProps) {
+  user,
+}: PostsManagementPageProps & { user: UserData }) {
   try {
     // Parse search params
     const params = await searchParams;
@@ -184,10 +190,18 @@ async function PostsManagementContent({
     // Validate page size
     const validPageSize = Math.min(Math.max(pageSize, 5), 50);
 
+    // Use passed user information
+    const isAdmin = user.role === "ADMIN";
+    const userId = user.id;
+
     // Get paginated posts and total count for stats
     const [paginatedResult, allPosts] = await Promise.all([
-      getPostsPaginated(currentPage, validPageSize, true), // Include unpublished posts
-      getAllPosts(true), // For statistics
+      isAdmin
+        ? getPostsPaginated(currentPage, validPageSize, true) // Admin sees all posts
+        : getUserPostsPaginated(userId!, currentPage, validPageSize), // Users see only their posts
+      isAdmin
+        ? getAllPosts(true) // Admin sees all posts for statistics
+        : getUserPosts(userId!), // Users see only their posts for statistics
     ]);
 
     const {
@@ -256,9 +270,11 @@ async function PostsManagementContent({
 
         <Card>
           <CardHeader>
-            <CardTitle>All Posts</CardTitle>
+            <CardTitle>{isAdmin ? "All Posts" : "My Submissions"}</CardTitle>
             <CardDescription>
-              Manage your content posts and organize your directory.
+              {isAdmin
+                ? "Manage all content posts and organize your directory."
+                : "Manage your content submissions and track their approval status."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -285,12 +301,9 @@ async function PostsManagementContent({
                   <TableRow key={post.id}>
                     <TableCell>
                       <div>
-                        <div className="font-medium">{post.title}</div>
-                        {post.description && (
-                          <div className="text-sm text-muted-foreground line-clamp-1">
-                            {post.description}
-                          </div>
-                        )}
+                        <div className="font-medium line-clamp-1">
+                          {post.title}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -306,11 +319,29 @@ async function PostsManagementContent({
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant={post.isPublished ? "default" : "secondary"}
-                      >
-                        {post.isPublished ? "Published" : "Draft"}
-                      </Badge>
+                      <div className="flex flex-row gap-1">
+                        {post.isPublished &&
+                        post.status !== "PENDING_APPROVAL" ? (
+                          <Badge variant="outline" className="text-xs">
+                            <IconCircleCheckFilled className="fill-green-500 dark:fill-green-400" />
+                            Published
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="text-xs text-yellow-600"
+                          >
+                            <IconLoader className="fill-yellow-500 dark:fill-yellow-400" />
+                            Pending Approval
+                          </Badge>
+                        )}
+
+                        {post.status === "REJECTED" && (
+                          <Badge variant="destructive" className="text-xs">
+                            Rejected
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -329,7 +360,11 @@ async function PostsManagementContent({
                       {new Date(post.createdAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
-                      <PostActionsDropdown post={post} />
+                      <PostActionsDropdown
+                        post={post}
+                        currentUserId={user.id}
+                        currentUserRole={user.role}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -423,8 +458,8 @@ export default async function PostsManagementPage({
     redirect("/signin");
   }
 
-  // Only ADMIN can access posts management
-  if (user.userData?.role !== "ADMIN") {
+  // Both ADMIN and USER can access posts management
+  if (user.userData?.role !== "ADMIN" && user.userData?.role !== "USER") {
     redirect("/dashboard");
   }
 
@@ -444,20 +479,24 @@ export default async function PostsManagementPage({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-muted-foreground">
-                Manage your content posts, create new prompts, and organize your
-                directory.
+                {user.userData?.role === "ADMIN"
+                  ? "Manage your content posts, create new prompts, and organize your directory."
+                  : "Submit new prompts and manage your submissions."}
               </p>
             </div>
             <Link href="/dashboard/posts/new">
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
-                New Post
+                {user.userData?.role === "ADMIN" ? "New Post" : "Submit Prompt"}
               </Button>
             </Link>
           </div>
 
           <Suspense fallback={<LoadingSkeleton />}>
-            <PostsManagementContent searchParams={searchParams} />
+            <PostsManagementContent
+              searchParams={searchParams}
+              user={user.userData!}
+            />
           </Suspense>
         </div>
       </SidebarInset>

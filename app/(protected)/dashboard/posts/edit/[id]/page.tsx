@@ -21,7 +21,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { TagSelector } from "@/components/tag-selector";
-import { ImageUpload } from "@/components/image-upload";
+import { MediaUpload } from "@/components/media-upload";
 import { useAuth } from "@/hooks/use-auth";
 import { updatePostAction } from "@/actions";
 
@@ -48,6 +48,7 @@ interface Post {
   description?: string;
   content: string;
   featuredImage?: string;
+  featuredVideo?: string;
   isPublished: boolean;
   isPremium: boolean;
   category: {
@@ -72,7 +73,9 @@ export default function EditPostPage() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [featuredImageUrl, setFeaturedImageUrl] = useState("");
+  const [featuredVideoUrl, setFeaturedVideoUrl] = useState("");
   const [originalImageUrl, setOriginalImageUrl] = useState("");
+  const [originalVideoUrl, setOriginalVideoUrl] = useState("");
   const [postTitle, setPostTitle] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -80,14 +83,14 @@ export default function EditPostPage() {
 
   const postId = params?.id as string;
 
-  // Redirect if not authenticated or not admin
+  // Redirect if not authenticated or not authorized
   useEffect(() => {
     if (!loading) {
       if (!user) {
         router.push("/signin");
         return;
       }
-      if (user.userData?.role !== "ADMIN") {
+      if (user.userData?.role !== "ADMIN" && user.userData?.role !== "USER") {
         router.push("/dashboard");
         return;
       }
@@ -97,7 +100,12 @@ export default function EditPostPage() {
   // Fetch post data, categories, and tags
   useEffect(() => {
     async function fetchData() {
-      if (!postId || user?.userData?.role !== "ADMIN") return;
+      if (
+        !postId ||
+        !user?.userData?.role ||
+        (user.userData.role !== "ADMIN" && user.userData.role !== "USER")
+      )
+        return;
 
       try {
         setIsLoading(true);
@@ -117,28 +125,49 @@ export default function EditPostPage() {
           throw new Error("Failed to fetch post");
         }
 
-        const [postData, categoriesData, tagsData] = await Promise.all([
-          postRes.json(),
-          categoriesRes.json(),
-          tagsRes.json(),
-        ]);
+        const postData = await postRes.json();
+
+        // Handle categories response
+        let categoriesData = [];
+        if (categoriesRes.ok) {
+          const categoryResponse = await categoriesRes.json();
+          categoriesData = Array.isArray(categoryResponse)
+            ? categoryResponse
+            : [];
+        } else {
+          console.error("Failed to fetch categories:", categoriesRes.status);
+        }
+
+        // Handle tags response
+        let tagsData = [];
+        if (tagsRes.ok) {
+          const tagResponse = await tagsRes.json();
+          tagsData = Array.isArray(tagResponse) ? tagResponse : [];
+        } else {
+          console.error("Failed to fetch tags:", tagsRes.status);
+        }
 
         setPost(postData);
         setCategories(categoriesData);
         setTags(tagsData);
         setSelectedTags(postData.tags.map((tag: Tag) => tag.name));
         setFeaturedImageUrl(postData.featuredImage || "");
+        setFeaturedVideoUrl(postData.featuredVideo || "");
         setOriginalImageUrl(postData.featuredImage || "");
+        setOriginalVideoUrl(postData.featuredVideo || "");
         setPostTitle(postData.title || "");
       } catch (error) {
         console.error("Error fetching data:", error);
         setError("Failed to load post data");
+        // Ensure states remain as arrays even on error
+        setCategories([]);
+        setTags([]);
       } finally {
         setIsLoading(false);
       }
     }
 
-    if (user?.userData?.role === "ADMIN") {
+    if (user?.userData?.role === "ADMIN" || user?.userData?.role === "USER") {
       fetchData();
     }
   }, [postId, user, router]);
@@ -150,17 +179,24 @@ export default function EditPostPage() {
     setIsSubmitting(true);
 
     try {
+      // Add the featured media URLs to form data
+      if (featuredImageUrl) {
+        formData.set("featuredImage", featuredImageUrl);
+      }
+      if (featuredVideoUrl) {
+        formData.set("featuredVideo", featuredVideoUrl);
+      }
+
       // Add the selected tags to form data
       formData.set("tags", selectedTags.join(", "));
       formData.set("id", post.id);
 
-      // The featured image is already handled by the ImageUpload component's hidden input
-
       // Update the post first
       await updatePostAction(formData);
 
-      // Get the current featured image from form data
+      // Get the current featured media from form data
       const currentFeaturedImage = formData.get("featuredImage") as string;
+      const currentFeaturedVideo = formData.get("featuredVideo") as string;
 
       // Clean up old image if it was changed and is one of our uploaded images
       if (
@@ -193,6 +229,36 @@ export default function EditPostPage() {
         }
       }
 
+      // Clean up old video if it was changed and is one of our uploaded videos
+      if (
+        originalVideoUrl &&
+        currentFeaturedVideo &&
+        originalVideoUrl !== currentFeaturedVideo &&
+        originalVideoUrl.includes("/videos/") // Only delete if it's our uploaded video
+      ) {
+        try {
+          const deleteResponse = await fetch("/api/upload/video/delete", {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ videoUrl: originalVideoUrl }),
+          });
+
+          if (deleteResponse.ok) {
+            console.log("Successfully deleted old video:", originalVideoUrl);
+          } else {
+            console.error(
+              "Failed to delete old video:",
+              await deleteResponse.text()
+            );
+          }
+        } catch (deleteError) {
+          // Log error but don't fail the whole operation
+          console.error("Failed to delete old video:", deleteError);
+        }
+      }
+
       // Redirect to posts list on success
       router.push("/dashboard/posts");
     } catch (error) {
@@ -208,9 +274,15 @@ export default function EditPostPage() {
     setSelectedTags(newTags);
   }
 
-  // Handle image upload
-  function handleImageUploaded(imageUrl: string) {
-    setFeaturedImageUrl(imageUrl);
+  // Handle media upload
+  function handleMediaUploaded(mediaUrl: string, mediaType: "image" | "video") {
+    if (mediaType === "image") {
+      setFeaturedImageUrl(mediaUrl);
+      setFeaturedVideoUrl(""); // Clear video when image is uploaded
+    } else {
+      setFeaturedVideoUrl(mediaUrl);
+      setFeaturedImageUrl(""); // Clear image when video is uploaded
+    }
   }
 
   // Handle title change for image filename
@@ -231,8 +303,8 @@ export default function EditPostPage() {
     );
   }
 
-  // Show unauthorized if not admin
-  if (user.userData?.role !== "ADMIN") {
+  // Show unauthorized if not admin or user
+  if (user.userData?.role !== "ADMIN" && user.userData?.role !== "USER") {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -268,7 +340,11 @@ export default function EditPostPage() {
             The post you&apos;re looking for doesn&apos;t exist.
           </p>
           <Link href="/dashboard/posts">
-            <Button>Back to Posts</Button>
+            <Button>
+              {user.userData?.role === "ADMIN"
+                ? "Back to Posts"
+                : "Back to Submissions"}
+            </Button>
           </Link>
         </div>
       </div>
@@ -297,12 +373,16 @@ export default function EditPostPage() {
             <Link href="/dashboard/posts">
               <Button variant="outline" size="sm">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Posts
+                {user.userData?.role === "ADMIN"
+                  ? "Back to Posts"
+                  : "Back to Submissions"}
               </Button>
             </Link>
             <div>
               <p className="text-muted-foreground">
-                Edit your existing prompt.
+                {user.userData?.role === "ADMIN"
+                  ? "Edit your existing prompt."
+                  : "Edit your submission."}
               </p>
             </div>
           </div>
@@ -361,10 +441,11 @@ export default function EditPostPage() {
                   />
                 </div>
 
-                {/* Replace the old URL input with the new ImageUpload component */}
-                <ImageUpload
-                  onImageUploaded={handleImageUploaded}
+                {/* Replace the old URL input with the new MediaUpload component */}
+                <MediaUpload
+                  onMediaUploaded={handleMediaUploaded}
                   currentImageUrl={featuredImageUrl}
+                  currentVideoUrl={featuredVideoUrl}
                   title={postTitle || post.title}
                   disabled={isSubmitting}
                 />
@@ -435,33 +516,90 @@ export default function EditPostPage() {
                 <CardTitle>Publishing Options</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="isPublished">Published</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Make this post visible to users
-                    </p>
-                  </div>
-                  <Switch
-                    id="isPublished"
-                    name="isPublished"
-                    defaultChecked={post.isPublished}
-                  />
-                </div>
+                {user.userData?.role === "ADMIN" ? (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="isPublished">Published</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Make this post visible to users
+                        </p>
+                      </div>
+                      <Switch
+                        id="isPublished"
+                        name="isPublished"
+                        defaultChecked={post.isPublished}
+                      />
+                    </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="isPremium">Premium</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Require premium subscription to access
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="isPremium">Premium</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Require premium subscription to access
+                        </p>
+                      </div>
+                      <Switch
+                        id="isPremium"
+                        name="isPremium"
+                        defaultChecked={post.isPremium}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-4">
+                    {post.isPublished ? (
+                      <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
+                        <div className="flex items-start space-x-3">
+                          <div className="text-green-600 dark:text-green-400">
+                            ✅
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-green-900 dark:text-green-100">
+                              Post Published
+                            </h4>
+                            <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                              This post has been approved and is now live. You
+                              cannot edit published posts.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <div className="flex items-start space-x-3">
+                          <div className="text-blue-600 dark:text-blue-400">
+                            ℹ️
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-blue-900 dark:text-blue-100">
+                              Pending Approval
+                            </h4>
+                            <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                              Your changes will be submitted for admin approval.
+                              The post will remain unpublished until approved.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between opacity-50">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="isPremium">Premium</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Only admins can set premium status
+                        </p>
+                      </div>
+                      <Switch
+                        id="isPremium"
+                        name="isPremium"
+                        disabled
+                        defaultChecked={post.isPremium}
+                      />
+                    </div>
                   </div>
-                  <Switch
-                    id="isPremium"
-                    name="isPremium"
-                    defaultChecked={post.isPremium}
-                  />
-                </div>
+                )}
               </CardContent>
             </Card>
 

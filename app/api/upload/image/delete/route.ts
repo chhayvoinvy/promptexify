@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth";
 import { deleteImageFromS3, extractImageFilename } from "@/lib/s3";
 
 /**
@@ -8,30 +8,19 @@ import { deleteImageFromS3, extractImageFilename } from "@/lib/s3";
  */
 export async function DELETE(request: NextRequest) {
   try {
-    // Get Supabase client and check authentication
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    // Authentication check - only authenticated users can delete
+    const user = await getCurrentUser();
+    if (!user) {
       return NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }
       );
     }
 
-    // Get user profile to check role
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile || profile.role !== "ADMIN") {
+    // Role check - allow both ADMIN and USER (users can delete their own images)
+    if (user.userData?.role !== "ADMIN" && user.userData?.role !== "USER") {
       return NextResponse.json(
-        { error: "Admin access required" },
+        { error: "Insufficient permissions" },
         { status: 403 }
       );
     }
@@ -40,6 +29,7 @@ export async function DELETE(request: NextRequest) {
     const body = await request.json();
     const { imageUrl } = body;
 
+    // Input validation
     if (!imageUrl || typeof imageUrl !== "string") {
       return NextResponse.json(
         { error: "Image URL is required" },
@@ -54,6 +44,17 @@ export async function DELETE(request: NextRequest) {
         { error: "Invalid image URL - not an uploaded image" },
         { status: 400 }
       );
+    }
+
+    // For non-admin users, verify they own the image by checking the filename prefix
+    if (user.userData?.role === "USER") {
+      const userPrefix = user.id.substring(0, 8);
+      if (!filename.startsWith(userPrefix)) {
+        return NextResponse.json(
+          { error: "You can only delete your own images" },
+          { status: 403 }
+        );
+      }
     }
 
     // Delete from S3
@@ -72,8 +73,17 @@ export async function DELETE(request: NextRequest) {
     }
   } catch (error) {
     console.error("Error in image delete API:", error);
+
+    // Don't expose internal error details to client
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error occurred";
+
     return NextResponse.json(
-      { error: "Internal server error" },
+      {
+        error: "Failed to delete image",
+        details:
+          process.env.NODE_ENV === "development" ? errorMessage : undefined,
+      },
       { status: 500 }
     );
   }

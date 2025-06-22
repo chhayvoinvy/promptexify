@@ -25,7 +25,14 @@ export {
 } from "./favorites";
 
 // Post management actions
-export { createPostAction, updatePostAction } from "./posts";
+export {
+  createPostAction,
+  updatePostAction,
+  togglePostPublishAction,
+  deletePostAction,
+  approvePostAction,
+  rejectPostAction,
+} from "./posts";
 
 // Category management actions
 export { createCategoryAction, updateCategoryAction } from "./categories";

@@ -20,11 +20,12 @@ const CDN_URL =
   process.env.AWS_CLOUDFRONT_URL || `https://${BUCKET_NAME}.s3.amazonaws.com`;
 
 /**
- * Generates a secure random filename with specified format
+ * Generates a secure random filename with specified format and user ID
  * @param title - The title to use in filename (will be slugified)
- * @returns string - Random filename in format: image-title-sample-XXXXXXXX.avif
+ * @param userId - User's Supabase ID (optional, for path prefixing)
+ * @returns string - Random filename in format: {userId}-title-sample-XXXXXXXX.avif
  */
-export function generateImageFilename(title: string): string {
+export function generateImageFilename(title: string, userId?: string): string {
   // Slugify title: lowercase, replace spaces/special chars with dashes, limit length
   const slugTitle =
     title
@@ -39,7 +40,10 @@ export function generateImageFilename(title: string): string {
     () => "0123456789abcdefghijklmnopqrstuvwxyz"[Math.floor(Math.random() * 36)]
   ).join("");
 
-  return `image-${slugTitle}-${randomId}.avif`;
+  // Include user ID prefix if provided (take first 8 chars for brevity)
+  const userPrefix = userId ? userId.substring(0, 8) : "admin";
+
+  return `${userPrefix}-${slugTitle}-${randomId}.avif`;
 }
 
 /**
@@ -67,7 +71,7 @@ export function validateImageFile(file: File): {
   isValid: boolean;
   error?: string;
 } {
-  const maxSize = 10 * 1024 * 1024; // 10MB limit
+  const maxSize = 2 * 1024 * 1024; // 2MB limit
   const allowedTypes = [
     "image/jpeg",
     "image/jpg",
@@ -87,7 +91,7 @@ export function validateImageFile(file: File): {
   if (file.size > maxSize) {
     return {
       isValid: false,
-      error: "File size too large. Maximum size is 10MB.",
+      error: "File size too large. Maximum size is 2MB.",
     };
   }
 
@@ -156,11 +160,13 @@ export async function generatePresignedUploadUrl(
  * Complete image processing and upload pipeline
  * @param file - Input image file
  * @param title - Title for filename generation
+ * @param userId - User's Supabase ID for path organization (optional)
  * @returns Promise<string> - Public URL of uploaded image
  */
 export async function processAndUploadImage(
   file: File,
-  title: string
+  title: string,
+  userId?: string
 ): Promise<string> {
   // Validate input
   const validation = validateImageFile(file);
@@ -176,8 +182,8 @@ export async function processAndUploadImage(
     // Convert to AVIF format
     const avifBuffer = await convertToAvif(imageBuffer);
 
-    // Generate secure filename
-    const filename = generateImageFilename(title);
+    // Generate secure filename with user ID
+    const filename = generateImageFilename(title, userId);
 
     // Upload to S3
     const imageUrl = await uploadImageToS3(avifBuffer, filename);
@@ -249,11 +255,12 @@ export function extractImageFilename(imageUrl: string): string {
 }
 
 /**
- * Generates a secure random filename with specified format for videos
+ * Generates a secure random filename with specified format for videos and user ID
  * @param title - The title to use in filename (will be slugified)
- * @returns string - Random filename in format: video-title-sample-XXXXXXXX.mp4
+ * @param userId - User's Supabase ID (optional, for path prefixing)
+ * @returns string - Random filename in format: {userId}-title-sample-XXXXXXXX.mp4
  */
-export function generateVideoFilename(title: string): string {
+export function generateVideoFilename(title: string, userId?: string): string {
   // Slugify title: lowercase, replace spaces/special chars with dashes, limit length
   const slugTitle =
     title
@@ -268,7 +275,10 @@ export function generateVideoFilename(title: string): string {
     () => "0123456789abcdefghijklmnopqrstuvwxyz"[Math.floor(Math.random() * 36)]
   ).join("");
 
-  return `video-${slugTitle}-${randomId}.mp4`;
+  // Include user ID prefix if provided (take first 8 chars for brevity)
+  const userPrefix = userId ? userId.substring(0, 8) : "admin";
+
+  return `${userPrefix}-${slugTitle}-${randomId}.mp4`;
 }
 
 /**
@@ -280,7 +290,7 @@ export function validateVideoFile(file: File): {
   isValid: boolean;
   error?: string;
 } {
-  const maxSize = 100 * 1024 * 1024; // 100MB limit for videos
+  const maxSize = 10 * 1024 * 1024; // 10MB limit for videos
   const allowedTypes = [
     "video/mp4",
     "video/webm",
@@ -299,7 +309,7 @@ export function validateVideoFile(file: File): {
   if (file.size > maxSize) {
     return {
       isValid: false,
-      error: "File size too large. Maximum size is 100MB.",
+      error: "File size too large. Maximum size is 10MB.",
     };
   }
 
@@ -345,11 +355,13 @@ export async function uploadVideoToS3(
  * Complete video processing and upload pipeline
  * @param file - Input video file
  * @param title - Title for filename generation
+ * @param userId - User's Supabase ID for path organization (optional)
  * @returns Promise<string> - Public URL of uploaded video
  */
 export async function processAndUploadVideo(
   file: File,
-  title: string
+  title: string,
+  userId?: string
 ): Promise<string> {
   // Validate input
   const validation = validateVideoFile(file);
@@ -362,8 +374,8 @@ export async function processAndUploadVideo(
     const arrayBuffer = await file.arrayBuffer();
     const videoBuffer = Buffer.from(arrayBuffer);
 
-    // Generate secure filename
-    const filename = generateVideoFilename(title);
+    // Generate secure filename with user ID
+    const filename = generateVideoFilename(title, userId);
 
     // Upload to S3
     const videoUrl = await uploadVideoToS3(videoBuffer, filename);

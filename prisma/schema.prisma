@@ -62,6 +62,7 @@ model Post {
   featuredVideo String?
   isPremium     Boolean    @default(false)
   isPublished   Boolean    @default(false)
+  status        PostStatus @default(DRAFT)
   viewCount     Int        @default(0)
   authorId      String
   categoryId    String
@@ -126,4 +127,11 @@ enum UserRole {
 enum OAuthProvider {
   GOOGLE
   EMAIL
+}
+
+enum PostStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
 }

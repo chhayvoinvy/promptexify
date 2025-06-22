@@ -12,7 +12,6 @@ import {
   IconCategory,
   IconBookmark,
   IconHeart,
-  // IconUser,
 } from "@tabler/icons-react";
 import Link from "next/link";
 
@@ -71,11 +70,6 @@ const navigationData = {
   ],
 
   navSecondary: [
-    // {
-    //   title: "Account",
-    //   url: "/dashboard/account",
-    //   icon: IconUser,
-    // },
     {
       title: "Settings",
       url: "/dashboard/settings",
@@ -94,38 +88,25 @@ const navigationData = {
       icon: IconSearch,
     },
   ],
-  // pages: [
-  //   {
-  //     name: "About us",
-  //     url: "/dashboard/about",
-  //     icon: IconDatabase,
-  //   },
-  //   {
-  //     name: "Contact us",
-  //     url: "/dashboard/contact",
-  //     icon: IconReport,
-  //   },
-  //   {
-  //     name: "Privacy Policy",
-  //     url: "/privacy",
-  //     icon: IconFileWord,
-  //   },
-  // ],
+
   contentManagement: [
     {
       title: "Posts",
       url: "/dashboard/posts",
       icon: IconEdit,
+      allowUser: true, // Allow both USER and ADMIN roles
     },
     {
       title: "Categories",
       url: "/dashboard/categories",
       icon: IconCategory,
+      adminOnly: true, // Admin only
     },
     {
       title: "Tags",
       url: "/dashboard/tags",
       icon: IconTags,
+      adminOnly: true, // Admin only
     },
   ],
 };
@@ -136,6 +117,7 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 
 export function AppSidebar({ user, ...props }: AppSidebarProps) {
   const isAdmin = user.userData?.role === "ADMIN";
+  const isUser = user.userData?.role === "USER";
 
   const filteredNavMain = navigationData.navMain.filter(
     (item) => !item.adminOnly || isAdmin
@@ -144,6 +126,24 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
   const filteredNavSecondary = navigationData.navSecondary.filter(
     (item) => !item.adminOnly || isAdmin
   );
+
+  // Filter content management items based on user role
+  const filteredContentManagement = navigationData.contentManagement
+    .filter((item) => {
+      if (item.adminOnly) return isAdmin;
+      if (item.allowUser) return isAdmin || isUser;
+      return isAdmin; // Default to admin only
+    })
+    .map((item) => {
+      // Change "Posts" to "Submit" for users
+      if (item.title === "Posts" && isUser) {
+        return {
+          ...item,
+          title: "Submit",
+        };
+      }
+      return item;
+    });
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -164,9 +164,10 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
       <SidebarContent>
         <NavMain items={filteredNavMain} />
 
-        {isAdmin && (
+        {/* Show content management section for both admins and users (filtered by permissions) */}
+        {(isAdmin || isUser) && filteredContentManagement.length > 0 && (
           <NavDocuments
-            items={navigationData.contentManagement.map((item) => ({
+            items={filteredContentManagement.map((item) => ({
               name: item.title,
               url: item.url,
               icon: item.icon,

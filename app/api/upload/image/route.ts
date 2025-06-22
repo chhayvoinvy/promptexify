@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { processAndUploadImage } from "@/lib/s3";
 import { getCurrentUser } from "@/lib/auth";
 
-// Maximum file size: 10MB
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+// Maximum file size: 2MB for images
+const MAX_FILE_SIZE = 2 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,8 +16,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Admin role check for additional security
-    if (user.userData?.role !== "ADMIN") {
+    // Role check - allow both ADMIN and USER
+    if (user.userData?.role !== "ADMIN" && user.userData?.role !== "USER") {
       return NextResponse.json(
         { error: "Insufficient permissions" },
         { status: 403 }
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     // File size validation
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { error: "File size too large. Maximum size is 10MB" },
+        { error: "File size too large. Maximum size is 2MB" },
         { status: 400 }
       );
     }
@@ -79,8 +79,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Process and upload image
-    const imageUrl = await processAndUploadImage(file, sanitizedTitle);
+    // Process and upload image with user ID for path organization
+    const imageUrl = await processAndUploadImage(file, sanitizedTitle, user.id);
 
     return NextResponse.json({
       success: true,

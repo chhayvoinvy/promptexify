@@ -49,14 +49,14 @@ export default function NewPostPage() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Redirect if not authenticated or not admin
+  // Redirect if not authenticated or not authorized
   useEffect(() => {
     if (!loading) {
       if (!user) {
         router.push("/signin");
         return;
       }
-      if (user.userData?.role !== "ADMIN") {
+      if (user.userData?.role !== "ADMIN" && user.userData?.role !== "USER") {
         router.push("/dashboard");
         return;
       }
@@ -69,20 +69,44 @@ export default function NewPostPage() {
       try {
         // Fetch categories
         const categoriesRes = await fetch("/api/categories");
-        const categoriesData = await categoriesRes.json();
+        if (categoriesRes.ok) {
+          const categoriesData = await categoriesRes.json();
+          // Ensure categoriesData is an array
+          if (Array.isArray(categoriesData)) {
+            setCategories(categoriesData);
+          } else {
+            console.error("Categories data is not an array:", categoriesData);
+            setCategories([]);
+          }
+        } else {
+          console.error("Failed to fetch categories:", categoriesRes.status);
+          setCategories([]);
+        }
 
         // Fetch tags
         const tagsRes = await fetch("/api/tags");
-        const tagsData = await tagsRes.json();
-
-        setCategories(categoriesData);
-        setTags(tagsData);
+        if (tagsRes.ok) {
+          const tagsData = await tagsRes.json();
+          // Ensure tagsData is an array
+          if (Array.isArray(tagsData)) {
+            setTags(tagsData);
+          } else {
+            console.error("Tags data is not an array:", tagsData);
+            setTags([]);
+          }
+        } else {
+          console.error("Failed to fetch tags:", tagsRes.status);
+          setTags([]);
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
+        // Ensure states remain as arrays even on error
+        setCategories([]);
+        setTags([]);
       }
     }
 
-    if (user?.userData?.role === "ADMIN") {
+    if (user?.userData?.role === "ADMIN" || user?.userData?.role === "USER") {
       fetchData();
     }
   }, [user]);
@@ -159,8 +183,8 @@ export default function NewPostPage() {
     );
   }
 
-  // Show unauthorized if not admin
-  if (user.userData?.role !== "ADMIN") {
+  // Show unauthorized if not admin or user
+  if (user.userData?.role !== "ADMIN" && user.userData?.role !== "USER") {
     return (
       <div className="flex items-center justify-center min-h-screen">
         Unauthorized
@@ -188,12 +212,16 @@ export default function NewPostPage() {
             <Link href="/dashboard/posts">
               <Button variant="outline" size="sm">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Posts
+                {user.userData?.role === "ADMIN"
+                  ? "Back to Posts"
+                  : "Back to Submissions"}
               </Button>
             </Link>
             <div>
               <p className="text-muted-foreground">
-                Add a new prompt to your directory.
+                {user.userData?.role === "ADMIN"
+                  ? "Add a new prompt to your directory."
+                  : "Submit a new prompt for review."}
               </p>
             </div>
           </div>
@@ -315,31 +343,65 @@ export default function NewPostPage() {
                 <CardTitle>Publishing Options</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="isPublished">Published</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Make this post visible to users
-                    </p>
-                  </div>
-                  <Switch id="isPublished" name="isPublished" />
-                </div>
+                {user.userData?.role === "ADMIN" ? (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="isPublished">Published</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Make this post visible to users
+                        </p>
+                      </div>
+                      <Switch id="isPublished" name="isPublished" />
+                    </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="isPremium">Premium</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Require premium subscription to access
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="isPremium">Premium</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Require premium subscription to access
+                        </p>
+                      </div>
+                      <Switch id="isPremium" name="isPremium" />
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <div className="flex items-start space-x-3">
+                        <div className="text-blue-600 dark:text-blue-400">
+                          ℹ️
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-blue-900 dark:text-blue-100">
+                            Approval Required
+                          </h4>
+                          <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                            Your post will be submitted for admin approval
+                            before being published. You&apos;ll be able to track
+                            its status in your posts dashboard.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between opacity-50">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="isPremium">Premium</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Only admins can set premium status
+                        </p>
+                      </div>
+                      <Switch id="isPremium" name="isPremium" disabled />
+                    </div>
                   </div>
-                  <Switch id="isPremium" name="isPremium" />
-                </div>
+                )}
               </CardContent>
             </Card>
 
             <div className="flex gap-4">
               <Button type="submit" className="flex-1" disabled={isSubmitting}>
-                {isSubmitting ? "Creating..." : "Create Post"}
+                {isSubmitting ? "Submitting..." : "Submit Prompt"}
               </Button>
               <Button type="button" variant="outline" asChild>
                 <Link href="/dashboard/posts">Cancel</Link>

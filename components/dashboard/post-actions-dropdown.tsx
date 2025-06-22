@@ -28,23 +28,44 @@ import {
   EyeOff,
   Loader2,
 } from "lucide-react";
-import { togglePostPublishAction, deletePostAction } from "@/actions/posts";
+import {
+  togglePostPublishAction,
+  deletePostAction,
+  approvePostAction,
+  rejectPostAction,
+} from "@/actions/posts";
 
 interface Post {
   id: string;
   title: string;
   isPublished: boolean;
+  status?: string;
+  authorId?: string;
 }
 
 interface PostActionsDropdownProps {
   post: Post;
+  currentUserId?: string;
+  currentUserRole?: string;
 }
 
-export function PostActionsDropdown({ post }: PostActionsDropdownProps) {
+export function PostActionsDropdown({
+  post,
+  currentUserId,
+  currentUserRole,
+}: PostActionsDropdownProps) {
   const [isPending, startTransition] = useTransition();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
+
+  const isAdmin = currentUserRole === "ADMIN";
+  const isOwner = currentUserId === post.authorId;
+  const canEdit = isAdmin || (isOwner && !post.isPublished);
+  const canDelete = isAdmin || (isOwner && !post.isPublished);
+  const isPendingApproval = post.status === "PENDING_APPROVAL";
 
   const handleTogglePublish = async () => {
     if (isPending) return;
@@ -91,6 +112,48 @@ export function PostActionsDropdown({ post }: PostActionsDropdownProps) {
     });
   };
 
+  const handleApprove = async () => {
+    if (isPending) return;
+
+    setIsApproving(true);
+    startTransition(async () => {
+      try {
+        const result = await approvePostAction(post.id);
+        if (result.success) {
+          toast.success(result.message);
+        }
+      } catch (error) {
+        console.error("Error approving post:", error);
+        toast.error(
+          error instanceof Error ? error.message : "Failed to approve post"
+        );
+      } finally {
+        setIsApproving(false);
+      }
+    });
+  };
+
+  const handleReject = async () => {
+    if (isPending) return;
+
+    setIsRejecting(true);
+    startTransition(async () => {
+      try {
+        const result = await rejectPostAction(post.id);
+        if (result.success) {
+          toast.success(result.message);
+        }
+      } catch (error) {
+        console.error("Error rejecting post:", error);
+        toast.error(
+          error instanceof Error ? error.message : "Failed to reject post"
+        );
+      } finally {
+        setIsRejecting(false);
+      }
+    });
+  };
+
   return (
     <>
       <DropdownMenu>
@@ -107,37 +170,80 @@ export function PostActionsDropdown({ post }: PostActionsDropdownProps) {
               View
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href={`/dashboard/posts/edit/${post.id}`}>
-              <Edit className="mr-2 h-4 w-4" />
-              Edit
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={handleTogglePublish}
-            disabled={isPending || isToggling}
-          >
-            {isToggling ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : post.isPublished ? (
-              <EyeOff className="mr-2 h-4 w-4" />
-            ) : (
-              <Eye className="mr-2 h-4 w-4" />
-            )}
-            {isToggling
-              ? "Processing..."
-              : post.isPublished
-              ? "Unpublish"
-              : "Publish"}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="text-destructive focus:text-destructive"
-            onClick={() => setShowDeleteDialog(true)}
-            disabled={isPending}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
-          </DropdownMenuItem>
+
+          {canEdit && (
+            <DropdownMenuItem asChild>
+              <Link href={`/dashboard/posts/edit/${post.id}`}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit
+              </Link>
+            </DropdownMenuItem>
+          )}
+
+          {/* Admin-only actions */}
+          {isAdmin && (
+            <>
+              {isPendingApproval && (
+                <>
+                  <DropdownMenuItem
+                    onClick={handleApprove}
+                    disabled={isPending || isApproving}
+                    className="text-green-600 focus:text-green-600"
+                  >
+                    {isApproving ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Eye className="mr-2 h-4 w-4" />
+                    )}
+                    {isApproving ? "Approving..." : "Approve"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={handleReject}
+                    disabled={isPending || isRejecting}
+                    className="text-orange-600 focus:text-orange-600"
+                  >
+                    {isRejecting ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <EyeOff className="mr-2 h-4 w-4" />
+                    )}
+                    {isRejecting ? "Rejecting..." : "Reject"}
+                  </DropdownMenuItem>
+                </>
+              )}
+
+              {!isPendingApproval && (
+                <DropdownMenuItem
+                  onClick={handleTogglePublish}
+                  disabled={isPending || isToggling}
+                >
+                  {isToggling ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : post.isPublished ? (
+                    <EyeOff className="mr-2 h-4 w-4" />
+                  ) : (
+                    <Eye className="mr-2 h-4 w-4" />
+                  )}
+                  {isToggling
+                    ? "Processing..."
+                    : post.isPublished
+                    ? "Unpublish"
+                    : "Publish"}
+                </DropdownMenuItem>
+              )}
+            </>
+          )}
+
+          {canDelete && (
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => setShowDeleteDialog(true)}
+              disabled={isPending}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
