@@ -10,15 +10,22 @@ datasource db {
 }
 
 model User {
-  id        String        @id @default(uuid())
-  email     String        @unique
-  name      String?
-  avatar    String?
-  type      UserType      @default(FREE)
-  role      UserRole      @default(USER)
-  oauth     OAuthProvider
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id     String        @id @default(uuid())
+  email  String        @unique
+  name   String?
+  avatar String?
+  type   UserType      @default(FREE)
+  role   UserRole      @default(USER)
+  oauth  OAuthProvider
+
+  // Stripe fields
+  stripeCustomerId       String?   @unique @map("stripe_customer_id")
+  stripeSubscriptionId   String?   @unique @map("stripe_subscription_id")
+  stripePriceId          String?   @map("stripe_price_id")
+  stripeCurrentPeriodEnd DateTime? @map("stripe_current_period_end")
+
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
   bookmarks Bookmark[]
   favorites Favorite[]
   posts     Post[]
