@@ -246,16 +246,34 @@ async function PostsManagementContent({
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Premium</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {allPosts.filter((p) => p.isPremium).length}
-              </div>
-            </CardContent>
-          </Card>
+          {isAdmin ? (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Pending Review
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-yellow-600">
+                  {
+                    allPosts.filter((p) => p.status === "PENDING_APPROVAL")
+                      .length
+                  }
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Premium</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {allPosts.filter((p) => p.isPremium).length}
+                </div>
+              </CardContent>
+            </Card>
+          )}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Views</CardTitle>
@@ -320,25 +338,31 @@ async function PostsManagementContent({
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-row gap-1">
-                        {post.isPublished &&
-                        post.status !== "PENDING_APPROVAL" ? (
-                          <Badge variant="outline" className="text-xs">
-                            <IconCircleCheckFilled className="fill-green-500 dark:fill-green-400" />
-                            Published
-                          </Badge>
-                        ) : (
+                        {post.status === "APPROVED" ||
+                        (post.isPublished &&
+                          post.status !== "PENDING_APPROVAL") ? (
                           <Badge
                             variant="outline"
-                            className="text-xs text-yellow-600"
+                            className="text-xs border-green-500 text-green-700 dark:text-green-400"
                           >
-                            <IconLoader className="fill-yellow-500 dark:fill-yellow-400" />
-                            Pending Approval
+                            <IconCircleCheckFilled className="mr-1 h-3 w-3 fill-green-500 dark:fill-green-400" />
+                            Published
                           </Badge>
-                        )}
-
-                        {post.status === "REJECTED" && (
+                        ) : post.status === "PENDING_APPROVAL" ? (
+                          <Badge
+                            variant="outline"
+                            className="text-xs border-yellow-500 text-yellow-700 dark:text-yellow-400"
+                          >
+                            <IconLoader className="mr-1 h-3 w-3 fill-yellow-500 dark:fill-yellow-400" />
+                            Pending Review
+                          </Badge>
+                        ) : post.status === "REJECTED" ? (
                           <Badge variant="destructive" className="text-xs">
                             Rejected
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs">
+                            Draft
                           </Badge>
                         )}
                       </div>
@@ -348,7 +372,7 @@ async function PostsManagementContent({
                         variant={post.isPremium ? "default" : "outline"}
                         className={
                           post.isPremium
-                            ? "bg-gradient-to-r from-purple-500 to-pink-500"
+                            ? "bg-gradient-to-r from-purple-500 to-pink-500 text-xs"
                             : ""
                         }
                       >

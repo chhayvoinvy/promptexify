@@ -38,9 +38,12 @@ interface PostWithBookmarksAndFavorites {
   description: string | null;
   content: string;
   featuredImage: string | null;
+  featuredVideo: string | null;
   isPremium: boolean;
   isPublished: boolean;
+  status: string;
   viewCount: number;
+  authorId: string;
   createdAt: Date;
   updatedAt: Date;
   bookmarks: Array<{ id: string }>;

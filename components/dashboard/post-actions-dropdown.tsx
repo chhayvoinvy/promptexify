@@ -63,8 +63,10 @@ export function PostActionsDropdown({
 
   const isAdmin = currentUserRole === "ADMIN";
   const isOwner = currentUserId === post.authorId;
-  const canEdit = isAdmin || (isOwner && !post.isPublished);
-  const canDelete = isAdmin || (isOwner && !post.isPublished);
+  // Users can edit/delete their own posts only if they haven't been approved yet
+  // Admins can edit/delete any post regardless of status
+  const canEdit = isAdmin || (isOwner && post.status !== "APPROVED");
+  const canDelete = isAdmin || (isOwner && post.status !== "APPROVED");
   const isPendingApproval = post.status === "PENDING_APPROVAL";
 
   const handleTogglePublish = async () => {

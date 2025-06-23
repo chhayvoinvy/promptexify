@@ -21,8 +21,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Admin role check for edit access
-    if (user.userData?.role !== "ADMIN") {
+    // Role-based access control
+    if (user.userData?.role !== "ADMIN" && user.userData?.role !== "USER") {
       return NextResponse.json(
         { error: "Insufficient permissions" },
         { status: 403 }
@@ -34,6 +34,27 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     if (!post) {
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    }
+
+    // Authorization check: Users can only edit their own posts that haven't been approved
+    // Admins can edit any post regardless of status
+    if (user.userData?.role === "USER") {
+      if (post.authorId !== user.userData.id) {
+        return NextResponse.json(
+          { error: "You can only edit your own posts" },
+          { status: 403 }
+        );
+      }
+      // Prevent editing approved posts
+      if (post.status === "APPROVED") {
+        return NextResponse.json(
+          {
+            error:
+              "Cannot edit approved posts. Once your content has been approved by an admin, it cannot be modified.",
+          },
+          { status: 403 }
+        );
+      }
     }
 
     return NextResponse.json(post);

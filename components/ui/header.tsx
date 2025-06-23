@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { Navbar } from "@/components/ui/navbar";
 import { UserProfileDropdown } from "@/components/user-profile-dropdown";
@@ -67,7 +67,9 @@ export function Header() {
         </div>
         <div className="flex items-center space-x-2">
           <nav className="flex items-center space-x-4">
-            <Navbar />
+            <Suspense fallback={<div className="w-96 h-10" />}>
+              <Navbar />
+            </Suspense>
           </nav>
         </div>
         <div className="flex items-center space-x-4">

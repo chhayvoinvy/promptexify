@@ -101,12 +101,12 @@ export default async function HomePage({ searchParams }: SearchProps) {
         <div className="container mx-auto px-4 py-12 md:py-24">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-              AI Prompt Directory
+              Prompt Directory
             </h1>
             <p className="text-xl text-muted-foreground mb-8">
-              Discover amazing AI prompts for image generation, video creation,
-              and more. Browse our curated collection of premium and free
-              prompts.
+              Discover amazing prompts and rulesets for AI code editor, image
+              generation, video creation, and more. Browse our curated
+              collection of free ready to use prompts.
             </p>
 
             {/* Search Bar */}

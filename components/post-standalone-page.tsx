@@ -21,6 +21,7 @@ import {
   Pause,
   Eye,
   FileText,
+  Clock,
 } from "lucide-react";
 
 import { PostWithInteractions } from "@/lib/content";
@@ -423,12 +424,15 @@ export function PostStandalonePage({
                 {/* Metadata */}
                 <div className="pt-4 border-t">
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
                       {post.author && <span>By {post.author.name}</span>}
-                      <span>{post._count?.views || 0} views</span>
+                      <span className="text-muted-foreground/20">|</span>
+                      <Clock className="h-4 w-4" />
+                      {new Date(post.createdAt).toLocaleDateString()}
                     </div>
+
                     <div className="text-xs">
-                      Created {new Date(post.createdAt).toLocaleDateString()}
+                      <span>{post._count?.views || 0} views</span>
                     </div>
                   </div>
                 </div>

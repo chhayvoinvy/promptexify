@@ -48,6 +48,7 @@ function PostContentModal({
 }) {
   const [isCopied, setIsCopied] = useState(false);
   const [isLinkCopied, setIsLinkCopied] = useState(false);
+  const [showAllTags, setShowAllTags] = useState(false);
   const viewTracked = useRef(false);
 
   const copyToClipboard = async () => {
@@ -175,14 +176,36 @@ function PostContentModal({
   return (
     <Dialog open={true} onOpenChange={handleClose}>
       <DialogContent className="fixed z-50 left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] w-[95vw] max-w-4xl h-[70vh] max-h-[800px] flex flex-col p-0 gap-0 sm:w-[90vw] md:w-[90vw] lg:w-[80vw]">
-        <DialogHeader className="px-6 pt-4">
-          <DialogTitle className="text-sm font-bold text-left text-zinc-700 dark:text-zinc-300">
+        <DialogHeader className="px-4 pt-4">
+          <DialogTitle className="text-sm line-clamp-2 font-bold text-left text-zinc-700 dark:text-zinc-300 mb-2 pr-15">
             {post.title}
           </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
-            View and copy this {post.category.name.toLowerCase()} prompt. You
-            can also bookmark or favorite it for later use.
-          </DialogDescription>
+          {/* Tags Row - Expandable tags */}
+          {post.tags.length > 0 && (
+            <div className="flex items-top justify-between gap-2">
+              {/* Tags */}
+              <div className="flex items-center gap-1 flex-wrap">
+                {(showAllTags ? post.tags : post.tags.slice(0, 2)).map(
+                  (tag) => (
+                    <Badge key={tag.id} variant="outline" className="text-xs">
+                      {tag.name}
+                    </Badge>
+                  )
+                )}
+                {post.tags.length > 2 && (
+                  <Badge
+                    variant="outline"
+                    className="text-xs text-muted-foreground cursor-pointer hover:bg-muted transition-colors"
+                    onClick={() => setShowAllTags(!showAllTags)}
+                  >
+                    {showAllTags
+                      ? "Show less"
+                      : `+${post.tags.length - 2} more`}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          )}
         </DialogHeader>
 
         <div className="flex flex-col flex-1 min-h-0 p-4 gap-4">
@@ -235,43 +258,31 @@ function PostContentModal({
             </div>
           </div>
 
-          {/* Tags Row - Show up to 5 tags */}
-          {post.tags.length > 0 && (
-            <div className="flex items-top justify-between gap-2">
-              {/* Tags */}
-              <div className="flex items-center gap-1 flex-wrap">
-                {post.tags.slice(0, 3).map((tag) => (
-                  <Badge key={tag.id} variant="outline" className="text-xs">
-                    {tag.name}
-                  </Badge>
-                ))}
-                {post.tags.length > 3 && (
-                  <Badge
-                    variant="outline"
-                    className="text-xs text-muted-foreground"
-                  >
-                    +{post.tags.length - 3} more
-                  </Badge>
-                )}
-              </div>
-              {/* Share Buttons */}
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={copyPostLink}>
-                  {isLinkCopied ? (
-                    <>
-                      <Check className="h-3 w-3" />
-                      Copied
-                    </>
-                  ) : (
-                    <>
-                      <Share className="h-3 w-3" />
-                      Share
-                    </>
-                  )}
-                </Button>
-              </div>
+          <div className="flex items-top justify-between gap-2">
+            {/* Tags */}
+            <div className="flex items-center gap-1 flex-wrap">
+              <DialogDescription className="text-xs text-muted-foreground pr-10">
+                View and copy this {post.category.name.toLowerCase()} prompt.
+                You can also bookmark it for later use.
+              </DialogDescription>
             </div>
-          )}
+            {/* Share Buttons */}
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={copyPostLink}>
+                {isLinkCopied ? (
+                  <>
+                    <Check className="h-3 w-3" />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <Share className="h-3 w-3" />
+                    Share
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

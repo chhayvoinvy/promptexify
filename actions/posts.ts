@@ -172,12 +172,15 @@ export async function updatePostAction(formData: FormData) {
     if (user.role === "ADMIN") {
       // Admin can edit any post
     } else if (user.role === "USER") {
-      // Users can only edit their own unpublished posts
+      // Users can only edit their own posts that haven't been approved yet
       if (existingPost.authorId !== user.id) {
         throw new Error("Unauthorized: You can only edit your own posts");
       }
-      if (existingPost.isPublished) {
-        throw new Error("Cannot edit published posts");
+      // Disable editing once post has been approved by admin
+      if (existingPost.status === "APPROVED") {
+        throw new Error(
+          "Cannot edit approved posts. Once your content has been approved by an admin, it cannot be modified."
+        );
       }
     } else {
       throw new Error("Unauthorized: Invalid user role");
@@ -470,6 +473,7 @@ export async function deletePostAction(postId: string) {
         title: true,
         authorId: true,
         isPublished: true,
+        status: true,
         _count: {
           select: {
             bookmarks: true,
@@ -488,12 +492,15 @@ export async function deletePostAction(postId: string) {
     if (user.role === "ADMIN") {
       // Admin can delete any post
     } else if (user.role === "USER") {
-      // Users can only delete their own unpublished posts
+      // Users can only delete their own posts that haven't been approved yet
       if (existingPost.authorId !== user.id) {
         throw new Error("Unauthorized: You can only delete your own posts");
       }
-      if (existingPost.isPublished) {
-        throw new Error("Cannot delete published posts");
+      // Disable deletion once post has been approved by admin
+      if (existingPost.status === "APPROVED") {
+        throw new Error(
+          "Cannot delete approved posts. Once your content has been approved by an admin, it cannot be deleted."
+        );
       }
     } else {
       throw new Error("Unauthorized: Invalid user role");
