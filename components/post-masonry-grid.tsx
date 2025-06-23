@@ -343,7 +343,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
 
                   {post.isPremium && (
                     <div className="absolute top-2 right-2 flex items-center gap-2 z-20">
-                      <Badge className="text-foreground bg-gradient-to-r from-teal-500 to-sky-500">
+                      <Badge className="text-foreground bg-gradient-to-r from-teal-500 to-sky-300 dark:from-teal-400 dark:to-sky-300">
                         {userType === "PREMIUM" ? (
                           <UnlockIcon className="w-4 h-4" />
                         ) : (

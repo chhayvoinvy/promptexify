@@ -94,7 +94,7 @@ export function PremiumUpgradeModal({
                 <Lock className="h-4 w-4 text-teal-500" />
                 Premium Prompt Preview
               </h3>
-              <Badge className="text-foreground bg-gradient-to-r from-teal-500 to-sky-500">
+              <Badge className="text-foreground bg-gradient-to-r from-teal-500 to-sky-300 dark:from-teal-400 dark:to-sky-300">
                 Premium
               </Badge>
             </div>
@@ -127,7 +127,7 @@ export function PremiumUpgradeModal({
                 <div>
                   <div className="font-medium text-sm">Advanced Features</div>
                   <div className="text-xs text-muted-foreground">
-                    Enhanced tools & functionality
+                    Enhanced tools & prompts
                   </div>
                 </div>
               </div>

@@ -382,14 +382,14 @@ async function PostsManagementContent({
                         variant={post.isPremium ? "default" : "outline"}
                         className={
                           post.isPremium
-                            ? "text-xs bg-gradient-to-r from-teal-500 to-sky-500"
+                            ? "text-xs bg-gradient-to-r from-teal-500 to-sky-200 dark:from-teal-400 dark:to-sky-200"
                             : "text-xs"
                         }
                       >
                         {post.isPremium ? (
                           <>
                             <IconCrown className="mr-0.5 h-3 w-3" />
-                            Prem
+                            Premium
                           </>
                         ) : (
                           "Free"

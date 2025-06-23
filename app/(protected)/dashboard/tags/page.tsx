@@ -1,6 +1,14 @@
+import Link from "next/link";
 import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { Button } from "@/components/ui/button";
+import { getCurrentUser } from "@/lib/auth";
+import { getAllTags } from "@/lib/content";
+import { redirect } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { Plus, MoreHorizontal, Edit, Trash2, Tag } from "lucide-react";
+
 import {
   Card,
   CardContent,
@@ -8,7 +16,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+
 import {
   Table,
   TableBody,
@@ -17,18 +25,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, Edit, Trash2, Tag } from "lucide-react";
-import Link from "next/link";
-import { getCurrentUser } from "@/lib/auth";
-import { getAllTags } from "@/lib/content";
-import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 

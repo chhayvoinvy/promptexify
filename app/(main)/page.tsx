@@ -83,7 +83,7 @@ function FilterButtons({ currentSort }: { currentSort: SortOption }) {
             )}
           >
             <Icon className="h-4 w-4" />
-            <span className="font-medium">{filter.label}</span>
+            <span className="font-medium text-sm">{filter.label}</span>
           </Link>
         );
       })}

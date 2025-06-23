@@ -177,7 +177,7 @@ function PostContentModal({
     <Dialog open={true} onOpenChange={handleClose}>
       <DialogContent className="fixed top-[50%] left-[50%] z-50 w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] h-[80vh] flex flex-col p-0 gap-0 rounded-xl shadow-2xl sm:max-w-lg lg:max-w-2xl md:max-h-[90vh] lg:max-h-[95vh]">
         <DialogHeader className="px-4 pt-4">
-          <DialogTitle className="text-sm line-clamp-2 font-bold text-left text-zinc-700 dark:text-zinc-300 mb-2 pr-15">
+          <DialogTitle className="text-lg line-clamp-1 font-bold text-left text-zinc-700 dark:text-zinc-300 mb-2 pr-15">
             {post.title}
           </DialogTitle>
           {/* Tags Row - Expandable tags */}

@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { UserData } from "@/lib/utils";
+import { IconCrown } from "@tabler/icons-react";
+import { cn } from "@/lib/utils";
 
 interface UserType {
   email?: string;
@@ -29,6 +31,7 @@ export function UserProfileDropdown({ user }: UserProfileDropdownProps) {
   const userData = user.userData;
   const displayName = userData?.name || user.email?.split("@")[0] || "User";
   const displayEmail = userData?.email || user.email || "";
+  const isPremium = userData?.type === "PREMIUM";
   // const avatar = userData?.avatar;
 
   // Get user initials for avatar fallback
@@ -57,8 +60,23 @@ export function UserProfileDropdown({ user }: UserProfileDropdownProps) {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{displayName}</p>
-            <p className="text-xs leading-none text-muted-foreground">
+            <p className="text-sm font-medium leading-none flex items-center">
+              <span
+                className={cn(
+                  "mr-1 line-clamp-1",
+                  isPremium &&
+                    "bg-gradient-to-r from-teal-500 to-sky-200 dark:from-teal-400 dark:to-sky-200 bg-clip-text text-transparent"
+                )}
+              >
+                {displayName}
+              </span>
+              {isPremium && (
+                <div className="flex items-center justify-center bg-teal-500/30 dark:bg-teal-500/20 border border-teal-500 dark:border-teal-500/50 rounded-full p-0.5 ml-1">
+                  <IconCrown className="h-4 w-4 text-teal-500 dark:text-teal-500" />
+                </div>
+              )}
+            </p>
+            <p className="text-xs line-clamp-1 leading-none text-muted-foreground">
               {displayEmail}
             </p>
           </div>
