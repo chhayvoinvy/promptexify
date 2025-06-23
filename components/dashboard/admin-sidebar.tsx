@@ -62,24 +62,24 @@ const navigationData = {
       url: "/dashboard/favorites",
       icon: IconHeart,
     },
-    {
-      title: "Billing",
-      url: "/dashboard/billing",
-      icon: IconCreditCard,
-    },
-    {
-      title: "Analytics",
-      url: "/dashboard/analytics",
-      icon: IconChartBar,
-      adminOnly: true,
-    },
+    // {
+    //   title: "Billing",
+    //   url: "/dashboard/billing",
+    //   icon: IconCreditCard,
+    // },
+    // {
+    //   title: "Analytics",
+    //   url: "/dashboard/analytics",
+    //   icon: IconChartBar,
+    //   adminOnly: true,
+    // },
   ],
 
   navSecondary: [
     {
-      title: "Account",
-      url: "/dashboard/account",
-      icon: IconSettings,
+      title: "Support",
+      url: "/dashboard/support",
+      icon: IconHelp,
     },
     {
       title: "Settings",

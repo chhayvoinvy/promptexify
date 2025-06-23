@@ -177,3 +177,54 @@ export function logSecurityEvent(
   // In production, you would send this to your monitoring/logging service
   // Example: sendToMonitoringService(securityLog);
 }
+
+/**
+ * Safely format timestamp for display, following Stripe best practices
+ * Handles both Unix timestamps (seconds) and JavaScript timestamps (milliseconds)
+ *
+ * @param timestamp - Can be Unix timestamp (seconds) or JS timestamp (milliseconds) or null/undefined
+ * @param locale - Locale for formatting (default: "en-US")
+ * @returns Formatted date string or fallback message
+ */
+export function formatStripeDate(
+  timestamp: number | null | undefined,
+  locale: string = "en-US"
+): string {
+  if (!timestamp) return "N/A";
+
+  try {
+    let date: Date;
+
+    // Detect if timestamp is in seconds (Stripe format) or milliseconds (JS format)
+    // Unix timestamps are typically 10 digits, JS timestamps are 13+ digits
+    if (timestamp < 10000000000) {
+      // Likely Unix timestamp in seconds - convert to milliseconds
+      date = new Date(timestamp * 1000);
+    } else {
+      // Likely already in milliseconds
+      date = new Date(timestamp);
+    }
+
+    // Validate the date is reasonable (between 1970 and 2050)
+    const year = date.getFullYear();
+    if (year < 1970 || year > 2050) {
+      console.error("Invalid date year:", year, "from timestamp:", timestamp);
+      return "Invalid date";
+    }
+
+    // Verify the date is valid
+    if (isNaN(date.getTime())) {
+      console.error("Invalid date from timestamp:", timestamp);
+      return "Invalid date";
+    }
+
+    return date.toLocaleDateString(locale, {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  } catch (error) {
+    console.error("Error formatting date:", error, "Timestamp:", timestamp);
+    return "Invalid date";
+  }
+}

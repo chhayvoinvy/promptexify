@@ -13,6 +13,7 @@ import {
   type SignUpData,
   type MagicLinkData,
 } from "@/lib/schemas";
+import { stripe } from "@/lib/stripe";
 
 const prisma = new PrismaClient();
 
@@ -284,13 +285,86 @@ export async function hasActivePremiumSubscription(
       select: {
         stripePriceId: true,
         stripeCurrentPeriodEnd: true,
+        stripeSubscriptionId: true,
         type: true,
       },
     });
 
     if (!user) return false;
 
-    // Check if user has premium type and valid subscription
+    // Basic check: user must have premium type and valid subscription data
+    const hasBasicPremiumData =
+      user.type === "PREMIUM" &&
+      !!user.stripePriceId &&
+      !!user.stripeCurrentPeriodEnd;
+
+    if (!hasBasicPremiumData) return false;
+
+    // Check if subscription appears expired locally
+    const isExpiredLocally =
+      user.stripeCurrentPeriodEnd &&
+      user.stripeCurrentPeriodEnd.getTime() + 86_400_000 <= Date.now();
+
+    // If expired locally and we have subscription ID, sync with Stripe to be sure
+    if (isExpiredLocally && user.stripeSubscriptionId) {
+      try {
+        const subscription = await stripe.subscriptions.retrieve(
+          user.stripeSubscriptionId
+        );
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const subscriptionData = subscription as any;
+
+        const currentPeriodEnd = new Date(
+          subscriptionData.current_period_end * 1000
+        );
+        const isPaidActive =
+          subscriptionData.status === "active" ||
+          subscriptionData.status === "trialing";
+        const isActuallyExpired = currentPeriodEnd.getTime() < Date.now();
+
+        // If subscription is truly expired, immediately downgrade user
+        if (!isPaidActive || isActuallyExpired) {
+          await prisma.user.update({
+            where: { id: userId },
+            data: {
+              type: "FREE",
+              // Clear data if subscription is completely canceled
+              ...(subscriptionData.status === "canceled" && {
+                stripeSubscriptionId: null,
+                stripePriceId: null,
+                stripeCurrentPeriodEnd: null,
+              }),
+              updatedAt: new Date(),
+            },
+          });
+
+          console.log(
+            `Auto-downgraded expired subscription for user ${userId}`
+          );
+          return false;
+        }
+
+        // If Stripe shows active but local data is wrong, update local data
+        if (isPaidActive && !isActuallyExpired) {
+          await prisma.user.update({
+            where: { id: userId },
+            data: {
+              stripeCurrentPeriodEnd: currentPeriodEnd,
+              type: "PREMIUM",
+              updatedAt: new Date(),
+            },
+          });
+          console.log(`Updated subscription data for user ${userId}`);
+          return true;
+        }
+      } catch (error) {
+        console.error("Error verifying subscription with Stripe:", error);
+        // If we can't verify with Stripe and it appears expired locally, err on safe side
+        return false;
+      }
+    }
+
+    // Check if user has premium type and valid subscription (with grace period)
     return (
       user.type === "PREMIUM" &&
       !!user.stripePriceId &&

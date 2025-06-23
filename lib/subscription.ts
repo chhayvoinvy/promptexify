@@ -174,6 +174,7 @@ export async function syncUserSubscriptionWithStripe(
       user.stripeSubscriptionId
     );
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const subscriptionData = subscription as any;
     const currentPeriodEnd = new Date(
       subscriptionData.current_period_end * 1000
@@ -222,6 +223,216 @@ export async function syncUserSubscriptionWithStripe(
       synced: false,
       message:
         "Failed to sync with Stripe. Please try again or contact support.",
+    };
+  }
+}
+
+/**
+ * Checks for expired subscriptions and downgrades users accordingly
+ * This function should be called periodically (e.g., via cron job)
+ * to catch any missed webhook events
+ */
+export async function checkAndHandleExpiredSubscriptions(): Promise<{
+  processedCount: number;
+  errors: string[];
+}> {
+  const errors: string[] = [];
+  let processedCount = 0;
+
+  try {
+    // Find users who appear to have active subscriptions but may be expired
+    const usersWithSubscriptions = await prisma.user.findMany({
+      where: {
+        type: "PREMIUM",
+        stripeCurrentPeriodEnd: {
+          not: null,
+        },
+      },
+      select: {
+        id: true,
+        stripeSubscriptionId: true,
+        stripeCurrentPeriodEnd: true,
+        stripePriceId: true,
+        email: true,
+      },
+    });
+
+    console.log(
+      `Checking ${usersWithSubscriptions.length} premium users for expired subscriptions`
+    );
+
+    for (const user of usersWithSubscriptions) {
+      try {
+        // Check if subscription has expired based on local data
+        const isExpiredLocally =
+          user.stripeCurrentPeriodEnd &&
+          user.stripeCurrentPeriodEnd.getTime() < Date.now();
+
+        if (isExpiredLocally && user.stripeSubscriptionId) {
+          // Double-check with Stripe to ensure accuracy
+          const subscription = await stripe.subscriptions.retrieve(
+            user.stripeSubscriptionId
+          );
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const subscriptionData = subscription as any;
+          const currentPeriodEnd = new Date(
+            subscriptionData.current_period_end * 1000
+          );
+          const isPaidActive =
+            subscriptionData.status === "active" ||
+            subscriptionData.status === "trialing";
+          const isActuallyExpired = currentPeriodEnd.getTime() < Date.now();
+
+          // If subscription is truly expired or inactive, downgrade user
+          if (!isPaidActive || isActuallyExpired) {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                type: "FREE",
+                stripeSubscriptionId:
+                  subscriptionData.status === "canceled"
+                    ? null
+                    : user.stripeSubscriptionId,
+                stripePriceId:
+                  subscriptionData.status === "canceled"
+                    ? null
+                    : user.stripePriceId,
+                stripeCurrentPeriodEnd:
+                  subscriptionData.status === "canceled"
+                    ? null
+                    : currentPeriodEnd,
+                updatedAt: new Date(),
+              },
+            });
+
+            console.log(
+              `Downgraded expired subscription for user ${user.email}: ${user.stripeSubscriptionId}`
+            );
+            processedCount++;
+          }
+        }
+      } catch (error) {
+        const errorMsg = `Failed to process user ${user.email}: ${error}`;
+        console.error(errorMsg);
+        errors.push(errorMsg);
+      }
+    }
+
+    return { processedCount, errors };
+  } catch (error) {
+    const errorMsg = `Error checking expired subscriptions: ${error}`;
+    console.error(errorMsg);
+    return { processedCount: 0, errors: [errorMsg] };
+  }
+}
+
+/**
+ * Optional: Clean up premium-only data when a user's subscription ends
+ * You may want to call this when downgrading users to FREE
+ */
+export async function cleanupPremiumData(userId: string): Promise<void> {
+  try {
+    // Example: You could implement cleanup logic here
+    // For now, we'll just log since you might want to preserve user data
+
+    // Option 1: Remove premium-only bookmarks/favorites (if you have such distinction)
+    // await prisma.bookmark.deleteMany({
+    //   where: {
+    //     userId,
+    //     post: { isPremium: true }
+    //   }
+    // });
+
+    // Option 2: Just log for now to preserve all user data
+    console.log(
+      `Premium subscription ended for user ${userId} - data preserved`
+    );
+
+    // You could add specific cleanup logic here based on your business rules
+    // For example:
+    // - Remove access to premium posts from recently viewed
+    // - Clear premium-only settings
+    // - Remove premium-only bookmarks (if desired)
+  } catch (error) {
+    console.error(`Error cleaning up premium data for user ${userId}:`, error);
+  }
+}
+
+/**
+ * Diagnose orphaned subscriptions that exist in Stripe but not in our database
+ * This helps identify data sync issues between Stripe and our application
+ */
+export async function diagnoseOrphanedSubscriptions(): Promise<{
+  orphanedSubscriptions: Array<{
+    subscriptionId: string;
+    customerId: string;
+    customerEmail?: string;
+    status: string;
+    created: Date;
+  }>;
+  totalFound: number;
+}> {
+  const orphanedSubscriptions: Array<{
+    subscriptionId: string;
+    customerId: string;
+    customerEmail?: string;
+    status: string;
+    created: Date;
+  }> = [];
+
+  try {
+    // Get all subscription IDs from our database
+    const localSubscriptions = await prisma.user.findMany({
+      where: {
+        stripeSubscriptionId: {
+          not: null,
+        },
+      },
+      select: {
+        stripeSubscriptionId: true,
+      },
+    });
+
+    const localSubscriptionIds = new Set(
+      localSubscriptions
+        .map((u) => u.stripeSubscriptionId)
+        .filter(Boolean) as string[]
+    );
+
+    // Get recent subscriptions from Stripe
+    const stripeSubscriptions = await stripe.subscriptions.list({
+      limit: 100, // Adjust as needed
+      expand: ["data.customer"],
+    });
+
+    for (const subscription of stripeSubscriptions.data) {
+      if (!localSubscriptionIds.has(subscription.id)) {
+        // This subscription exists in Stripe but not in our database
+        const customer = subscription.customer as any;
+
+        orphanedSubscriptions.push({
+          subscriptionId: subscription.id,
+          customerId: typeof customer === "string" ? customer : customer.id,
+          customerEmail:
+            typeof customer === "object" ? customer.email : undefined,
+          status: subscription.status,
+          created: new Date(subscription.created * 1000),
+        });
+      }
+    }
+
+    console.log(`Found ${orphanedSubscriptions.length} orphaned subscriptions`);
+
+    return {
+      orphanedSubscriptions,
+      totalFound: orphanedSubscriptions.length,
+    };
+  } catch (error) {
+    console.error("Error diagnosing orphaned subscriptions:", error);
+    return {
+      orphanedSubscriptions: [],
+      totalFound: 0,
     };
   }
 }

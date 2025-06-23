@@ -29,6 +29,8 @@ import {
 import { redirect } from "next/navigation";
 import { syncUserSubscriptionWithStripe } from "@/actions/stripe";
 import { getCurrentUser } from "@/lib/auth";
+import { formatStripeDate } from "@/lib/utils";
+import { IconAlertCircle, IconCheckCircle } from "@tabler/icons-react";
 
 // Force dynamic rendering for this page
 export const dynamic = "force-dynamic";
@@ -151,19 +153,8 @@ async function BillingContent() {
     // Re-fetch user data if sync occurred
     const currentUser = syncResult.synced ? await getCurrentUser() : user;
 
-    const formatDate = (timestamp: number | null | undefined) => {
-      if (!timestamp) return "N/A";
-      try {
-        return new Date(timestamp * 1000).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        });
-      } catch (error) {
-        console.error("Error formatting date:", error);
-        return "Invalid date";
-      }
-    };
+    // Use the safe date formatting utility
+    const formatDate = formatStripeDate;
 
     return (
       <div className="space-y-6">
@@ -226,9 +217,6 @@ async function BillingContent() {
                   >
                     {subscriptionPlan.name}
                   </Badge>
-                  {subscriptionPlan.isCanceled && (
-                    <Badge variant="destructive">Canceled</Badge>
-                  )}
                 </div>
               </div>
 
@@ -237,9 +225,12 @@ async function BillingContent() {
                   <div className="flex items-center justify-between">
                     <span className="font-medium">Status</span>
                     <Badge
-                      variant={
-                        subscriptionPlan.isCanceled ? "destructive" : "default"
+                      className={
+                        subscriptionPlan.isCanceled
+                          ? "bg-red-500/50 text-destructive border-red-500 dark:border-red-500 dark:bg-red-500/20 dark:text-red-500"
+                          : "bg-green-500/50 text-green-500-foreground border-green-500 dark:border-green-500 dark:bg-green-500/20 dark:text-green-500"
                       }
+                      variant="outline"
                     >
                       {subscriptionPlan.isCanceled ? "Canceled" : "Active"}
                     </Badge>
