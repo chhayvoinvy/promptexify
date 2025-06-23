@@ -1,25 +1,44 @@
 // Re-export all actions from their respective modules
 
 // Authentication actions
-export * from "./auth";
+export {
+  signInAction,
+  signUpAction,
+  magicLinkAction,
+  oauthAction,
+  signOutAction,
+  handleAuthRedirect,
+} from "./auth";
 
 // Bookmark actions
-export * from "./bookmarks";
+export {
+  toggleBookmarkAction,
+  getUserBookmarksAction,
+  checkBookmarkStatusAction,
+} from "./bookmarks";
 
 // Favorite actions
-export * from "./favorites";
+export {
+  toggleFavoriteAction,
+  getUserFavoritesAction,
+  checkFavoriteStatusAction,
+} from "./favorites";
 
 // Post management actions
-export * from "./posts";
+export {
+  createPostAction,
+  updatePostAction,
+  togglePostPublishAction,
+  deletePostAction,
+  approvePostAction,
+  rejectPostAction,
+} from "./posts";
 
 // Category management actions
-export * from "./categories";
+export { createCategoryAction, updateCategoryAction } from "./categories";
 
 // Tag management actions
-export * from "./tags";
+export { createTagAction, updateTagAction } from "./tags";
 
 // User profile actions
-export * from "./users";
-
-// Stripe actions
-export * from "./stripe";
+export { updateUserProfileAction, getUserProfileAction } from "./users";

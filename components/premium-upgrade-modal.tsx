@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,12 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Lock, Crown, Star, Zap, Loader2 } from "lucide-react";
+import { Lock, Crown, Star, Zap } from "lucide-react";
 import { PostWithInteractions } from "@/lib/content";
-import { createStripeSubscription } from "@/actions/stripe";
-import { subscriptionPlans } from "@/config/subscription-plans";
-import { toast } from "sonner";
 
 interface PremiumUpgradeModalProps {
   post: PostWithInteractions;
@@ -26,38 +22,9 @@ export function PremiumUpgradeModal({
   post,
   onClose,
 }: PremiumUpgradeModalProps) {
-  const [isYearly, setIsYearly] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const currentPlan = isYearly
-    ? subscriptionPlans.yearly
-    : subscriptionPlans.monthly;
-  const yearlyPlan = subscriptionPlans.yearly;
-  const monthlyPlan = subscriptionPlans.monthly;
-
-  // Calculate savings for yearly plan
-  const monthlyTotal = monthlyPlan.price * 12;
-  const yearlySavings = monthlyTotal - yearlyPlan.price;
-  const savingsPercentage = Math.round((yearlySavings / monthlyTotal) * 100);
-
-  const handleUpgrade = async () => {
-    setIsLoading(true);
-
-    try {
-      const result = await createStripeSubscription(currentPlan.stripePriceId);
-
-      if (result.status === "success" && result.stripeUrl) {
-        // Redirect to Stripe checkout
-        window.location.href = result.stripeUrl;
-      } else {
-        toast.error(result.message || "Failed to create subscription");
-      }
-    } catch (error) {
-      toast.error("Something went wrong. Please try again.");
-      console.error("Upgrade error:", error);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleUpgrade = () => {
+    // TODO: Implement upgrade flow (Stripe integration, etc.)
+    console.log("Redirect to upgrade page");
   };
 
   const handleClose = () => {
@@ -187,48 +154,13 @@ export function PremiumUpgradeModal({
             </div>
           </div>
 
-          {/* Pricing Toggle */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-center gap-4">
-              <span
-                className={`text-sm ${
-                  !isYearly ? "font-semibold" : "text-muted-foreground"
-                }`}
-              >
-                Monthly
-              </span>
-              <Switch checked={isYearly} onCheckedChange={setIsYearly} />
-              <span
-                className={`text-sm ${
-                  isYearly ? "font-semibold" : "text-muted-foreground"
-                }`}
-              >
-                Yearly
-              </span>
-              {isYearly && (
-                <Badge
-                  variant="secondary"
-                  className="text-xs bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300"
-                >
-                  Save {savingsPercentage}%
-                </Badge>
-              )}
-            </div>
-          </div>
-
           {/* Pricing */}
-          <div className="bg-gradient-to-r from-teal-50 to-sky-50 dark:from-teal-950/20 dark:to-sky-950/20 rounded-lg p-4 border border-teal-200 dark:border-teal-800">
+          <div className="bg-gradient-to-r from-teal-50 to-sky-50 dark:from-teal-950/20 dark:to-sky-950/20 rounded-lg p-2 border border-teal-200 dark:border-teal-800">
             <div className="text-center">
-              <div className="text-2xl font-bold text-teal-600 dark:text-teal-400">
-                ${currentPlan.price}
-                {isYearly ? "/year" : "/month"}
+              <div className="text-lg font-bold text-teal-600 dark:text-teal-400">
+                $2.99/month
               </div>
-              {isYearly && (
-                <div className="text-xs text-muted-foreground">
-                  Save ${yearlySavings.toFixed(2)} per year
-                </div>
-              )}
-              <div className="text-xs text-muted-foreground mt-1">
+              <div className="text-xs text-muted-foreground">
                 Cancel anytime
               </div>
             </div>
@@ -238,28 +170,13 @@ export function PremiumUpgradeModal({
           <div className="flex gap-2">
             <Button
               onClick={handleUpgrade}
-              disabled={isLoading}
               className="flex-1 bg-gradient-to-r from-teal-500 to-sky-500 hover:from-teal-600 hover:to-sky-600 text-white font-semibold"
               size="lg"
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <Crown className="h-4 w-4 mr-2" />
-                  Upgrade to Premium
-                </>
-              )}
+              <Crown className="h-4 w-4 mr-2" />
+              Upgrade to Premium
             </Button>
-            <Button
-              variant="outline"
-              onClick={handleClose}
-              size="lg"
-              disabled={isLoading}
-            >
+            <Button variant="outline" onClick={handleClose} size="lg">
               Maybe Later
             </Button>
           </div>
