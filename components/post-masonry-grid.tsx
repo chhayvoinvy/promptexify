@@ -316,9 +316,9 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                       />
 
                       {/* Video play/pause button */}
-                      <div className="absolute inset-0 top-4 left-4 pointer-events-none z-10">
+                      <div className="absolute inset-0 top-3 left-3 pointer-events-none z-10">
                         <button
-                          className="bg-white/90 hover:bg-white rounded-full p-2 transition-colors pointer-events-auto"
+                          className="bg-background/90 hover:bg-background rounded-full p-1.5 transition-colors pointer-events-auto"
                           onClick={(e) => {
                             e.stopPropagation();
                             e.preventDefault();
@@ -326,9 +326,9 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                           }}
                         >
                           {playingVideo === post.id ? (
-                            <Pause className="w-6 h-6 text-black" />
+                            <Pause className="w-5 h-5 text-foreground" />
                           ) : (
-                            <Play className="w-6 h-6 text-black" />
+                            <Play className="w-5 h-5 text-foreground" />
                           )}
                         </button>
                       </div>
@@ -342,7 +342,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                   )}
 
                   {post.isPremium && (
-                    <div className="absolute top-2 right-2 flex items-center gap-2 z-20">
+                    <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
                       <Badge className="text-foreground bg-gradient-to-r from-teal-500 to-sky-300 dark:from-teal-400 dark:to-sky-300">
                         {userType === "PREMIUM" ? (
                           <UnlockIcon className="w-4 h-4" />

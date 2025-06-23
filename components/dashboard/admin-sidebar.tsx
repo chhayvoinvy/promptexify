@@ -135,11 +135,11 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
       return isAdmin; // Default to admin only
     })
     .map((item) => {
-      // Change "Posts" to "Submit" for users
+      // Change "Posts" to "Contribute" for users
       if (item.title === "Posts" && isUser) {
         return {
           ...item,
-          title: "Submit",
+          title: "Contribute",
         };
       }
       return item;
