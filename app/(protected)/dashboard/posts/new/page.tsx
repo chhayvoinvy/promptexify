@@ -337,13 +337,15 @@ export default function NewPostPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    name="description"
-                    placeholder="Brief description of the prompt..."
-                    rows={3}
-                  />
+                  {/* Temporarily hide description */}
+                  <div className="hidden">
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea
+                      id="description"
+                      name="description"
+                      placeholder="Brief description of the prompt..."
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">

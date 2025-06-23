@@ -298,8 +298,7 @@ export function TagSelector({
               <kbd className="px-1.5 py-0.5 text-xs bg-blue-100 dark:bg-blue-900 rounded border">
                 Enter
               </kbd>{" "}
-              to add &ldquo;{searchQuery}&rdquo; as a new tag (will be created
-              on submit)
+              to add &ldquo;{searchQuery}&rdquo; as a new tag.
             </p>
           </div>
         )}
