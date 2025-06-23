@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { PrismaClient } from "@/lib/generated/prisma";
+import { searchSchema } from "@/lib/schemas";
+import {
+  rateLimits,
+  getClientIdentifier,
+  getRateLimitHeaders,
+} from "@/lib/rate-limit";
+import { sanitizeSearchQuery, SECURITY_HEADERS } from "@/lib/sanitize";
 
 const prisma = new PrismaClient();
 
@@ -66,45 +73,105 @@ interface PostWithBookmarksAndFavorites {
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get("page") || "1", 10);
-    const limit = parseInt(searchParams.get("limit") || "12", 10);
-    const search = searchParams.get("q") || "";
-    const category = searchParams.get("category") || "";
-    const premium = searchParams.get("premium") || "";
-
-    // Validate parameters
-    const validPage = Math.max(1, page);
-    const validLimit = Math.max(1, Math.min(50, limit)); // Max 50 items per page
-    const skip = (validPage - 1) * validLimit;
-
     // Get current user for bookmark/favorite status
     const currentUser = await getCurrentUser();
     const userId = currentUser?.userData?.id;
+
+    // Rate limiting
+    const clientId = getClientIdentifier(request, userId);
+    const rateLimitResult = rateLimits.search(clientId);
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        {
+          error: "Too many requests. Please try again later.",
+          retryAfter: Math.ceil(
+            (rateLimitResult.resetTime - Date.now()) / 1000
+          ),
+        },
+        {
+          status: 429,
+          headers: {
+            ...SECURITY_HEADERS,
+            ...getRateLimitHeaders(rateLimitResult),
+            "Retry-After": String(
+              Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)
+            ),
+          },
+        }
+      );
+    }
+
+    // Parse and validate search parameters
+    const { searchParams } = new URL(request.url);
+    const rawParams = {
+      page: searchParams.get("page") || "1",
+      limit: searchParams.get("limit") || "12",
+      q: searchParams.get("q") || "",
+      category: searchParams.get("category") || "",
+      premium: searchParams.get("premium") || "",
+    };
+
+    // Validate parameters using schema
+    const validationResult = searchSchema.safeParse(rawParams);
+    if (!validationResult.success) {
+      return NextResponse.json(
+        {
+          error: "Invalid search parameters",
+          details: validationResult.error.errors.map((err) => ({
+            field: err.path.join("."),
+            message: err.message,
+          })),
+        },
+        {
+          status: 400,
+          headers: SECURITY_HEADERS,
+        }
+      );
+    }
+
+    const { page, limit, q: search, category, premium } = validationResult.data;
+
+    // Sanitize search query
+    const sanitizedSearch = search ? sanitizeSearchQuery(search) : "";
+
+    // Calculate pagination with validated values
+    const skip = (page - 1) * limit;
 
     // Build where clause for filtering
     const whereClause: WhereClause = {
       isPublished: true,
     };
 
-    // Search filter
-    if (search) {
+    // Search filter - only if search term provided and not empty after sanitization
+    if (sanitizedSearch && sanitizedSearch.length > 0) {
       whereClause.OR = [
-        { title: { contains: search, mode: "insensitive" } },
-        { description: { contains: search, mode: "insensitive" } },
-        { content: { contains: search, mode: "insensitive" } },
+        { title: { contains: sanitizedSearch, mode: "insensitive" } },
+        { description: { contains: sanitizedSearch, mode: "insensitive" } },
+        { content: { contains: sanitizedSearch, mode: "insensitive" } },
         {
           tags: {
             some: {
-              name: { contains: search, mode: "insensitive" },
+              name: { contains: sanitizedSearch, mode: "insensitive" },
             },
           },
         },
       ];
     }
 
-    // Category filter
+    // Category filter with validation
     if (category && category !== "all") {
+      // Validate category slug format
+      if (!/^[a-z0-9-]+$/.test(category)) {
+        return NextResponse.json(
+          { error: "Invalid category format" },
+          {
+            status: 400,
+            headers: SECURITY_HEADERS,
+          }
+        );
+      }
+
       whereClause.OR = whereClause.OR || [];
       whereClause.OR.push(
         { category: { slug: category } },
@@ -119,6 +186,7 @@ export async function GET(request: NextRequest) {
       } else if (premium === "premium") {
         whereClause.isPremium = true;
       }
+      // "all" or invalid values are ignored
     }
 
     // Get posts and total count in parallel
@@ -183,7 +251,7 @@ export async function GET(request: NextRequest) {
           createdAt: "desc",
         },
         skip,
-        take: validLimit,
+        take: limit,
       }),
       prisma.post.count({
         where: whereClause,
@@ -202,24 +270,88 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    const totalPages = Math.ceil(totalCount / validLimit);
-    const hasNextPage = validPage < totalPages;
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasNextPage = page < totalPages;
 
-    return NextResponse.json({
-      posts: transformedPosts,
-      pagination: {
-        currentPage: validPage,
-        totalPages,
-        totalCount,
-        hasNextPage,
-        hasPreviousPage: validPage > 1,
+    return NextResponse.json(
+      {
+        posts: transformedPosts,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalCount,
+          hasNextPage,
+          hasPreviousPage: page > 1,
+        },
       },
-    });
+      {
+        headers: {
+          ...SECURITY_HEADERS,
+          ...getRateLimitHeaders(rateLimitResult),
+        },
+      }
+    );
   } catch (error) {
     console.error("Error fetching posts:", error);
     return NextResponse.json(
       { error: "Failed to fetch posts" },
-      { status: 500 }
+      {
+        status: 500,
+        headers: SECURITY_HEADERS,
+      }
     );
   }
+}
+
+// Explicitly deny other HTTP methods for security
+export async function POST() {
+  return NextResponse.json(
+    { error: "Method not allowed. Use dashboard to create posts." },
+    {
+      status: 405,
+      headers: {
+        ...SECURITY_HEADERS,
+        Allow: "GET",
+      },
+    }
+  );
+}
+
+export async function PUT() {
+  return NextResponse.json(
+    { error: "Method not allowed" },
+    {
+      status: 405,
+      headers: {
+        ...SECURITY_HEADERS,
+        Allow: "GET",
+      },
+    }
+  );
+}
+
+export async function DELETE() {
+  return NextResponse.json(
+    { error: "Method not allowed" },
+    {
+      status: 405,
+      headers: {
+        ...SECURITY_HEADERS,
+        Allow: "GET",
+      },
+    }
+  );
+}
+
+export async function PATCH() {
+  return NextResponse.json(
+    { error: "Method not allowed" },
+    {
+      status: 405,
+      headers: {
+        ...SECURITY_HEADERS,
+        Allow: "GET",
+      },
+    }
+  );
 }

@@ -2,17 +2,27 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getAllTags } from "@/lib/content";
 import { PrismaClient } from "@/lib/generated/prisma";
+import { createTagSchema } from "@/lib/schemas";
+import {
+  rateLimits,
+  getClientIdentifier,
+  getRateLimitHeaders,
+} from "@/lib/rate-limit";
+import { sanitizeInput, sanitizeSlug, SECURITY_HEADERS } from "@/lib/sanitize";
 
 const prisma = new PrismaClient();
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     // Authentication check
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json(
         { error: "Authentication required" },
-        { status: 401 }
+        {
+          status: 401,
+          headers: SECURITY_HEADERS,
+        }
       );
     }
 
@@ -20,19 +30,55 @@ export async function GET() {
     if (user.userData?.role !== "ADMIN" && user.userData?.role !== "USER") {
       return NextResponse.json(
         { error: "Insufficient permissions" },
-        { status: 403 }
+        {
+          status: 403,
+          headers: SECURITY_HEADERS,
+        }
+      );
+    }
+
+    // Rate limiting
+    const clientId = getClientIdentifier(request, user.userData?.id);
+    const rateLimitResult = rateLimits.api(clientId);
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        {
+          error: "Too many requests. Please try again later.",
+          retryAfter: Math.ceil(
+            (rateLimitResult.resetTime - Date.now()) / 1000
+          ),
+        },
+        {
+          status: 429,
+          headers: {
+            ...SECURITY_HEADERS,
+            ...getRateLimitHeaders(rateLimitResult),
+            "Retry-After": String(
+              Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)
+            ),
+          },
+        }
       );
     }
 
     // Fetch tags
     const tags = await getAllTags();
 
-    return NextResponse.json(tags);
+    return NextResponse.json(tags, {
+      headers: {
+        ...SECURITY_HEADERS,
+        ...getRateLimitHeaders(rateLimitResult),
+      },
+    });
   } catch (error) {
     console.error("Tags API error:", error);
     return NextResponse.json(
       { error: "Failed to fetch tags" },
-      { status: 500 }
+      {
+        status: 500,
+        headers: SECURITY_HEADERS,
+      }
     );
   }
 }
@@ -44,7 +90,10 @@ export async function POST(request: Request) {
     if (!user) {
       return NextResponse.json(
         { error: "Authentication required" },
-        { status: 401 }
+        {
+          status: 401,
+          headers: SECURITY_HEADERS,
+        }
       );
     }
 
@@ -52,66 +101,117 @@ export async function POST(request: Request) {
     if (user.userData?.role !== "ADMIN" && user.userData?.role !== "USER") {
       return NextResponse.json(
         { error: "Insufficient permissions" },
-        { status: 403 }
+        {
+          status: 403,
+          headers: SECURITY_HEADERS,
+        }
       );
     }
 
-    // Parse request body with validation
-    let body;
+    // Rate limiting for tag creation
+    const clientId = getClientIdentifier(request, user.userData?.id);
+    const rateLimitResult = rateLimits.createTag(clientId);
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        {
+          error: "Too many tag creation requests. Please try again later.",
+          retryAfter: Math.ceil(
+            (rateLimitResult.resetTime - Date.now()) / 1000
+          ),
+        },
+        {
+          status: 429,
+          headers: {
+            ...SECURITY_HEADERS,
+            ...getRateLimitHeaders(rateLimitResult),
+            "Retry-After": String(
+              Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)
+            ),
+          },
+        }
+      );
+    }
+
+    // Parse and validate request body
+    let body: unknown;
     try {
       body = await request.json();
     } catch {
       return NextResponse.json(
         { error: "Invalid JSON in request body" },
-        { status: 400 }
+        {
+          status: 400,
+          headers: SECURITY_HEADERS,
+        }
       );
     }
 
-    const { name, slug } = body;
-
-    // Input validation
-    if (!name || typeof name !== "string" || name.trim().length === 0) {
+    // Validate input using Zod schema
+    const validationResult = createTagSchema.safeParse(body);
+    if (!validationResult.success) {
       return NextResponse.json(
-        { error: "Tag name is required and must be a non-empty string" },
-        { status: 400 }
+        {
+          error: "Invalid input data",
+          details: validationResult.error.errors.map((err) => ({
+            field: err.path.join("."),
+            message: err.message,
+          })),
+        },
+        {
+          status: 400,
+          headers: SECURITY_HEADERS,
+        }
       );
     }
 
-    // Validate name length
-    if (name.trim().length > 50) {
+    const { name, slug: providedSlug } = validationResult.data;
+
+    // Sanitize input data
+    const sanitizedName = sanitizeInput(name);
+    if (!sanitizedName || sanitizedName.length === 0) {
       return NextResponse.json(
-        { error: "Tag name must be 50 characters or less" },
-        { status: 400 }
+        { error: "Tag name contains invalid characters or is empty" },
+        {
+          status: 400,
+          headers: SECURITY_HEADERS,
+        }
       );
     }
 
-    // Sanitize name
-    const sanitizedName = name.trim();
+    // Generate or sanitize slug
+    const finalSlug = providedSlug
+      ? sanitizeSlug(providedSlug)
+      : sanitizeSlug(sanitizedName);
 
-    // Generate slug if not provided
-    const finalSlug =
-      slug && typeof slug === "string" && slug.trim().length > 0
-        ? slug
-            .trim()
-            .toLowerCase()
-            .replace(/[^a-z0-9-]/g, "")
-        : sanitizedName
-            .toLowerCase()
-            .replace(/\s+/g, "-")
-            .replace(/[^a-z0-9-]/g, "");
-
-    // Validate slug
-    if (finalSlug.length === 0) {
+    if (!finalSlug || finalSlug.length === 0) {
       return NextResponse.json(
         { error: "Unable to generate a valid slug from the tag name" },
-        { status: 400 }
+        {
+          status: 400,
+          headers: SECURITY_HEADERS,
+        }
+      );
+    }
+
+    // Additional validation for final values
+    if (sanitizedName.length > 50) {
+      return NextResponse.json(
+        { error: "Tag name must be 50 characters or less" },
+        {
+          status: 400,
+          headers: SECURITY_HEADERS,
+        }
       );
     }
 
     if (finalSlug.length > 50) {
       return NextResponse.json(
         { error: "Generated slug is too long" },
-        { status: 400 }
+        {
+          status: 400,
+          headers: SECURITY_HEADERS,
+        }
       );
     }
 
@@ -149,11 +249,14 @@ export async function POST(request: Request) {
             slug: existingTag.slug,
           },
         },
-        { status: 409 }
+        {
+          status: 409,
+          headers: SECURITY_HEADERS,
+        }
       );
     }
 
-    // Create the tag
+    // Create the tag with sanitized data
     const newTag = await prisma.tag.create({
       data: {
         name: sanitizedName,
@@ -161,7 +264,13 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json(newTag, { status: 201 });
+    return NextResponse.json(newTag, {
+      status: 201,
+      headers: {
+        ...SECURITY_HEADERS,
+        ...getRateLimitHeaders(rateLimitResult),
+      },
+    });
   } catch (error) {
     console.error("Tags API POST error:", error);
 
@@ -172,15 +281,61 @@ export async function POST(request: Request) {
       if (dbError.code === "P2002") {
         // Unique constraint violation
         return NextResponse.json(
-          { error: "A tag with this name or slug already exists" },
-          { status: 409 }
+          { error: "A tag with these details already exists" },
+          {
+            status: 409,
+            headers: SECURITY_HEADERS,
+          }
         );
       }
     }
 
     return NextResponse.json(
       { error: "Failed to create tag. Please try again." },
-      { status: 500 }
+      {
+        status: 500,
+        headers: SECURITY_HEADERS,
+      }
     );
   }
+}
+
+// Explicitly deny other HTTP methods
+export async function PUT() {
+  return NextResponse.json(
+    { error: "Method not allowed" },
+    {
+      status: 405,
+      headers: {
+        ...SECURITY_HEADERS,
+        Allow: "GET, POST",
+      },
+    }
+  );
+}
+
+export async function DELETE() {
+  return NextResponse.json(
+    { error: "Method not allowed" },
+    {
+      status: 405,
+      headers: {
+        ...SECURITY_HEADERS,
+        Allow: "GET, POST",
+      },
+    }
+  );
+}
+
+export async function PATCH() {
+  return NextResponse.json(
+    { error: "Method not allowed" },
+    {
+      status: 405,
+      headers: {
+        ...SECURITY_HEADERS,
+        Allow: "GET, POST",
+      },
+    }
+  );
 }

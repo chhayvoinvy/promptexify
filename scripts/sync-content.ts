@@ -1,5 +1,5 @@
 import { PrismaClient } from "../lib/generated/prisma";
-import { allPosts } from "../.contentlayer/generated/index.mjs";
+import { allPosts } from "@/.contentlayer/generated";
 
 const prisma = new PrismaClient();
 

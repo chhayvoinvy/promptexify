@@ -84,7 +84,7 @@ export function Footer() {
             <ul className="space-y-2 text-xs">
               <li>
                 <Link
-                  href="/privacy"
+                  href="/privacy-policy"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Privacy Policy
@@ -92,18 +92,10 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="/terms"
+                  href="/terms-of-use"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Terms of Service
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/cookies"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Cookie Policy
+                  Terms of Use
                 </Link>
               </li>
               <li>
@@ -112,6 +104,14 @@ export function Footer() {
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Contact Us
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/about"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  About Us
                 </Link>
               </li>
             </ul>
