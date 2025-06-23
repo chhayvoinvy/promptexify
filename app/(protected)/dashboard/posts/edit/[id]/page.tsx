@@ -72,6 +72,7 @@ export default function EditPostPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [pendingTags, setPendingTags] = useState<string[]>([]); // New state for pending tags
   const [featuredImageUrl, setFeaturedImageUrl] = useState("");
   const [featuredVideoUrl, setFeaturedVideoUrl] = useState("");
   const [originalImageUrl, setOriginalImageUrl] = useState("");
@@ -179,6 +180,80 @@ export default function EditPostPage() {
     setIsSubmitting(true);
 
     try {
+      // First, create any pending tags
+      const createdTags: Tag[] = [];
+      const failedTags: string[] = [];
+
+      if (pendingTags.length > 0) {
+        // Remove duplicates from pending tags
+        const uniquePendingTags = [...new Set(pendingTags)];
+
+        for (const tagName of uniquePendingTags) {
+          try {
+            const response = await fetch("/api/tags", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                name: tagName,
+                slug: tagName
+                  .toLowerCase()
+                  .replace(/\s+/g, "-")
+                  .replace(/[^a-z0-9-]/g, ""),
+              }),
+            });
+
+            if (response.ok) {
+              const newTag = await response.json();
+              createdTags.push(newTag);
+            } else {
+              const errorData = await response.json().catch(() => ({}));
+
+              // If tag already exists (409 conflict), that's okay - just log it
+              if (response.status === 409) {
+                console.log(
+                  `Tag "${tagName}" already exists, skipping creation`
+                );
+
+                // Try to find the existing tag in our available tags
+                const existingTag = tags.find(
+                  (t) => t.name.toLowerCase() === tagName.toLowerCase()
+                );
+                if (existingTag) {
+                  createdTags.push(existingTag);
+                }
+              } else {
+                console.error(`Failed to create tag "${tagName}":`, errorData);
+                failedTags.push(tagName);
+              }
+            }
+          } catch (error) {
+            console.error(`Error creating tag "${tagName}":`, error);
+            failedTags.push(tagName);
+          }
+        }
+
+        // Update the tags list with newly created tags
+        if (createdTags.length > 0) {
+          setTags((prevTags) => {
+            const existingTagNames = prevTags.map((t) => t.name.toLowerCase());
+            const newTags = createdTags.filter(
+              (tag) => !existingTagNames.includes(tag.name.toLowerCase())
+            );
+            return [...prevTags, ...newTags];
+          });
+        }
+
+        // If there were failed tags, we could show a warning but still continue
+        if (failedTags.length > 0) {
+          console.warn(
+            `Some tags could not be created: ${failedTags.join(", ")}`
+          );
+          // You could add a toast notification here if you have one
+        }
+      }
+
       // Add the featured media URLs to form data
       if (featuredImageUrl) {
         formData.set("featuredImage", featuredImageUrl);
@@ -272,6 +347,11 @@ export default function EditPostPage() {
   // Handle tag changes
   function handleTagsChange(newTags: string[]) {
     setSelectedTags(newTags);
+  }
+
+  // Handle pending tags changes
+  function handlePendingTagsChange(newPendingTags: string[]) {
+    setPendingTags(newPendingTags);
   }
 
   // Handle media upload
@@ -505,6 +585,8 @@ export default function EditPostPage() {
                   availableTags={tags}
                   selectedTags={selectedTags}
                   onTagsChange={handleTagsChange}
+                  onPendingTagsChange={handlePendingTagsChange}
+                  pendingTags={pendingTags}
                   maxTags={15}
                   disabled={isSubmitting}
                 />

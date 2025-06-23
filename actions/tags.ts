@@ -28,27 +28,64 @@ export async function createTagAction(formData: FormData) {
       throw new Error("Tag name is required");
     }
 
+    // Validate name length
+    if (name.trim().length > 50) {
+      throw new Error("Tag name must be 50 characters or less");
+    }
+
+    // Sanitize name
+    const sanitizedName = name.trim();
+
     // Auto-generate slug if not provided
     if (!slug) {
-      slug = name
+      slug = sanitizedName
         .toLowerCase()
         .replace(/\s+/g, "-")
         .replace(/[^a-z0-9-]/g, "");
+    } else {
+      slug = slug
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, "");
     }
 
-    // Check for slug conflicts
-    const existingTag = await prisma.tag.findUnique({
-      where: { slug },
+    // Validate slug
+    if (slug.length === 0) {
+      throw new Error("Unable to generate a valid slug from the tag name");
+    }
+
+    if (slug.length > 50) {
+      throw new Error("Generated slug is too long");
+    }
+
+    // Check for slug conflicts (case-insensitive for name, exact for slug)
+    const existingTag = await prisma.tag.findFirst({
+      where: {
+        OR: [
+          { name: { equals: sanitizedName, mode: "insensitive" } },
+          { slug: slug },
+        ],
+      },
     });
 
     if (existingTag) {
-      throw new Error("A tag with this slug already exists");
+      const isNameMatch =
+        existingTag.name.toLowerCase() === sanitizedName.toLowerCase();
+      const isSlugMatch = existingTag.slug === slug;
+
+      if (isNameMatch && isSlugMatch) {
+        throw new Error("A tag with this name and slug already exists");
+      } else if (isNameMatch) {
+        throw new Error("A tag with this name already exists");
+      } else {
+        throw new Error("A tag with this slug already exists");
+      }
     }
 
     // Create the tag
     await prisma.tag.create({
       data: {
-        name,
+        name: sanitizedName,
         slug,
       },
     });
@@ -68,8 +105,23 @@ export async function createTagAction(formData: FormData) {
       }
     }
 
+    // Handle database-specific errors
+    if (error && typeof error === "object" && "code" in error) {
+      const dbError = error as { code: string; meta?: unknown };
+
+      if (dbError.code === "P2002") {
+        // Unique constraint violation
+        console.error("Tag creation failed - duplicate constraint:", error);
+        throw new Error("A tag with this name or slug already exists");
+      }
+    }
+
     console.error("Error creating tag:", error);
-    throw new Error("Failed to create tag");
+
+    // Throw a user-friendly error message
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to create tag";
+    throw new Error(errorMessage);
   }
 }
 
