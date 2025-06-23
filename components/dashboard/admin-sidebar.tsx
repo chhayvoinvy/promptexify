@@ -12,6 +12,7 @@ import {
   IconCategory,
   IconBookmark,
   IconHeart,
+  IconCreditCard,
 } from "@tabler/icons-react";
 import Link from "next/link";
 
@@ -62,6 +63,11 @@ const navigationData = {
       icon: IconHeart,
     },
     {
+      title: "Billing",
+      url: "/dashboard/billing",
+      icon: IconCreditCard,
+    },
+    {
       title: "Analytics",
       url: "/dashboard/analytics",
       icon: IconChartBar,
@@ -70,6 +76,11 @@ const navigationData = {
   ],
 
   navSecondary: [
+    {
+      title: "Account",
+      url: "/dashboard/account",
+      icon: IconSettings,
+    },
     {
       title: "Settings",
       url: "/dashboard/settings",

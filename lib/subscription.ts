@@ -68,12 +68,17 @@ export async function getUserSubscriptionPlan(
   } else {
     // Free plan
     plan = {
-      name: "Free",
-      description: "Basic access to public content",
+      name: "Free Plan",
+      description: "Access to free content and basic features",
       stripePriceId: "",
       price: 0,
       interval: "month",
-      features: ["Access to free content", "Basic features"],
+      features: [
+        "Access to free content",
+        "Basic features",
+        "Community support",
+        "Limited storage",
+      ],
     };
   }
 
@@ -90,4 +95,33 @@ export async function getUserSubscriptionPlan(
     interval,
     isCanceled: false, // This would need to be checked separately via Stripe API in server context
   };
+}
+
+// Enhanced function that includes Stripe API call for cancellation status
+export async function getEnhancedUserSubscriptionPlan(
+  userId: string
+): Promise<UserSubscriptionPlan> {
+  const basePlan = await getUserSubscriptionPlan(userId);
+
+  // If user has a paid subscription, check cancellation status from Stripe
+  if (basePlan.isPaid && basePlan.stripeSubscriptionId) {
+    try {
+      // Import stripe here to avoid client-side issues
+      const { stripe } = await import("@/lib/stripe");
+      const subscription = await stripe.subscriptions.retrieve(
+        basePlan.stripeSubscriptionId
+      );
+
+      return {
+        ...basePlan,
+        isCanceled: subscription.cancel_at_period_end || false,
+      };
+    } catch (error) {
+      console.error("Error checking subscription cancellation:", error);
+      // Return base plan if Stripe call fails
+      return basePlan;
+    }
+  }
+
+  return basePlan;
 }
