@@ -47,7 +47,13 @@ import {
   getUserPosts,
 } from "@/lib/content";
 import { redirect } from "next/navigation";
-import { IconCircleCheckFilled, IconLoader } from "@tabler/icons-react";
+import {
+  IconCircleCheckFilled,
+  IconCircleX,
+  IconCrown,
+  IconLoader,
+  IconX,
+} from "@tabler/icons-react";
 
 // Force dynamic rendering for this page
 export const dynamic = "force-dynamic";
@@ -254,7 +260,7 @@ async function PostsManagementContent({
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-yellow-600">
+                <div className="text-2xl font-bold">
                   {
                     allPosts.filter((p) => p.status === "PENDING_APPROVAL")
                       .length
@@ -357,7 +363,11 @@ async function PostsManagementContent({
                             Pending Review
                           </Badge>
                         ) : post.status === "REJECTED" ? (
-                          <Badge variant="destructive" className="text-xs">
+                          <Badge
+                            variant="outline"
+                            className="text-xs border-red-500 text-red-700 dark:text-red-400"
+                          >
+                            <IconX className="mr-1 h-3 w-3" />
                             Rejected
                           </Badge>
                         ) : (
@@ -372,15 +382,24 @@ async function PostsManagementContent({
                         variant={post.isPremium ? "default" : "outline"}
                         className={
                           post.isPremium
-                            ? "bg-gradient-to-r from-purple-500 to-pink-500 text-xs"
-                            : ""
+                            ? "text-xs bg-gradient-to-r from-teal-500 to-sky-500"
+                            : "text-xs"
                         }
                       >
-                        {post.isPremium ? "Premium" : "Free"}
+                        {post.isPremium ? (
+                          <>
+                            <IconCrown className="mr-0.5 h-3 w-3" />
+                            Prem
+                          </>
+                        ) : (
+                          "Free"
+                        )}
                       </Badge>
                     </TableCell>
-                    <TableCell>{post.viewCount}</TableCell>
-                    <TableCell>
+                    <TableCell className="text-center">
+                      {post.viewCount}
+                    </TableCell>
+                    <TableCell className="text-center">
                       {new Date(post.createdAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell>

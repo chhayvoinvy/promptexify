@@ -69,7 +69,7 @@ export function PremiumUpgradeModal({
 
   return (
     <Dialog open={true} onOpenChange={handleClose}>
-      <DialogContent className="fixed z-50 left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] w-[95vw] max-w-2xl h-auto max-h-[90vh] flex flex-col p-0 gap-0 sm:w-[90vw] md:w-[85vw] lg:w-[70vw] rounded-lg shadow-2xl">
+      <DialogContent className="fixed top-[50%] left-[50%] z-50 max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] flex flex-col p-0 gap-0 rounded-xl shadow-2xl sm:max-w-lg lg:max-w-xl md:max-h-[90vh] lg:max-h-[95vh]">
         {/* Header with gradient background */}
         <div className="bg-gradient-to-r from-teal-500 to-sky-500 px-6 py-6 text-white rounded-t-lg">
           <DialogHeader>
@@ -99,7 +99,7 @@ export function PremiumUpgradeModal({
               </Badge>
             </div>
             <div className="relative">
-              <span className="text-sm text-muted-foreground line-clamp-3 blur-xs select-none">
+              <span className="text-xs text-muted-foreground line-clamp-3 blur-xs select-none">
                 {post.content?.substring(0, 200) ||
                   post.description ||
                   "Exclusive premium content awaits..."}
@@ -112,7 +112,7 @@ export function PremiumUpgradeModal({
             <h4 className="font-semibold text-base">
               Unlock Premium Benefits:
             </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div className="flex items-top gap-3 p-3 bg-muted/20 rounded-lg">
                 <Star className="h-5 w-5 text-yellow-500" />
                 <div>
@@ -155,19 +155,19 @@ export function PremiumUpgradeModal({
           </div>
 
           {/* Pricing */}
-          <div className="bg-gradient-to-r from-teal-50 to-sky-50 dark:from-teal-950/20 dark:to-sky-950/20 rounded-lg p-4 border border-teal-200 dark:border-teal-800">
+          <div className="bg-gradient-to-r from-teal-50 to-sky-50 dark:from-teal-950/20 dark:to-sky-950/20 rounded-lg p-2 border border-teal-200 dark:border-teal-800">
             <div className="text-center">
-              <div className="text-2xl font-bold text-teal-600 dark:text-teal-400">
+              <div className="text-lg font-bold text-teal-600 dark:text-teal-400">
                 $2.99/month
               </div>
-              <div className="text-sm text-muted-foreground">
+              <div className="text-xs text-muted-foreground">
                 Cancel anytime
               </div>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             <Button
               onClick={handleUpgrade}
               className="flex-1 bg-gradient-to-r from-teal-500 to-sky-500 hover:from-teal-600 hover:to-sky-600 text-white font-semibold"
@@ -182,8 +182,8 @@ export function PremiumUpgradeModal({
           </div>
 
           {/* Additional Info */}
-          <div className="text-center text-xs text-muted-foreground">
-            Secure payment • Cancel anytime
+          <div className="text-center text-xs text-muted-foreground py-0">
+            Secure payment with Stripe • Cancel anytime
           </div>
         </div>
       </DialogContent>

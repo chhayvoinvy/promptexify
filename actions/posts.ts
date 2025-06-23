@@ -176,10 +176,15 @@ export async function updatePostAction(formData: FormData) {
       if (existingPost.authorId !== user.id) {
         throw new Error("Unauthorized: You can only edit your own posts");
       }
-      // Disable editing once post has been approved by admin
+      // Disable editing once post has been approved or rejected by admin
       if (existingPost.status === "APPROVED") {
         throw new Error(
-          "Cannot edit approved posts. Once your content has been approved by an admin, it cannot be modified."
+          "Cannot edit approved posts. Please contact support for further assistance."
+        );
+      }
+      if (existingPost.status === "REJECTED") {
+        throw new Error(
+          "Cannot edit rejected posts. Please contact support or create a new post."
         );
       }
     } else {
@@ -496,10 +501,15 @@ export async function deletePostAction(postId: string) {
       if (existingPost.authorId !== user.id) {
         throw new Error("Unauthorized: You can only delete your own posts");
       }
-      // Disable deletion once post has been approved by admin
+      // Disable deletion once post has been approved or rejected by admin
       if (existingPost.status === "APPROVED") {
         throw new Error(
           "Cannot delete approved posts. Once your content has been approved by an admin, it cannot be deleted."
+        );
+      }
+      if (existingPost.status === "REJECTED") {
+        throw new Error(
+          "Cannot delete rejected posts. Once your content has been rejected by an admin, it cannot be deleted."
         );
       }
     } else {

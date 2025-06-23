@@ -175,7 +175,7 @@ function PostContentModal({
 
   return (
     <Dialog open={true} onOpenChange={handleClose}>
-      <DialogContent className="fixed z-50 left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] w-[95vw] max-w-4xl h-[70vh] max-h-[800px] flex flex-col p-0 gap-0 sm:w-[90vw] md:w-[90vw] lg:w-[80vw]">
+      <DialogContent className="fixed top-[50%] left-[50%] z-50 w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] h-[80vh] flex flex-col p-0 gap-0 rounded-xl shadow-2xl sm:max-w-lg lg:max-w-2xl md:max-h-[90vh] lg:max-h-[95vh]">
         <DialogHeader className="px-4 pt-4">
           <DialogTitle className="text-sm line-clamp-2 font-bold text-left text-zinc-700 dark:text-zinc-300 mb-2 pr-15">
             {post.title}
@@ -261,9 +261,9 @@ function PostContentModal({
           <div className="flex items-top justify-between gap-2">
             {/* Tags */}
             <div className="flex items-center gap-1 flex-wrap">
-              <DialogDescription className="text-xs text-muted-foreground pr-10">
+              <DialogDescription className="text-xs text-muted-foreground pr-30">
                 View and copy this {post.category.name.toLowerCase()} prompt.
-                You can also bookmark it for later use.
+                Add to bookmark for later use. Or share with your friends.
               </DialogDescription>
             </div>
             {/* Share Buttons */}
