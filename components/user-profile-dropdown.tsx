@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { User, Settings } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { User, Settings, UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -30,31 +29,29 @@ export function UserProfileDropdown({ user }: UserProfileDropdownProps) {
   const userData = user.userData;
   const displayName = userData?.name || user.email?.split("@")[0] || "User";
   const displayEmail = userData?.email || user.email || "";
-  const avatar = userData?.avatar;
+  // const avatar = userData?.avatar;
 
   // Get user initials for avatar fallback
-  const getInitials = (name?: string | null, email?: string) => {
-    if (name) {
-      return name
-        .split(" ")
-        .map((word) => word[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2);
-    }
-    return email ? email[0].toUpperCase() : "U";
-  };
+  // const getInitials = (name?: string | null, email?: string) => {
+  //   if (name) {
+  //     return name
+  //       .split(" ")
+  //       .map((word) => word[0])
+  //       .join("")
+  //       .toUpperCase()
+  //       .slice(0, 2);
+  //   }
+  //   return email ? email[0].toUpperCase() : "U";
+  // };
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={avatar || undefined} alt={displayName} />
-            <AvatarFallback>
-              {getInitials(displayName, displayEmail)}
-            </AvatarFallback>
-          </Avatar>
+        <Button
+          variant="ghost"
+          className="h-8 w-8 text-muted-foreground bg-muted rounded-full border border-muted-foreground/20"
+        >
+          <UserIcon className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
