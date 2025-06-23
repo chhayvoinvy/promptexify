@@ -5,6 +5,9 @@ import { stripe } from "@/lib/stripe";
 import { getUserSubscriptionPlan } from "@/lib/subscription";
 import { getBaseUrl } from "@/lib/utils";
 import { redirect } from "next/navigation";
+import { PrismaClient } from "@/lib/generated/prisma";
+
+const prisma = new PrismaClient();
 
 export type StripeActionResponse = {
   status: "success" | "error";
@@ -13,6 +16,106 @@ export type StripeActionResponse = {
 };
 
 const billingUrl = `${getBaseUrl()}/dashboard/billing`;
+
+/**
+ * Syncs user subscription data with Stripe to ensure consistency
+ * This function helps resolve data mismatches between local DB and Stripe
+ */
+export async function syncUserSubscriptionWithStripe(
+  userId: string
+): Promise<{ synced: boolean; message: string }> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        stripeCustomerId: true,
+        stripeSubscriptionId: true,
+        stripePriceId: true,
+        stripeCurrentPeriodEnd: true,
+        type: true,
+      },
+    });
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // If user doesn't have Stripe data, they should be FREE
+    if (!user.stripeCustomerId || !user.stripeSubscriptionId) {
+      if (user.type !== "FREE") {
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            type: "FREE",
+            stripePriceId: null,
+            stripeCurrentPeriodEnd: null,
+          },
+        });
+        return {
+          synced: true,
+          message:
+            "User downgraded to FREE tier - no active subscription found",
+        };
+      }
+      return { synced: false, message: "User is correctly set to FREE tier" };
+    }
+
+    // Fetch current subscription from Stripe
+    const subscription = await stripe.subscriptions.retrieve(
+      user.stripeSubscriptionId
+    );
+
+    const subscriptionData = subscription as any;
+    const currentPeriodEnd = new Date(
+      subscriptionData.current_period_end * 1000
+    );
+    const isPaidActive =
+      subscriptionData.status === "active" ||
+      subscriptionData.status === "trialing";
+    const isExpired = currentPeriodEnd.getTime() < Date.now();
+
+    // Determine correct user type
+    const correctType = isPaidActive && !isExpired ? "PREMIUM" : "FREE";
+
+    // Check if data is out of sync
+    const needsSync =
+      user.type !== correctType ||
+      user.stripePriceId !== subscriptionData.items.data[0]?.price?.id ||
+      !user.stripeCurrentPeriodEnd ||
+      Math.abs(
+        user.stripeCurrentPeriodEnd.getTime() - currentPeriodEnd.getTime()
+      ) > 1000;
+
+    if (needsSync) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          type: correctType,
+          stripePriceId: subscriptionData.items.data[0]?.price?.id || null,
+          stripeCurrentPeriodEnd:
+            correctType === "PREMIUM" ? currentPeriodEnd : null,
+        },
+      });
+
+      return {
+        synced: true,
+        message: `User synchronized to ${correctType} status based on Stripe subscription`,
+      };
+    }
+
+    return {
+      synced: false,
+      message: "User data is already in sync with Stripe",
+    };
+  } catch (error) {
+    console.error("Error syncing user subscription with Stripe:", error);
+    return {
+      synced: false,
+      message:
+        "Failed to sync with Stripe. Please try again or contact support.",
+    };
+  }
+}
 
 export async function createStripeSubscription(
   priceId: string

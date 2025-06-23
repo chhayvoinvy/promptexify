@@ -25,10 +25,10 @@ import { subscriptionPlans } from "@/config/subscription-plans";
 import {
   createCustomerPortalSession,
   createStripeSubscription,
-  createStripeCheckoutSession,
 } from "@/actions/stripe";
 import { redirect } from "next/navigation";
-import { format } from "date-fns";
+import { syncUserSubscriptionWithStripe } from "@/actions/stripe";
+import { getCurrentUser } from "@/lib/auth";
 
 // Force dynamic rendering for this page
 export const dynamic = "force-dynamic";
@@ -135,17 +135,53 @@ function BillingAction({ subscriptionPlan }: BillingActionProps) {
 async function BillingContent() {
   try {
     const user = await requireAuth();
+
+    if (!user.userData?.id) {
+      throw new Error("User data not found");
+    }
+
+    // Get subscription plan data
     const subscriptionPlan = await getEnhancedUserSubscriptionPlan(
-      user.userData!.id
+      user.userData.id
     );
+
+    // Sync user data with Stripe to ensure consistency
+    const syncResult = await syncUserSubscriptionWithStripe(user.userData.id);
+
+    // Re-fetch user data if sync occurred
+    const currentUser = syncResult.synced ? await getCurrentUser() : user;
 
     const formatDate = (timestamp: number | null | undefined) => {
       if (!timestamp) return "N/A";
-      return new Date(timestamp * 1000).toLocaleDateString();
+      try {
+        return new Date(timestamp * 1000).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+      } catch (error) {
+        console.error("Error formatting date:", error);
+        return "Invalid date";
+      }
     };
 
     return (
       <div className="space-y-6">
+        {/* Sync notification */}
+        {syncResult.synced && (
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
+            <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5" />
+            <div className="text-sm">
+              <p className="font-medium text-blue-800 dark:text-blue-200">
+                Account Updated
+              </p>
+              <p className="text-blue-700 dark:text-blue-300">
+                {syncResult.message}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
@@ -169,6 +205,19 @@ async function BillingContent() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="font-medium">Account Type</span>
+                <Badge
+                  variant={
+                    currentUser?.userData?.type === "PREMIUM"
+                      ? "default"
+                      : "secondary"
+                  }
+                >
+                  {currentUser?.userData?.type || user.userData.type}
+                </Badge>
+              </div>
+
               <div className="flex items-center justify-between">
                 <span className="font-medium">Plan</span>
                 <div className="flex items-center gap-2">
@@ -222,13 +271,31 @@ async function BillingContent() {
                           Subscription Canceled
                         </p>
                         <p className="text-muted-foreground">
-                          Your subscription will end on{" "}
+                          Your subscription has been canceled and will end on{" "}
                           {formatDate(subscriptionPlan.stripeCurrentPeriodEnd)}.
                           You&apos;ll retain access until then.
                         </p>
                       </div>
                     </div>
                   )}
+
+                  {/* Data inconsistency warning - should be resolved by sync */}
+                  {(currentUser?.userData?.type || user.userData.type) ===
+                    "FREE" &&
+                    subscriptionPlan.isPaid && (
+                      <div className="flex items-start gap-2 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800">
+                        <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                        <div className="text-sm">
+                          <p className="font-medium text-yellow-800 dark:text-yellow-200">
+                            Account Sync Notice
+                          </p>
+                          <p className="text-yellow-700 dark:text-yellow-300">
+                            Data inconsistency detected. Please refresh the page
+                            or contact support if this persists.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                 </>
               ) : (
                 <div className="space-y-3">
@@ -271,12 +338,14 @@ async function BillingContent() {
             </CardHeader>
             <CardContent>
               <ul className="space-y-2">
-                {subscriptionPlan.features.map((feature, index) => (
-                  <li key={index} className="flex items-center gap-2 text-sm">
-                    <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                    {feature}
-                  </li>
-                ))}
+                {subscriptionPlan.features.map(
+                  (feature: string, index: number) => (
+                    <li key={index} className="flex items-center gap-2 text-sm">
+                      <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                      {feature}
+                    </li>
+                  )
+                )}
               </ul>
             </CardContent>
           </Card>
@@ -310,7 +379,7 @@ async function BillingContent() {
                       </div>
                       <ul className="space-y-2">
                         {subscriptionPlans.monthly.features.map(
-                          (feature, index) => (
+                          (feature: string, index: number) => (
                             <li
                               key={index}
                               className="flex items-center gap-2 text-sm"
@@ -347,7 +416,7 @@ async function BillingContent() {
                       </div>
                       <ul className="space-y-2">
                         {subscriptionPlans.yearly.features.map(
-                          (feature, index) => (
+                          (feature: string, index: number) => (
                             <li
                               key={index}
                               className="flex items-center gap-2 text-sm"
@@ -416,10 +485,6 @@ export default async function BillingPage() {
   if (!user) {
     redirect("/signin");
   }
-
-  const subscriptionPlan = await getEnhancedUserSubscriptionPlan(
-    user.userData!.id
-  );
 
   return (
     <SidebarProvider
