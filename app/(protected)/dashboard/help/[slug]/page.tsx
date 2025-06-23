@@ -74,7 +74,9 @@ export default async function HelpArticlePage({ params }: Props) {
     redirect("/signin");
   }
 
-  const article = await getHelpArticle(params.slug);
+  // Await params before accessing properties (Next.js 15 requirement)
+  const { slug } = await params;
+  const article = await getHelpArticle(slug);
 
   if (!article) {
     notFound();
@@ -96,17 +98,16 @@ export default async function HelpArticlePage({ params }: Props) {
         <SiteHeader />
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-2">
+            {/* Back Button */}
+            <div className="flex items-center gap-2 mt-4 ml-4 mb-8">
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/dashboard/help">
+                  <Icons.arrowRight className="mr-2 h-4 w-4 rotate-180" />
+                  Back to Help Center
+                </Link>
+              </Button>
+            </div>
             <div className="flex flex-col gap-6 p-4 md:p-6 max-w-4xl mx-auto w-full">
-              {/* Back Button */}
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href="/dashboard/help">
-                    <Icons.arrowRight className="mr-2 h-4 w-4 rotate-180" />
-                    Back to Help Center
-                  </Link>
-                </Button>
-              </div>
-
               {/* Article Header */}
               <div className="space-y-4">
                 <div className="flex items-start gap-4">
