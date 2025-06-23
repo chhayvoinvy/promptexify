@@ -365,7 +365,7 @@ async function PostsManagementContent({
                         ) : post.status === "REJECTED" ? (
                           <Badge
                             variant="outline"
-                            className="text-xs border-red-500 text-red-700 dark:text-red-400"
+                            className="text-xs border-red-500/50 text-red-700/50 dark:border-red-400/50 dark:text-red-200"
                           >
                             <IconX className="mr-1 h-3 w-3" />
                             Rejected
