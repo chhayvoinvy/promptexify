@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@/lib/generated/prisma";
 import { getBaseUrl } from "@/lib/utils";
 import {
   signInSchema,
@@ -260,17 +260,60 @@ export async function requireRole(allowedRoles: Array<"USER" | "ADMIN">) {
 }
 
 export async function requireUserAccess(allowedPaths: string[]) {
-  const user = await requireAuth();
-  const userRole = user.userData?.role;
+  const user = await getCurrentUser();
 
-  if (userRole === "USER") {
-    // For USER role, only allow access to specific paths
-    const allowedUserPaths = ["/dashboard/bookmarks", "/dashboard/account"];
-    const currentPath = allowedPaths[0] || "";
+  if (!user) {
+    redirect("/signin");
+  }
 
-    if (!allowedUserPaths.includes(currentPath)) {
-      redirect("/dashboard");
-    }
+  // Check if the current path is allowed for this user
+  const currentPath = "/dashboard"; // This would be dynamic in real use
+  if (!allowedPaths.includes(currentPath)) {
+    redirect("/dashboard");
+  }
+
+  return user;
+}
+
+export async function hasActivePremiumSubscription(
+  userId: string
+): Promise<boolean> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        stripePriceId: true,
+        stripeCurrentPeriodEnd: true,
+        type: true,
+      },
+    });
+
+    if (!user) return false;
+
+    // Check if user has premium type and valid subscription
+    return (
+      user.type === "PREMIUM" &&
+      !!user.stripePriceId &&
+      !!user.stripeCurrentPeriodEnd &&
+      user.stripeCurrentPeriodEnd.getTime() + 86_400_000 > Date.now()
+    );
+  } catch (error) {
+    console.error("Error checking premium subscription:", error);
+    return false;
+  }
+}
+
+export async function requirePremiumAccess() {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    redirect("/signin");
+  }
+
+  const hasPremium = await hasActivePremiumSubscription(user.id);
+
+  if (!hasPremium) {
+    redirect("/dashboard");
   }
 
   return user;

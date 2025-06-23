@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,8 +10,11 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Lock, Crown, Star, Zap } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Lock, Crown, Star, Zap, Loader2 } from "lucide-react";
 import { PostWithInteractions } from "@/lib/content";
+import { redirectToStripeCheckout } from "@/actions/stripe";
+import { toast } from "sonner";
 
 interface PremiumUpgradeModalProps {
   post: PostWithInteractions;
@@ -22,9 +25,29 @@ export function PremiumUpgradeModal({
   post,
   onClose,
 }: PremiumUpgradeModalProps) {
-  const handleUpgrade = () => {
-    // TODO: Implement upgrade flow (Stripe integration, etc.)
-    console.log("Redirect to upgrade page");
+  const [isYearly, setIsYearly] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const monthlyPriceId =
+    process.env.NEXT_PUBLIC_STRIPE_PREMIUM_MONTHLY_PRICE_ID!;
+  const yearlyPriceId = process.env.NEXT_PUBLIC_STRIPE_PREMIUM_YEARLY_PRICE_ID!;
+
+  const monthlyPrice = 2.99;
+  const yearlyPrice = 29.99;
+  const yearlyMonthlyEquivalent = yearlyPrice / 12;
+  const savings =
+    ((monthlyPrice - yearlyMonthlyEquivalent) / monthlyPrice) * 100;
+
+  const handleUpgrade = async () => {
+    try {
+      setIsLoading(true);
+      const priceId = isYearly ? yearlyPriceId : monthlyPriceId;
+      await redirectToStripeCheckout(priceId);
+    } catch (error) {
+      console.error("Stripe checkout error:", error);
+      toast.error("Failed to start checkout. Please try again.");
+      setIsLoading(false);
+    }
   };
 
   const handleClose = () => {
@@ -154,14 +177,60 @@ export function PremiumUpgradeModal({
             </div>
           </div>
 
-          {/* Pricing */}
-          <div className="bg-gradient-to-r from-teal-50 to-sky-50 dark:from-teal-950/20 dark:to-sky-950/20 rounded-lg p-2 border border-teal-200 dark:border-teal-800">
-            <div className="text-center">
-              <div className="text-lg font-bold text-teal-600 dark:text-teal-400">
-                $2.99/month
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Cancel anytime
+          {/* Pricing Toggle */}
+          <div className="space-y-4">
+            {/* Billing Period Toggle */}
+            <div className="flex items-center justify-center space-x-4 p-2 bg-muted/20 rounded-lg">
+              <span
+                className={`text-sm ${
+                  !isYearly
+                    ? "font-semibold text-foreground"
+                    : "text-muted-foreground"
+                }`}
+              >
+                Monthly
+              </span>
+              <Switch
+                checked={isYearly}
+                onCheckedChange={setIsYearly}
+                className="data-[state=checked]:bg-teal-500"
+              />
+              <span
+                className={`text-sm ${
+                  isYearly
+                    ? "font-semibold text-foreground"
+                    : "text-muted-foreground"
+                }`}
+              >
+                Yearly
+              </span>
+              {isYearly && (
+                <Badge
+                  variant="secondary"
+                  className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                >
+                  Save {Math.round(savings)}%
+                </Badge>
+              )}
+            </div>
+
+            {/* Pricing Display */}
+            <div className="bg-gradient-to-r from-teal-50 to-sky-50 dark:from-teal-950/20 dark:to-sky-950/20 rounded-lg p-4 border border-teal-200 dark:border-teal-800">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-teal-600 dark:text-teal-400">
+                  ${isYearly ? yearlyPrice.toFixed(2) : monthlyPrice.toFixed(2)}
+                  <span className="text-sm text-muted-foreground font-normal">
+                    /{isYearly ? "year" : "month"}
+                  </span>
+                </div>
+                {isYearly && (
+                  <div className="text-sm text-muted-foreground">
+                    Only ${yearlyMonthlyEquivalent.toFixed(2)}/month
+                  </div>
+                )}
+                <div className="text-xs text-muted-foreground mt-1">
+                  Cancel anytime
+                </div>
               </div>
             </div>
           </div>
@@ -170,13 +239,23 @@ export function PremiumUpgradeModal({
           <div className="flex gap-2">
             <Button
               onClick={handleUpgrade}
-              className="flex-1 bg-gradient-to-r from-teal-500 to-sky-500 hover:from-teal-600 hover:to-sky-600 text-white font-semibold"
+              disabled={isLoading}
+              className="flex-1 bg-gradient-to-r from-teal-500 to-sky-500 hover:from-teal-600 hover:to-sky-600 text-white font-semibold disabled:opacity-50"
               size="lg"
             >
-              <Crown className="h-4 w-4 mr-2" />
-              Upgrade to Premium
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Crown className="h-4 w-4 mr-2" />
+              )}
+              {isLoading ? "Processing..." : "Upgrade to Premium"}
             </Button>
-            <Button variant="outline" onClick={handleClose} size="lg">
+            <Button
+              variant="outline"
+              onClick={handleClose}
+              size="lg"
+              disabled={isLoading}
+            >
               Maybe Later
             </Button>
           </div>

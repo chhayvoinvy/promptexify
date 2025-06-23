@@ -18,8 +18,8 @@ export const subscriptionPlans: {
     name: "Premium Monthly",
     description: "Access all premium content and features",
     stripePriceId:
-      process.env.NEXT_PUBLIC_STRIPE_PREMIUM_MONTHLY_PLAN_ID ||
-      "price_test_monthly",
+      process.env.NEXT_PUBLIC_STRIPE_PREMIUM_MONTHLY_PRICE_ID ||
+      "price_1RYURt001THvdychB50o4KZa",
     price: 2.99,
     interval: "month",
     features: [
@@ -33,9 +33,9 @@ export const subscriptionPlans: {
     name: "Premium Yearly",
     description: "Access all premium content and features (2 months free)",
     stripePriceId:
-      process.env.NEXT_PUBLIC_STRIPE_PREMIUM_YEARLY_PLAN_ID ||
-      "price_test_yearly",
-    price: 29.9,
+      process.env.NEXT_PUBLIC_STRIPE_PREMIUM_YEARLY_PRICE_ID ||
+      "price_1RYUST001THvdych5O8H8CjP",
+    price: 29.99,
     interval: "year",
     features: [
       "Access all premium prompts",

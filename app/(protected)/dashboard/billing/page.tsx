@@ -11,7 +11,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CreditCard, Crown, Calendar, AlertCircle } from "lucide-react";
+import {
+  CreditCard,
+  Crown,
+  Calendar,
+  AlertCircle,
+  AlertTriangle,
+} from "lucide-react";
 import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -19,8 +25,10 @@ import { subscriptionPlans } from "@/config/subscription-plans";
 import {
   createCustomerPortalSession,
   createStripeSubscription,
+  createStripeCheckoutSession,
 } from "@/actions/stripe";
 import { redirect } from "next/navigation";
+import { format } from "date-fns";
 
 // Force dynamic rendering for this page
 export const dynamic = "force-dynamic";
@@ -404,6 +412,14 @@ function BillingLoading() {
 export default async function BillingPage() {
   // Require authentication - both USER and ADMIN can access billing
   const user = await requireAuth();
+
+  if (!user) {
+    redirect("/signin");
+  }
+
+  const subscriptionPlan = await getEnhancedUserSubscriptionPlan(
+    user.userData!.id
+  );
 
   return (
     <SidebarProvider
