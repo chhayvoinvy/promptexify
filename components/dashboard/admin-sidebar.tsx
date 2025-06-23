@@ -77,26 +77,20 @@ const navigationData = {
 
   navSecondary: [
     {
-      title: "Support",
-      url: "/dashboard/support",
-      icon: IconHelp,
-    },
-    {
-      title: "Settings",
-      url: "/dashboard/settings",
-      icon: IconSettings,
-      adminOnly: true,
-    },
-    {
       title: "Get Help",
       url: "/dashboard/help",
       icon: IconHelp,
-      adminOnly: true,
     },
     {
       title: "Search",
       url: "/directory",
       icon: IconSearch,
+    },
+    {
+      title: "Settings",
+      url: "/dashboard/settings",
+      icon: IconSettings,
+      adminOnly: true, // Admin only
     },
   ],
 

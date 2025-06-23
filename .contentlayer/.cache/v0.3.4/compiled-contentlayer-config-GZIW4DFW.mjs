@@ -94,9 +94,42 @@ var Page = defineDocumentType(() => ({
   },
   computedFields: defaultComputedFields
 }));
+var Help = defineDocumentType(() => ({
+  name: "Help",
+  filePathPattern: `help/**/*.mdx`,
+  contentType: "mdx",
+  fields: {
+    title: {
+      type: "string",
+      required: true
+    },
+    description: {
+      type: "string",
+      required: true
+    },
+    category: {
+      type: "enum",
+      options: ["getting-started", "premium", "contributing", "support"],
+      required: true
+    },
+    order: {
+      type: "number",
+      default: 0
+    },
+    lastUpdated: {
+      type: "date",
+      required: true
+    },
+    featured: {
+      type: "boolean",
+      default: false
+    }
+  },
+  computedFields: defaultComputedFields
+}));
 var contentlayer_config_default = makeSource({
   contentDirPath: "./content",
-  documentTypes: [Post, Page],
+  documentTypes: [Post, Page, Help],
   mdx: {
     remarkPlugins: [remarkGfm],
     rehypePlugins: [
@@ -105,7 +138,8 @@ var contentlayer_config_default = makeSource({
         visit(tree, (node) => {
           if (node?.type === "element" && node?.tagName === "pre") {
             const [codeEl] = node.children;
-            if (codeEl.tagName !== "code") return;
+            if (codeEl.tagName !== "code")
+              return;
             node.__rawString__ = codeEl.children?.[0].value;
           }
         });
@@ -150,8 +184,9 @@ var contentlayer_config_default = makeSource({
   }
 });
 export {
+  Help,
   Page,
   Post,
   contentlayer_config_default as default
 };
-//# sourceMappingURL=compiled-contentlayer-config-LO3QV43X.mjs.map
+//# sourceMappingURL=compiled-contentlayer-config-GZIW4DFW.mjs.map
