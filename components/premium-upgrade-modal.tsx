@@ -110,26 +110,6 @@ export function PremiumUpgradeModal({
         </div>
 
         <div className="flex flex-col p-6 gap-6 overflow-y-auto">
-          {/* Premium Content Preview */}
-          <div className="bg-muted/30 rounded-lg border p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium flex items-center gap-2">
-                <Lock className="h-4 w-4 text-teal-500" />
-                Premium Prompt Preview
-              </h3>
-              <Badge className="text-foreground bg-gradient-to-r from-teal-500 to-sky-300 dark:from-teal-400 dark:to-sky-300">
-                Premium
-              </Badge>
-            </div>
-            <div className="relative">
-              <span className="text-xs text-muted-foreground line-clamp-3 blur-xs select-none">
-                {post.content?.substring(0, 200) ||
-                  post.description ||
-                  "Exclusive premium content awaits..."}
-              </span>
-            </div>
-          </div>
-
           {/* Premium Features */}
           <div className="space-y-4">
             <h4 className="font-semibold text-base">
@@ -177,45 +157,44 @@ export function PremiumUpgradeModal({
             </div>
           </div>
 
-          {/* Pricing Toggle */}
-          <div className="space-y-4">
-            {/* Billing Period Toggle */}
-            <div className="flex items-center justify-center space-x-4 p-2 bg-muted/20 rounded-lg">
-              <span
-                className={`text-sm ${
-                  !isYearly
-                    ? "font-semibold text-foreground"
-                    : "text-muted-foreground"
-                }`}
-              >
-                Monthly
-              </span>
-              <Switch
-                checked={isYearly}
-                onCheckedChange={setIsYearly}
-                className="data-[state=checked]:bg-teal-500"
-              />
-              <span
-                className={`text-sm ${
-                  isYearly
-                    ? "font-semibold text-foreground"
-                    : "text-muted-foreground"
-                }`}
-              >
-                Yearly
-              </span>
-              {isYearly && (
-                <Badge
-                  variant="secondary"
-                  className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+          {/* Pricing Display */}
+          <div className="rounded-lg p-4 border border-teal-200 dark:border-teal-800">
+            {/* Pricing Toggle */}
+            <div className="space-y-4">
+              {/* Billing Period Toggle */}
+              <div className="flex items-center justify-center space-x-4 p-2 rounded-lg">
+                <span
+                  className={`text-sm ${
+                    !isYearly
+                      ? "font-semibold text-foreground"
+                      : "text-muted-foreground"
+                  }`}
                 >
-                  Save {Math.round(savings)}%
-                </Badge>
-              )}
-            </div>
-
-            {/* Pricing Display */}
-            <div className="bg-gradient-to-r from-teal-50 to-sky-50 dark:from-teal-950/20 dark:to-sky-950/20 rounded-lg p-4 border border-teal-200 dark:border-teal-800">
+                  Monthly
+                </span>
+                <Switch
+                  checked={isYearly}
+                  onCheckedChange={setIsYearly}
+                  className="data-[state=checked]:bg-teal-500"
+                />
+                <span
+                  className={`text-sm ${
+                    isYearly
+                      ? "font-semibold text-foreground"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  Yearly
+                </span>
+                {isYearly && (
+                  <Badge
+                    variant="secondary"
+                    className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                  >
+                    Save {Math.round(savings)}%
+                  </Badge>
+                )}
+              </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-teal-600 dark:text-teal-400">
                   ${isYearly ? yearlyPrice.toFixed(2) : monthlyPrice.toFixed(2)}
@@ -228,9 +207,6 @@ export function PremiumUpgradeModal({
                     Only ${yearlyMonthlyEquivalent.toFixed(2)}/month
                   </div>
                 )}
-                <div className="text-xs text-muted-foreground mt-1">
-                  Cancel anytime
-                </div>
               </div>
             </div>
           </div>
