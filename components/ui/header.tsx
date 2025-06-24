@@ -289,12 +289,15 @@ export function Header() {
             {user ? (
               <UserProfileDropdown user={user} />
             ) : (
-              <Link
-                href="/signin"
-                className="text-sm font-medium text-foreground border border-border rounded-md px-4 py-2 transition-colors hover:text-foreground/80"
-              >
-                Sign In
-              </Link>
+              <>
+                <Link
+                  href="/signin"
+                  className="text-sm font-medium text-foreground border border-border rounded-md px-4 py-2 transition-colors hover:text-foreground/80"
+                >
+                  Sign In
+                </Link>
+                <DarkModeToggle />
+              </>
             )}
           </div>
         </div>
