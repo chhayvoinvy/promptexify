@@ -121,6 +121,21 @@ model View {
   @@map("views")
 }
 
+model Log {
+  id         String   @id @default(uuid())
+  action     String
+  userId     String?
+  entityType String
+  entityId   String?
+  ipAddress  String?
+  userAgent  String?
+  metadata   Json?
+  severity   String
+  createdAt  DateTime @default(now())
+
+  @@map("logs")
+}
+
 enum UserType {
   FREE
   PREMIUM

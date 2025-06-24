@@ -7,7 +7,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 interface LogoProps {
-  href?: string;
+  href?: string | null;
   className?: string;
   width?: number;
   height?: number;

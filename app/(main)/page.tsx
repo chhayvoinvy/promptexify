@@ -98,7 +98,7 @@ export default async function HomePage({ searchParams }: SearchProps) {
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
       <section className="bg-gradient-to-b from-background via-muted/20 to-background -mt-14 pt-14">
-        <div className="container mx-auto px-4 py-15 md:py-25">
+        <div className="container mx-auto px-5 py-6 max-w-7xl md:py-25">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
               Prompt Directory
@@ -135,7 +135,7 @@ export default async function HomePage({ searchParams }: SearchProps) {
 
       {/* Posts Section */}
       <section className="py-12">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-5 py-6 max-w-7xl">
           {searchQuery && (
             <div className="mb-8">
               <h2 className="text-2xl font-semibold mb-2">

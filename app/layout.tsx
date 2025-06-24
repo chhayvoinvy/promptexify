@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/components/ui/theme";
 import { Toaster } from "@/components/ui/sonner";
 import { GoogleOneTap } from "@/components/google-one-tap";
 import "./globals.css";
+import { generateCSPHeader } from "@/lib/sanitize";
 
 export const metadata: Metadata = {
   title: "Promptexify",
@@ -56,6 +57,21 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <meta
+          httpEquiv="Content-Security-Policy"
+          content={generateCSPHeader()}
+        />
+        <meta httpEquiv="X-Content-Type-Options" content="nosniff" />
+        <meta httpEquiv="X-Frame-Options" content="DENY" />
+        <meta httpEquiv="X-XSS-Protection" content="1; mode=block" />
+        <meta
+          httpEquiv="Referrer-Policy"
+          content="strict-origin-when-cross-origin"
+        />
+        <meta
+          httpEquiv="Permissions-Policy"
+          content="geolocation=(), microphone=(), camera=()"
+        />
         <link
           rel="icon"
           type="image/x-icon"

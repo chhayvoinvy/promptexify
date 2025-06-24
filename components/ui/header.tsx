@@ -272,7 +272,7 @@ export function Header() {
           : "border-transparent bg-transparent"
       }`}
     >
-      <div className="container px-4 h-14 max-w-7xl mx-auto">
+      <div className="container mx-auto px-5 max-w-7xl h-14">
         {/* Desktop Layout */}
         <div className="hidden lg:grid lg:grid-cols-3 h-full items-center">
           <div className="flex items-center space-x-2 justify-self-start">

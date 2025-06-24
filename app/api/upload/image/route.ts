@@ -12,7 +12,9 @@ import {
   validateFileExtension,
   SECURITY_HEADERS,
   getFileUploadConfig,
+  ENHANCED_SECURITY_HEADERS,
 } from "@/lib/sanitize";
+import { SecurityEvents, getClientIP, sanitizeUserAgent } from "@/lib/audit";
 
 // Get environment-aware upload configurations
 const uploadConfig = getFileUploadConfig();
@@ -217,11 +219,17 @@ export async function POST(request: NextRequest) {
     try {
       const buffer = await file.arrayBuffer();
       if (!validateFileSignature(buffer, file.type)) {
+        await SecurityEvents.suspiciousFileUpload(
+          user.userData!.id,
+          file.name,
+          file.type,
+          getClientIP(request)
+        );
         return NextResponse.json(
-          { error: "File content does not match declared type" },
+          { error: "File signature doesn't match declared type" },
           {
             status: 400,
-            headers: SECURITY_HEADERS,
+            headers: ENHANCED_SECURITY_HEADERS,
           }
         );
       }

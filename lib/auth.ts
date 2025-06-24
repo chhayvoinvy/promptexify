@@ -14,16 +14,29 @@ import {
   type MagicLinkData,
 } from "@/lib/schemas";
 import { stripe } from "@/lib/stripe";
+import { SecurityEvents, getClientIP } from "@/lib/audit";
 
 const prisma = new PrismaClient();
 
 // Primary Magic Link Authentication Function
-export async function signInWithMagicLink(data: MagicLinkData) {
+export async function signInWithMagicLink(
+  data: MagicLinkData,
+  request?: Request
+) {
   const supabase = await createClient();
 
   // Validate input
   const validatedData = magicLinkSchema.safeParse(data);
   if (!validatedData.success) {
+    // Log validation failure
+    if (request) {
+      await SecurityEvents.inputValidationFailure(
+        undefined,
+        "email",
+        data.email || "",
+        getClientIP(request)
+      );
+    }
     return {
       error: validatedData.error.errors[0]?.message || "Invalid input",
     };
@@ -43,6 +56,14 @@ export async function signInWithMagicLink(data: MagicLinkData) {
     });
 
     if (error) {
+      // Log authentication failure
+      if (request) {
+        await SecurityEvents.authenticationFailure(
+          undefined,
+          getClientIP(request),
+          error.message
+        );
+      }
       return { error: error.message };
     }
 

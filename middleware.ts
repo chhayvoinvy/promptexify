@@ -1,8 +1,77 @@
-import { type NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "./lib/supabase/middleware";
+import { csrfProtection } from "./lib/csrf";
+import { SecurityEvents, getClientIP, sanitizeUserAgent } from "./lib/audit";
 
 export async function middleware(request: NextRequest) {
-  return await updateSession(request);
+  try {
+    // First, handle Supabase session
+    const response = await updateSession(request);
+
+    // Skip CSRF protection in development for easier development
+    const isDevelopment = process.env.NODE_ENV !== "production";
+
+    if (!isDevelopment) {
+      // Apply CSRF protection for state-changing requests in production only
+      const csrfValid = await csrfProtection(request);
+
+      if (!csrfValid) {
+        // Log CSRF violation
+        await SecurityEvents.inputValidationFailure(
+          undefined,
+          "csrf_token",
+          "invalid_or_missing",
+          getClientIP(request)
+        );
+
+        return NextResponse.json(
+          { error: "Invalid or missing CSRF token" },
+          {
+            status: 403,
+            headers: {
+              "Content-Type": "application/json",
+              "X-Content-Type-Options": "nosniff",
+              "X-Frame-Options": "DENY",
+            },
+          }
+        );
+      }
+    }
+
+    // Log successful request for monitoring (only state-changing requests)
+    if (["POST", "PUT", "DELETE", "PATCH"].includes(request.method)) {
+      console.log(
+        `[SECURITY] ${request.method} ${
+          request.nextUrl.pathname
+        } - IP: ${getClientIP(request)} - User-Agent: ${sanitizeUserAgent(
+          request.headers.get("user-agent")
+        )}`
+      );
+    }
+
+    return response;
+  } catch (error) {
+    console.error("Middleware error:", error);
+
+    // Log security incident
+    await SecurityEvents.inputValidationFailure(
+      undefined,
+      "middleware",
+      "middleware_error",
+      getClientIP(request)
+    );
+
+    return NextResponse.json(
+      { error: "Internal server error" },
+      {
+        status: 500,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Content-Type-Options": "nosniff",
+        },
+      }
+    );
+  }
 }
 
 export const config = {
@@ -12,7 +81,7 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
+     * - Static assets (images, etc.)
      */
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],

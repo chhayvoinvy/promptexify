@@ -144,7 +144,7 @@ export function sanitizeFilename(filename: string): string {
 
 /**
  * Sanitize content for markdown/rich text
- * This is a basic implementation - consider using a library like DOMPurify for production
+ * Enhanced to handle more XSS vectors and malicious content
  */
 export function sanitizeContent(content: string): string {
   if (typeof content !== "string") {
@@ -154,24 +154,98 @@ export function sanitizeContent(content: string): string {
   return (
     content
       .trim()
-      // Remove null bytes
-      .replace(/\0/g, "")
-      // Remove script tags
+      // Remove null bytes and control characters
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+      // Remove script tags and their content
       .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+      // Remove iframe tags
+      .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, "")
+      // Remove object and embed tags
+      .replace(/<(object|embed)\b[^<]*(?:(?!<\/\1>)<[^<]*)*<\/\1>/gi, "")
+      // Remove form elements
+      .replace(
+        /<(form|input|button|textarea|select)\b[^<]*(?:(?!<\/\1>)<[^<]*)*<\/\1>/gi,
+        ""
+      )
+      // Remove dangerous event handlers
+      .replace(/\bon\w+\s*=/gi, "")
       // Remove javascript: URLs
       .replace(/javascript:/gi, "")
-      // Remove on* event handlers
-      .replace(/\bon\w+\s*=/gi, "")
-      // Remove dangerous attributes
-      .replace(/\b(onerror|onload|onclick|onmouseover)\s*=/gi, "")
-      // Remove style attributes with expressions
-      .replace(/style\s*=\s*["'][^"']*expression\s*\(/gi, "")
-      // Remove data: URLs except for images
-      .replace(/src\s*=\s*["']data:(?!image\/)[^"']*["']/gi, "")
       // Remove vbscript: URLs
       .replace(/vbscript:/gi, "")
+      // Remove data: URLs except for images
+      .replace(/data:(?!image\/)[^"'\s]*/gi, "")
+      // Remove style attributes with expressions
+      .replace(/style\s*=\s*["'][^"']*expression\s*\([^"']*["']/gi, "")
+      // Remove meta refresh
+      .replace(/<meta\b[^>]*http-equiv\s*=\s*["']?refresh["']?[^>]*>/gi, "")
+      // Remove base tags
+      .replace(/<base\b[^>]*>/gi, "")
       // Limit extremely long content
       .substring(0, 100000)
+  );
+}
+
+/**
+ * Advanced content sanitization for user-generated HTML content
+ * Use this for content that may legitimately contain some HTML
+ */
+export function sanitizeRichContent(content: string): string {
+  if (typeof content !== "string") {
+    return String(content);
+  }
+
+  // Allow only specific safe HTML tags
+  const allowedTags = [
+    "p",
+    "br",
+    "strong",
+    "em",
+    "u",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "ul",
+    "ol",
+    "li",
+    "blockquote",
+    "a",
+  ];
+  const allowedAttributes = ["href", "title", "alt"];
+
+  return (
+    content
+      .trim()
+      // Remove null bytes and control characters
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+      // Remove all script tags
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+      // Remove dangerous tags
+      .replace(
+        /<(iframe|object|embed|form|input|button|textarea|select|meta|base|link|style)\b[^>]*(?:\/>|>.*?<\/\1>)/gi,
+        ""
+      )
+      // Remove event handlers
+      .replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, "")
+      // Remove javascript: and vbscript: URLs
+      .replace(/(javascript|vbscript):[^"'\s]*/gi, "")
+      // Remove data: URLs except for images
+      .replace(/data:(?!image\/)[^"'\s]*/gi, "")
+      // Sanitize href attributes to only allow safe URLs
+      .replace(/href\s*=\s*["']([^"']*)["']/gi, (match, url) => {
+        const sanitizedUrl = sanitizeUrl(url);
+        return sanitizedUrl ? `href="${sanitizedUrl}"` : "";
+      })
+      // Remove tags not in allowlist
+      .replace(
+        /<(?!\/?(?:p|br|strong|em|u|h[1-6]|ul|ol|li|blockquote|a)\b)[^>]*>/gi,
+        ""
+      )
+      // Limit content length
+      .substring(0, 50000)
   );
 }
 
@@ -418,6 +492,25 @@ function getSecurityHeaders() {
  * Security headers for API responses
  */
 export const SECURITY_HEADERS = getSecurityHeaders();
+
+// Enhanced security headers for API responses
+export function getEnhancedSecurityHeaders() {
+  return {
+    ...getSecurityHeaders(),
+    "Content-Security-Policy": generateCSPHeader(),
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "X-XSS-Protection": "1; mode=block",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+    "Cache-Control": "no-store, no-cache, must-revalidate, private",
+    Pragma: "no-cache",
+    Expires: "0",
+  };
+}
+
+export const ENHANCED_SECURITY_HEADERS = getEnhancedSecurityHeaders();
 
 /**
  * Get rate limit configurations based on environment

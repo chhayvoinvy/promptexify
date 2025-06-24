@@ -61,7 +61,7 @@ export function UserProfileDropdown({ user }: UserProfileDropdownProps) {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none flex items-center">
+            <div className="text-sm font-medium leading-none flex items-center">
               <span
                 className={cn(
                   "mr-1 line-clamp-1",
@@ -72,11 +72,11 @@ export function UserProfileDropdown({ user }: UserProfileDropdownProps) {
                 {displayName}
               </span>
               {isPremium && (
-                <div className="flex items-center justify-center bg-teal-500/30 dark:bg-teal-500/20 border border-teal-500 dark:border-teal-500/50 rounded-full p-0.5 ml-1">
+                <span className="flex items-center justify-center bg-teal-500/30 dark:bg-teal-500/20 border border-teal-500 dark:border-teal-500/50 rounded-full p-0.5 ml-1">
                   <IconCrown className="h-4 w-4 text-teal-500 dark:text-teal-500" />
-                </div>
+                </span>
               )}
-            </p>
+            </div>
             <p className="text-xs line-clamp-1 leading-none text-muted-foreground">
               {displayEmail}
             </p>

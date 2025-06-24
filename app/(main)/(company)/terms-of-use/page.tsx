@@ -25,7 +25,7 @@ export default async function TermsOfUsePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="container mx-auto px-5 py-6 max-w-7xl">
         {/* Header with back button */}
         <div className="flex items-center gap-4 mb-8">
           <Button asChild variant="outline" size="sm">

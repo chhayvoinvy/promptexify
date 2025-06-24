@@ -5,7 +5,7 @@ import { LogoCompact } from "@/components/ui/logo";
 export function Footer() {
   return (
     <footer className="border-t border-border/40 bg-background">
-      <div className="container px-4 mx-auto max-w-7xl py-12 md:py-16">
+      <div className="container mx-auto px-5 py-6 max-w-7xl md:py-16">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-7 lg:grid-cols-7 lg:gap-10 xl:gap-13 items-top justify-center">
           {/* Brand and Description */}
           <div className="space-y-4 col-span-3 lg:col-span-4">

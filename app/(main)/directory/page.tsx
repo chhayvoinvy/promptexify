@@ -86,7 +86,7 @@ interface DirectoryPageProps {
 // Directory page skeleton that matches the full layout
 function DirectoryPageSkeleton() {
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-5 py-6 max-w-7xl">
       {/* Header Skeleton */}
       <div className="mb-8">
         <Skeleton className="h-10 w-80 mb-4" />
@@ -268,7 +268,7 @@ async function DirectoryContent({
   const hasNextPage = totalCount > 12;
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-5 py-6 max-w-7xl">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl md:text-4xl font-bold mb-4">
