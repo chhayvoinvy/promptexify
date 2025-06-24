@@ -71,6 +71,96 @@ interface PostWithBookmarksAndFavorites {
   }>;
 }
 
+// Optimized select for API responses - include content for full post data
+const optimizedApiSelect = {
+  id: true,
+  title: true,
+  slug: true,
+  description: true,
+  content: true, // Include content field
+  featuredImage: true,
+  featuredVideo: true,
+  isPremium: true,
+  isPublished: true,
+  viewCount: true,
+  createdAt: true,
+  updatedAt: true,
+  author: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      avatar: true,
+    },
+  },
+  category: {
+    include: {
+      parent: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        },
+      },
+    },
+  },
+  tags: {
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+    },
+  },
+  _count: {
+    select: {
+      views: true,
+      favorites: true,
+    },
+  },
+} as const;
+
+// Internal function for getting paginated posts
+async function _getPaginatedPosts(
+  whereClause: WhereClause,
+  skip: number,
+  limit: number,
+  userId?: string
+): Promise<{
+  posts: PostWithBookmarksAndFavorites[];
+  totalCount: number;
+}> {
+  const [posts, totalCount] = await Promise.all([
+    prisma.post.findMany({
+      where: whereClause,
+      select: {
+        ...optimizedApiSelect,
+        bookmarks: userId
+          ? {
+              where: { userId },
+              select: { id: true },
+            }
+          : false,
+        favorites: userId
+          ? {
+              where: { userId },
+              select: { id: true },
+            }
+          : false,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      skip,
+      take: limit,
+    }),
+    prisma.post.count({
+      where: whereClause,
+    }),
+  ]);
+
+  return { posts, totalCount };
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Get current user for bookmark/favorite status
@@ -189,74 +279,13 @@ export async function GET(request: NextRequest) {
       // "all" or invalid values are ignored
     }
 
-    // Get posts and total count in parallel
-    const [posts, totalCount] = await Promise.all([
-      prisma.post.findMany({
-        where: whereClause,
-        include: {
-          author: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              avatar: true,
-            },
-          },
-          category: {
-            include: {
-              parent: {
-                select: {
-                  id: true,
-                  name: true,
-                  slug: true,
-                },
-              },
-            },
-          },
-          tags: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-            },
-          },
-          bookmarks: userId
-            ? {
-                where: {
-                  userId: userId,
-                },
-                select: {
-                  id: true,
-                },
-              }
-            : false,
-          favorites: userId
-            ? {
-                where: {
-                  userId: userId,
-                },
-                select: {
-                  id: true,
-                },
-              }
-            : false,
-          _count: {
-            select: {
-              views: true,
-              favorites: true,
-            },
-          },
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-        skip,
-        take: limit,
-      }),
-      prisma.post.count({
-        where: whereClause,
-      }),
-    ]);
+    // Get posts and total count using optimized function
+    const { posts, totalCount } = await _getPaginatedPosts(
+      whereClause,
+      skip,
+      limit,
+      userId
+    );
 
     // Transform posts to include interaction status
     const transformedPosts = posts.map(

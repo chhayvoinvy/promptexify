@@ -1,6 +1,7 @@
 import { PrismaClient } from "@/lib/generated/prisma";
 import fs from "fs";
 import path from "path";
+import { createCachedFunction, CACHE_TAGS, CACHE_DURATIONS } from "@/lib/cache";
 
 const prisma = new PrismaClient();
 
@@ -58,58 +59,67 @@ export interface PostWithInteractions extends PostWithDetails {
   isFavorited?: boolean;
 }
 
-export async function getAllPosts(
-  includeUnpublished = false
-): Promise<PostWithDetails[]> {
-  const posts = await prisma.post.findMany({
-    where: includeUnpublished ? {} : { isPublished: true },
+// Optimized base query for posts - only select necessary fields for listings
+const optimizedPostSelect = {
+  id: true,
+  title: true,
+  slug: true,
+  description: true,
+  featuredImage: true,
+  featuredVideo: true,
+  isPremium: true,
+  isPublished: true,
+  status: true,
+  viewCount: true,
+  authorId: true,
+  createdAt: true,
+  updatedAt: true,
+  author: {
     select: {
       id: true,
-      title: true,
-      slug: true,
-      description: true,
-      content: true,
-      featuredImage: true,
-      featuredVideo: true,
-      isPremium: true,
-      isPublished: true,
-      status: true,
-      viewCount: true,
-      authorId: true,
-      createdAt: true,
-      updatedAt: true,
-      author: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          avatar: true,
-        },
-      },
-      category: {
-        include: {
-          parent: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-            },
-          },
-        },
-      },
-      tags: {
+      name: true,
+      email: true,
+      avatar: true,
+    },
+  },
+  category: {
+    include: {
+      parent: {
         select: {
           id: true,
           name: true,
           slug: true,
         },
       },
-      _count: {
-        select: {
-          views: true,
-        },
-      },
     },
+  },
+  tags: {
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+    },
+  },
+  _count: {
+    select: {
+      views: true,
+    },
+  },
+} as const;
+
+// Full post select for detailed views (includes content)
+const fullPostSelect = {
+  ...optimizedPostSelect,
+  content: true,
+} as const;
+
+// Internal uncached functions
+async function _getAllPosts(
+  includeUnpublished = false
+): Promise<PostWithDetails[]> {
+  const posts = await prisma.post.findMany({
+    where: includeUnpublished ? {} : { isPublished: true },
+    select: fullPostSelect,
     orderBy: {
       createdAt: "desc",
     },
@@ -118,9 +128,7 @@ export async function getAllPosts(
   return posts;
 }
 
-export async function getPostBySlug(
-  slug: string
-): Promise<PostWithDetails | null> {
+async function _getPostBySlug(slug: string): Promise<PostWithDetails | null> {
   const post = await prisma.post.findUnique({
     where: { slug },
     include: {
@@ -161,7 +169,7 @@ export async function getPostBySlug(
   return post;
 }
 
-export async function getPostById(id: string): Promise<PostWithDetails | null> {
+async function _getPostById(id: string): Promise<PostWithDetails | null> {
   const post = await prisma.post.findUnique({
     where: { id },
     include: {
@@ -202,7 +210,81 @@ export async function getPostById(id: string): Promise<PostWithDetails | null> {
   return post;
 }
 
-export async function getPostsByCategory(
+// Cached versions of the functions
+export const getAllPosts = createCachedFunction(
+  _getAllPosts,
+  "get-all-posts",
+  CACHE_DURATIONS.POSTS_LIST,
+  [CACHE_TAGS.POSTS]
+);
+
+export const getPostBySlug = createCachedFunction(
+  _getPostBySlug,
+  "get-post-by-slug",
+  CACHE_DURATIONS.POST_DETAIL,
+  [CACHE_TAGS.POST_BY_SLUG]
+);
+
+export const getPostById = createCachedFunction(
+  _getPostById,
+  "get-post-by-id",
+  CACHE_DURATIONS.POST_DETAIL,
+  [CACHE_TAGS.POST_BY_ID]
+);
+
+// Internal uncached functions for categories and tags
+async function _getAllCategories() {
+  return await prisma.category.findMany({
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      description: true,
+      parent: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        },
+      },
+      children: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        },
+      },
+      _count: {
+        select: {
+          posts: true,
+        },
+      },
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+}
+
+async function _getAllTags() {
+  return await prisma.tag.findMany({
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      _count: {
+        select: {
+          posts: true,
+        },
+      },
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+}
+
+async function _getPostsByCategory(
   categorySlug: string,
   includeUnpublished = false
 ): Promise<PostWithDetails[]> {
@@ -218,39 +300,7 @@ export async function getPostsByCategory(
         },
       ],
     },
-    include: {
-      author: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          avatar: true,
-        },
-      },
-      category: {
-        include: {
-          parent: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-            },
-          },
-        },
-      },
-      tags: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-        },
-      },
-      _count: {
-        select: {
-          views: true,
-        },
-      },
-    },
+    select: fullPostSelect,
     orderBy: {
       createdAt: "desc",
     },
@@ -259,7 +309,7 @@ export async function getPostsByCategory(
   return posts;
 }
 
-export async function searchPosts(query: string): Promise<PostWithDetails[]> {
+async function _searchPosts(query: string): Promise<PostWithDetails[]> {
   const posts = await prisma.post.findMany({
     where: {
       AND: [
@@ -280,39 +330,7 @@ export async function searchPosts(query: string): Promise<PostWithDetails[]> {
         },
       ],
     },
-    include: {
-      author: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          avatar: true,
-        },
-      },
-      category: {
-        include: {
-          parent: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-            },
-          },
-        },
-      },
-      tags: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-        },
-      },
-      _count: {
-        select: {
-          views: true,
-        },
-      },
-    },
+    select: fullPostSelect,
     orderBy: {
       createdAt: "desc",
     },
@@ -320,6 +338,37 @@ export async function searchPosts(query: string): Promise<PostWithDetails[]> {
 
   return posts;
 }
+
+// Cached versions for static data
+export const getAllCategories = createCachedFunction(
+  _getAllCategories,
+  "get-all-categories",
+  CACHE_DURATIONS.STATIC_DATA,
+  [CACHE_TAGS.CATEGORIES]
+);
+
+export const getAllTags = createCachedFunction(
+  _getAllTags,
+  "get-all-tags",
+  CACHE_DURATIONS.STATIC_DATA,
+  [CACHE_TAGS.TAGS]
+);
+
+// Cached versions for posts by category
+export const getPostsByCategory = createCachedFunction(
+  _getPostsByCategory,
+  "get-posts-by-category",
+  CACHE_DURATIONS.POSTS_LIST,
+  [CACHE_TAGS.POSTS]
+);
+
+// Search results cache (shorter duration due to dynamic nature)
+export const searchPosts = createCachedFunction(
+  _searchPosts,
+  "search-posts",
+  CACHE_DURATIONS.SEARCH,
+  [CACHE_TAGS.SEARCH_RESULTS]
+);
 
 export async function incrementPostView(
   postId: string,
@@ -403,72 +452,6 @@ export async function deleteMDXFile(post: PostWithDetails): Promise<void> {
   if (fs.existsSync(filePath)) {
     fs.unlinkSync(filePath);
   }
-}
-
-export async function getAllCategories() {
-  const categories = await prisma.category.findMany({
-    include: {
-      parent: true,
-      children: true,
-      _count: {
-        select: {
-          posts: {
-            where: {
-              isPublished: true,
-            },
-          },
-        },
-      },
-    },
-    orderBy: {
-      name: "asc",
-    },
-  });
-
-  // For parent categories, calculate total posts including children
-  const categoriesWithTotalCounts = await Promise.all(
-    categories.map(async (category) => {
-      if (category.children.length > 0) {
-        // This is a parent category, count posts from all children
-        const totalChildPosts = await prisma.post.count({
-          where: {
-            isPublished: true,
-            category: {
-              parentId: category.id,
-            },
-          },
-        });
-
-        return {
-          ...category,
-          _count: {
-            ...category._count,
-            posts: totalChildPosts,
-          },
-        };
-      }
-
-      // Child category or category without children, return as is
-      return category;
-    })
-  );
-
-  return categoriesWithTotalCounts;
-}
-
-export async function getAllTags() {
-  return await prisma.tag.findMany({
-    include: {
-      _count: {
-        select: {
-          posts: true,
-        },
-      },
-    },
-    orderBy: {
-      name: "asc",
-    },
-  });
 }
 
 export async function getTagById(id: string) {

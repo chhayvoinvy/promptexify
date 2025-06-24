@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { handleAuthRedirect } from "./auth";
+import { revalidateCache, CACHE_TAGS } from "@/lib/cache";
 
 const prisma = new PrismaClient();
 
@@ -109,6 +110,22 @@ export async function createPostAction(formData: FormData) {
         },
       },
     });
+
+    // Revalidate cache tags for posts
+    revalidateCache([
+      CACHE_TAGS.POSTS,
+      CACHE_TAGS.POST_BY_SLUG,
+      CACHE_TAGS.CATEGORIES,
+      CACHE_TAGS.SEARCH_RESULTS,
+    ]);
+
+    // Revalidate cache tags for updated post
+    revalidateCache([
+      CACHE_TAGS.POSTS,
+      CACHE_TAGS.POST_BY_SLUG,
+      CACHE_TAGS.POST_BY_ID,
+      CACHE_TAGS.SEARCH_RESULTS,
+    ]);
 
     revalidatePath("/dashboard/posts");
     redirect("/dashboard/posts");
@@ -260,6 +277,14 @@ export async function updatePostAction(formData: FormData) {
 
     revalidatePath("/dashboard/posts");
     revalidatePath(`/entry/${id}`);
+    // Revalidate cache tags for updated post
+    revalidateCache([
+      CACHE_TAGS.POSTS,
+      CACHE_TAGS.POST_BY_SLUG,
+      CACHE_TAGS.POST_BY_ID,
+      CACHE_TAGS.SEARCH_RESULTS,
+    ]);
+
     redirect("/dashboard/posts");
   } catch (error) {
     // Check if this is a Next.js redirect

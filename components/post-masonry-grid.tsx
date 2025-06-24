@@ -9,6 +9,7 @@ import { PostModal } from "@/components/post-modal";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { FavoriteButton } from "@/components/favorite-button";
 import { LockIcon, UnlockIcon, Play, Pause } from "lucide-react";
+import { PostTextBaseCard } from "@/components/post-text-base-card";
 
 interface PostMasonryGridProps {
   posts: PostWithInteractions[];
@@ -334,11 +335,8 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                       </div>
                     </>
                   ) : (
-                    <div className="bg-gradient-to-br from-muted/50 to-muted/80 flex flex-col items-center justify-center gap-2 pt-12 pb-17 rounded-lg">
-                      <p className="text-muted-foreground text-lg font-medium text-center leading-relaxed line-clamp-7 px-7">
-                        {post.title}
-                      </p>
-                    </div>
+                    // Text base post with shiny hover effect
+                    <PostTextBaseCard title={post.title} />
                   )}
 
                   {post.isPremium && (
