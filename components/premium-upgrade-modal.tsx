@@ -186,14 +186,6 @@ export function PremiumUpgradeModal({
                 >
                   Yearly
                 </span>
-                {isYearly && (
-                  <Badge
-                    variant="secondary"
-                    className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                  >
-                    Save {Math.round(savings)}%
-                  </Badge>
-                )}
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-teal-600 dark:text-teal-400">
@@ -203,9 +195,17 @@ export function PremiumUpgradeModal({
                   </span>
                 </div>
                 {isYearly && (
-                  <div className="text-sm text-muted-foreground">
-                    Only ${yearlyMonthlyEquivalent.toFixed(2)}/month
-                  </div>
+                  <>
+                    <div className="text-sm text-muted-foreground">
+                      Only ${yearlyMonthlyEquivalent.toFixed(2)}/month
+                    </div>
+                    <Badge
+                      variant="secondary"
+                      className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                    >
+                      Save {Math.round(savings)}%
+                    </Badge>
+                  </>
                 )}
               </div>
             </div>
