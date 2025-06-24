@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Lock, Crown, Star, Zap, Loader2 } from "lucide-react";
 import { PostWithInteractions } from "@/lib/content";
 import { redirectToStripeCheckout } from "@/actions/stripe";
@@ -135,7 +135,7 @@ export function PremiumUpgradeModal({
                 </div>
               </div>
               <div className="flex items-top gap-3 p-3 bg-muted/20 rounded-lg">
-                <Crown className="h-5 w-5 text-purple-500" />
+                <Crown className="h-5 w-5 text-teal-500" />
                 <div>
                   <div className="font-medium text-sm">Priority Support</div>
                   <div className="text-xs text-muted-foreground">
@@ -158,54 +158,60 @@ export function PremiumUpgradeModal({
           </div>
 
           {/* Pricing Display */}
-          <div className="rounded-lg p-4 border border-teal-200 dark:border-teal-800">
+          <div className="rounded-lg p-4 border border-gray-200 dark:border-gray-800">
             {/* Pricing Toggle */}
             <div className="space-y-4">
               {/* Billing Period Toggle */}
-              <div className="flex items-center justify-center space-x-4 p-2 rounded-lg">
-                <span
-                  className={`text-sm ${
-                    !isYearly
-                      ? "font-semibold text-foreground"
-                      : "text-muted-foreground"
-                  }`}
+              <div className="flex justify-center">
+                <Tabs
+                  value={isYearly ? "yearly" : "monthly"}
+                  onValueChange={(value) => setIsYearly(value === "yearly")}
+                  className="w-fit"
                 >
-                  Monthly
-                </span>
-                <Switch
-                  checked={isYearly}
-                  onCheckedChange={setIsYearly}
-                  className="data-[state=checked]:bg-teal-500"
-                />
-                <span
-                  className={`text-sm ${
-                    isYearly
-                      ? "font-semibold text-foreground"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  Yearly
-                </span>
+                  <TabsList className="bg-muted/50 p-1">
+                    <TabsTrigger
+                      value="monthly"
+                      className="data-[state=active]:bg-white data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                    >
+                      Monthly
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="yearly"
+                      className="data-[state=active]:bg-white data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                    >
+                      Yearly
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-teal-600 dark:text-teal-400">
+              <div className="text-center flex flex-col items-center justify-center py-3">
+                <div className="text-4xl font-bold text-foreground">
                   ${isYearly ? yearlyPrice.toFixed(2) : monthlyPrice.toFixed(2)}
                   <span className="text-sm text-muted-foreground font-normal">
                     /{isYearly ? "year" : "month"}
                   </span>
                 </div>
-                {isYearly && (
+                {isYearly ? (
                   <>
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-sm text-muted-foreground flex items-center justify-center mt-2">
                       Only ${yearlyMonthlyEquivalent.toFixed(2)}/month
+                      <Badge
+                        variant="outline"
+                        className="ml-2 text-sm bg-muted/20 text-green-700 dark:text-green-300"
+                      >
+                        Save {Math.round(savings)}%
+                      </Badge>
                     </div>
-                    <Badge
-                      variant="secondary"
-                      className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                    >
-                      Save {Math.round(savings)}%
-                    </Badge>
                   </>
+                ) : (
+                  <div className="text-sm text-muted-foreground mt-2">
+                    <Badge
+                      variant="outline"
+                      className="text-muted-foreground text-sm"
+                    >
+                      Affordably priced
+                    </Badge>
+                  </div>
                 )}
               </div>
             </div>
@@ -225,14 +231,6 @@ export function PremiumUpgradeModal({
                 <Crown className="h-4 w-4 mr-2" />
               )}
               {isLoading ? "Processing..." : "Upgrade to Premium"}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleClose}
-              size="lg"
-              disabled={isLoading}
-            >
-              Maybe Later
             </Button>
           </div>
 
