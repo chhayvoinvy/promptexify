@@ -88,8 +88,11 @@ function HelpArticleCard({ article }: { article: HelpArticle }) {
           <div className="rounded-lg bg-primary/10 p-2 w-fit">
             <IconComponent className="h-6 w-6 text-primary" />
           </div>
-          <Badge variant="secondary" className="text-xs">
-            {article.category}
+          <Badge
+            variant="outline"
+            className="text-xs cursor-pointer hover:bg-secondary/80 hover:text-secondary-foreground"
+          >
+            # {article.category}
           </Badge>
         </div>
         <div>
@@ -226,7 +229,7 @@ export default async function HelpPage() {
               {/* Quick Actions */}
               <div className="grid gap-4 md:grid-cols-3">
                 <Card className="border-dashed">
-                  <CardContent className="flex items-center justify-between p-4">
+                  <CardContent className="flex items-center flex-col justify-center p-4 gap-4 text-center">
                     <div className="space-y-1">
                       <p className="text-sm font-medium">
                         Need immediate help?
@@ -244,7 +247,7 @@ export default async function HelpPage() {
                 </Card>
 
                 <Card className="border-dashed">
-                  <CardContent className="flex items-center justify-between p-4">
+                  <CardContent className="flex items-center flex-col justify-center p-4 gap-4 text-center">
                     <div className="space-y-1">
                       <p className="text-sm font-medium">Report a bug</p>
                       <p className="text-xs text-muted-foreground">
@@ -258,7 +261,7 @@ export default async function HelpPage() {
                 </Card>
 
                 <Card className="border-dashed">
-                  <CardContent className="flex items-center justify-between p-4">
+                  <CardContent className="flex items-center flex-col justify-center p-4 gap-4 text-center">
                     <div className="space-y-1">
                       <p className="text-sm font-medium">Feature request</p>
                       <p className="text-xs text-muted-foreground">
@@ -298,8 +301,8 @@ export default async function HelpPage() {
                   ].map((topic) => (
                     <Badge
                       key={topic}
-                      variant="secondary"
-                      className="cursor-pointer hover:bg-secondary/80"
+                      variant="outline"
+                      className="cursor-pointer hover:bg-secondary/80 hover:text-secondary-foreground text-xs"
                     >
                       {topic}
                     </Badge>

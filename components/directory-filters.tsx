@@ -130,6 +130,7 @@ export function DirectoryFilters({ categories }: DirectoryFiltersProps) {
         <div className="flex gap-2">
           <Button
             type="submit"
+            variant="outline"
             className="flex items-center gap-2"
             disabled={isPending}
           >

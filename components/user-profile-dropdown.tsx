@@ -16,6 +16,7 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { UserData } from "@/lib/utils";
 import { IconCrown } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
+import { DarkModeToggle } from "./darkmode-toggle";
 
 interface UserType {
   email?: string;
@@ -97,15 +98,20 @@ export function UserProfileDropdown({ user }: UserProfileDropdownProps) {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <LogoutButton
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start p-2 h-auto"
-          >
-            Log out
-          </LogoutButton>
-        </DropdownMenuItem>
+        <div className="flex items-center w-full gap-4 p-2">
+          <DropdownMenuItem asChild>
+            <DarkModeToggle />
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <LogoutButton
+              variant="outline"
+              size="sm"
+              className="justify-end hover:bg-transparent hover:text-foreground p-4 cursor-pointer"
+            >
+              Log out
+            </LogoutButton>
+          </DropdownMenuItem>
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );

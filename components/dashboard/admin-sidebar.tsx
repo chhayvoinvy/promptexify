@@ -160,7 +160,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
               className="data-[slot=sidebar-menu-button]:!p-2"
             >
               <Link href="/dashboard" className="flex items-center gap-3">
-                <LogoCompact href="" className="!w-20 !h-auto" />
+                <LogoCompact />
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

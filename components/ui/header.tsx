@@ -61,18 +61,18 @@ export function Header() {
           : "border-transparent bg-transparent"
       }`}
     >
-      <div className="container px-4 flex h-14 max-w-7xl mx-auto items-center justify-between">
-        <div className="flex items-center space-x-2">
+      <div className="container px-4 grid grid-cols-3 h-14 max-w-7xl mx-auto items-center">
+        <div className="flex items-center space-x-2 justify-self-start">
           <LogoCompact className="mr-6" priority />
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 justify-self-center">
           <nav className="flex items-center space-x-4">
             <Suspense fallback={<div className="w-96 h-10" />}>
               <Navbar />
             </Suspense>
           </nav>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-4 justify-self-end">
           {user ? (
             <UserProfileDropdown user={user} />
           ) : (

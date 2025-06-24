@@ -343,7 +343,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
 
                   {post.isPremium && (
                     <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
-                      <Badge className="text-foreground bg-gradient-to-r from-teal-500 to-sky-300 dark:from-teal-400 dark:to-sky-300">
+                      <Badge className="text-foreground bg-gradient-to-r from-teal-500 to-sky-300 dark:from-teal-400 dark:to-sky-300 border border-black/20 dark:border-white/20">
                         {userType === "PREMIUM" ? (
                           <UnlockIcon className="w-4 h-4" />
                         ) : (
@@ -364,12 +364,12 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                     >
                       <FavoriteButton
                         postId={post.id}
-                        className="border-1 border-white/20 backdrop-blur-lg bg-background"
+                        className="border-1 border-black/20 dark:border-white/20 backdrop-blur-lg bg-background"
                         initialFavorited={post.isFavorited || false}
                       />
                       <BookmarkButton
                         postId={post.id}
-                        className="border-1 border-white/20 backdrop-blur-lg bg-background"
+                        className="border-1 border-black/20 dark:border-white/20 backdrop-blur-lg bg-background"
                         initialBookmarked={post.isBookmarked || false}
                       />
                     </div>
@@ -401,8 +401,8 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
               </Card>
 
               {/* Content overlay positioned outside the Card */}
-              <div className="z-10 mx-3 border border-t-0 rounded-b-lg border-white/20">
-                <div className="bg-black/70 backdrop-blur-sm rounded-b-lg px-4 py-2 text-xs text-muted-foreground">
+              <div className="z-10 mx-3 border border-t-0 rounded-b-lg border-black/20 dark:border-white/20">
+                <div className="bg-background-muted backdrop-blur-sm rounded-b-lg px-4 py-2 text-xs text-muted-foreground">
                   <span className="line-clamp-2">
                     <span className="font-medium">Prompt: </span>
 
