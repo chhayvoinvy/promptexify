@@ -185,7 +185,6 @@ export function AccountForm({ user }: AccountFormProps) {
             </div>
 
             {user.type === "FREE" && (
-              // TODO: Add a way to upgrade to premium
               <Alert className="hidden">
                 <Crown className="h-4 w-4" />
                 <AlertDescription>

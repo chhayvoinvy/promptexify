@@ -16,7 +16,7 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { UserData } from "@/lib/utils";
 import { IconCrown } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
-import { DarkModeToggle } from "./darkmode-toggle";
+import { DarkModeToggle } from "./toggle-darkmode";
 
 interface UserType {
   email?: string;

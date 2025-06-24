@@ -21,7 +21,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { DarkModeToggle } from "@/components/darkmode-toggle";
+import { DarkModeToggle } from "@/components/toggle-darkmode";
 
 // Mobile Navigation Component
 function MobileNav() {

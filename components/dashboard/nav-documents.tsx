@@ -34,8 +34,6 @@ export function NavDocuments({
       <SidebarGroupLabel>Documents</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
-          // For content management routes, check if current path starts with the item URL
-          // This will highlight "Posts" when on /dashboard/posts, /dashboard/posts/new, /dashboard/posts/edit/123, etc.
           const isActive =
             pathname === item.url ||
             (item.url !== "/" && pathname.startsWith(item.url + "/")) ||

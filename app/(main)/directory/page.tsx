@@ -7,7 +7,7 @@ import { Suspense } from "react";
 import { PostMasonrySkeleton } from "@/components/post-masonry-skeleton";
 import { DirectoryFilters } from "@/components/directory-filters";
 import { Skeleton } from "@/components/ui/skeleton";
-import { InfinitePostGrid } from "@/components/infinite-post-grid";
+import { InfinitePostGrid } from "@/components/infinite-scroll-grid";
 import { PrismaClient } from "@/lib/generated/prisma";
 
 const prisma = new PrismaClient();
