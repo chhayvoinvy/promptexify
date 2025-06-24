@@ -120,7 +120,7 @@ export function SignInForm() {
         {isGooglePending ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Signing in with Google...
+            Redirecting...
           </>
         ) : (
           <>
