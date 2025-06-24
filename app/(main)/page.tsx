@@ -1,12 +1,12 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Search, TrendingUp, Clock, Heart } from "lucide-react";
+import { TrendingUp, Clock, Heart } from "lucide-react";
 import Link from "next/link";
 import { getPostsWithSorting, type SortOption } from "@/lib/content";
 import { getCurrentUser } from "@/lib/auth";
 import { Suspense } from "react";
 import { PostMasonryGrid } from "@/components/post-masonry-grid";
 import { PostMasonrySkeleton } from "@/components/post-masonry-skeleton";
+import { HeroSection } from "@/components/hero-section";
 import { cn } from "@/lib/utils";
 
 interface SearchProps {
@@ -95,43 +95,9 @@ export default async function HomePage({ searchParams }: SearchProps) {
   const { q: searchQuery, sort = "latest" } = await searchParams;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background py-0">
       {/* Hero Section */}
-      <section className="bg-gradient-to-b from-background via-muted/20 to-background -mt-14 pt-14">
-        <div className="container mx-auto px-5 py-6 max-w-7xl md:py-25">
-          <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-              Prompt Directory
-            </h1>
-            <p className="text-xl text-muted-foreground mb-8">
-              Discover amazing prompts and rulesets for AI code editor, image
-              generation, video creation, and more. Browse our curated
-              collection of free ready to use prompts.
-            </p>
-
-            {/* Search Bar */}
-            <form method="GET" className="relative max-w-xl mx-auto">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                name="q"
-                placeholder="Search prompts, categories, or tags..."
-                defaultValue={searchQuery}
-                className="px-10 py-6 text-lg border-2 rounded-xl focus:border-primary"
-              />
-              {/* Preserve sort parameter in search */}
-              {sort !== "latest" && (
-                <input type="hidden" name="sort" value={sort} />
-              )}
-              <Button
-                type="submit"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2"
-              >
-                Search
-              </Button>
-            </form>
-          </div>
-        </div>
-      </section>
+      <HeroSection searchQuery={searchQuery} sort={sort} />
 
       {/* Posts Section */}
       <section className="py-12">
