@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import {
-  IconChartBar,
   IconDashboard,
   IconHelp,
   IconSearch,
@@ -12,7 +11,7 @@ import {
   IconCategory,
   IconBookmark,
   IconHeart,
-  IconCreditCard,
+  type Icon,
 } from "@tabler/icons-react";
 import Link from "next/link";
 
@@ -45,7 +44,19 @@ interface User {
   userData?: UserData | null;
 }
 
-const navigationData = {
+interface NavigationItem {
+  title: string;
+  url: string;
+  icon: Icon;
+  adminOnly?: boolean;
+  allowUser?: boolean;
+}
+
+const navigationData: {
+  navMain: NavigationItem[];
+  navSecondary: NavigationItem[];
+  contentManagement: NavigationItem[];
+} = {
   navMain: [
     {
       title: "Dashboard",

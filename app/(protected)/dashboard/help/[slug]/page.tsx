@@ -29,9 +29,9 @@ interface HelpArticleMeta {
 }
 
 interface Props {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 }
 
 async function getHelpArticle(slug: string) {

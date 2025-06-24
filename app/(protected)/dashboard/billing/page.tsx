@@ -30,7 +30,6 @@ import { redirect } from "next/navigation";
 import { syncUserSubscriptionWithStripe } from "@/actions/stripe";
 import { getCurrentUser } from "@/lib/auth";
 import { formatStripeDate } from "@/lib/utils";
-import { IconAlertCircle, IconCheckCircle } from "@tabler/icons-react";
 
 // Force dynamic rendering for this page
 export const dynamic = "force-dynamic";
