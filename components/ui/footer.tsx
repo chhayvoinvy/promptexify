@@ -6,13 +6,14 @@ export function Footer() {
   return (
     <footer className="border-t border-border/40 bg-background">
       <div className="container mx-auto px-4 py-8 max-w-7xl sm:px-6 md:py-16">
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 lg:gap-10 xl:gap-13 items-start justify-center">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 lg:gap-10 xl:gap-13 items-start justify-center">
           {/* Brand and Description */}
           <div className="space-y-4 col-span-1 sm:col-span-2 md:col-span-2 lg:col-span-3">
             <LogoCompact />
-            <p className="text-sm text-muted-foreground max-w-md sm:text-xs">
+            <p className="text-sm text-muted-foreground max-w-md">
               A comprehensive collection of AI prompts to enhance your
-              creativity and productivity across various platforms.
+              creativity and productivity across various tools and platforms.
+              Better prompt, better results!
             </p>
             <div className="flex space-x-4">
               <Link
@@ -55,8 +56,8 @@ export function Footer() {
 
           {/* Services */}
           <div className="space-y-3 sm:space-y-4">
-            <h3 className="font-semibold text-sm sm:text-xs">Services</h3>
-            <ul className="space-y-2 text-sm sm:text-xs">
+            <h3 className="font-semibold text-sm">Services</h3>
+            <ul className="space-y-2 text-sm">
               <li>
                 <Link
                   href="/pricing"
@@ -86,10 +87,8 @@ export function Footer() {
 
           {/* Categories */}
           <div className="space-y-3 sm:space-y-4">
-            <h3 className="font-semibold text-sm sm:text-xs">
-              Prompts Directory
-            </h3>
-            <ul className="space-y-2 text-sm sm:text-xs">
+            <h3 className="font-semibold text-sm">Prompts</h3>
+            <ul className="space-y-2 text-sm">
               <li>
                 <Link
                   target="_blank"
@@ -148,8 +147,8 @@ export function Footer() {
           </div>
 
           <div className="space-y-3 sm:space-y-4">
-            <h3 className="font-semibold text-sm sm:text-xs">Rules</h3>
-            <ul className="space-y-2 text-sm sm:text-xs">
+            <h3 className="font-semibold text-sm">Rules for AI</h3>
+            <ul className="space-y-2 text-sm">
               <li>
                 <Link
                   target="_blank"
@@ -182,8 +181,8 @@ export function Footer() {
 
           {/* Company */}
           <div className="space-y-3 sm:space-y-4">
-            <h3 className="font-semibold text-sm sm:text-xs">Company</h3>
-            <ul className="space-y-2 text-sm sm:text-xs">
+            <h3 className="font-semibold text-sm">Company</h3>
+            <ul className="space-y-2 text-sm">
               <li>
                 <Link
                   href="/privacy-policy"
@@ -223,10 +222,10 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="mt-8 border-t border-border/40 pt-6 sm:mt-12 sm:pt-8">
           <div className="flex flex-col items-center justify-between space-y-1 text-center md:flex-row md:space-y-0 md:text-left">
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               © {new Date().getFullYear()} Promptexify. All rights reserved.
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Prompts can generate inaccurate results. Please process with
               caution.
             </p>

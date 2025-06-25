@@ -7,7 +7,10 @@ import { Suspense } from "react";
 import { PostMasonryGrid } from "@/components/post-masonry-grid";
 import { PostMasonrySkeleton } from "@/components/post-masonry-skeleton";
 import { HeroSection } from "@/components/hero-section";
+import Testimonials from "@/components/testimonials";
+import { BentoGrid } from "@/components/bento-grid";
 import { cn } from "@/lib/utils";
+import { CtaSection } from "@/components/cta-section";
 
 interface SearchProps {
   searchParams: Promise<{
@@ -95,42 +98,49 @@ export default async function HomePage({ searchParams }: SearchProps) {
   const { q: searchQuery, sort = "latest" } = await searchParams;
 
   return (
-    <div className="min-h-screen bg-background py-0">
+    <div className="container mx-auto px-5 py-6 max-w-7xl min-h-screen bg-background space-y-10 flex flex-col justify-center">
       {/* Hero Section */}
       <HeroSection searchQuery={searchQuery} sort={sort} />
 
       {/* Posts Section */}
       <section className="pb-12">
-        <div className="container mx-auto px-5 py-6 max-w-7xl">
-          {searchQuery && (
-            <div className="mb-8">
-              <h2 className="text-2xl font-semibold mb-2">
-                Search Results for &ldquo;{searchQuery}&rdquo;
-              </h2>
-              <p className="text-muted-foreground">
-                Showing all prompts matching your search criteria
-              </p>
-            </div>
-          )}
+        {searchQuery && (
+          <div className="mb-8">
+            <h2 className="text-2xl font-semibold mb-2">
+              Search Results for &ldquo;{searchQuery}&rdquo;
+            </h2>
+            <p className="text-muted-foreground">
+              Showing all prompts matching your search criteria
+            </p>
+          </div>
+        )}
 
-          {/* Filter Buttons */}
-          {!searchQuery && <FilterButtons currentSort={sort} />}
+        {/* Filter Buttons */}
+        {!searchQuery && <FilterButtons currentSort={sort} />}
 
-          <Suspense fallback={<PostMasonrySkeleton />}>
-            <PostGrid searchQuery={searchQuery} sortBy={sort} />
-          </Suspense>
+        <Suspense fallback={<PostMasonrySkeleton />}>
+          <PostGrid searchQuery={searchQuery} sortBy={sort} />
+        </Suspense>
 
-          {!searchQuery && (
-            <div className="text-center mt-12">
-              <Link href="/directory">
-                <Button size="lg" variant="outline">
-                  View All Prompts
-                </Button>
-              </Link>
-            </div>
-          )}
-        </div>
+        {!searchQuery && (
+          <div className="text-center mt-12">
+            <Link href="/directory">
+              <Button size="lg" variant="outline">
+                View All Prompts
+              </Button>
+            </Link>
+          </div>
+        )}
       </section>
+
+      {/* Bento Grid Section */}
+      <BentoGrid />
+
+      {/* Testimonials Section */}
+      <Testimonials />
+
+      {/* Call to Action Section */}
+      <CtaSection />
     </div>
   );
 }

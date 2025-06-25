@@ -44,3 +44,4 @@ next-env.d.ts
 
 /lib/generated/prisma
 .contentlayer
+/backup

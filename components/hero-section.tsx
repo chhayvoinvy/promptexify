@@ -67,7 +67,6 @@ export function HeroSection({ searchQuery, sort }: HeroSectionProps) {
             generation, video creation, and more. Browse our curated collection
             of free ready to use prompts.
           </p>
-
           {/* Search Bar */}
           <form method="GET" className="relative max-w-xl mx-auto">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
