@@ -25,6 +25,9 @@ alwaysApply: true
   - Use the "function" keyword for pure functions.
   - Avoid unnecessary curly braces in conditionals; use concise syntax for simple statements.
   - Use declarative JSX.
+
+  Error handling:
+  - Use Toast for dislaying errors.
   
   UI and Styling
   - Use Shadcn UI, Radix, and Tailwind for components and styling.

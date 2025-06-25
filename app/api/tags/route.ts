@@ -8,7 +8,12 @@ import {
   getClientIdentifier,
   getRateLimitHeaders,
 } from "@/lib/rate-limit";
-import { sanitizeInput, sanitizeSlug, SECURITY_HEADERS } from "@/lib/sanitize";
+import {
+  sanitizeTagName,
+  sanitizeTagSlug,
+  validateTagSlug,
+  SECURITY_HEADERS,
+} from "@/lib/sanitize";
 
 export async function GET(request: Request) {
   try {
@@ -165,11 +170,14 @@ export async function POST(request: Request) {
 
     const { name, slug: providedSlug } = validationResult.data;
 
-    // Sanitize input data
-    const sanitizedName = sanitizeInput(name);
+    // Enhanced sanitization for security
+    const sanitizedName = sanitizeTagName(name);
     if (!sanitizedName || sanitizedName.length === 0) {
       return NextResponse.json(
-        { error: "Tag name contains invalid characters or is empty" },
+        {
+          error:
+            "Tag name contains invalid characters or is empty after sanitization",
+        },
         {
           status: 400,
           headers: SECURITY_HEADERS,
@@ -177,35 +185,21 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate or sanitize slug
-    const finalSlug = providedSlug
-      ? sanitizeSlug(providedSlug)
-      : sanitizeSlug(sanitizedName);
-
-    if (!finalSlug || finalSlug.length === 0) {
-      return NextResponse.json(
-        { error: "Unable to generate a valid slug from the tag name" },
-        {
-          status: 400,
-          headers: SECURITY_HEADERS,
-        }
-      );
+    // Generate or sanitize slug with strict validation
+    let finalSlug: string;
+    if (providedSlug) {
+      finalSlug = sanitizeTagSlug(providedSlug);
+    } else {
+      finalSlug = sanitizeTagSlug(sanitizedName);
     }
 
-    // Additional validation for final values
-    if (sanitizedName.length > 50) {
+    // Validate the final slug according to requirements
+    if (!validateTagSlug(finalSlug)) {
       return NextResponse.json(
-        { error: "Tag name must be 50 characters or less" },
         {
-          status: 400,
-          headers: SECURITY_HEADERS,
-        }
-      );
-    }
-
-    if (finalSlug.length > 50) {
-      return NextResponse.json(
-        { error: "Generated slug is too long" },
+          error:
+            "Unable to generate a valid slug. Slug can only contain lowercase letters (a-z), numbers (0-9), and hyphens (-), cannot start or end with hyphens, and cannot contain consecutive hyphens.",
+        },
         {
           status: 400,
           headers: SECURITY_HEADERS,

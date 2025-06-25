@@ -187,6 +187,90 @@ export function sanitizeContent(content: string): string {
 }
 
 /**
+ * Sanitize tag names with strict validation
+ * Only allows a-z, A-Z, 0-9, spaces, hyphens, and underscores
+ */
+export function sanitizeTagName(tagName: string): string {
+  if (typeof tagName !== "string") {
+    return "";
+  }
+
+  return (
+    tagName
+      .trim()
+      // Remove null bytes and control characters
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+      // Only allow alphanumeric, spaces, hyphens, and underscores
+      .replace(/[^a-zA-Z0-9\s\-_]/g, "")
+      // Normalize whitespace
+      .replace(/\s+/g, " ")
+      .trim()
+      // Limit length
+      .substring(0, 50)
+  );
+}
+
+/**
+ * Sanitize and generate tag slug with strict validation
+ * Only allows a-z, 0-9, and hyphens as specified in requirements
+ */
+export function sanitizeTagSlug(input: string): string {
+  if (typeof input !== "string") {
+    return "";
+  }
+
+  const slug = input
+    .trim()
+    .toLowerCase()
+    // Remove null bytes and control characters
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+    // Replace spaces and underscores with hyphens
+    .replace(/[\s_]+/g, "-")
+    // Only allow a-z, 0-9, and hyphens
+    .replace(/[^a-z0-9-]/g, "")
+    // Remove consecutive hyphens
+    .replace(/-+/g, "-")
+    // Remove leading and trailing hyphens
+    .replace(/^-+|-+$/g, "")
+    // Limit length
+    .substring(0, 50);
+
+  return slug;
+}
+
+/**
+ * Validate tag slug format according to requirements
+ * Only a-z, 0-9, and hyphens allowed
+ */
+export function validateTagSlug(slug: string): boolean {
+  if (typeof slug !== "string" || slug.length === 0) {
+    return false;
+  }
+
+  // Check if slug matches the required format
+  if (!/^[a-z0-9-]+$/.test(slug)) {
+    return false;
+  }
+
+  // Check if slug starts or ends with hyphen
+  if (slug.startsWith("-") || slug.endsWith("-")) {
+    return false;
+  }
+
+  // Check for consecutive hyphens
+  if (slug.includes("--")) {
+    return false;
+  }
+
+  // Check length
+  if (slug.length > 50) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * Advanced content sanitization for user-generated HTML content
  * Use this for content that may legitimately contain some HTML
  */

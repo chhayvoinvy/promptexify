@@ -8,6 +8,12 @@ import { redirect } from "next/navigation";
 import { handleAuthRedirect } from "./auth";
 import { revalidateCache, CACHE_TAGS } from "@/lib/cache";
 
+import {
+  sanitizeInput,
+  sanitizeContent,
+  sanitizeTagSlug,
+} from "@/lib/sanitize";
+
 // Post management actions
 export async function createPostAction(formData: FormData) {
   try {
@@ -23,20 +29,28 @@ export async function createPostAction(formData: FormData) {
       throw new Error("Unauthorized: Only registered users can create posts");
     }
 
-    // Extract form data
-    const title = formData.get("title") as string;
-    const slug =
-      (formData.get("slug") as string) ||
-      title
-        .toLowerCase()
-        .replace(/\s+/g, "-")
-        .replace(/[^\w-]/g, "");
-    const description = formData.get("description") as string;
-    const content = formData.get("content") as string;
+    // Extract and validate form data
+    const rawTitle = formData.get("title") as string;
+    const rawSlug = formData.get("slug") as string;
+    const rawDescription = formData.get("description") as string;
+    const rawContent = formData.get("content") as string;
     const featuredImage = formData.get("featuredImage") as string;
     const featuredVideo = formData.get("featuredVideo") as string;
     const category = formData.get("category") as string;
     const tags = formData.get("tags") as string;
+
+    // Sanitize inputs for enhanced security
+    const title = sanitizeInput(rawTitle);
+    const description = rawDescription ? sanitizeInput(rawDescription) : null;
+    const content = sanitizeContent(rawContent);
+
+    // Generate slug if not provided
+    const slug =
+      rawSlug ||
+      title
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^\w-]/g, "");
 
     // Handle publish/status logic based on user role
     let isPublished = false;
@@ -68,26 +82,29 @@ export async function createPostAction(formData: FormData) {
       throw new Error("Invalid category");
     }
 
-    // Process tags
+    // Process and sanitize tags
     const tagNames = tags
       ? tags
           .split(",")
-          .map((tag) => tag.trim())
+          .map((tag) => sanitizeInput(tag.trim()))
           .filter(Boolean)
       : [];
     const tagConnections = [];
 
     for (const tagName of tagNames) {
-      const tagSlug = tagName.toLowerCase().replace(/\s+/g, "-");
-      const tag = await prisma.tag.upsert({
-        where: { slug: tagSlug },
-        update: {},
-        create: {
-          name: tagName,
-          slug: tagSlug,
-        },
-      });
-      tagConnections.push({ id: tag.id });
+      // Use enhanced tag slug sanitization
+      const tagSlug = sanitizeTagSlug(tagName);
+      if (tagSlug) {
+        const tag = await prisma.tag.upsert({
+          where: { slug: tagSlug },
+          update: {},
+          create: {
+            name: tagName,
+            slug: tagSlug,
+          },
+        });
+        tagConnections.push({ id: tag.id });
+      }
     }
 
     // Create the post

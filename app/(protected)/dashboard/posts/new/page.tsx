@@ -17,9 +17,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { MediaUpload } from "@/components/media-upload";
 import { TagSelector } from "@/components/tag-selector";
 import { createPostAction } from "@/actions";
@@ -184,12 +185,14 @@ export default function NewPostPage() {
           });
         }
 
-        // If there were failed tags, we could show a warning but still continue
+        // If there were failed tags, show a warning but still continue
         if (failedTags.length > 0) {
           console.warn(
             `Some tags could not be created: ${failedTags.join(", ")}`
           );
-          // You could add a toast notification here if you have one
+          toast.warning(
+            `Some tags could not be created: ${failedTags.join(", ")}`
+          );
         }
       }
 
@@ -206,12 +209,18 @@ export default function NewPostPage() {
 
       await createPostAction(formData);
 
-      // Redirect to posts list on success
+      // Show success message and redirect
+      toast.success("Post submitted successfully!");
       router.push("/dashboard/posts");
     } catch (error) {
       console.error("Error creating post:", error);
-      // Handle error gracefully - you could add user-friendly error message here
-      // For now, we'll just log it and keep the form open for retry
+
+      // Show user-friendly error message
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("Failed to create post. Please try again.");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -258,8 +267,12 @@ export default function NewPostPage() {
   // Show loading state
   if (loading || !user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        Loading...
+      <div className="flex flex-col items-center justify-center h-screen gap-2">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <p className="text-sm text-muted-foreground mt-2">Loading...</p>
+        <p className="text-sm text-muted-foreground">
+          This may take a few seconds.
+        </p>
       </div>
     );
   }
@@ -470,7 +483,9 @@ export default function NewPostPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between opacity-50">
+                    {/* Temporarily hide premium switch */}
+                    {/* TODO: Add premium that approve by admin */}
+                    {/* <div className="flex items-center justify-between opacity-50">
                       <div className="space-y-0.5">
                         <Label htmlFor="isPremium">Premium</Label>
                         <p className="text-sm text-muted-foreground">
@@ -478,7 +493,7 @@ export default function NewPostPage() {
                         </p>
                       </div>
                       <Switch id="isPremium" name="isPremium" disabled />
-                    </div>
+                    </div> */}
                   </div>
                 )}
               </CardContent>

@@ -28,13 +28,18 @@ export const favoriteSchema = z.object({
   postId: z.string().uuid("Invalid post ID"),
 });
 
-// Post schemas with comprehensive validation
+// Enhanced post schemas with comprehensive validation and security measures
 export const createPostSchema = z.object({
   title: z
     .string()
     .min(1, "Title is required")
     .max(200, "Title must be 200 characters or less")
-    .trim(),
+    .regex(
+      /^[a-zA-Z0-9\s\-_.,!?()[\]'"&@#$%^*+=|\\/:;<>~`]*$/,
+      "Title contains invalid characters"
+    )
+    .transform((val) => val.trim())
+    .refine((val) => val.length > 0, "Title cannot be empty after trimming"),
   slug: z
     .string()
     .min(1, "Slug is required")
@@ -43,18 +48,34 @@ export const createPostSchema = z.object({
       /^[a-z0-9-]+$/,
       "Slug can only contain lowercase letters, numbers, and hyphens"
     )
-    .trim(),
+    .refine(
+      (val) => !val.startsWith("-") && !val.endsWith("-"),
+      "Slug cannot start or end with hyphens"
+    )
+    .refine(
+      (val) => !val.includes("--"),
+      "Slug cannot contain consecutive hyphens"
+    )
+    .transform((val) => val.trim()),
   description: z
     .string()
     .max(500, "Description must be 500 characters or less")
-    .trim()
+    .regex(
+      /^[a-zA-Z0-9\s\-_.,!?()[\]'"&@#$%^*+=|\\/:;<>~`\n\r]*$/,
+      "Description contains invalid characters"
+    )
+    .transform((val) => val.trim())
     .optional()
     .nullable(),
   content: z
     .string()
     .min(10, "Content must be at least 10 characters")
     .max(50000, "Content must be 50,000 characters or less")
-    .trim(),
+    .transform((val) => val.trim())
+    .refine(
+      (val) => val.length >= 10,
+      "Content must be at least 10 characters after trimming"
+    ),
   featuredImage: z.string().url("Invalid image URL").optional().nullable(),
   featuredVideo: z.string().url("Invalid video URL").optional().nullable(),
   categoryId: z.string().uuid("Invalid category ID"),
@@ -71,28 +92,60 @@ export const updatePostSchema = createPostSchema.extend({
   id: z.string().uuid("Invalid post ID"),
 });
 
-// Tag schemas with validation
+// Enhanced tag schemas with strict validation for security
 export const createTagSchema = z.object({
   name: z
     .string()
     .min(1, "Tag name is required")
     .max(50, "Tag name must be 50 characters or less")
-    .regex(/^[a-zA-Z0-9\s-_#@]+$/, "Tag name contains invalid characters")
-    .trim(),
+    .regex(
+      /^[a-zA-Z0-9\s\-_]+$/,
+      "Tag name can only contain letters, numbers, spaces, hyphens, and underscores"
+    )
+    .transform((val) => val.trim().replace(/\s+/g, " "))
+    .refine((val) => val.length > 0, "Tag name cannot be empty after trimming")
+    .refine(
+      (val) => val.length <= 50,
+      "Tag name must be 50 characters or less after processing"
+    ),
+  slug: z
+    .string()
+    .max(50, "Slug must be 50 characters or less")
+    .regex(
+      /^[a-z0-9-]*$/,
+      "Slug can only contain lowercase letters (a-z), numbers (0-9), and hyphens (-)"
+    )
+    .refine(
+      (val) => val === "" || (!val.startsWith("-") && !val.endsWith("-")),
+      "Slug cannot start or end with hyphens"
+    )
+    .refine(
+      (val) => val === "" || !val.includes("--"),
+      "Slug cannot contain consecutive hyphens"
+    )
+    .transform((val) => val.trim())
+    .optional(),
+});
+
+export const updateTagSchema = createTagSchema.extend({
+  id: z.string().uuid("Invalid tag ID"),
   slug: z
     .string()
     .min(1, "Slug is required")
     .max(50, "Slug must be 50 characters or less")
     .regex(
       /^[a-z0-9-]+$/,
-      "Slug can only contain lowercase letters, numbers, and hyphens"
+      "Slug can only contain lowercase letters (a-z), numbers (0-9), and hyphens (-)"
     )
-    .trim()
-    .optional(),
-});
-
-export const updateTagSchema = createTagSchema.extend({
-  id: z.string().uuid("Invalid tag ID"),
+    .refine(
+      (val) => !val.startsWith("-") && !val.endsWith("-"),
+      "Slug cannot start or end with hyphens"
+    )
+    .refine(
+      (val) => !val.includes("--"),
+      "Slug cannot contain consecutive hyphens"
+    )
+    .transform((val) => val.trim()),
 });
 
 // Category schemas with validation
@@ -102,7 +155,11 @@ export const createCategorySchema = z.object({
     .min(1, "Category name is required")
     .max(100, "Category name must be 100 characters or less")
     .regex(/^[a-zA-Z0-9\s-_&]+$/, "Category name contains invalid characters")
-    .trim(),
+    .transform((val) => val.trim())
+    .refine(
+      (val) => val.length > 0,
+      "Category name cannot be empty after trimming"
+    ),
   slug: z
     .string()
     .min(1, "Slug is required")
@@ -111,12 +168,20 @@ export const createCategorySchema = z.object({
       /^[a-z0-9-]+$/,
       "Slug can only contain lowercase letters, numbers, and hyphens"
     )
-    .trim()
+    .refine(
+      (val) => !val.startsWith("-") && !val.endsWith("-"),
+      "Slug cannot start or end with hyphens"
+    )
+    .refine(
+      (val) => !val.includes("--"),
+      "Slug cannot contain consecutive hyphens"
+    )
+    .transform((val) => val.trim())
     .optional(),
   description: z
     .string()
     .max(500, "Description must be 500 characters or less")
-    .trim()
+    .transform((val) => val.trim())
     .optional()
     .nullable(),
   parentId: z.string().uuid("Invalid parent category ID").optional().nullable(),
@@ -133,7 +198,8 @@ export const fileUploadSchema = z.object({
     .min(1, "Title is required")
     .max(100, "Title must be 100 characters or less")
     .regex(/^[a-zA-Z0-9\s-_\.]+$/, "Title contains invalid characters")
-    .trim(),
+    .transform((val) => val.trim())
+    .refine((val) => val.length > 0, "Title cannot be empty after trimming"),
 });
 
 // User profile schemas
@@ -143,24 +209,28 @@ export const updateUserProfileSchema = z.object({
     .min(2, "Name must be at least 2 characters")
     .max(100, "Name must be 100 characters or less")
     .regex(/^[a-zA-Z\s-'\.]+$/, "Name contains invalid characters")
-    .trim()
+    .transform((val) => val.trim())
+    .refine(
+      (val) => val.length >= 2,
+      "Name must be at least 2 characters after trimming"
+    )
     .optional(),
   bio: z
     .string()
     .max(500, "Bio must be 500 characters or less")
-    .trim()
+    .transform((val) => val.trim())
     .optional()
     .nullable(),
   avatar: z.string().url("Invalid avatar URL").optional().nullable(),
 });
 
-// Search and pagination schemas
+// Enhanced search and pagination schemas with stricter validation
 export const searchSchema = z.object({
   q: z
     .string()
     .max(100, "Search query must be 100 characters or less")
     .regex(/^[a-zA-Z0-9\s-_.#@]*$/, "Search query contains invalid characters")
-    .trim()
+    .transform((val) => val.trim())
     .optional(),
   page: z.coerce
     .number()

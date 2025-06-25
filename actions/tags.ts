@@ -4,56 +4,87 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { createTagSchema, updateTagSchema } from "@/lib/schemas";
+import {
+  sanitizeTagName,
+  sanitizeTagSlug,
+  validateTagSlug,
+} from "@/lib/sanitize";
+
+// Define return types for consistent error handling
+interface ActionResult {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
 
 // Tag Management Actions
-export async function createTagAction(formData: FormData) {
+export async function createTagAction(
+  formData: FormData
+): Promise<ActionResult> {
   try {
     const user = await getCurrentUser();
     if (!user) {
-      throw new Error("Authentication required");
+      return {
+        success: false,
+        error: "Authentication required",
+      };
     }
 
-    // Temporarily disabled for testing - uncomment to re-enable admin protection
-    // if (user.userData?.role !== "ADMIN") {
-    //   throw new Error("Admin access required");
-    // }
-
-    const name = formData.get("name") as string;
-    let slug = formData.get("slug") as string;
-
-    // Input validation
-    if (!name) {
-      throw new Error("Tag name is required");
+    // Only allow ADMIN to create tags for better control
+    if (user.userData?.role !== "ADMIN") {
+      return {
+        success: false,
+        error: "Admin access required",
+      };
     }
 
-    // Validate name length
-    if (name.trim().length > 50) {
-      throw new Error("Tag name must be 50 characters or less");
+    const rawName = formData.get("name") as string;
+    const rawSlug = formData.get("slug") as string;
+
+    // Validate input data using Zod schema
+    const validationResult = createTagSchema.safeParse({
+      name: rawName,
+      slug: rawSlug || undefined,
+    });
+
+    if (!validationResult.success) {
+      const errorMessages = validationResult.error.errors.map(
+        (err) => err.message
+      );
+      return {
+        success: false,
+        error: `Validation failed: ${errorMessages.join(", ")}`,
+      };
     }
 
-    // Sanitize name
-    const sanitizedName = name.trim();
+    const { name, slug: providedSlug } = validationResult.data;
 
-    // Auto-generate slug if not provided
-    if (!slug) {
-      slug = sanitizedName
-        .toLowerCase()
-        .replace(/\s+/g, "-")
-        .replace(/[^a-z0-9-]/g, "");
+    // Additional sanitization for enhanced security
+    const sanitizedName = sanitizeTagName(name);
+    if (!sanitizedName || sanitizedName.length === 0) {
+      return {
+        success: false,
+        error:
+          "Tag name contains invalid characters or is empty after sanitization",
+      };
+    }
+
+    // Generate or sanitize slug with strict validation
+    let finalSlug: string;
+    if (providedSlug) {
+      finalSlug = sanitizeTagSlug(providedSlug);
     } else {
-      slug = slug
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9-]/g, "");
+      finalSlug = sanitizeTagSlug(sanitizedName);
     }
 
-    // Validate slug
-    if (slug.length === 0) {
-      throw new Error("Unable to generate a valid slug from the tag name");
-    }
-
-    if (slug.length > 50) {
-      throw new Error("Generated slug is too long");
+    // Validate the final slug
+    if (!validateTagSlug(finalSlug)) {
+      return {
+        success: false,
+        error:
+          "Slug can only contain lowercase letters (a-z), numbers (0-9), and hyphens (-).",
+      };
     }
 
     // Check for slug conflicts (case-insensitive for name, exact for slug)
@@ -61,7 +92,7 @@ export async function createTagAction(formData: FormData) {
       where: {
         OR: [
           { name: { equals: sanitizedName, mode: "insensitive" } },
-          { slug: slug },
+          { slug: finalSlug },
         ],
       },
     });
@@ -69,14 +100,23 @@ export async function createTagAction(formData: FormData) {
     if (existingTag) {
       const isNameMatch =
         existingTag.name.toLowerCase() === sanitizedName.toLowerCase();
-      const isSlugMatch = existingTag.slug === slug;
+      const isSlugMatch = existingTag.slug === finalSlug;
 
       if (isNameMatch && isSlugMatch) {
-        throw new Error("A tag with this name and slug already exists");
+        return {
+          success: false,
+          error: "A tag with this name and slug already exists",
+        };
       } else if (isNameMatch) {
-        throw new Error("A tag with this name already exists");
+        return {
+          success: false,
+          error: "A tag with this name already exists",
+        };
       } else {
-        throw new Error("A tag with this slug already exists");
+        return {
+          success: false,
+          error: "A tag with this slug already exists",
+        };
       }
     }
 
@@ -84,12 +124,17 @@ export async function createTagAction(formData: FormData) {
     await prisma.tag.create({
       data: {
         name: sanitizedName,
-        slug,
+        slug: finalSlug,
       },
     });
 
     revalidatePath("/dashboard/tags");
-    redirect("/dashboard/tags");
+
+    // Return success before redirect
+    return {
+      success: true,
+      message: `Tag "${sanitizedName}" created successfully`,
+    };
   } catch (error) {
     // Check if this is a Next.js redirect
     if (error && typeof error === "object" && "digest" in error) {
@@ -110,16 +155,22 @@ export async function createTagAction(formData: FormData) {
       if (dbError.code === "P2002") {
         // Unique constraint violation
         console.error("Tag creation failed - duplicate constraint:", error);
-        throw new Error("A tag with this name or slug already exists");
+        return {
+          success: false,
+          error: "A tag with this name or slug already exists",
+        };
       }
     }
 
     console.error("Error creating tag:", error);
 
-    // Throw a user-friendly error message
+    // Return a user-friendly error message
     const errorMessage =
       error instanceof Error ? error.message : "Failed to create tag";
-    throw new Error(errorMessage);
+    return {
+      success: false,
+      error: errorMessage,
+    };
   }
 }
 
@@ -130,18 +181,45 @@ export async function updateTagAction(formData: FormData) {
       throw new Error("Authentication required");
     }
 
-    // Temporarily disabled for testing - uncomment to re-enable admin protection
-    // if (user.userData?.role !== "ADMIN") {
-    //   throw new Error("Admin access required");
-    // }
+    // Only allow ADMIN to update tags
+    if (user.userData?.role !== "ADMIN") {
+      throw new Error("Admin access required");
+    }
 
-    const id = formData.get("id") as string;
-    const name = formData.get("name") as string;
-    const slug = formData.get("slug") as string;
+    const rawId = formData.get("id") as string;
+    const rawName = formData.get("name") as string;
+    const rawSlug = formData.get("slug") as string;
 
-    // Input validation
-    if (!id || !name || !slug) {
-      throw new Error("ID, name, and slug are required");
+    // Validate input data using Zod schema
+    const validationResult = updateTagSchema.safeParse({
+      id: rawId,
+      name: rawName,
+      slug: rawSlug,
+    });
+
+    if (!validationResult.success) {
+      const errorMessages = validationResult.error.errors.map(
+        (err) => err.message
+      );
+      throw new Error(`Validation failed: ${errorMessages.join(", ")}`);
+    }
+
+    const { id, name, slug } = validationResult.data;
+
+    // Additional sanitization for enhanced security
+    const sanitizedName = sanitizeTagName(name);
+    if (!sanitizedName || sanitizedName.length === 0) {
+      throw new Error(
+        "Tag name contains invalid characters or is empty after sanitization"
+      );
+    }
+
+    // Sanitize and validate slug
+    const finalSlug = sanitizeTagSlug(slug);
+    if (!validateTagSlug(finalSlug)) {
+      throw new Error(
+        "Invalid slug format. Slug can only contain lowercase letters (a-z), numbers (0-9), and hyphens (-)."
+      );
     }
 
     // Check if tag exists
@@ -153,24 +231,37 @@ export async function updateTagAction(formData: FormData) {
       throw new Error("Tag not found");
     }
 
-    // Check for slug conflicts (excluding current tag)
-    const slugConflict = await prisma.tag.findFirst({
+    // Check for conflicts (excluding current tag)
+    const existingConflict = await prisma.tag.findFirst({
       where: {
-        slug,
+        OR: [
+          { name: { equals: sanitizedName, mode: "insensitive" } },
+          { slug: finalSlug },
+        ],
         id: { not: id },
       },
     });
 
-    if (slugConflict) {
-      throw new Error("A tag with this slug already exists");
+    if (existingConflict) {
+      const isNameMatch =
+        existingConflict.name.toLowerCase() === sanitizedName.toLowerCase();
+      const isSlugMatch = existingConflict.slug === finalSlug;
+
+      if (isNameMatch && isSlugMatch) {
+        throw new Error("A tag with this name and slug already exists");
+      } else if (isNameMatch) {
+        throw new Error("A tag with this name already exists");
+      } else {
+        throw new Error("A tag with this slug already exists");
+      }
     }
 
     // Update the tag
     await prisma.tag.update({
       where: { id },
       data: {
-        name,
-        slug,
+        name: sanitizedName,
+        slug: finalSlug,
         updatedAt: new Date(),
       },
     });

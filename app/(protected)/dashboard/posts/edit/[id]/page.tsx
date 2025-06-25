@@ -668,7 +668,9 @@ export default function EditPostPage() {
                       </div>
                     )}
 
-                    <div className="flex items-center justify-between opacity-50">
+                    {/* Temporarily hide premium switch */}
+                    {/* TODO: Add premium that approve by admin */}
+                    {/* <div className="flex items-center justify-between opacity-50">
                       <div className="space-y-0.5">
                         <Label htmlFor="isPremium">Premium</Label>
                         <p className="text-sm text-muted-foreground">
@@ -681,7 +683,7 @@ export default function EditPostPage() {
                         disabled
                         defaultChecked={post.isPremium}
                       />
-                    </div>
+                    </div> */}
                   </div>
                 )}
               </CardContent>

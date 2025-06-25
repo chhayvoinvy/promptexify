@@ -78,12 +78,22 @@ export function TagSelector({
     );
   }, [pendingTags, searchQuery]);
 
+  // Validate tag name format (only a-z, A-Z, 0-9, spaces, hyphens, underscores)
+  const isValidTagName = (name: string): boolean => {
+    return (
+      /^[a-zA-Z0-9\s\-_]+$/.test(name) &&
+      name.trim().length > 0 &&
+      name.length <= 50
+    );
+  };
+
   // Check if we can add a new pending tag
   const canAddPendingTag = useMemo(() => {
     const searchTrimmed = searchQuery.trim();
     return (
       searchTrimmed &&
       searchTrimmed.length > 0 &&
+      isValidTagName(searchTrimmed) &&
       !exactMatch &&
       !pendingMatch &&
       !selectedTags.some(
@@ -270,7 +280,13 @@ export function TagSelector({
             type="text"
             placeholder="Search tags or press Enter to add new ones..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              // Only allow valid characters for tag names: a-z, A-Z, 0-9, spaces, hyphens, underscores
+              if (value === "" || /^[a-zA-Z0-9\s\-_]*$/.test(value)) {
+                setSearchQuery(value.substring(0, 50)); // Limit length to 50 characters
+              }
+            }}
             onKeyDown={handleSearchKeyDown}
             disabled={disabled}
             className="pl-10 pr-10"
@@ -299,6 +315,17 @@ export function TagSelector({
                 Enter
               </kbd>{" "}
               to add &ldquo;{searchQuery}&rdquo; as a new tag.
+            </p>
+          </div>
+        )}
+
+        {/* Show validation error for invalid tag names */}
+        {searchQuery.trim() && !isValidTagName(searchQuery.trim()) && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <X className="w-4 h-4 text-red-600 dark:text-red-400" />
+            <p className="text-sm text-red-700 dark:text-red-300">
+              Tag name can only contain letters, numbers, spaces, hyphens, and
+              underscores. Maximum 50 characters.
             </p>
           </div>
         )}
