@@ -19,6 +19,7 @@ export function Navbar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const category = searchParams.get("category");
+  const subcategory = searchParams.get("subcategory");
 
   const isActive = (href: string) => {
     // Handle root path
@@ -26,10 +27,22 @@ export function Navbar() {
       return true;
     }
 
-    // Handle directory with category
+    // Handle directory with category and subcategory
+    if (href.includes("?category=") && href.includes("&subcategory=")) {
+      const url = new URL(href, "https://promptexify.com");
+      const hrefCategory = url.searchParams.get("category");
+      const hrefSubcategory = url.searchParams.get("subcategory");
+      return (
+        pathname === url.pathname &&
+        category === hrefCategory &&
+        subcategory === hrefSubcategory
+      );
+    }
+
+    // Handle directory with category only
     if (href.includes("?category=")) {
       const [path, categoryParam] = href.split("?category=");
-      return pathname === path && category === categoryParam;
+      return pathname === path && category === categoryParam && !subcategory;
     }
 
     // Handle directory without category
@@ -67,25 +80,26 @@ export function Navbar() {
                 </NavigationMenuLink>
               </li>
               <ListItem
-                href="/directory"
-                title="All Prompts"
-                isActive={isActive("/directory")}
+                href="/directory?category=ai-code-editor"
+                title="AI Code Editors"
+                isActive={isActive("/directory?category=ai-code-editor")}
               >
-                Browse our complete collection of AI prompts.
+                Browse our complete collection of rules and instructions for AI
+                Code Editors.
               </ListItem>
               <ListItem
-                href="/directory?category=video"
-                title="Video Generation"
-                isActive={isActive("/directory?category=chatgpt")}
+                href="/directory?category=text-to-image"
+                title="Text to Image"
+                isActive={isActive("/directory?category=text-to-image")}
               >
-                Prompts optimized for Video Generation.
+                Prompts optimized for image generation platforms.
               </ListItem>
               <ListItem
-                href="/directory?category=image"
-                title="Image Generation"
-                isActive={isActive("/directory?category=image")}
+                href="/directory?category=text-to-video"
+                title="Text to Video"
+                isActive={isActive("/directory?category=text-to-video")}
               >
-                Creative prompts for Image Generation.
+                Creative prompts for video generation platforms.
               </ListItem>
             </ul>
           </NavigationMenuContent>
@@ -110,20 +124,6 @@ export function Navbar() {
                 Data analysis, research, and professional document prompts.
               </ListItem>
               <ListItem
-                href="/directory?category=midjourney"
-                title="Midjourney Prompts"
-                isActive={isActive("/directory?category=midjourney")}
-              >
-                Photography styles, artistic concepts, and visual creativity.
-              </ListItem>
-              <ListItem
-                href="/directory?category=dalle"
-                title="DALL-E Prompts"
-                isActive={isActive("/directory?category=dalle")}
-              >
-                Design concepts, illustrations, and digital art creation.
-              </ListItem>
-              <ListItem
                 href="/directory?category=gemini"
                 title="Gemini Prompts"
                 isActive={isActive("/directory?category=gemini")}
@@ -131,12 +131,25 @@ export function Navbar() {
                 Business strategy, coding, and multilingual content.
               </ListItem>
               <ListItem
-                href="/directory"
-                title="View All Categories"
-                isActive={isActive("/directory")}
+                href="/directory?category=text-to-image"
+                title="Text to Image Prompts"
+                isActive={isActive("/directory?category=text-to-image")}
               >
-                Explore our complete collection of AI prompts across all
-                platforms.
+                Photography styles, artistic concepts, and visual creativity.
+              </ListItem>
+              <ListItem
+                href="/directory?category=text-to-video"
+                title="Text to Video Prompts"
+                isActive={isActive("/directory?category=text-to-video")}
+              >
+                Video creation prompts and cinematographic concepts.
+              </ListItem>
+              <ListItem
+                href="/directory?category=text-to-audio"
+                title="Text to Audio Prompts"
+                isActive={isActive("/directory?category=text-to-audio")}
+              >
+                Audio generation, music creation, and sound design prompts.
               </ListItem>
             </ul>
           </NavigationMenuContent>
@@ -146,28 +159,32 @@ export function Navbar() {
           <NavigationMenuContent>
             <ul className="grid w-[200px] gap-2 md:w-[250px] md:grid-cols-1 lg:w-[250px]">
               <ListItem
-                href="/directory?category=cursor"
-                title="Cursor AI Code Editor"
-                isActive={isActive("/directory?category=cursor")}
+                href="/directory?category=ai-code-editor&subcategory=cursor-rules"
+                title="Cursor Rules"
+                isActive={isActive(
+                  "/directory?category=ai-code-editor&subcategory=cursor-rules"
+                )}
               >
-                Rules for Cursor - AI Code Editor is a powerful tool that allows
-                you to write, edit, and debug code with ease.
+                Rules for Cursor AI Code Editor to enhance your coding
+                productivity.
               </ListItem>
               <ListItem
-                href="/directory?category=windsurf"
-                title="Windsurf AI Code Editor"
-                isActive={isActive("/directory?category=windsurf")}
+                href="/directory?category=ai-code-editor&subcategory=windsurf-rules"
+                title="Windsurf Rules"
+                isActive={isActive(
+                  "/directory?category=ai-code-editor&subcategory=windsurf-rules"
+                )}
               >
-                Rules for Windsurf - AI Code Editor is a powerful tool that
-                allows you to write, edit, and debug code with ease.
+                Rules for Windsurf AI Code Editor to streamline development.
               </ListItem>
               <ListItem
-                href="/directory?category=trae"
-                title="Trae AI Code Editor"
-                isActive={isActive("/directory?category=trae")}
+                href="/directory?category=ai-code-editor&subcategory=chatgpt-rules"
+                title="ChatGPT Rules"
+                isActive={isActive(
+                  "/directory?category=ai-code-editor&subcategory=chatgpt-rules"
+                )}
               >
-                Rules for Trae - AI Code Editor is a powerful tool that allows
-                you to write, edit, and debug code with ease.
+                Custom rules and instructions for ChatGPT interactions.
               </ListItem>
             </ul>
           </NavigationMenuContent>

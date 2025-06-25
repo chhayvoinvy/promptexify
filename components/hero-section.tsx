@@ -57,12 +57,12 @@ export function HeroSection({ searchQuery, sort }: HeroSectionProps) {
       <div className="absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
       <div className="absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
 
-      <div className="relative z-20 container mx-auto px-5 py-6 max-w-7xl md:py-25">
+      <div className="relative z-20 container mx-auto px-5 py-5 max-w-7xl md:py-25">
         <div className="max-w-3xl mx-auto text-center">
           <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
             Prompt Directory
           </h1>
-          <p className="text-xl text-muted-foreground mb-8">
+          <p className="text-xl text-muted-foreground mb-6">
             Discover amazing prompts and rulesets for AI code editor, image
             generation, video creation, and more. Browse our curated collection
             of free ready to use prompts.

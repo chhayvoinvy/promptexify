@@ -315,7 +315,7 @@ export function InfinitePostGrid({
         )}
 
         {posts.length === 0 && !isLoading && (
-          <div className="text-center py-12">
+          <div className="text-center pb-12">
             <p className="text-muted-foreground">No posts found.</p>
           </div>
         )}

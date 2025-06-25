@@ -5,12 +5,12 @@ import { LogoCompact } from "@/components/ui/logo";
 export function Footer() {
   return (
     <footer className="border-t border-border/40 bg-background">
-      <div className="container mx-auto px-5 py-6 max-w-7xl md:py-16">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-7 lg:grid-cols-7 lg:gap-10 xl:gap-13 items-top justify-center">
+      <div className="container mx-auto px-4 py-8 max-w-7xl sm:px-6 md:py-16">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 lg:gap-10 xl:gap-13 items-start justify-center">
           {/* Brand and Description */}
-          <div className="space-y-4 col-span-2 lg:col-span-3">
+          <div className="space-y-4 col-span-1 sm:col-span-2 md:col-span-2 lg:col-span-3">
             <LogoCompact />
-            <p className="text-xs text-muted-foreground max-w-md">
+            <p className="text-sm text-muted-foreground max-w-md sm:text-xs">
               A comprehensive collection of AI prompts to enhance your
               creativity and productivity across various platforms.
             </p>
@@ -20,43 +20,43 @@ export function Footer() {
                 className="text-muted-foreground hover:text-foreground transition-colors"
                 aria-label="GitHub"
               >
-                <Github className="h-4 w-4" />
+                <Github className="h-5 w-5 sm:h-4 sm:w-4" />
               </Link>
               <Link
                 href="https://twitter.com"
                 className="text-muted-foreground hover:text-foreground transition-colors"
                 aria-label="Twitter"
               >
-                <Twitter className="h-4 w-4" />
+                <Twitter className="h-5 w-5 sm:h-4 sm:w-4" />
               </Link>
               <Link
                 href="mailto:contact@promptexify.com"
                 className="text-muted-foreground hover:text-foreground transition-colors"
                 aria-label="Email"
               >
-                <Instagram className="h-4 w-4" />
+                <Instagram className="h-5 w-5 sm:h-4 sm:w-4" />
               </Link>
               <Link
                 href="https://www.youtube.com/@promptexify"
                 className="text-muted-foreground hover:text-foreground transition-colors"
                 aria-label="YouTube"
               >
-                <Youtube className="h-4 w-4" />
+                <Youtube className="h-5 w-5 sm:h-4 sm:w-4" />
               </Link>
               <Link
                 href="https://www.facebook.com/promptexify"
                 className="text-muted-foreground hover:text-foreground transition-colors"
                 aria-label="Facebook"
               >
-                <Facebook className="h-4 w-4" />
+                <Facebook className="h-5 w-5 sm:h-4 sm:w-4" />
               </Link>
             </div>
           </div>
 
           {/* Services */}
-          <div className="space-y-4">
-            <h3 className="font-semibold text-xs">Services</h3>
-            <ul className="space-y-2 text-xs">
+          <div className="space-y-3 sm:space-y-4">
+            <h3 className="font-semibold text-sm sm:text-xs">Services</h3>
+            <ul className="space-y-2 text-sm sm:text-xs">
               <li>
                 <Link
                   href="/pricing"
@@ -85,9 +85,11 @@ export function Footer() {
           </div>
 
           {/* Categories */}
-          <div className="space-y-4">
-            <h3 className="font-semibold text-xs">Prompts Directory</h3>
-            <ul className="space-y-2 text-xs">
+          <div className="space-y-3 sm:space-y-4">
+            <h3 className="font-semibold text-sm sm:text-xs">
+              Prompts Directory
+            </h3>
+            <ul className="space-y-2 text-sm sm:text-xs">
               <li>
                 <Link
                   target="_blank"
@@ -145,13 +147,13 @@ export function Footer() {
             </ul>
           </div>
 
-          <div className="space-y-4">
-            <h3 className="font-semibold text-xs">Rules</h3>
-            <ul className="space-y-2 text-xs">
+          <div className="space-y-3 sm:space-y-4">
+            <h3 className="font-semibold text-sm sm:text-xs">Rules</h3>
+            <ul className="space-y-2 text-sm sm:text-xs">
               <li>
                 <Link
                   target="_blank"
-                  href="/directory?category=chatgpt"
+                  href="/directory?category=ai-code-editor&subcategory=cursor-rules"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Cursor Rules
@@ -160,7 +162,7 @@ export function Footer() {
               <li>
                 <Link
                   target="_blank"
-                  href="/directory?category=claude"
+                  href="/directory?category=ai-code-editor&subcategory=windsurf-rules"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Windsurf Rules
@@ -169,7 +171,7 @@ export function Footer() {
               <li>
                 <Link
                   target="_blank"
-                  href="/directory?category=midjourney"
+                  href="/directory?category=ai-code-editor&subcategory=chatgpt-rules"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   ChatGPT Rules
@@ -179,9 +181,9 @@ export function Footer() {
           </div>
 
           {/* Company */}
-          <div className="space-y-4">
-            <h3 className="font-semibold text-xs">Company</h3>
-            <ul className="space-y-2 text-xs">
+          <div className="space-y-3 sm:space-y-4">
+            <h3 className="font-semibold text-sm sm:text-xs">Company</h3>
+            <ul className="space-y-2 text-sm sm:text-xs">
               <li>
                 <Link
                   href="/privacy-policy"
@@ -219,8 +221,8 @@ export function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="mt-12 border-t border-border/40 pt-8">
-          <div className="flex flex-col items-center justify-between space-y-4 md:flex-row md:space-y-0">
+        <div className="mt-8 border-t border-border/40 pt-6 sm:mt-12 sm:pt-8">
+          <div className="flex flex-col items-center justify-between space-y-1 text-center md:flex-row md:space-y-0 md:text-left">
             <p className="text-xs text-muted-foreground">
               © {new Date().getFullYear()} Promptexify. All rights reserved.
             </p>

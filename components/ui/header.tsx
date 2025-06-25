@@ -55,18 +55,18 @@ function MobileNav() {
           </SheetClose>
           <SheetClose asChild>
             <Link
-              href="/directory?category=video"
+              href="/directory?category=text-to-video"
               className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
             >
-              Video Generation
+              Text to Video
             </Link>
           </SheetClose>
           <SheetClose asChild>
             <Link
-              href="/directory?category=image"
+              href="/directory?category=text-to-image"
               className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
             >
-              Image Generation
+              Text to Image
             </Link>
           </SheetClose>
         </div>
@@ -104,26 +104,34 @@ function MobileNav() {
             </SheetClose>
             <SheetClose asChild>
               <Link
-                href="/directory?category=midjourney"
-                className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
-              >
-                Midjourney Prompts
-              </Link>
-            </SheetClose>
-            <SheetClose asChild>
-              <Link
-                href="/directory?category=dalle"
-                className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
-              >
-                DALL-E Prompts
-              </Link>
-            </SheetClose>
-            <SheetClose asChild>
-              <Link
                 href="/directory?category=gemini"
                 className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
               >
                 Gemini Prompts
+              </Link>
+            </SheetClose>
+            <SheetClose asChild>
+              <Link
+                href="/directory?category=text-to-image"
+                className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
+              >
+                Text to Image
+              </Link>
+            </SheetClose>
+            <SheetClose asChild>
+              <Link
+                href="/directory?category=text-to-video"
+                className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
+              >
+                Text to Video
+              </Link>
+            </SheetClose>
+            <SheetClose asChild>
+              <Link
+                href="/directory?category=text-to-audio"
+                className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
+              >
+                Text to Audio
               </Link>
             </SheetClose>
           </CollapsibleContent>
@@ -146,26 +154,26 @@ function MobileNav() {
           <CollapsibleContent className="space-y-2">
             <SheetClose asChild>
               <Link
-                href="/directory?category=cursor"
+                href="/directory?category=ai-code-editor&subcategory=cursor-rules"
                 className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
               >
-                Cursor AI Code Editor
+                Cursor Rules
               </Link>
             </SheetClose>
             <SheetClose asChild>
               <Link
-                href="/directory?category=windsurf"
+                href="/directory?category=ai-code-editor&subcategory=windsurf-rules"
                 className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
               >
-                Windsurf AI Code Editor
+                Windsurf Rules
               </Link>
             </SheetClose>
             <SheetClose asChild>
               <Link
-                href="/directory?category=trae"
+                href="/directory?category=ai-code-editor&subcategory=chatgpt-rules"
                 className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
               >
-                Trae AI Code Editor
+                ChatGPT Rules
               </Link>
             </SheetClose>
           </CollapsibleContent>

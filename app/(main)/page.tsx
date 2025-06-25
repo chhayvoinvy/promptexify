@@ -100,7 +100,7 @@ export default async function HomePage({ searchParams }: SearchProps) {
       <HeroSection searchQuery={searchQuery} sort={sort} />
 
       {/* Posts Section */}
-      <section className="py-12">
+      <section className="pb-12">
         <div className="container mx-auto px-5 py-6 max-w-7xl">
           {searchQuery && (
             <div className="mb-8">
