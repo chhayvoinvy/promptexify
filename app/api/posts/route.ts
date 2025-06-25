@@ -199,6 +199,7 @@ export async function GET(request: NextRequest) {
       limit: searchParams.get("limit") || "12",
       q: searchParams.get("q") || "",
       category: searchParams.get("category") || "",
+      subcategory: searchParams.get("subcategory") || "",
       premium: searchParams.get("premium") || "",
     };
 
@@ -220,7 +221,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { page, limit, q: search, category, premium } = validationResult.data;
+    const {
+      page,
+      limit,
+      q: search,
+      category,
+      subcategory,
+      premium,
+    } = validationResult.data;
 
     // Sanitize search query
     const sanitizedSearch = search ? sanitizeSearchQuery(search) : "";
@@ -249,7 +257,7 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // Category filter with validation
+    // Category and subcategory filter with validation
     if (category && category !== "all") {
       // Validate category slug format
       if (!/^[a-z0-9-]+$/.test(category)) {
@@ -263,10 +271,28 @@ export async function GET(request: NextRequest) {
       }
 
       whereClause.OR = whereClause.OR || [];
-      whereClause.OR.push(
-        { category: { slug: category } },
-        { category: { parent: { slug: category } } }
-      );
+
+      if (subcategory && subcategory !== "all") {
+        // Validate subcategory slug format
+        if (!/^[a-z0-9-]+$/.test(subcategory)) {
+          return NextResponse.json(
+            { error: "Invalid subcategory format" },
+            {
+              status: 400,
+              headers: SECURITY_HEADERS,
+            }
+          );
+        }
+
+        // Filter by specific subcategory
+        whereClause.OR.push({ category: { slug: subcategory } });
+      } else {
+        // Filter by parent category (includes all its subcategories)
+        whereClause.OR.push(
+          { category: { slug: category } },
+          { category: { parent: { slug: category } } }
+        );
+      }
     }
 
     // Premium filter

@@ -79,6 +79,7 @@ interface DirectoryPageProps {
   searchParams: Promise<{
     q?: string;
     category?: string;
+    subcategory?: string;
     premium?: string;
   }>;
 }
@@ -140,6 +141,7 @@ async function DirectoryContent({
   const {
     q: searchQuery,
     category: categoryFilter,
+    subcategory: subcategoryFilter,
     premium: premiumFilter,
   } = params;
 
@@ -167,13 +169,20 @@ async function DirectoryContent({
     ];
   }
 
-  // Category filter
+  // Category and subcategory filter
   if (categoryFilter && categoryFilter !== "all") {
     whereClause.OR = whereClause.OR || [];
-    whereClause.OR.push(
-      { category: { slug: categoryFilter } },
-      { category: { parent: { slug: categoryFilter } } }
-    );
+
+    if (subcategoryFilter && subcategoryFilter !== "all") {
+      // Filter by specific subcategory
+      whereClause.OR.push({ category: { slug: subcategoryFilter } });
+    } else {
+      // Filter by parent category (includes all its subcategories)
+      whereClause.OR.push(
+        { category: { slug: categoryFilter } },
+        { category: { parent: { slug: categoryFilter } } }
+      );
+    }
   }
 
   // Premium filter

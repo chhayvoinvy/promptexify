@@ -178,6 +178,10 @@ export const searchSchema = z.object({
     .string()
     .regex(/^[a-z0-9-]*$/, "Category contains invalid characters")
     .optional(),
+  subcategory: z
+    .string()
+    .regex(/^[a-z0-9-]*$/, "Subcategory contains invalid characters")
+    .optional(),
   premium: z.enum(["free", "premium", "all"]).optional(),
 });
 

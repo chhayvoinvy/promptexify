@@ -8,7 +8,7 @@ export function Footer() {
       <div className="container mx-auto px-5 py-6 max-w-7xl md:py-16">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-7 lg:grid-cols-7 lg:gap-10 xl:gap-13 items-top justify-center">
           {/* Brand and Description */}
-          <div className="space-y-4 col-span-3 lg:col-span-4">
+          <div className="space-y-4 col-span-2 lg:col-span-3">
             <LogoCompact />
             <p className="text-xs text-muted-foreground max-w-md">
               A comprehensive collection of AI prompts to enhance your
@@ -51,6 +51,37 @@ export function Footer() {
                 <Facebook className="h-4 w-4" />
               </Link>
             </div>
+          </div>
+
+          {/* Services */}
+          <div className="space-y-4">
+            <h3 className="font-semibold text-xs">Services</h3>
+            <ul className="space-y-2 text-xs">
+              <li>
+                <Link
+                  href="/pricing"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Pricing
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/features"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Features
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/prompt-generator"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Prompt Generator
+                </Link>
+              </li>
+            </ul>
           </div>
 
           {/* Categories */}
@@ -99,18 +130,10 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="/directory?category=midjourney"
+                  href="/directory?category=gemini"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Midjourney Prompts
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/directory?category=dalle"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  DALL-E Prompts
+                  Gemini Prompts
                 </Link>
               </li>
             </ul>
@@ -146,9 +169,9 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Legal */}
+          {/* Company */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-xs">Legal</h3>
+            <h3 className="font-semibold text-xs">Company</h3>
             <ul className="space-y-2 text-xs">
               <li>
                 <Link

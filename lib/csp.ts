@@ -20,11 +20,6 @@ export function generateNonce(): string {
  */
 function getCSPConfig() {
   const isDevelopment = process.env.NODE_ENV === "development";
-  const isLocalProduction =
-    process.env.NODE_ENV === "production" &&
-    (process.env.DISABLE_CSP_PROD_LOCAL === "true" ||
-      (typeof window !== "undefined" &&
-        window.location?.hostname === "localhost"));
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
   // Base allowed sources
@@ -40,23 +35,21 @@ function getCSPConfig() {
     : ["https://*.supabase.co", "wss://*.supabase.co"];
 
   // Development-only sources
-  const devSources =
-    isDevelopment || isLocalProduction
-      ? [
-          "ws://localhost:*",
-          "ws://127.0.0.1:*",
-          "http://localhost:*",
-          "http://127.0.0.1:*",
-          "ws://[::1]:*",
-          "http://[::1]:*",
-          // Next.js development server
-          "webpack://*",
-        ]
-      : [];
+  const devSources = isDevelopment
+    ? [
+        "ws://localhost:*",
+        "ws://127.0.0.1:*",
+        "http://localhost:*",
+        "http://127.0.0.1:*",
+        "ws://[::1]:*",
+        "http://[::1]:*",
+        // Next.js development server
+        "webpack://*",
+      ]
+    : [];
 
   return {
     isDevelopment,
-    isLocalProduction,
     baseSources,
     supabaseDomains,
     devSources,
@@ -67,13 +60,8 @@ function getCSPConfig() {
  * Generate CSP directives with nonce support
  */
 export function generateCSPDirectives(nonce: string): Record<string, string> {
-  const {
-    isDevelopment,
-    isLocalProduction,
-    baseSources,
-    supabaseDomains,
-    devSources,
-  } = getCSPConfig();
+  const { isDevelopment, baseSources, supabaseDomains, devSources } =
+    getCSPConfig();
 
   const baseDirectives = {
     "default-src": baseSources.self,
@@ -81,10 +69,8 @@ export function generateCSPDirectives(nonce: string): Record<string, string> {
     "form-action": baseSources.self,
     "frame-ancestors": "'none'",
     "object-src": "'none'",
-    // Only add upgrade-insecure-requests in true production (not local testing)
-    ...(isDevelopment || isLocalProduction
-      ? {}
-      : { "upgrade-insecure-requests": "" }),
+    // Only add upgrade-insecure-requests in production
+    ...(isDevelopment ? {} : { "upgrade-insecure-requests": "" }),
   };
 
   // Image sources - allow CDN and S3
@@ -166,35 +152,8 @@ export function generateCSPDirectives(nonce: string): Record<string, string> {
       "child-src": childSrc.join(" "),
       "manifest-src": manifestSrc.join(" "),
     };
-  } else if (isLocalProduction) {
-    // Local production testing - more permissive than strict production but more secure than dev
-    return {
-      ...baseDirectives,
-      "script-src": [
-        baseSources.self,
-        `'nonce-${nonce}'`,
-        "'unsafe-eval'", // Sometimes needed for production builds locally
-        "'wasm-unsafe-eval'", // For WASM support
-        // Stripe
-        "https://js.stripe.com",
-      ].join(" "),
-      "style-src": [
-        baseSources.self,
-        `'nonce-${nonce}'`,
-        "'unsafe-inline'", // Allow inline styles for local production testing
-        // Allow specific inline styles for critical CSS
-        "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='", // Empty string hash
-      ].join(" "),
-      "img-src": imgSrc.join(" "),
-      "font-src": fontSrc.join(" "),
-      "media-src": mediaSrc.join(" "),
-      "connect-src": connectSrc.join(" "),
-      "worker-src": workerSrc.join(" "),
-      "child-src": childSrc.join(" "),
-      "manifest-src": manifestSrc.join(" "),
-    };
   } else {
-    // Production CSP - strict security for deployed environments
+    // Production CSP - strict security
     return {
       ...baseDirectives,
       "script-src": [
