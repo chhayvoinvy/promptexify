@@ -90,6 +90,7 @@ export function Footer() {
             <ul className="space-y-2 text-xs">
               <li>
                 <Link
+                  target="_blank"
                   href="/directory?category=text-to-image"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
@@ -98,6 +99,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
+                  target="_blank"
                   href="/directory?category=text-to-video"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
@@ -106,6 +108,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
+                  target="_blank"
                   href="/directory?category=text-to-audio"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
@@ -114,6 +117,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
+                  target="_blank"
                   href="/directory?category=chatgpt"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
@@ -122,6 +126,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
+                  target="_blank"
                   href="/directory?category=claude"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
@@ -130,6 +135,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
+                  target="_blank"
                   href="/directory?category=gemini"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
@@ -144,6 +150,7 @@ export function Footer() {
             <ul className="space-y-2 text-xs">
               <li>
                 <Link
+                  target="_blank"
                   href="/directory?category=chatgpt"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
@@ -152,6 +159,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
+                  target="_blank"
                   href="/directory?category=claude"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
@@ -160,6 +168,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
+                  target="_blank"
                   href="/directory?category=midjourney"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
