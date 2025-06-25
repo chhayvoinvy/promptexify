@@ -56,7 +56,7 @@ function HeaderSection({ label, title, subtitle }: HeaderSectionProps) {
   return (
     <div className="flex flex-col items-center text-center">
       {label ? (
-        <div className="mb-4 font-semibold bg-gradient-to-r from-zinc-400 to-zinc-200 bg-clip-text text-transparent">
+        <div className="mb-4 font-semibold bg-gradient-to-r from-zinc-400 to-zinc-300 bg-clip-text text-transparent">
           {label}
         </div>
       ) : null}
@@ -77,7 +77,7 @@ export default function Testimonials() {
         <HeaderSection
           label="Testimonials"
           title="What our users are sharing."
-          subtitle="Discover the glowing feedback from our delighted users worldwide who are transforming their creative processes with AI prompts."
+          subtitle="Discover the feedback from our users who are transforming their creative processes with AI prompts."
         />
 
         <div className="column-1 gap-5 space-y-5 md:columns-2 lg:columns-3 mt-10">
