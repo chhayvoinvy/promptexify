@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/select";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Plus } from "lucide-react";
-import { PostActionsDropdown } from "@/components/dashboard/post-actions-dropdown";
+import { PostActionsDropdown } from "@/components/dashboard/(actions)/post-actions-dropdown";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";

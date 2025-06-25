@@ -7,7 +7,8 @@ import { getAllTags } from "@/lib/content";
 import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { Plus, MoreHorizontal, Edit, Trash2, Tag } from "lucide-react";
+import { Plus, Tag } from "lucide-react";
+import { TagActionsDropdown } from "@/components/dashboard/(actions)/tag-actions-dropdown";
 
 import {
   Card,
@@ -25,13 +26,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 export const dynamic = "force-dynamic";
 
@@ -190,26 +184,7 @@ export default async function TagsManagementPage() {
                           {new Date(tag.createdAt).toLocaleDateString()}
                         </TableCell>
                         <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Open menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <Link href={`/dashboard/tags/edit/${tag.id}`}>
-                                <DropdownMenuItem>
-                                  <Edit className="mr-2 h-4 w-4" />
-                                  Edit tag
-                                </DropdownMenuItem>
-                              </Link>
-                              <DropdownMenuItem className="text-destructive">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete tag
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <TagActionsDropdown tag={tag} />
                         </TableCell>
                       </TableRow>
                     ))}

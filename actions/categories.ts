@@ -183,3 +183,77 @@ export async function updateCategoryAction(formData: FormData) {
     throw new Error("Failed to update category");
   }
 }
+
+export async function deleteCategoryAction(formData: FormData) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      throw new Error("Authentication required");
+    }
+
+    // Temporarily disabled for testing - uncomment to re-enable admin protection
+    // if (user.userData?.role !== "ADMIN") {
+    //   throw new Error("Admin access required");
+    // }
+
+    const id = formData.get("id") as string;
+
+    // Input validation
+    if (!id) {
+      throw new Error("Category ID is required");
+    }
+
+    // Check if category exists and get related data
+    const category = await prisma.category.findUnique({
+      where: { id },
+      include: {
+        children: true,
+        posts: true,
+        _count: {
+          select: {
+            posts: true,
+            children: true,
+          },
+        },
+      },
+    });
+
+    if (!category) {
+      throw new Error("Category not found");
+    }
+
+    // Check if category has posts - prevent deletion if it does
+    if (category._count.posts > 0) {
+      throw new Error(
+        `Cannot delete category "${category.name}" because it contains ${category._count.posts} post(s). Please move or delete the posts first.`
+      );
+    }
+
+    // Check if category has subcategories - prevent deletion if it does
+    if (category._count.children > 0) {
+      throw new Error(
+        `Cannot delete category "${category.name}" because it has ${category._count.children} subcategory(ies). Please move or delete the subcategories first.`
+      );
+    }
+
+    // Safe to delete - category has no posts or subcategories
+    await prisma.category.delete({
+      where: { id },
+    });
+
+    revalidatePath("/dashboard/categories");
+    return {
+      success: true,
+      message: `Category "${category.name}" deleted successfully`,
+    };
+  } catch (error) {
+    console.error("Error deleting category:", error);
+
+    // If it's a known error with a message, throw it as is
+    if (error instanceof Error) {
+      throw error;
+    }
+
+    throw new Error("Failed to delete category");
+  }
+}

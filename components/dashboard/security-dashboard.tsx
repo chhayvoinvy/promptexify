@@ -252,13 +252,12 @@ export function SecurityDashboard() {
                         <p className="text-sm text-muted-foreground">
                           {new Date(event.createdAt).toLocaleString()}
                         </p>
-                        {event.metadata?.threatType && (
+                        {event.metadata?.threatType &&
+                        typeof event.metadata.threatType === "string" ? (
                           <p className="text-xs text-muted-foreground">
-                            {typeof event.metadata.threatType === "string"
-                              ? event.metadata.threatType
-                              : String(event.metadata.threatType)}
+                            {event.metadata.threatType}
                           </p>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                   ))

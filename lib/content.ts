@@ -59,6 +59,16 @@ export interface PostWithInteractions extends PostWithDetails {
   isFavorited?: boolean;
 }
 
+export interface TagWithCount {
+  id: string;
+  name: string;
+  slug: string;
+  createdAt: Date;
+  _count: {
+    posts: number;
+  };
+}
+
 // Optimized base query for posts - only select necessary fields for listings
 const optimizedPostSelect = {
   id: true,
@@ -240,6 +250,8 @@ async function _getAllCategories() {
       name: true,
       slug: true,
       description: true,
+      createdAt: true,
+      updatedAt: true,
       parent: {
         select: {
           id: true,
@@ -266,12 +278,13 @@ async function _getAllCategories() {
   });
 }
 
-async function _getAllTags() {
+async function _getAllTags(): Promise<TagWithCount[]> {
   return await prisma.tag.findMany({
     select: {
       id: true,
       name: true,
       slug: true,
+      createdAt: true,
       _count: {
         select: {
           posts: true,

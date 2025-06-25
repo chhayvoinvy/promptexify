@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
 import { createCSRFToken, getCSRFToken } from "@/lib/csrf";
-import { ENHANCED_SECURITY_HEADERS } from "@/lib/sanitize";
+import { NextResponse } from "next/server";
 
 /**
  * GET /api/csrf-token
@@ -11,7 +10,7 @@ export async function GET() {
     // Try to get existing token first
     let token = await getCSRFToken();
 
-    // If no token exists or it's expired, create a new one
+    // If no valid token exists, create a new one
     if (!token) {
       token = await createCSRFToken();
     }
@@ -19,21 +18,52 @@ export async function GET() {
     return NextResponse.json(
       {
         token,
-        expires: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1 hour from now
+        success: true,
       },
       {
-        headers: ENHANCED_SECURITY_HEADERS,
+        status: 200,
+        headers: {
+          "Cache-Control": "no-store",
+        },
       }
     );
   } catch (error) {
-    console.error("Failed to generate CSRF token:", error);
+    console.error("Error in CSRF token endpoint:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to generate CSRF token",
+        success: false,
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// POST method for creating a new token (force refresh)
+export async function POST() {
+  try {
+    const token = await createCSRFToken();
 
     return NextResponse.json(
-      { error: "Failed to generate CSRF token" },
       {
-        status: 500,
-        headers: ENHANCED_SECURITY_HEADERS,
+        token,
+        success: true,
+      },
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "no-store",
+        },
       }
+    );
+  } catch (error) {
+    console.error("Error creating new CSRF token:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to create CSRF token",
+        success: false,
+      },
+      { status: 500 }
     );
   }
 }

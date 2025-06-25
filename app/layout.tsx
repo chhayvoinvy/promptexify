@@ -4,7 +4,7 @@ import { ThemeProvider } from "@/components/ui/theme";
 import { Toaster } from "@/components/ui/sonner";
 import { GoogleOneTap } from "@/components/google-one-tap";
 import "./globals.css";
-import { generateCSPHeader } from "@/lib/sanitize";
+import { headers } from "next/headers";
 
 export const metadata: Metadata = {
   title: "Promptexify",
@@ -49,29 +49,20 @@ export const metadata: Metadata = {
   manifest: "/static/favicon/site.webmanifest",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Get nonce from headers (set by middleware)
+  const headersList = await headers();
+  const nonce = headersList.get("x-nonce") || "";
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <meta
-          httpEquiv="Content-Security-Policy"
-          content={generateCSPHeader()}
-        />
-        <meta httpEquiv="X-Content-Type-Options" content="nosniff" />
-        <meta httpEquiv="X-Frame-Options" content="DENY" />
-        <meta httpEquiv="X-XSS-Protection" content="1; mode=block" />
-        <meta
-          httpEquiv="Referrer-Policy"
-          content="strict-origin-when-cross-origin"
-        />
-        <meta
-          httpEquiv="Permissions-Policy"
-          content="geolocation=(), microphone=(), camera=()"
-        />
+        {/* All security headers are now handled by middleware and Next.js config */}
+        {/* Only keep favicon and theme-related meta tags */}
         <link
           rel="icon"
           type="image/x-icon"
@@ -97,6 +88,15 @@ export default function RootLayout({
         <link rel="manifest" href="/static/favicon/site.webmanifest" />
         <meta name="theme-color" content="#ffffff" />
         <meta name="msapplication-TileColor" content="#ffffff" />
+        {/* Nonce for CSP is available for any inline scripts/styles if needed */}
+        {nonce && (
+          <script
+            nonce={nonce}
+            dangerouslySetInnerHTML={{
+              __html: `window.__CSP_NONCE__ = "${nonce}";`,
+            }}
+          />
+        )}
       </head>
       <body className={GeistMono.className}>
         <ThemeProvider

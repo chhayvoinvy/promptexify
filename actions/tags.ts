@@ -196,3 +196,76 @@ export async function updateTagAction(formData: FormData) {
     throw new Error("Failed to update tag");
   }
 }
+
+export async function deleteTagAction(formData: FormData) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      throw new Error("Authentication required");
+    }
+
+    // Admin access required for deleting tags
+    if (user.userData?.role !== "ADMIN") {
+      throw new Error("Admin access required");
+    }
+
+    const id = formData.get("id") as string;
+
+    // Input validation
+    if (!id) {
+      throw new Error("Tag ID is required");
+    }
+
+    // Check if tag exists and get post count
+    const existingTag = await prisma.tag.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            posts: true,
+          },
+        },
+      },
+    });
+
+    if (!existingTag) {
+      throw new Error("Tag not found");
+    }
+
+    // Prevent deletion if tag has associated posts
+    if (existingTag._count.posts > 0) {
+      throw new Error(
+        `Cannot delete tag "${existingTag.name}" because it is used by ${existingTag._count.posts} post(s). Please remove the tag from all posts first.`
+      );
+    }
+
+    // Delete the tag
+    await prisma.tag.delete({
+      where: { id },
+    });
+
+    revalidatePath("/dashboard/tags");
+    return {
+      success: true,
+      message: `Tag "${existingTag.name}" deleted successfully`,
+    };
+  } catch (error) {
+    console.error("Error deleting tag:", error);
+
+    // Handle database-specific errors
+    if (error && typeof error === "object" && "code" in error) {
+      const dbError = error as { code: string };
+
+      if (dbError.code === "P2003") {
+        // Foreign key constraint violation
+        throw new Error(
+          "Cannot delete tag because it is referenced by other records"
+        );
+      }
+    }
+
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to delete tag";
+    throw new Error(errorMessage);
+  }
+}

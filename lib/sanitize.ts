@@ -195,26 +195,9 @@ export function sanitizeRichContent(content: string): string {
     return String(content);
   }
 
-  // Allow only specific safe HTML tags
-  const allowedTags = [
-    "p",
-    "br",
-    "strong",
-    "em",
-    "u",
-    "h1",
-    "h2",
-    "h3",
-    "h4",
-    "h5",
-    "h6",
-    "ul",
-    "ol",
-    "li",
-    "blockquote",
-    "a",
-  ];
-  const allowedAttributes = ["href", "title", "alt"];
+  // Note: Only specific safe HTML tags are allowed (hardcoded in regex patterns below)
+  // Allowed tags: p, br, strong, em, u, h1-h6, ul, ol, li, blockquote, a
+  // Allowed attributes: href, title, alt
 
   return (
     content
@@ -382,6 +365,7 @@ export function validateFileExtension(filename: string): boolean {
 
 /**
  * Get environment-aware CSP directives
+ * @deprecated Use lib/csp.ts instead for proper nonce-based CSP
  */
 function getCSPDirectives() {
   const baseDirectives = {

@@ -2,15 +2,39 @@ import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "./lib/supabase/middleware";
 import { csrfProtection } from "./lib/csrf";
 import { SecurityEvents, getClientIP, sanitizeUserAgent } from "./lib/audit";
+import {
+  generateNonce,
+  generateCSPHeader,
+  generateReportingEndpoints,
+} from "./lib/csp";
 
 export async function middleware(request: NextRequest) {
   try {
+    // Generate nonce for CSP
+    const nonce = generateNonce();
+
+    // Check environment
+    const isDevelopment = process.env.NODE_ENV === "development";
+    const isLocalProduction =
+      process.env.NODE_ENV === "production" &&
+      process.env.DISABLE_CSP_PROD_LOCAL === "true";
+    const disableCSP =
+      (isDevelopment && process.env.DISABLE_CSP_DEV === "true") ||
+      isLocalProduction;
+
+    // Debug logging for development and local production testing
+    if (isDevelopment || isLocalProduction) {
+      console.log(`[CSP DEBUG] Environment: ${process.env.NODE_ENV}`);
+      console.log(`[CSP DEBUG] Path: ${request.nextUrl.pathname}`);
+      console.log(`[CSP DEBUG] Is Local Production: ${isLocalProduction}`);
+      console.log(`[CSP DEBUG] CSP Disabled: ${disableCSP}`);
+      console.log(`[CSP DEBUG] Nonce: ${nonce.substring(0, 8)}...`);
+    }
+
     // First, handle Supabase session
     const response = await updateSession(request);
 
     // Skip CSRF protection in development for easier development
-    const isDevelopment = process.env.NODE_ENV !== "production";
-
     if (!isDevelopment) {
       // Apply CSRF protection for state-changing requests in production only
       const csrfValid = await csrfProtection(request);
@@ -35,6 +59,39 @@ export async function middleware(request: NextRequest) {
             },
           }
         );
+      }
+    }
+
+    // Only set CSP if not disabled in development
+    if (!disableCSP) {
+      // Generate and set CSP header with nonce
+      const cspHeader = generateCSPHeader(nonce);
+
+      // Debug CSP in development and local production testing
+      if (isDevelopment || isLocalProduction) {
+        console.log(
+          `[CSP DEBUG] Generated CSP header:`,
+          cspHeader.substring(0, 200) + "..."
+        );
+      }
+
+      response.headers.set("Content-Security-Policy", cspHeader);
+
+      // Set nonce in custom header for app to use
+      response.headers.set("x-nonce", nonce);
+
+      // Add reporting endpoints for CSP violations in production
+      if (!isDevelopment) {
+        const reportingEndpoints = generateReportingEndpoints();
+        if (reportingEndpoints) {
+          response.headers.set("Reporting-Endpoints", reportingEndpoints);
+        }
+      }
+    } else {
+      if (isDevelopment) {
+        console.log("[CSP DEBUG] CSP is disabled for development debugging");
+      } else if (isLocalProduction) {
+        console.log("[CSP DEBUG] CSP is disabled for local production testing");
       }
     }
 

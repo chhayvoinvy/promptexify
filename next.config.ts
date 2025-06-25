@@ -33,6 +33,63 @@ const nextConfig: NextConfig = {
     // Optimize webpack cache performance
     webpackBuildWorker: true,
   },
+  // Add proper security headers
+  async headers() {
+    const securityHeaders = [
+      {
+        key: "X-DNS-Prefetch-Control",
+        value: "on",
+      },
+      {
+        key: "Strict-Transport-Security",
+        value: "max-age=63072000; includeSubDomains; preload",
+      },
+      {
+        key: "X-Frame-Options",
+        value: "DENY",
+      },
+      {
+        key: "X-Content-Type-Options",
+        value: "nosniff",
+      },
+      {
+        key: "X-XSS-Protection",
+        value: "1; mode=block",
+      },
+      {
+        key: "Referrer-Policy",
+        value: "strict-origin-when-cross-origin",
+      },
+      {
+        key: "Permissions-Policy",
+        value:
+          "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=()",
+      },
+    ];
+
+    const isDevelopment = process.env.NODE_ENV === "development";
+
+    // CSP will be handled by middleware for nonce support
+    // Only add non-CSP security headers here
+    if (!isDevelopment) {
+      return [
+        {
+          source: "/(.*)",
+          headers: securityHeaders,
+        },
+      ];
+    }
+
+    // More lenient headers for development
+    return [
+      {
+        source: "/(.*)",
+        headers: securityHeaders.filter(
+          (header) => header.key !== "Strict-Transport-Security"
+        ),
+      },
+    ];
+  },
   webpack: (config, { isServer }) => {
     // Fix for Supabase realtime warnings
     if (!isServer) {

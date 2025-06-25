@@ -35,10 +35,14 @@ export {
 } from "./posts";
 
 // Category management actions
-export { createCategoryAction, updateCategoryAction } from "./categories";
+export {
+  createCategoryAction,
+  updateCategoryAction,
+  deleteCategoryAction,
+} from "./categories";
 
 // Tag management actions
-export { createTagAction, updateTagAction } from "./tags";
+export { createTagAction, updateTagAction, deleteTagAction } from "./tags";
 
 // User profile actions
 export { updateUserProfileAction, getUserProfileAction } from "./users";

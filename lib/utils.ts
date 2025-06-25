@@ -228,3 +228,58 @@ export function formatStripeDate(
     return "Invalid date";
   }
 }
+
+// CSP (Content Security Policy) utility functions
+/**
+ * Get CSP nonce from global window object (client-side only)
+ */
+export function getClientNonce(): string | null {
+  if (typeof window !== "undefined") {
+    return (
+      (window as Window & { __CSP_NONCE__?: string }).__CSP_NONCE__ || null
+    );
+  }
+  return null;
+}
+
+/**
+ * Create script tag with nonce attribute
+ */
+export function createScriptWithNonce(content: string, nonce?: string): string {
+  const nonceAttr = nonce ? ` nonce="${nonce}"` : "";
+  return `<script${nonceAttr}>${content}</script>`;
+}
+
+/**
+ * Create style tag with nonce attribute
+ */
+export function createStyleWithNonce(content: string, nonce?: string): string {
+  const nonceAttr = nonce ? ` nonce="${nonce}"` : "";
+  return `<style${nonceAttr}>${content}</style>`;
+}
+
+/**
+ * Add nonce to existing script element
+ */
+export function addNonceToScript(
+  scriptElement: HTMLScriptElement,
+  nonce?: string
+): void {
+  const scriptNonce = nonce || getClientNonce();
+  if (scriptNonce) {
+    scriptElement.setAttribute("nonce", scriptNonce);
+  }
+}
+
+/**
+ * Add nonce to existing style element
+ */
+export function addNonceToStyle(
+  styleElement: HTMLStyleElement,
+  nonce?: string
+): void {
+  const styleNonce = nonce || getClientNonce();
+  if (styleNonce) {
+    styleElement.setAttribute("nonce", styleNonce);
+  }
+}
