@@ -9,6 +9,7 @@ import { DirectoryFilters } from "@/components/directory-filters";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InfinitePostGrid } from "@/components/infinite-scroll-grid";
 import { PrismaClient } from "@/lib/generated/prisma";
+import { Container } from "@/components/ui/container";
 
 const prisma = new PrismaClient();
 
@@ -87,7 +88,7 @@ interface DirectoryPageProps {
 // Directory page skeleton that matches the full layout
 function DirectoryPageSkeleton() {
   return (
-    <div className="container mx-auto px-5 py-6 max-w-7xl">
+    <Container>
       {/* Header Skeleton */}
       <div className="mb-8">
         <Skeleton className="h-10 w-80 mb-4" />
@@ -123,7 +124,7 @@ function DirectoryPageSkeleton() {
 
       {/* Posts grid skeleton */}
       <PostMasonrySkeleton count={16} />
-    </div>
+    </Container>
   );
 }
 
@@ -277,7 +278,7 @@ async function DirectoryContent({
   const hasNextPage = totalCount > 12;
 
   return (
-    <div className="container mx-auto px-5 py-6 max-w-7xl">
+    <Container>
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl md:text-4xl font-bold mb-4">
@@ -314,7 +315,7 @@ async function DirectoryContent({
           </Link>
         </div>
       )}
-    </div>
+    </Container>
   );
 }
 

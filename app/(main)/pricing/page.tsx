@@ -17,10 +17,11 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Crown, Star, Zap, Loader2, Check, Shield, Users } from "lucide-react";
+import { Crown, Zap, Loader2, Check, Shield, Users } from "lucide-react";
 import { redirectToStripeCheckout } from "@/actions/stripe";
 import { toast } from "sonner";
 import { subscriptionPlans } from "@/config/subscription-plans";
+import { Container } from "@/components/ui/container";
 
 export default function PricingPage() {
   const [isYearly, setIsYearly] = useState(false);
@@ -110,7 +111,7 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="container mx-auto px-4 py-16 max-w-7xl">
+      <Container className="px-4 py-16">
         {/* Header Section */}
         <div className="text-center mb-16">
           <div className="flex items-center justify-center gap-2 mb-4">
@@ -366,7 +367,7 @@ export default function PricingPage() {
             ))}
           </Accordion>
         </div>
-      </div>
+      </Container>
     </div>
   );
 }

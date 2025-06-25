@@ -1,8 +1,9 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import { Container } from "@/components/ui/container";
 
 export default function Loading() {
   return (
-    <div className="container mx-auto px-4 py-8">
+    <Container className="px-4 py-8">
       <div className="space-y-8">
         {/* Header skeleton */}
         <div className="space-y-4">
@@ -23,6 +24,6 @@ export default function Loading() {
           ))}
         </div>
       </div>
-    </div>
+    </Container>
   );
 }

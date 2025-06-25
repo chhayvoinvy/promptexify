@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { Github, Twitter, Instagram, Youtube, Facebook } from "lucide-react";
 import { LogoCompact } from "@/components/ui/logo";
+import { Container } from "@/components/ui/container";
 
 export function Footer() {
   return (
     <footer className="border-t border-border/40 bg-background">
-      <div className="container mx-auto px-4 py-8 max-w-7xl sm:px-6 md:py-16">
+      <Container className="sm:px-6 md:py-16">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 lg:gap-10 xl:gap-13 items-start justify-center">
           {/* Brand and Description */}
           <div className="space-y-4 col-span-1 sm:col-span-2 md:col-span-2 lg:col-span-3">
@@ -231,7 +232,7 @@ export function Footer() {
             </p>
           </div>
         </div>
-      </div>
+      </Container>
     </footer>
   );
 }

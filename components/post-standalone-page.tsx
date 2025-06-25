@@ -7,6 +7,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Container } from "@/components/ui/container";
 
 import {
   Copy,
@@ -165,7 +166,7 @@ export function PostStandalonePage({
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-5 py-6 max-w-7xl">
+      <Container>
         {/* Breadcrumb Navigation */}
         <nav className="flex items-center space-x-2 text-sm text-muted-foreground mb-4">
           <Button
@@ -554,7 +555,7 @@ export function PostStandalonePage({
             </Card>
           </div>
         </div>
-      </div>
+      </Container>
     </div>
   );
 }

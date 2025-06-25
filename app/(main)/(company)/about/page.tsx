@@ -3,6 +3,7 @@ import { allPages } from "@/.contentlayer/generated";
 import { Mdx } from "@/components/mdx-components";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Container } from "@/components/ui/container";
 import Link from "next/link";
 
 export async function generateMetadata() {
@@ -25,7 +26,7 @@ export default async function AboutPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-5 py-6 max-w-7xl">
+      <Container>
         {/* Header with back button */}
         <div className="flex items-center gap-4 mb-8">
           <Button asChild variant="outline" size="sm">
@@ -52,7 +53,7 @@ export default async function AboutPage() {
             <Mdx code={page.body.code} />
           </div>
         </article>
-      </div>
+      </Container>
     </div>
   );
 }

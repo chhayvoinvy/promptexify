@@ -5,6 +5,7 @@ import { useMousePosition } from "@/hooks/use-mouse-position";
 import { GridBackground } from "@/components/ui/grid-background";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Container } from "@/components/ui/container";
 import { Search } from "lucide-react";
 
 interface HeroSectionProps {
@@ -44,7 +45,7 @@ export function HeroSection({ searchQuery, sort }: HeroSectionProps) {
       {/* Mouse Effect Overlay */}
       <div
         ref={overlayRef}
-        className="absolute blur-3xl h-128 w-128 rounded-full bg-white/20 opacity-0 bg-blend-lighten transition-opacity group-hover:opacity-10 dark:group-hover:opacity-20 pointer-events-none"
+        className="absolute hidden md:block blur-3xl h-128 w-128 rounded-full bg-white/20 opacity-0 bg-blend-lighten transition-opacity group-hover:opacity-10 dark:group-hover:opacity-20 pointer-events-none"
         style={{
           transform: "translate(var(--x), var(--y))",
           zIndex: 15,
@@ -52,17 +53,18 @@ export function HeroSection({ searchQuery, sort }: HeroSectionProps) {
       />
 
       {/* Gradient Overlays for fade effect */}
-      <div className="absolute inset-x-0 top-0 h-1/4 bg-gradient-to-b from-background to-transparent z-50 pointer-events-none" />
-      <div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-background to-transparent z-50 pointer-events-none" />
-      <div className="absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-background to-transparent z-50 pointer-events-none" />
-      <div className="absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l from-background to-transparent z-50 pointer-events-none" />
-
-      <div className="relative z-20 container mx-auto px-5 py-5 max-w-7xl md:py-25">
+      <div className="hidden md:block lg:block xl:block">
+        <div className="absolute inset-x-0 top-0 h-1/4 bg-gradient-to-b from-background to-transparent z-50 pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-background to-transparent z-50 pointer-events-none" />
+        <div className="absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-background to-transparent z-50 pointer-events-none" />
+        <div className="absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l from-background to-transparent z-50 pointer-events-none" />
+      </div>
+      <Container className="relative z-20 md:py-25">
         <div className="max-w-3xl mx-auto text-center">
           <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
             Prompt Directory
           </h1>
-          <p className="text-xl text-muted-foreground mb-6">
+          <p className="text-sm md:text-xl lg:text-xl xl:text-xl text-muted-foreground mb-6">
             Discover amazing prompts and rulesets for AI code editor, image
             generation, video creation, and more. Browse our curated collection
             of free ready to use prompts.
@@ -88,7 +90,7 @@ export function HeroSection({ searchQuery, sort }: HeroSectionProps) {
             </Button>
           </form>
         </div>
-      </div>
+      </Container>
     </section>
   );
 }

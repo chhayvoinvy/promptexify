@@ -22,6 +22,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { DarkModeToggle } from "@/components/toggle-darkmode";
+import { Container } from "@/components/ui/container";
 
 // Mobile Navigation Component
 function MobileNav() {
@@ -280,11 +281,11 @@ export function Header() {
           : "border-transparent bg-transparent"
       }`}
     >
-      <div className="container mx-auto px-5 max-w-7xl h-14">
+      <Container className="h-14">
         {/* Desktop Layout */}
         <div className="hidden lg:grid lg:grid-cols-3 h-full items-center">
           <div className="flex items-center space-x-2 justify-self-start">
-            <LogoCompact className="mr-6" priority />
+            <LogoCompact className="mr-6" />
           </div>
           <div className="flex items-center space-x-2 justify-self-center">
             <nav className="flex items-center space-x-4">
@@ -313,7 +314,7 @@ export function Header() {
         {/* Mobile Layout */}
         <div className="flex lg:hidden items-center justify-between h-full">
           <div className="flex items-center">
-            <LogoCompact className="mr-2" priority />
+            <LogoCompact className="mr-2" />
           </div>
 
           <div className="flex items-center space-x-2">
@@ -352,7 +353,7 @@ export function Header() {
             </Sheet>
           </div>
         </div>
-      </div>
+      </Container>
     </header>
   );
 }

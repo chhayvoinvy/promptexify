@@ -11,6 +11,7 @@ import Testimonials from "@/components/testimonials";
 import { BentoGrid } from "@/components/bento-grid";
 import { cn } from "@/lib/utils";
 import { CtaSection } from "@/components/cta-section";
+import { Container } from "@/components/ui/container";
 
 interface SearchProps {
   searchParams: Promise<{
@@ -98,7 +99,7 @@ export default async function HomePage({ searchParams }: SearchProps) {
   const { q: searchQuery, sort = "latest" } = await searchParams;
 
   return (
-    <div className="container mx-auto px-5 py-6 max-w-7xl min-h-screen bg-background space-y-10 flex flex-col justify-center">
+    <Container className="min-h-screen bg-background space-y-10 flex flex-col justify-center">
       {/* Hero Section */}
       <HeroSection searchQuery={searchQuery} sort={sort} />
 
@@ -141,6 +142,6 @@ export default async function HomePage({ searchParams }: SearchProps) {
 
       {/* Call to Action Section */}
       <CtaSection />
-    </div>
+    </Container>
   );
 }
