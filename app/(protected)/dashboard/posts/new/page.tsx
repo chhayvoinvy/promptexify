@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Info, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -114,12 +114,15 @@ export default function NewPostPage() {
   }, [user]);
 
   // Handle form submission
-  async function handleSubmit(formData: FormData) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+
     if (isSubmitting) return;
 
     setIsSubmitting(true);
 
     try {
+      const formData = new FormData(e.currentTarget);
       // First, create any pending tags
       const createdTags: Tag[] = [];
       const failedTags: string[] = [];
@@ -209,13 +212,24 @@ export default function NewPostPage() {
 
       await createPostAction(formData);
 
-      // Show success message and redirect
+      // Show success message - redirect is handled by server action
       toast.success("Post submitted successfully!");
-      router.push("/dashboard/posts");
     } catch (error) {
       console.error("Error creating post:", error);
 
-      // Show user-friendly error message
+      // Check if this is a Next.js redirect (expected behavior)
+      if (error && typeof error === "object" && "digest" in error) {
+        const errorDigest = (error as { digest?: string }).digest;
+        if (
+          typeof errorDigest === "string" &&
+          errorDigest.includes("NEXT_REDIRECT")
+        ) {
+          // This is a redirect - don't show error, redirect is working as expected
+          return;
+        }
+      }
+
+      // Show user-friendly error message for actual errors
       if (error instanceof Error) {
         toast.error(error.message);
       } else {
@@ -315,12 +329,12 @@ export default function NewPostPage() {
               <p className="text-muted-foreground">
                 {user.userData?.role === "ADMIN"
                   ? "Add a new prompt to your directory."
-                  : "Submit a new prompt for review."}
+                  : "Submit a new prompt."}
               </p>
             </div>
           </div>
 
-          <form action={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Post Details</CardTitle>
@@ -336,6 +350,7 @@ export default function NewPostPage() {
                       value={postTitle}
                       onChange={handleTitleChange}
                       required
+                      disabled={isSubmitting}
                     />
                   </div>
 
@@ -345,6 +360,7 @@ export default function NewPostPage() {
                       id="slug"
                       name="slug"
                       placeholder="Auto-generated from title"
+                      disabled={isSubmitting}
                     />
                   </div>
                 </div>
@@ -357,6 +373,7 @@ export default function NewPostPage() {
                       id="description"
                       name="description"
                       placeholder="Brief description of the prompt..."
+                      disabled={isSubmitting}
                     />
                   </div>
                 </div>
@@ -369,6 +386,7 @@ export default function NewPostPage() {
                     placeholder="Enter the prompt content here..."
                     rows={8}
                     required
+                    disabled={isSubmitting}
                   />
                 </div>
 
@@ -390,7 +408,11 @@ export default function NewPostPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="parentCategory">Parent Category *</Label>
-                    <Select name="parentCategory" required>
+                    <Select
+                      name="parentCategory"
+                      required
+                      disabled={isSubmitting}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select parent category" />
                       </SelectTrigger>
@@ -406,7 +428,7 @@ export default function NewPostPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="category">Sub Category *</Label>
-                    <Select name="category" required>
+                    <Select name="category" required disabled={isSubmitting}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select sub category" />
                       </SelectTrigger>
@@ -450,7 +472,11 @@ export default function NewPostPage() {
                           Make this post visible to users
                         </p>
                       </div>
-                      <Switch id="isPublished" name="isPublished" />
+                      <Switch
+                        id="isPublished"
+                        name="isPublished"
+                        disabled={isSubmitting}
+                      />
                     </div>
 
                     <div className="flex items-center justify-between">
@@ -460,7 +486,11 @@ export default function NewPostPage() {
                           Require premium subscription to access
                         </p>
                       </div>
-                      <Switch id="isPremium" name="isPremium" />
+                      <Switch
+                        id="isPremium"
+                        name="isPremium"
+                        disabled={isSubmitting}
+                      />
                     </div>
                   </>
                 ) : (
@@ -468,7 +498,7 @@ export default function NewPostPage() {
                     <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
                       <div className="flex items-start space-x-3">
                         <div className="text-blue-600 dark:text-blue-400">
-                          ℹ️
+                          <Info className="h-4 w-4" />
                         </div>
                         <div>
                           <h4 className="font-medium text-blue-900 dark:text-blue-100">
@@ -477,7 +507,8 @@ export default function NewPostPage() {
                           <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
                             Your post will be submitted for admin approval
                             before being published. You&apos;ll be able to track
-                            its status in your posts dashboard.
+                            its status in your posts dashboard. This may take up
+                            up to 48 hours.
                           </p>
                         </div>
                       </div>
@@ -503,7 +534,12 @@ export default function NewPostPage() {
               <Button type="submit" className="flex-1" disabled={isSubmitting}>
                 {isSubmitting ? "Submitting..." : "Submit Prompt"}
               </Button>
-              <Button type="button" variant="outline" asChild>
+              <Button
+                type="button"
+                variant="outline"
+                asChild
+                disabled={isSubmitting}
+              >
                 <Link href="/dashboard/posts">Cancel</Link>
               </Button>
             </div>

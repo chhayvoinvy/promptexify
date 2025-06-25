@@ -131,7 +131,7 @@ export function UserStatsCards({
                 <div className="flex-1 space-y-2">
                   <div>
                     <Link
-                      href={`/entry/${favorite.post.slug}`}
+                      href={`/entry/${favorite.post.id}`}
                       className="font-medium text-foreground hover:text-primary transition-colors"
                     >
                       {favorite.post.title}

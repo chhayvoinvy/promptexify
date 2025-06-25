@@ -18,12 +18,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { TagSelector } from "@/components/tag-selector";
 import { MediaUpload } from "@/components/media-upload";
 import { useAuth } from "@/hooks/use-auth";
 import { updatePostAction } from "@/actions";
+import { toast } from "sonner";
 
 // Force dynamic rendering for this page
 export const dynamic = "force-dynamic";
@@ -174,12 +175,15 @@ export default function EditPostPage() {
   }, [postId, user, router]);
 
   // Handle form submission
-  async function handleSubmit(formData: FormData) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+
     if (isSubmitting || !post) return;
 
     setIsSubmitting(true);
 
     try {
+      const formData = new FormData(e.currentTarget);
       // First, create any pending tags
       const createdTags: Tag[] = [];
       const failedTags: string[] = [];
@@ -269,6 +273,9 @@ export default function EditPostPage() {
       // Update the post first
       await updatePostAction(formData);
 
+      // Show success message - redirect is handled by server action
+      toast.success("Post updated successfully!");
+
       // Get the current featured media from form data
       const currentFeaturedImage = formData.get("featuredImage") as string;
       const currentFeaturedVideo = formData.get("featuredVideo") as string;
@@ -334,10 +341,23 @@ export default function EditPostPage() {
         }
       }
 
-      // Redirect to posts list on success
-      router.push("/dashboard/posts");
+      // Redirect is handled by server action - no need for client-side redirect
     } catch (error) {
       console.error("Error updating post:", error);
+
+      // Check if this is a Next.js redirect (expected behavior)
+      if (error && typeof error === "object" && "digest" in error) {
+        const errorDigest = (error as { digest?: string }).digest;
+        if (
+          typeof errorDigest === "string" &&
+          errorDigest.includes("NEXT_REDIRECT")
+        ) {
+          // This is a redirect - don't show error, redirect is working as expected
+          return;
+        }
+      }
+
+      // Show user-friendly error message for actual errors
       setError("Failed to update post");
     } finally {
       setIsSubmitting(false);
@@ -374,11 +394,12 @@ export default function EditPostPage() {
   // Show loading state
   if (loading || isLoading || !user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Loading...</p>
-        </div>
+      <div className="flex flex-col items-center justify-center h-screen gap-2">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <p className="text-sm text-muted-foreground mt-2">Loading...</p>
+        <p className="text-sm text-muted-foreground">
+          This may take a few seconds.
+        </p>
       </div>
     );
   }
@@ -467,7 +488,7 @@ export default function EditPostPage() {
             </div>
           </div>
 
-          <form action={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Post Details</CardTitle>
@@ -483,6 +504,7 @@ export default function EditPostPage() {
                       placeholder="Enter post title..."
                       onChange={handleTitleChange}
                       required
+                      disabled={isSubmitting}
                     />
                   </div>
 
@@ -494,6 +516,7 @@ export default function EditPostPage() {
                       defaultValue={post.slug}
                       placeholder="Auto-generated from title"
                       required
+                      disabled={isSubmitting}
                     />
                   </div>
                 </div>
@@ -507,6 +530,7 @@ export default function EditPostPage() {
                       name="description"
                       defaultValue={post.description || ""}
                       placeholder="Brief description of the prompt..."
+                      disabled={isSubmitting}
                     />
                   </div>
                 </div>
@@ -520,6 +544,7 @@ export default function EditPostPage() {
                     placeholder="Enter the prompt content here..."
                     rows={8}
                     required
+                    disabled={isSubmitting}
                   />
                 </div>
 
@@ -546,6 +571,7 @@ export default function EditPostPage() {
                       name="parentCategory"
                       defaultValue={currentParentCategory}
                       required
+                      disabled={isSubmitting}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select parent category" />
@@ -566,6 +592,7 @@ export default function EditPostPage() {
                       name="category"
                       defaultValue={post.category.slug}
                       required
+                      disabled={isSubmitting}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select sub category" />
@@ -613,6 +640,7 @@ export default function EditPostPage() {
                         id="isPublished"
                         name="isPublished"
                         defaultChecked={post.isPublished}
+                        disabled={isSubmitting}
                       />
                     </div>
 
@@ -627,6 +655,7 @@ export default function EditPostPage() {
                         id="isPremium"
                         name="isPremium"
                         defaultChecked={post.isPremium}
+                        disabled={isSubmitting}
                       />
                     </div>
                   </>
@@ -693,7 +722,12 @@ export default function EditPostPage() {
               <Button type="submit" className="flex-1" disabled={isSubmitting}>
                 {isSubmitting ? "Updating..." : "Update Post"}
               </Button>
-              <Button type="button" variant="outline" asChild>
+              <Button
+                type="button"
+                variant="outline"
+                asChild
+                disabled={isSubmitting}
+              >
                 <Link href="/dashboard/posts">Cancel</Link>
               </Button>
             </div>

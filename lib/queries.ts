@@ -1,5 +1,6 @@
 import { prisma, withErrorHandling, DatabaseMetrics } from "@/lib/prisma";
 import { createCachedFunction, CACHE_TAGS, CACHE_DURATIONS } from "@/lib/cache";
+import { Prisma } from "@/lib/generated/prisma";
 
 /**
  * Optimized Query Utilities for Better Performance
@@ -195,6 +196,26 @@ export interface PaginationParams {
   sortBy?: "latest" | "popular" | "trending";
 }
 
+// Type definitions for query results
+type PostListResult = Prisma.PostGetPayload<{
+  select: typeof POST_SELECTS.list;
+}>;
+
+type PostWithInteractions = Omit<PostListResult, "bookmarks" | "favorites"> & {
+  isBookmarked?: boolean;
+  isFavorited?: boolean;
+  bookmarks?: undefined;
+  favorites?: undefined;
+};
+
+type PostGetPaginatedParams = PaginationParams & {
+  includeUnpublished?: boolean;
+  categoryId?: string;
+  authorId?: string;
+  isPremium?: boolean;
+  userId?: string;
+};
+
 export interface PaginatedResult<T> {
   data: T[];
   pagination: {
@@ -217,14 +238,8 @@ export class PostQueries {
    * Get paginated posts with optimized performance
    */
   static async getPaginated(
-    params: PaginationParams & {
-      includeUnpublished?: boolean;
-      categoryId?: string;
-      authorId?: string;
-      isPremium?: boolean;
-      userId?: string; // For bookmark/favorite status
-    }
-  ): Promise<PaginatedResult<any>> {
+    params: PostGetPaginatedParams
+  ): Promise<PaginatedResult<PostWithInteractions>> {
     const endTimer = DatabaseMetrics.startQuery();
 
     try {
@@ -234,7 +249,7 @@ export class PostQueries {
         const skip = (page - 1) * limit;
 
         // Build where clause
-        const where: any = {
+        const where: Prisma.PostWhereInput = {
           ...(params.includeUnpublished ? {} : { isPublished: true }),
           ...(params.categoryId && { categoryId: params.categoryId }),
           ...(params.authorId && { authorId: params.authorId }),
@@ -280,14 +295,16 @@ export class PostQueries {
         const totalPages = Math.ceil(totalCount / limit);
 
         return {
-          data: posts.map((post: any) => ({
-            ...post,
-            isBookmarked: params.userId ? post.bookmarks?.length > 0 : false,
-            isFavorited: params.userId ? post.favorites?.length > 0 : false,
-            // Remove the arrays to clean up response
-            bookmarks: undefined,
-            favorites: undefined,
-          })),
+          data: posts.map(
+            (post): PostWithInteractions => ({
+              ...post,
+              isBookmarked: params.userId ? post.bookmarks?.length > 0 : false,
+              isFavorited: params.userId ? post.favorites?.length > 0 : false,
+              // Remove the arrays to clean up response
+              bookmarks: undefined,
+              favorites: undefined,
+            })
+          ),
           pagination: {
             totalCount,
             totalPages,
@@ -304,46 +321,12 @@ export class PostQueries {
   }
 
   /**
-   * Get post by slug with optimized select
-   */
-  static async getBySlug(
-    slug: string,
-    userId?: string,
-    includeContent = true
-  ): Promise<any | null> {
-    const endTimer = DatabaseMetrics.startQuery();
-
-    try {
-      return await withErrorHandling(async () => {
-        return await prisma.post.findUnique({
-          where: { slug },
-          select: {
-            ...(includeContent ? POST_SELECTS.full : POST_SELECTS.list),
-            ...(userId && {
-              bookmarks: {
-                where: { userId },
-                select: { id: true },
-              },
-              favorites: {
-                where: { userId },
-                select: { id: true },
-              },
-            }),
-          },
-        });
-      }, "PostQueries.getBySlug");
-    } finally {
-      endTimer();
-    }
-  }
-
-  /**
    * Search posts with optimized full-text search
    */
   static async search(
     query: string,
     params: PaginationParams & { userId?: string }
-  ): Promise<PaginatedResult<any>> {
+  ): Promise<PaginatedResult<PostWithInteractions>> {
     const endTimer = DatabaseMetrics.startQuery();
 
     try {
@@ -409,13 +392,15 @@ export class PostQueries {
         const totalPages = Math.ceil(totalCount / limit);
 
         return {
-          data: posts.map((post: any) => ({
-            ...post,
-            isBookmarked: params.userId ? post.bookmarks?.length > 0 : false,
-            isFavorited: params.userId ? post.favorites?.length > 0 : false,
-            bookmarks: undefined,
-            favorites: undefined,
-          })),
+          data: posts.map(
+            (post): PostWithInteractions => ({
+              ...post,
+              isBookmarked: params.userId ? post.bookmarks?.length > 0 : false,
+              isFavorited: params.userId ? post.favorites?.length > 0 : false,
+              bookmarks: undefined,
+              favorites: undefined,
+            })
+          ),
           pagination: {
             totalCount,
             totalPages,
@@ -440,7 +425,7 @@ export class PostQueries {
     tagIds: string[],
     limit = 6,
     userId?: string
-  ): Promise<any[]> {
+  ): Promise<PostListResult[]> {
     const endTimer = DatabaseMetrics.startQuery();
 
     try {
@@ -487,17 +472,10 @@ export class PostQueries {
  * Cached versions of common queries
  */
 export const getCachedPosts = createCachedFunction(
-  (params: any) => PostQueries.getPaginated(params),
+  (params: PostGetPaginatedParams) => PostQueries.getPaginated(params),
   "posts-paginated",
   CACHE_DURATIONS.POSTS_LIST,
   [CACHE_TAGS.POSTS]
-);
-
-export const getCachedPostBySlug = createCachedFunction(
-  (slug: string, userId?: string) => PostQueries.getBySlug(slug, userId),
-  "post-by-slug",
-  CACHE_DURATIONS.POST_DETAIL,
-  [CACHE_TAGS.POST_BY_SLUG]
 );
 
 export const getCachedRelatedPosts = createCachedFunction(

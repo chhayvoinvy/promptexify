@@ -136,47 +136,6 @@ async function _getAllPosts(
   return posts;
 }
 
-async function _getPostBySlug(slug: string): Promise<PostWithDetails | null> {
-  const post = await prisma.post.findUnique({
-    where: { slug },
-    include: {
-      author: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          avatar: true,
-        },
-      },
-      category: {
-        include: {
-          parent: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-            },
-          },
-        },
-      },
-      tags: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-        },
-      },
-      _count: {
-        select: {
-          views: true,
-        },
-      },
-    },
-  });
-
-  return post;
-}
-
 async function _getPostById(id: string): Promise<PostWithDetails | null> {
   const post = await prisma.post.findUnique({
     where: { id },
@@ -224,13 +183,6 @@ export const getAllPosts = createCachedFunction(
   "get-all-posts",
   CACHE_DURATIONS.POSTS_LIST,
   [CACHE_TAGS.POSTS]
-);
-
-export const getPostBySlug = createCachedFunction(
-  _getPostBySlug,
-  "get-post-by-slug",
-  CACHE_DURATIONS.POST_DETAIL,
-  [CACHE_TAGS.POST_BY_SLUG]
 );
 
 export const getPostById = createCachedFunction(
