@@ -374,11 +374,11 @@ export function BentoGrid() {
               </div>
               <div className="relative z-10 mt-8 space-y-1.5 text-center">
                 <h2 className="text-lg font-medium text-foreground">
-                  Secure by default
+                  Copy and paste
                 </h2>
                 <p className="text-muted-foreground">
-                  Provident fugit and vero voluptate. magnam magni doloribus
-                  dolores voluptates a sapiente nisi.
+                  Ready to use prompts that you can use in your favorite AI
+                  tools. Copy, paste, and go!
                 </p>
               </div>
             </div>
@@ -645,13 +645,13 @@ export function BentoGrid() {
                   </defs>
                 </svg>
               </div>
-              <div className="relative z-10 mt-8 space-y-1.5 text-center">
+              <div className="relative z-10 mt-5 space-y-1.5 text-center">
                 <h2 className="text-lg font-medium text-foreground">
-                  Faster than light
+                  Quality prompts
                 </h2>
                 <p className="text-muted-foreground">
-                  Provident fugit vero voluptate. magnam magni doloribus dolores
-                  voluptates inventore nisi.
+                  We provide the best prompts to help you get an extra-ordinary
+                  results out of your AI tools.
                 </p>
               </div>
             </div>
@@ -679,11 +679,11 @@ export function BentoGrid() {
                 </div>
                 <div className="space-y-2">
                   <h2 className="text-lg font-medium text-foreground">
-                    Faster than light
+                    Save it, own it
                   </h2>
                   <p className="text-muted-foreground">
-                    Provident fugit vero voluptate. Voluptates a sapiente
-                    inventore nisi.
+                    Save your favorite prompts and copy whenever you need. Easy,
+                    like that!
                   </p>
                 </div>
               </div>
@@ -853,11 +853,11 @@ export function BentoGrid() {
                 </div>
                 <div className="space-y-2">
                   <h2 className="text-lg font-medium text-foreground">
-                    Keep your loved ones safe
+                    Share and Contribute to the community
                   </h2>
                   <p className="text-muted-foreground">
-                    Voluptate. magnam magni doloribus dolores voluptates a
-                    sapiente.
+                    Share your favorite prompts with the community. Get
+                    inspired.
                   </p>
                 </div>
               </div>
