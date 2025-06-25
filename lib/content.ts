@@ -1,9 +1,7 @@
-import { PrismaClient } from "@/lib/generated/prisma";
+import { prisma } from "@/lib/prisma";
 import fs from "fs";
 import path from "path";
 import { createCachedFunction, CACHE_TAGS, CACHE_DURATIONS } from "@/lib/cache";
-
-const prisma = new PrismaClient();
 
 export interface PostWithDetails {
   id: string;

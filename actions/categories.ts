@@ -1,12 +1,10 @@
 "use server";
 
-import { PrismaClient } from "@/lib/generated/prisma";
+import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { handleAuthRedirect } from "./auth";
-
-const prisma = new PrismaClient();
 
 // Category management actions
 export async function createCategoryAction(formData: FormData) {

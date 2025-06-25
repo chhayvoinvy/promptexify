@@ -1,8 +1,6 @@
-import { PrismaClient } from "@/lib/generated/prisma";
+import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { subscriptionPlans } from "@/config/subscription-plans";
-
-const prisma = new PrismaClient();
 
 export interface UserSubscriptionPlan {
   stripeCustomerId?: string | null;

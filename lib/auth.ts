@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { PrismaClient } from "@/lib/generated/prisma";
+import { prisma } from "@/lib/prisma";
 import { getBaseUrl } from "@/lib/utils";
 import {
   signInSchema,
@@ -15,8 +15,6 @@ import {
 } from "@/lib/schemas";
 import { stripe } from "@/lib/stripe";
 import { SecurityEvents, getClientIP } from "@/lib/audit";
-
-const prisma = new PrismaClient();
 
 // Primary Magic Link Authentication Function
 export async function signInWithMagicLink(

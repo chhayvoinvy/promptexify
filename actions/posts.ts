@@ -1,13 +1,12 @@
 "use server";
 
-import { PrismaClient, PostStatus } from "@/lib/generated/prisma";
+import { PostStatus } from "@/lib/generated/prisma";
+import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { handleAuthRedirect } from "./auth";
 import { revalidateCache, CACHE_TAGS } from "@/lib/cache";
-
-const prisma = new PrismaClient();
 
 // Post management actions
 export async function createPostAction(formData: FormData) {

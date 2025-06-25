@@ -3,9 +3,7 @@
  * Tracks sensitive operations and security events
  */
 
-import { PrismaClient } from "@/lib/generated/prisma";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 export interface AuditEvent {
   action: string;

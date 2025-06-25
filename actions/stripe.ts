@@ -5,9 +5,7 @@ import { stripe } from "@/lib/stripe";
 import { getUserSubscriptionPlan } from "@/lib/subscription";
 import { getBaseUrl } from "@/lib/utils";
 import { redirect } from "next/navigation";
-import { PrismaClient } from "@/lib/generated/prisma";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 export type StripeActionResponse = {
   status: "success" | "error";

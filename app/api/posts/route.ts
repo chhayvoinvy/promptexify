@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { PrismaClient } from "@/lib/generated/prisma";
+import { prisma } from "@/lib/prisma";
 import { searchSchema } from "@/lib/schemas";
 import {
   rateLimits,
@@ -8,8 +8,6 @@ import {
   getRateLimitHeaders,
 } from "@/lib/rate-limit";
 import { sanitizeSearchQuery, SECURITY_HEADERS } from "@/lib/sanitize";
-
-const prisma = new PrismaClient();
 
 interface WhereClause {
   isPublished: boolean;

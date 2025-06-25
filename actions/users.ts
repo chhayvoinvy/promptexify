@@ -1,12 +1,10 @@
 "use server";
 
-import { PrismaClient } from "@/lib/generated/prisma";
+import { prisma } from "@/lib/prisma";
 import { requireAuth, getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { handleAuthRedirect } from "./auth";
-
-const prisma = new PrismaClient();
 
 // Schema for updating user profile
 const updateUserProfileSchema = z.object({

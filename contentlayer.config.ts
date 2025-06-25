@@ -79,7 +79,7 @@ export const Post = defineDocumentType(() => ({
 
 export const Page = defineDocumentType(() => ({
   name: "Page",
-  filePathPattern: `legal/**/*.mdx`,
+  filePathPattern: `{legal,company,about,contact,privacy,terms,cookies,sitemap,robots,404,500,503,403}/**/*.mdx`,
   contentType: "mdx",
   fields: {
     title: {
@@ -135,6 +135,7 @@ export const Help = defineDocumentType(() => ({
 export default makeSource({
   contentDirPath: "./content",
   documentTypes: [Post, Page, Help],
+  disableImportAliasWarning: true,
   mdx: {
     remarkPlugins: [remarkGfm],
     rehypePlugins: [

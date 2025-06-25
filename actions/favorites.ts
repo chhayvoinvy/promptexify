@@ -1,12 +1,10 @@
 "use server";
 
 import { type FavoriteData, favoriteSchema } from "@/lib/schemas";
-import { PrismaClient } from "@/lib/generated/prisma";
+import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { handleAuthRedirect } from "./auth";
-
-const prisma = new PrismaClient();
 
 // Favorite actions
 export async function toggleFavoriteAction(data: FavoriteData) {

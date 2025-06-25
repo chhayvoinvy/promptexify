@@ -1,8 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
@@ -105,7 +103,5 @@ async function upsertUserInDatabase(supabaseUser: {
   } catch (error) {
     console.error("Database upsert error in callback:", error);
     // Don't throw here to avoid breaking auth flow
-  } finally {
-    await prisma.$disconnect();
   }
 }

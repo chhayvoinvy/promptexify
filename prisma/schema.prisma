@@ -30,6 +30,10 @@ model User {
   favorites Favorite[]
   posts     Post[]
 
+  @@index([email])
+  @@index([stripeCustomerId])
+  @@index([type, role])
+  @@index([createdAt(sort: Desc)])
   @@map("users")
 }
 
@@ -45,8 +49,10 @@ model Category {
   children    Category[] @relation("CategoryParent")
   posts       Post[]
 
-  @@index([parentId]) // For fetching child categories
-  @@index([name]) // For searching categories
+  @@index([parentId])
+  @@index([name])
+  @@index([slug])
+  @@index([parentId, name])
   @@map("categories")
 }
 
@@ -58,7 +64,9 @@ model Tag {
   updatedAt DateTime @updatedAt
   posts     Post[]   @relation("PostToTag")
 
-  @@index([name]) // For tag searches and autocomplete
+  @@index([name])
+  @@index([slug])
+  @@index([createdAt(sort: Desc)])
   @@map("tags")
 }
 
@@ -85,14 +93,19 @@ model Post {
   views         View[]
   tags          Tag[]      @relation("PostToTag")
 
-  // Performance indexes for common queries
-  @@index([isPublished, createdAt(sort: Desc)]) // For listing published posts by date
-  @@index([categoryId, isPublished, createdAt(sort: Desc)]) // For category filtering
-  @@index([authorId, createdAt(sort: Desc)]) // For user posts
-  @@index([isPremium, isPublished]) // For premium filtering
-  @@index([status, createdAt(sort: Desc)]) // For admin post management
-  @@index([title]) // For title searches
-  @@index([isPublished, isPremium, createdAt(sort: Desc)]) // For combined filtering
+  @@index([isPublished, createdAt(sort: Desc)])
+  @@index([categoryId, isPublished, createdAt(sort: Desc)])
+  @@index([authorId, createdAt(sort: Desc)])
+  @@index([isPremium, isPublished])
+  @@index([status, createdAt(sort: Desc)])
+  @@index([title])
+  @@index([isPublished, isPremium, createdAt(sort: Desc)])
+  @@index([slug])
+  @@index([viewCount(sort: Desc)])
+  @@index([isPublished, viewCount(sort: Desc)])
+  @@index([categoryId, isPublished, viewCount(sort: Desc)])
+  @@index([authorId, status])
+  @@index([isPublished, createdAt(sort: Desc), isPremium])
   @@map("posts")
 }
 
@@ -105,7 +118,9 @@ model Bookmark {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, postId])
-  @@index([userId, createdAt(sort: Desc)]) // For user bookmark listing
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([postId])
+  @@index([userId, postId])
   @@map("bookmarks")
 }
 
@@ -118,8 +133,10 @@ model Favorite {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, postId])
-  @@index([userId, createdAt(sort: Desc)]) // For user favorites listing
-  @@index([postId]) // For counting favorites per post
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([postId])
+  @@index([postId, createdAt(sort: Desc)])
+  @@index([userId, postId])
   @@map("favorites")
 }
 
@@ -132,8 +149,11 @@ model View {
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@unique([postId, ipAddress])
-  @@index([postId, createdAt(sort: Desc)]) // For post view analytics
-  @@index([createdAt(sort: Desc)]) // For general analytics
+  @@index([postId, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@index([postId])
+  @@index([ipAddress])
+  @@index([createdAt(sort: Desc), postId])
   @@map("views")
 }
 
@@ -149,6 +169,11 @@ model Log {
   severity   String
   createdAt  DateTime @default(now())
 
+  @@index([createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
+  @@index([severity, createdAt(sort: Desc)])
+  @@index([entityType, entityId])
   @@map("logs")
 }
 

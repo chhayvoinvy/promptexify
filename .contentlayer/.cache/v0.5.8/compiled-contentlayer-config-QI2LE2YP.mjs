@@ -76,7 +76,7 @@ var Post = defineDocumentType(() => ({
 }));
 var Page = defineDocumentType(() => ({
   name: "Page",
-  filePathPattern: `legal/**/*.mdx`,
+  filePathPattern: `{legal,company,about,contact,privacy,terms,cookies,sitemap,robots,404,500,503,403}/**/*.mdx`,
   contentType: "mdx",
   fields: {
     title: {
@@ -130,6 +130,7 @@ var Help = defineDocumentType(() => ({
 var contentlayer_config_default = makeSource({
   contentDirPath: "./content",
   documentTypes: [Post, Page, Help],
+  disableImportAliasWarning: true,
   mdx: {
     remarkPlugins: [remarkGfm],
     rehypePlugins: [
@@ -188,4 +189,4 @@ export {
   Post,
   contentlayer_config_default as default
 };
-//# sourceMappingURL=compiled-contentlayer-config-WCC4RNED.mjs.map
+//# sourceMappingURL=compiled-contentlayer-config-QI2LE2YP.mjs.map

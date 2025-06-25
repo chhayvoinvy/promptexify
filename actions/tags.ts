@@ -1,11 +1,9 @@
 "use server";
 
-import { PrismaClient } from "@/lib/generated/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-
-const prisma = new PrismaClient();
 
 // Tag Management Actions
 export async function createTagAction(formData: FormData) {

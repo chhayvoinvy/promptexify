@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getAllTags } from "@/lib/content";
-import { PrismaClient } from "@/lib/generated/prisma";
+import { prisma } from "@/lib/prisma";
 import { createTagSchema } from "@/lib/schemas";
 import {
   rateLimits,
@@ -9,8 +9,6 @@ import {
   getRateLimitHeaders,
 } from "@/lib/rate-limit";
 import { sanitizeInput, sanitizeSlug, SECURITY_HEADERS } from "@/lib/sanitize";
-
-const prisma = new PrismaClient();
 
 export async function GET(request: Request) {
   try {
