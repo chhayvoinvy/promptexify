@@ -44,7 +44,7 @@ export function HeroSection({ searchQuery, sort }: HeroSectionProps) {
       {/* Mouse Effect Overlay */}
       <div
         ref={overlayRef}
-        className="absolute h-76 w-76 rounded-full bg-white/20 opacity-0 bg-blend-soft-light blur-3xl transition-opacity group-hover:opacity-10 dark:group-hover:opacity-20 pointer-events-none"
+        className="absolute blur-3xl h-96 w-96 rounded-full bg-white/20 opacity-0 bg-blend-lighten transition-opacity group-hover:opacity-10 dark:group-hover:opacity-20 pointer-events-none"
         style={{
           transform: "translate(var(--x), var(--y))",
           zIndex: 15,
@@ -52,10 +52,10 @@ export function HeroSection({ searchQuery, sort }: HeroSectionProps) {
       />
 
       {/* Gradient Overlays for fade effect */}
-      <div className="absolute inset-x-0 top-0 h-1/4 bg-gradient-to-b from-background to-transparent z-10 pointer-events-none" />
-      <div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-background to-transparent z-10 pointer-events-none" />
-      <div className="absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
-      <div className="absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-1/4 bg-gradient-to-b from-background to-transparent z-50 pointer-events-none" />
+      <div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-background to-transparent z-50 pointer-events-none" />
+      <div className="absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-background to-transparent z-50 pointer-events-none" />
+      <div className="absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l from-background to-transparent z-50 pointer-events-none" />
 
       <div className="relative z-20 container mx-auto px-5 py-5 max-w-7xl md:py-25">
         <div className="max-w-3xl mx-auto text-center">

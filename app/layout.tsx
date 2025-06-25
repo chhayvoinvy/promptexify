@@ -7,9 +7,65 @@ import "./globals.css";
 import { headers } from "next/headers";
 
 export const metadata: Metadata = {
-  title: "Promptexify",
+  title: {
+    default:
+      "Promptexify - AI Prompt Directory for ChatGPT, Claude, Midjourney & DALL-E",
+    template: "%s | Promptexify",
+  },
   description:
-    "Promptexify is a tool that helps you create prompts for your AI models.",
+    "Discover and share high-quality AI prompts for ChatGPT, Claude, Midjourney, and DALL-E. Browse our comprehensive directory of tested prompts for creative writing, business, design, and more.",
+  keywords: [
+    "AI prompts",
+    "ChatGPT prompts",
+    "Claude prompts",
+    "Midjourney prompts",
+    "DALL-E prompts",
+    "prompt engineering",
+    "AI tools",
+    "prompt directory",
+    "prompt library",
+  ],
+  authors: [{ name: "Promptexify Team" }],
+  creator: "Promptexify",
+  publisher: "Promptexify",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://promptexify.com",
+    siteName: "Promptexify",
+    title: "Promptexify - AI Prompt Directory",
+    description:
+      "Discover and share high-quality AI prompts for ChatGPT, Claude, Midjourney, and DALL-E.",
+    images: [
+      {
+        url: "/static/auth-marketing.png",
+        width: 1200,
+        height: 630,
+        alt: "Promptexify - AI Prompt Directory",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Promptexify - AI Prompt Directory",
+    description:
+      "Discover and share high-quality AI prompts for ChatGPT, Claude, Midjourney, and DALL-E.",
+    images: ["/static/auth-marketing.png"],
+  },
+  alternates: {
+    canonical: "https://promptexify.com",
+  },
   icons: {
     icon: [
       {

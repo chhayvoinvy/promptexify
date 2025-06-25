@@ -1,3 +1,5 @@
 TODO:
 
-[] Add a guide page
+[] Add a prompt generator page
+[] Add a pricing page
+[] Add a features page
