@@ -61,7 +61,7 @@ export function PostMasonrySkeleton({ count = 12 }: PostMasonrySkeletonProps) {
 
           {/* Content overlay positioned outside the Card - matches actual layout */}
           <div className="z-10 mx-3 border border-t-0 rounded-b-lg border-white/20">
-            <div className="bg-black/70 backdrop-blur-sm rounded-b-lg px-4 py-2">
+            <div className="bg-background border-1 border-zinc-200 dark:border-zinc-700/50 backdrop-blur-sm rounded-b-lg px-4 py-2">
               <div className="space-y-1">
                 <Skeleton className="h-3 w-full" />
                 <Skeleton className="h-3 w-3/4" />
