@@ -1,10 +1,15 @@
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { GridBackground } from "@/components/ui/grid-background";
 
 export function CtaSection() {
   return (
-    <section className="flex justify-center py-12">
-      <div className="w-full max-w-5xl rounded-3xl px-8 py-20 flex flex-col items-center text-center">
+    <section className="flex justify-center py-12 relative">
+      {/* Grid Background */}
+      <div className="absolute inset-0 w-full h-full z-0 pointer-events-none rounded-3xl overflow-hidden">
+        <GridBackground className="w-full h-full" gridSize={80} />
+      </div>
+      <div className="w-full max-w-5xl rounded-3xl px-8 py-20 flex flex-col items-center text-center relative z-10">
         <h2 className="text-4xl md:text-6xl font-bold text-white mb-6">
           Get Started Now!
         </h2>
