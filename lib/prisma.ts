@@ -17,10 +17,7 @@ declare global {
 const createPrismaClient = () => {
   return new PrismaClient({
     // Enhanced logging for performance monitoring
-    log:
-      process.env.NODE_ENV === "development"
-        ? ["query", "info", "warn", "error"]
-        : ["error"],
+    log: process.env.NODE_ENV === "development" ? [] : ["error"],
 
     datasources: {
       db: {

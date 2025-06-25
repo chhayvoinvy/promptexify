@@ -3,7 +3,7 @@ import Image from "next/image";
 
 export function BentoGrid() {
   return (
-    <section className="py-32">
+    <section className="py-12">
       <Container>
         <div className="relative z-10 grid grid-cols-6 gap-3">
           {/* First card */}

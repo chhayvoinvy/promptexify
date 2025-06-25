@@ -49,7 +49,7 @@ export default function PricingPage() {
 
   const features = [
     {
-      icon: Star,
+      icon: Crown,
       title: "Exclusive Prompts",
       description: "Access premium AI prompts",
     },
@@ -57,11 +57,6 @@ export default function PricingPage() {
       icon: Zap,
       title: "Advanced Features",
       description: "Enhanced tools & prompts",
-    },
-    {
-      icon: Crown,
-      title: "Priority Support",
-      description: "Get help when you need it",
     },
     {
       icon: Shield,
@@ -119,7 +114,7 @@ export default function PricingPage() {
         {/* Header Section */}
         <div className="text-center mb-16">
           <div className="flex items-center justify-center gap-2 mb-4">
-            <h1 className="text-4xl lg:text-6xl font-bold bg-gradient-to-r from-teal-500 to-sky-500 bg-clip-text text-transparent">
+            <h1 className="text-4xl lg:text-6xl font-bold bg-gradient-to-r from-zinc-200 to-zinc-400 bg-clip-text text-transparent">
               Pricing
             </h1>
           </div>
@@ -130,7 +125,7 @@ export default function PricingPage() {
         </div>
 
         {/* Pricing Toggle */}
-        <div className="flex justify-center mb-12">
+        <div className="flex justify-center mb-15">
           <Tabs
             value={isYearly ? "yearly" : "monthly"}
             onValueChange={(value) => setIsYearly(value === "yearly")}
@@ -159,13 +154,13 @@ export default function PricingPage() {
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid lg:grid-cols-3 gap-8 mb-20 max-w-5xl mx-auto">
+        <div className="grid lg:grid-cols-3 gap-8 mb-10 max-w-5xl mx-auto">
           {/* Free Plan */}
           <Card className="relative">
-            <CardHeader>
+            <CardHeader className="gap-2">
               <CardTitle className="text-2xl">Free</CardTitle>
               <CardDescription>Perfect for getting started</CardDescription>
-              <div className="text-4xl font-bold">
+              <div className="text-4xl font-bold mt-2">
                 $0
                 <span className="text-lg font-normal text-muted-foreground">
                   /month
@@ -175,15 +170,15 @@ export default function PricingPage() {
             <CardContent className="space-y-4">
               <ul className="space-y-3">
                 <li className="flex items-center gap-3">
-                  <Check className="h-5 w-5 text-green-500" />
+                  <Check className="h-5 w-5 text-zinc-400 dark:text-zinc-600" />
                   <span>Limited access to prompts</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Check className="h-5 w-5 text-green-500" />
+                  <Check className="h-5 w-5 text-zinc-400 dark:text-zinc-600" />
                   <span>Basic features</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Check className="h-5 w-5 text-green-500" />
+                  <Check className="h-5 w-5 text-zinc-400 dark:text-zinc-600" />
                   <span>Community support</span>
                 </li>
               </ul>
@@ -194,19 +189,19 @@ export default function PricingPage() {
           </Card>
 
           {/* Premium Plan */}
-          <Card className="relative border-2 border-teal-500 shadow-lg scale-105">
+          <Card className="relative border-2 border-teal-500 shadow-lg scale-105 py-10">
             <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-              <Badge className="bg-gradient-to-r from-teal-500 to-sky-500 text-white px-4 py-1">
+              <Badge className="bg-gradient-to-r from-teal-300 to-sky-300 text-zinc-900 px-4 py-1">
                 Most Popular
               </Badge>
             </div>
-            <CardHeader>
+            <CardHeader className="gap-2">
               <CardTitle className="text-2xl flex items-center gap-2">
-                <Crown className="h-6 w-6 text-teal-500" />
+                <Crown className="h-6 w-6 text-teal-300" />
                 Premium
               </CardTitle>
               <CardDescription>Everything you need to succeed</CardDescription>
-              <div className="text-4xl font-bold">
+              <div className="text-4xl font-bold mt-2">
                 ${isYearly ? yearlyPrice.toFixed(2) : monthlyPrice.toFixed(2)}
                 <span className="text-lg font-normal text-muted-foreground">
                   /{isYearly ? "year" : "month"}
@@ -225,7 +220,7 @@ export default function PricingPage() {
                   isYearly ? "yearly" : "monthly"
                 ].features.map((feature, index) => (
                   <li key={index} className="flex items-center gap-3">
-                    <Check className="h-5 w-5 text-green-500" />
+                    <Check className="h-5 w-5 text-zinc-400 dark:text-zinc-600" />
                     <span>{feature}</span>
                   </li>
                 ))}
@@ -233,7 +228,7 @@ export default function PricingPage() {
               <Button
                 onClick={handleUpgrade}
                 disabled={isLoading}
-                className="w-full bg-gradient-to-r from-teal-500 to-sky-500 hover:from-teal-600 hover:to-sky-600 text-white font-semibold"
+                className="w-full bg-gradient-to-r from-teal-300 to-sky-300 hover:from-zinc-400 hover:to-zinc-400 text-zinc-900 font-semibold transition-colors duration-300"
                 size="lg"
               >
                 {isLoading ? (
@@ -244,20 +239,20 @@ export default function PricingPage() {
                 {isLoading ? "Processing..." : "Upgrade to Premium"}
               </Button>
               <p className="text-xs text-muted-foreground text-center">
-                Secure payment with Stripe • Cancel anytime
+                Secure payment with Stripe
               </p>
             </CardContent>
           </Card>
 
           {/* Enterprise Plan */}
           <Card className="relative">
-            <CardHeader>
+            <CardHeader className="gap-2">
               <CardTitle className="text-2xl flex items-center gap-2">
-                <Users className="h-6 w-6 text-purple-500" />
+                <Users className="h-6 w-6 text-zinc-400 dark:text-zinc-600" />
                 Enterprise
               </CardTitle>
               <CardDescription>For teams and organizations</CardDescription>
-              <div className="text-4xl font-bold">
+              <div className="text-4xl font-bold mt-2">
                 Custom
                 <span className="text-lg font-normal text-muted-foreground">
                   /pricing
@@ -267,19 +262,19 @@ export default function PricingPage() {
             <CardContent className="space-y-4">
               <ul className="space-y-3">
                 <li className="flex items-center gap-3">
-                  <Check className="h-5 w-5 text-green-500" />
+                  <Check className="h-5 w-5 text-zinc-400 dark:text-zinc-600" />
                   <span>Everything in Premium</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Check className="h-5 w-5 text-green-500" />
+                  <Check className="h-5 w-5 text-zinc-400 dark:text-zinc-600" />
                   <span>Team management</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Check className="h-5 w-5 text-green-500" />
+                  <Check className="h-5 w-5 text-zinc-400 dark:text-zinc-600" />
                   <span>Custom integrations</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Check className="h-5 w-5 text-green-500" />
+                  <Check className="h-5 w-5 text-zinc-400 dark:text-zinc-600" />
                   <span>Dedicated support</span>
                 </li>
               </ul>
@@ -308,7 +303,7 @@ export default function PricingPage() {
             </div>
 
             {/* Features Grid */}
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
+            <div className="grid gap-6 sm:grid-cols-3 lg:grid-cols-3">
               {features.map((feature, index) => (
                 <div
                   key={index}
@@ -339,7 +334,6 @@ export default function PricingPage() {
                       >
                         <span className="flex items-center gap-2">
                           <span>Learn more</span>
-                          <Zap className="size-4" />
                         </span>
                       </Button>
                     </div>
@@ -351,7 +345,7 @@ export default function PricingPage() {
         </section>
 
         {/* FAQ Section */}
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto py-10 mt-10">
           <h2 className="text-3xl font-bold text-center mb-12">
             Frequently Asked Questions
           </h2>
@@ -371,28 +365,6 @@ export default function PricingPage() {
               </AccordionItem>
             ))}
           </Accordion>
-        </div>
-
-        {/* CTA Section */}
-        <div className="text-center mt-20 bg-gradient-to-r from-teal-500/10 to-sky-500/10 rounded-2xl p-12">
-          <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>
-          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join thousands of users who are already creating amazing content
-            with our premium AI prompts.
-          </p>
-          <Button
-            onClick={handleUpgrade}
-            disabled={isLoading}
-            className="bg-gradient-to-r from-teal-500 to-sky-500 hover:from-teal-600 hover:to-sky-600 text-white font-semibold"
-            size="lg"
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Crown className="h-4 w-4 mr-2" />
-            )}
-            {isLoading ? "Processing..." : "Start Your Premium Journey"}
-          </Button>
         </div>
       </div>
     </div>

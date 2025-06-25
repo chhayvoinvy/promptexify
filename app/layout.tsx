@@ -5,8 +5,10 @@ import { Toaster } from "@/components/ui/sonner";
 import { GoogleOneTap } from "@/components/google-one-tap";
 import "./globals.css";
 import { headers } from "next/headers";
+import { getBaseUrl } from "@/lib/utils";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(getBaseUrl()),
   title: {
     default:
       "Promptexify - AI Prompt Directory for ChatGPT, Claude, Midjourney & DALL-E",

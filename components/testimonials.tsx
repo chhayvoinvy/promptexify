@@ -73,11 +73,11 @@ function HeaderSection({ label, title, subtitle }: HeaderSectionProps) {
 export default function Testimonials() {
   return (
     <section>
-      <div className="flex-col gap-10 py-32 sm:gap-y-16">
+      <div className="flex-col gap-10 py-10 sm:gap-y-10">
         <HeaderSection
           label="Testimonials"
-          title="What our clients are sharing."
-          subtitle="Discover the glowing feedback from our delighted customers worldwide who are transforming their creative processes with AI prompts."
+          title="What our users are sharing."
+          subtitle="Discover the glowing feedback from our delighted users worldwide who are transforming their creative processes with AI prompts."
         />
 
         <div className="column-1 gap-5 space-y-5 md:columns-2 lg:columns-3 mt-10">

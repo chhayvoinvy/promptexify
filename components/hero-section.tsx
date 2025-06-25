@@ -44,7 +44,7 @@ export function HeroSection({ searchQuery, sort }: HeroSectionProps) {
       {/* Mouse Effect Overlay */}
       <div
         ref={overlayRef}
-        className="absolute blur-3xl h-96 w-96 rounded-full bg-white/20 opacity-0 bg-blend-lighten transition-opacity group-hover:opacity-10 dark:group-hover:opacity-20 pointer-events-none"
+        className="absolute blur-3xl h-128 w-128 rounded-full bg-white/20 opacity-0 bg-blend-lighten transition-opacity group-hover:opacity-10 dark:group-hover:opacity-20 pointer-events-none"
         style={{
           transform: "translate(var(--x), var(--y))",
           zIndex: 15,
