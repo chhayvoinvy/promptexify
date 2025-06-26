@@ -1,8 +1,15 @@
 import React, { Suspense } from "react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 
+import { Plus } from "lucide-react";
 import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+
 import {
   Card,
   CardContent,
@@ -10,7 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+
 import {
   Table,
   TableBody,
@@ -19,6 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
 import {
   Pagination,
   PaginationContent,
@@ -27,41 +35,18 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { Plus, Filter, X } from "lucide-react";
-import { PostActionsDropdown } from "@/components/dashboard/(actions)/post-actions-dropdown";
-import { Skeleton } from "@/components/ui/skeleton";
-import Link from "next/link";
+
 import { getCurrentUser } from "@/lib/auth";
-import {
-  getPostsPaginated,
-  getAllPosts,
-  getUserPostsPaginated,
-  getUserPosts,
-  getAllCategories,
-} from "@/lib/content";
-import { redirect } from "next/navigation";
+import { PostActionsDropdown } from "@/components/dashboard/(actions)/post-actions-dropdown";
+import { getAllPosts, getUserPosts, getAllCategories } from "@/lib/content";
+import { PostFilters } from "@/components/dashboard/post-filters";
+
 import {
   IconCircleCheckFilled,
   IconCrown,
   IconLoader,
   IconX,
-  IconStar,
-  IconCalendar,
-  IconEye,
 } from "@tabler/icons-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 
 // Force dynamic rendering for this page
 export const dynamic = "force-dynamic";
@@ -132,60 +117,10 @@ function LoadingSkeleton() {
   );
 }
 
-// Page size selector component
-function PageSizeSelector({
-  currentPageSize,
-  currentPage,
-  totalCount,
-}: {
-  currentPageSize: number;
-  currentPage: number;
-  totalCount: number;
-}) {
-  const pageSizeOptions = [5, 10, 20, 50];
-
-  const generatePageSizeLink = (newPageSize: number) => {
-    const url = new URL("/dashboard/posts", "http://localhost");
-    if (newPageSize !== 10) {
-      // 10 is default
-      url.searchParams.set("pageSize", newPageSize.toString());
-    }
-    // Reset to page 1 when changing page size
-    return url.pathname + url.search;
-  };
-
-  const startIndex = (currentPage - 1) * currentPageSize + 1;
-  const endIndex = Math.min(currentPage * currentPageSize, totalCount);
-
-  return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center space-x-2">
-        <p className="text-sm text-muted-foreground">
-          Showing {startIndex} to {endIndex} of {totalCount} posts
-        </p>
-      </div>
-      <div className="flex items-center space-x-2">
-        <p className="text-sm text-muted-foreground">Posts per page:</p>
-        <Select value={currentPageSize.toString()}>
-          <SelectTrigger className="w-20">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {pageSizeOptions.map((size) => (
-              <SelectItem key={size} value={size.toString()}>
-                <Link
-                  href={generatePageSizeLink(size)}
-                  className="block w-full"
-                >
-                  {size}
-                </Link>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-    </div>
-  );
+// Filter option interface for the component
+interface FilterOption {
+  value: string;
+  label: string;
 }
 
 interface UserData {
@@ -206,6 +141,15 @@ async function PostsManagementContent({
     const currentPage = parseInt(params.page || "1", 10);
     const pageSize = parseInt(params.pageSize || "10", 10);
 
+    // Parse filter parameters
+    const filters = {
+      category: params.category,
+      status: params.status,
+      type: params.type,
+      featured: params.featured,
+      sortBy: params.sortBy || "newest",
+    };
+
     // Validate page size
     const validPageSize = Math.min(Math.max(pageSize, 5), 50);
 
@@ -213,23 +157,106 @@ async function PostsManagementContent({
     const isAdmin = user.role === "ADMIN";
     const userId = user.id;
 
-    // Get paginated posts and total count for stats
-    const [paginatedResult, allPosts] = await Promise.all([
-      isAdmin
-        ? getPostsPaginated(currentPage, validPageSize, true) // Admin sees all posts
-        : getUserPostsPaginated(userId!, currentPage, validPageSize), // Users see only their posts
+    // Get categories for filter dropdown
+    const [allCategories, allPosts] = await Promise.all([
+      getAllCategories(),
       isAdmin
         ? getAllPosts(true) // Admin sees all posts for statistics
         : getUserPosts(userId!), // Users see only their posts for statistics
     ]);
 
-    const {
-      data: posts,
-      totalCount,
-      totalPages,
-      hasNextPage,
-      hasPreviousPage,
-    } = paginatedResult;
+    // Transform categories to filter options
+    const categoryOptions: FilterOption[] = allCategories.map((cat) => ({
+      value: cat.slug,
+      label: cat.parent ? `${cat.parent.name} > ${cat.name}` : cat.name,
+    }));
+
+    // Apply filters to posts
+    let filteredPosts = [...allPosts];
+
+    // Category filter
+    if (filters.category && filters.category !== "all") {
+      filteredPosts = filteredPosts.filter(
+        (post) =>
+          post.category.slug === filters.category ||
+          post.category.parent?.slug === filters.category
+      );
+    }
+
+    // Status filter
+    if (filters.status && filters.status !== "all") {
+      switch (filters.status) {
+        case "published":
+          filteredPosts = filteredPosts.filter((post) => post.isPublished);
+          break;
+        case "pending":
+          filteredPosts = filteredPosts.filter(
+            (post) => post.status === "PENDING_APPROVAL"
+          );
+          break;
+        case "draft":
+          filteredPosts = filteredPosts.filter(
+            (post) => post.status === "DRAFT"
+          );
+          break;
+        case "rejected":
+          filteredPosts = filteredPosts.filter(
+            (post) => post.status === "REJECTED"
+          );
+          break;
+      }
+    }
+
+    // Type filter
+    if (filters.type && filters.type !== "all") {
+      if (filters.type === "premium") {
+        filteredPosts = filteredPosts.filter((post) => post.isPremium);
+      } else if (filters.type === "free") {
+        filteredPosts = filteredPosts.filter((post) => !post.isPremium);
+      }
+    }
+
+    // Featured filter (admin only)
+    if (isAdmin && filters.featured && filters.featured !== "all") {
+      if (filters.featured === "featured") {
+        filteredPosts = filteredPosts.filter((post) => post.isFeatured);
+      } else if (filters.featured === "not-featured") {
+        filteredPosts = filteredPosts.filter((post) => !post.isFeatured);
+      }
+    }
+
+    // Apply sorting
+    switch (filters.sortBy) {
+      case "oldest":
+        filteredPosts.sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+        break;
+      case "views":
+        filteredPosts.sort((a, b) => b.viewCount - a.viewCount);
+        break;
+      case "title":
+        filteredPosts.sort((a, b) => a.title.localeCompare(b.title));
+        break;
+      case "newest":
+      default:
+        filteredPosts.sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        break;
+    }
+
+    // Apply pagination to filtered results
+    const totalCount = filteredPosts.length;
+    const totalPages = Math.ceil(totalCount / validPageSize);
+    const startIndex = (currentPage - 1) * validPageSize;
+    const endIndex = startIndex + validPageSize;
+    const posts = filteredPosts.slice(startIndex, endIndex);
+
+    const hasNextPage = currentPage < totalPages;
+    const hasPreviousPage = currentPage > 1;
 
     // Generate pagination links
     const generatePageLink = (page: number) => {
@@ -312,10 +339,13 @@ async function PostsManagementContent({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <PageSizeSelector
+            <PostFilters
               currentPageSize={validPageSize}
               currentPage={currentPage}
               totalCount={totalCount}
+              filters={filters}
+              categories={categoryOptions}
+              isAdmin={isAdmin}
             />
 
             <Table>
