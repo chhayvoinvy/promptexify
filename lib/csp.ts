@@ -12,7 +12,18 @@ export function generateNonce(): string {
   // Use crypto.getRandomValues for browser-compatible secure random generation
   const array = new Uint8Array(16);
   crypto.getRandomValues(array);
-  return btoa(String.fromCharCode(...array));
+  return btoa(String.fromCharCode(...array)).replace(/[+/=]/g, (match) => {
+    switch (match) {
+      case "+":
+        return "-";
+      case "/":
+        return "_";
+      case "=":
+        return "";
+      default:
+        return match;
+    }
+  });
 }
 
 /**
@@ -78,22 +89,20 @@ export function generateCSPDirectives(nonce: string): Record<string, string> {
     baseSources.self,
     baseSources.data,
     baseSources.blob,
-    "https:",
     "https://*.s3.amazonaws.com",
     "https://s3.amazonaws.com",
     "https://*.cloudfront.net",
   ];
 
   // Font sources
-  const fontSrc = [baseSources.self, baseSources.data, "https:"];
-
-  // Media sources
-  const mediaSrc = [
+  const fontSrc = [
     baseSources.self,
     baseSources.data,
-    baseSources.blob,
-    "https:",
+    "https://fonts.gstatic.com",
   ];
+
+  // Media sources
+  const mediaSrc = [baseSources.self, baseSources.data, baseSources.blob];
 
   // Connect sources - API calls, WebSockets
   const connectSrc = [
@@ -159,31 +168,27 @@ export function generateCSPDirectives(nonce: string): Record<string, string> {
       "manifest-src": manifestSrc.join(" "),
     };
   } else {
-    // Production CSP - strict security
+    // Production CSP - strict and secure
     return {
       ...baseDirectives,
       "script-src": [
         baseSources.self,
         `'nonce-${nonce}'`,
+        "'strict-dynamic'", // Allow scripts loaded by nonce to load additional scripts
         "'wasm-unsafe-eval'", // For WASM support
         // Stripe
         "https://js.stripe.com",
         // Google One Tap
         "https://accounts.google.com",
         "https://www.gstatic.com",
-        // Allow specific inline hashes for Next.js
-        "'strict-dynamic'", // Allow scripts loaded by nonce to load additional scripts
+        // Vercel analytics
+        "https://vitals.vercel-analytics.com",
       ].join(" "),
       "style-src": [
         baseSources.self,
         `'nonce-${nonce}'`,
-        // Allow specific inline styles for critical CSS
-        "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='", // Empty string hash
         // Google Fonts and external styles
         "https://fonts.googleapis.com",
-        "https://fonts.gstatic.com",
-        // Temporarily allow unsafe-inline for production debugging - should be removed and replaced with nonces
-        "'unsafe-inline'",
       ].join(" "),
       "img-src": imgSrc.join(" "),
       "font-src": fontSrc.join(" "),
@@ -194,10 +199,8 @@ export function generateCSPDirectives(nonce: string): Record<string, string> {
       "frame-src": childSrc.join(" "), // Same as child-src for iframe compatibility
       "manifest-src": manifestSrc.join(" "),
       // Add report URI for CSP violations in production
-      ...(process.env.CSP_REPORT_URI && {
-        "report-uri": process.env.CSP_REPORT_URI,
-        "report-to": "csp-violations",
-      }),
+      "report-uri": "/api/csp-report",
+      "report-to": "csp-violations",
     };
   }
 }

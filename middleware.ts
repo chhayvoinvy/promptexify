@@ -15,7 +15,9 @@ export async function middleware(request: NextRequest) {
 
     // Check environment
     const isDevelopment = process.env.NODE_ENV === "development";
-    const disableCSP = isDevelopment && process.env.DISABLE_CSP_DEV === "true";
+    const disableCSP =
+      (isDevelopment && process.env.DISABLE_CSP_DEV === "true") ||
+      process.env.DISABLE_CSP_EMERGENCY === "true";
 
     // First, handle Supabase session
     const response = await updateSession(request);
