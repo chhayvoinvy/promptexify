@@ -281,14 +281,14 @@ export function Header() {
           : "border-transparent bg-transparent"
       }`}
     >
-      <Container className="h-14">
+      <Container className="h-14 py-0">
         {/* Desktop Layout */}
         <div className="hidden lg:grid lg:grid-cols-3 h-full items-center">
-          <div className="flex items-center space-x-2 justify-self-start">
-            <LogoCompact className="mr-6" />
+          <div className="flex items-center justify-self-start">
+            <LogoCompact />
           </div>
-          <div className="flex items-center space-x-2 justify-self-center">
-            <nav className="flex items-center space-x-4">
+          <div className="flex items-center justify-self-center">
+            <nav className="flex items-center">
               <Suspense fallback={<div className="w-96 h-10" />}>
                 <Navbar />
               </Suspense>
@@ -301,7 +301,7 @@ export function Header() {
               <>
                 <Link
                   href="/signin"
-                  className="text-sm font-medium text-foreground border border-border rounded-md px-4 py-2 transition-colors hover:text-foreground/80"
+                  className="inline-flex h-9 items-center justify-center text-sm font-medium text-foreground border border-border rounded-md px-4 py-2 transition-colors hover:text-foreground/80"
                 >
                   Sign In
                 </Link>
@@ -314,7 +314,7 @@ export function Header() {
         {/* Mobile Layout */}
         <div className="flex lg:hidden items-center justify-between h-full">
           <div className="flex items-center">
-            <LogoCompact className="mr-2" />
+            <LogoCompact />
           </div>
 
           <div className="flex items-center space-x-2">
@@ -330,8 +330,7 @@ export function Header() {
               <SheetTrigger asChild>
                 <Button
                   variant="ghost"
-                  size="sm"
-                  className="px-2 py-2 h-9 w-9"
+                  size="icon"
                   aria-label="Open navigation menu"
                 >
                   <Menu className="h-5 w-5" />

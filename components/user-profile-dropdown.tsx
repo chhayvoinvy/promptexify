@@ -53,7 +53,7 @@ export function UserProfileDropdown({ user }: UserProfileDropdownProps) {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="h-8 w-8 text-muted-foreground bg-muted rounded-full border border-muted-foreground/20"
+          className="h-9 w-9 text-muted-foreground bg-muted rounded-full border border-muted-foreground/20"
         >
           <UserIcon className="h-4 w-4" />
         </Button>

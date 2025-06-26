@@ -14,12 +14,12 @@ import {
   type Icon,
 } from "@tabler/icons-react";
 import Link from "next/link";
+import Image from "next/image";
 
 import { NavDocuments } from "@/components/dashboard/nav-documents";
 import { NavMain } from "@/components/dashboard/nav-main";
 import { NavSecondary } from "@/components/dashboard/nav-secondary";
 import { NavUser } from "@/components/dashboard/nav-user";
-import { LogoCompact } from "@/components/ui/logo";
 import {
   Sidebar,
   SidebarContent,
@@ -29,6 +29,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+
+// Types Interfaces
+// ------------------------------------------------------------
 interface UserData {
   id: string;
   email: string;
@@ -52,6 +55,8 @@ interface NavigationItem {
   allowUser?: boolean;
 }
 
+// Navigation Data
+// ------------------------------------------------------------
 const navigationData: {
   navMain: NavigationItem[];
   navSecondary: NavigationItem[];
@@ -127,6 +132,8 @@ const navigationData: {
   ],
 };
 
+// App Sidebar
+// ------------------------------------------------------------
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   user: User;
 }
@@ -165,13 +172,19 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
         <SidebarMenu>
-          <SidebarMenuItem>
+          <SidebarMenuItem className="mb-2">
             <SidebarMenuButton
               asChild
-              className="data-[slot=sidebar-menu-button]:!p-2"
+              className="data-[slot=sidebar-menu-button]:!px-2 data-[slot=sidebar-menu-button]:!py-5"
             >
-              <Link href="/dashboard" className="flex items-center gap-3">
-                <LogoCompact href={null} />
+              <Link href="/dashboard" className="flex items-center">
+                <Image
+                  src="/static/logo/logo-type-white.svg"
+                  alt="Logo"
+                  width={100}
+                  height={16}
+                  className="object-contain"
+                />
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
