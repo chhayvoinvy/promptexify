@@ -187,8 +187,10 @@ export function generateCSPDirectives(nonce: string): Record<string, string> {
       "style-src": [
         baseSources.self,
         `'nonce-${nonce}'`,
+        "'unsafe-inline'", // Required for libraries like Shadcn UI
         // Google Fonts and external styles
         "https://fonts.googleapis.com",
+        "https://accounts.google.com", // For Google Sign-In styles
       ].join(" "),
       "img-src": imgSrc.join(" "),
       "font-src": fontSrc.join(" "),
