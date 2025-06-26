@@ -4,10 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
+    "postinstall": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
+    "db:studio": "prisma studio",
+    "db:reset": "prisma migrate reset",
+    "db:push": "prisma db push",
     "content:sync": "tsx scripts/sync-content.ts"
   },
   "dependencies": {
@@ -84,7 +89,8 @@
     "tailwind-merge": "^3.3.1",
     "unist-util-visit": "^5.0.0",
     "vaul": "^1.1.2",
-    "zod": "^3.25.67"
+    "zod": "^3.25.67",
+    "prisma": "^6.10.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -94,10 +100,10 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.3.3",
-    "prisma": "^6.10.1",
     "tailwindcss": "^4",
     "tsx": "^4.20.3",
     "tw-animate-css": "^1.3.4",
     "typescript": "^5"
   }
 }
+
