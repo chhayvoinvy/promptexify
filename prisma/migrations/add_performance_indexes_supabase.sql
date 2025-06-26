@@ -77,6 +77,16 @@ CREATE INDEX IF NOT EXISTS "Post_premium_published_approved_idx" ON "posts" ("is
 CREATE INDEX IF NOT EXISTS "Post_authorId_createdAt_desc_idx" ON "posts" ("authorId", "createdAt" DESC);
 CREATE INDEX IF NOT EXISTS "Post_authorId_status_createdAt_idx" ON "posts" ("authorId", "status", "createdAt" DESC);
 
+-- Featured posts optimization (NEW)
+CREATE INDEX IF NOT EXISTS "Post_isFeatured_isPublished_idx" ON "posts" ("isFeatured", "isPublished");
+CREATE INDEX IF NOT EXISTS "Post_isFeatured_createdAt_desc_idx" ON "posts" ("isFeatured", "createdAt" DESC) 
+  WHERE "isFeatured" = true;
+CREATE INDEX IF NOT EXISTS "Post_featured_published_approved_idx" ON "posts" ("isFeatured", "createdAt" DESC) 
+  WHERE "isFeatured" = true AND "isPublished" = true AND "status" = 'APPROVED';
+
+-- Combined featured and premium content optimization
+CREATE INDEX IF NOT EXISTS "Post_featured_premium_published_idx" ON "posts" ("isFeatured", "isPremium", "isPublished", "createdAt" DESC);
+
 -- =============================================
 -- BOOKMARK TABLE INDEXES
 -- =============================================
@@ -176,7 +186,7 @@ RETURNS BOOLEAN AS $$
 DECLARE
   post_record RECORD;
 BEGIN
-  SELECT "isPremium", "isPublished", "status", "authorId"
+  SELECT "isPremium", "isFeatured", "isPublished", "status", "authorId"
   INTO post_record
   FROM "posts" 
   WHERE "id" = post_id;
@@ -195,7 +205,7 @@ BEGIN
     RETURN has_premium_access() OR post_record."authorId" = auth.uid()::text OR is_admin();
   END IF;
   
-  -- Public post
+  -- Public post (featured posts are publicly accessible)
   RETURN TRUE;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

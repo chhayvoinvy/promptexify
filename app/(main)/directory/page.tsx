@@ -41,6 +41,7 @@ interface PostWithBookmarksAndFavorites {
   featuredImage: string | null;
   featuredVideo: string | null;
   isPremium: boolean;
+  isFeatured: boolean;
   isPublished: boolean;
   status: string;
   viewCount: number;
@@ -199,7 +200,22 @@ async function DirectoryContent({
   const [initialPosts, totalCount] = await Promise.all([
     prisma.post.findMany({
       where: whereClause,
-      include: {
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        description: true,
+        content: true,
+        featuredImage: true,
+        featuredVideo: true,
+        isPremium: true,
+        isFeatured: true,
+        isPublished: true,
+        status: true,
+        viewCount: true,
+        authorId: true,
+        createdAt: true,
+        updatedAt: true,
         author: {
           select: {
             id: true,

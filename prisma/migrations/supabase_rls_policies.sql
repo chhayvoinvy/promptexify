@@ -142,7 +142,9 @@ CREATE POLICY "Authors can update own posts" ON "posts"
   ) WITH CHECK (
     "authorId" = auth.uid()::text AND
     -- Authors cannot change certain fields
-    "authorId" = (SELECT "authorId" FROM "posts" WHERE "id" = "posts"."id")
+    "authorId" = (SELECT "authorId" FROM "posts" WHERE "id" = "posts"."id") AND
+    -- Authors cannot change featured status (admin-only)
+    "isFeatured" = (SELECT "isFeatured" FROM "posts" WHERE "id" = "posts"."id")
   );
 
 -- Authors can delete their own posts
@@ -333,7 +335,7 @@ RETURNS BOOLEAN AS $$
 DECLARE
   post_record RECORD;
 BEGIN
-  SELECT "isPremium", "isPublished", "status", "authorId"
+  SELECT "isPremium", "isFeatured", "isPublished", "status", "authorId"
   INTO post_record
   FROM "posts" 
   WHERE "id" = post_id;
@@ -352,7 +354,7 @@ BEGIN
     RETURN has_premium_access() OR post_record."authorId" = auth.uid()::text OR is_admin();
   END IF;
   
-  -- Public post
+  -- Public post (featured posts are publicly accessible)
   RETURN TRUE;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -373,6 +375,13 @@ CREATE INDEX IF NOT EXISTS idx_posts_published_status
 
 CREATE INDEX IF NOT EXISTS idx_posts_author_published 
   ON "posts"("authorId", "isPublished", "status");
+
+-- Featured posts indexes for RLS optimization
+CREATE INDEX IF NOT EXISTS idx_posts_featured_published 
+  ON "posts"("isFeatured", "isPublished");
+
+CREATE INDEX IF NOT EXISTS idx_posts_featured_author 
+  ON "posts"("isFeatured", "authorId");
 
 CREATE INDEX IF NOT EXISTS idx_bookmarks_user_post 
   ON "bookmarks"("userId", "postId");
@@ -414,9 +423,10 @@ IMPORTANT SECURITY CONSIDERATIONS:
 2. The auth.uid() function returns the authenticated user's ID
 3. Premium content access is controlled by subscription status
 4. Admins have full access to all data
-5. Authors can only modify their own content
-6. View tracking is anonymous but auditable
-7. Logs are restricted to admins and individual users
+5. Authors can only modify their own content (except admin-only fields like isFeatured)
+6. Featured posts are admin-only - only admins can set/unset featured status
+7. View tracking is anonymous but auditable
+8. Logs are restricted to admins and individual users
 
 TESTING RECOMMENDATIONS:
 
@@ -425,6 +435,8 @@ TESTING RECOMMENDATIONS:
 3. Test bookmark/favorite creation and deletion
 4. Ensure view tracking works for anonymous users
 5. Verify audit logs are properly restricted
+6. Test featured posts functionality (admin-only access)
+7. Verify authors cannot change featured status of their posts
 
 MONITORING:
 
@@ -432,4 +444,5 @@ MONITORING:
 2. Use EXPLAIN ANALYZE on queries to check policy overhead
 3. Consider policy optimization if performance issues arise
 4. Regularly audit user permissions and access patterns
+5. Monitor featured posts access patterns and performance
 */ 

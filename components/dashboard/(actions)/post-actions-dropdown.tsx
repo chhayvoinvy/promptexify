@@ -27,18 +27,22 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  Star,
+  StarOff,
 } from "lucide-react";
 import {
   togglePostPublishAction,
   deletePostAction,
   approvePostAction,
   rejectPostAction,
+  togglePostFeaturedAction,
 } from "@/actions/posts";
 
 interface Post {
   id: string;
   title: string;
   isPublished: boolean;
+  isFeatured?: boolean;
   status?: string;
   authorId?: string;
 }
@@ -60,6 +64,7 @@ export function PostActionsDropdown({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
+  const [isTogglingFeatured, setIsTogglingFeatured] = useState(false);
 
   const isAdmin = currentUserRole === "ADMIN";
   const isOwner = currentUserId === post.authorId;
@@ -160,6 +165,29 @@ export function PostActionsDropdown({
     });
   };
 
+  const handleToggleFeatured = async () => {
+    if (isPending) return;
+
+    setIsTogglingFeatured(true);
+    startTransition(async () => {
+      try {
+        const result = await togglePostFeaturedAction(post.id);
+        if (result.success) {
+          toast.success(result.message);
+        }
+      } catch (error) {
+        console.error("Error toggling post featured status:", error);
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to update featured status"
+        );
+      } finally {
+        setIsTogglingFeatured(false);
+      }
+    });
+  };
+
   return (
     <>
       <DropdownMenu>
@@ -237,6 +265,25 @@ export function PostActionsDropdown({
                     : "Publish"}
                 </DropdownMenuItem>
               )}
+
+              <DropdownMenuItem
+                onClick={handleToggleFeatured}
+                disabled={isPending || isTogglingFeatured}
+                className="text-yellow-600 focus:text-yellow-600"
+              >
+                {isTogglingFeatured ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : post.isFeatured ? (
+                  <StarOff className="mr-2 h-4 w-4" />
+                ) : (
+                  <Star className="mr-2 h-4 w-4" />
+                )}
+                {isTogglingFeatured
+                  ? "Processing..."
+                  : post.isFeatured
+                  ? "Unfeature"
+                  : "Feature"}
+              </DropdownMenuItem>
             </>
           )}
 

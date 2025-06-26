@@ -497,6 +497,66 @@ export async function togglePostPublishAction(postId: string) {
   }
 }
 
+export async function togglePostFeaturedAction(postId: string) {
+  try {
+    // Get the current user
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.userData) {
+      handleAuthRedirect();
+    }
+
+    // Check admin permission
+    if (currentUser.userData.role !== "ADMIN") {
+      throw new Error("Unauthorized: Admin access required");
+    }
+
+    // Validate post ID
+    if (!postId || typeof postId !== "string") {
+      throw new Error("Invalid post ID");
+    }
+
+    // Get current post featured status
+    const existingPost = await prisma.post.findUnique({
+      where: { id: postId },
+      select: { id: true, isFeatured: true, title: true },
+    });
+
+    if (!existingPost) {
+      throw new Error("Post not found");
+    }
+
+    // Toggle the featured status
+    const newFeaturedState = !existingPost.isFeatured;
+
+    await prisma.post.update({
+      where: { id: postId },
+      data: {
+        isFeatured: newFeaturedState,
+        updatedAt: new Date(),
+      },
+    });
+
+    // Revalidate relevant paths
+    revalidatePath("/dashboard/posts");
+    revalidatePath(`/entry/${postId}`);
+    revalidatePath("/"); // Home page might show featured posts
+
+    return {
+      success: true,
+      message: `Post ${
+        existingPost.isFeatured ? "unfeatured" : "featured"
+      } successfully`,
+    };
+  } catch (error) {
+    console.error("Error toggling post featured status:", error);
+    throw new Error(
+      error instanceof Error
+        ? error.message
+        : "Failed to update post featured status"
+    );
+  }
+}
+
 export async function deletePostAction(postId: string) {
   try {
     // Get the current user

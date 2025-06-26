@@ -2,8 +2,6 @@
 
 # dependencies
 /node_modules
-/templates
-# /backup
 /.pnp
 .pnp.*
 .yarn/*
@@ -44,4 +42,15 @@ next-env.d.ts
 
 /lib/generated/prisma
 .contentlayer
+
+# local files
 /backup
+/templates
+/docs
+
+#prisma
+prisma/migrations
+prisma/seed.ts
+
+#contentlayer
+.contentlayer

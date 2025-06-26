@@ -12,6 +12,7 @@ export interface PostWithDetails {
   featuredImage: string | null;
   featuredVideo: string | null;
   isPremium: boolean;
+  isFeatured: boolean;
   isPublished: boolean;
   status: string;
   viewCount: number;
@@ -76,6 +77,7 @@ const optimizedPostSelect = {
   featuredImage: true,
   featuredVideo: true,
   isPremium: true,
+  isFeatured: true,
   isPublished: true,
   status: true,
   viewCount: true,
@@ -139,39 +141,7 @@ async function _getAllPosts(
 async function _getPostById(id: string): Promise<PostWithDetails | null> {
   const post = await prisma.post.findUnique({
     where: { id },
-    include: {
-      author: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          avatar: true,
-        },
-      },
-      category: {
-        include: {
-          parent: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-            },
-          },
-        },
-      },
-      tags: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-        },
-      },
-      _count: {
-        select: {
-          views: true,
-        },
-      },
-    },
+    select: fullPostSelect,
   });
 
   return post;
@@ -527,6 +497,7 @@ export async function getUserPosts(userId: string): Promise<PostWithDetails[]> {
       featuredImage: true,
       featuredVideo: true,
       isPremium: true,
+      isFeatured: true,
       isPublished: true,
       status: true,
       viewCount: true,
@@ -592,6 +563,7 @@ export async function getUserPostsPaginated(
         featuredImage: true,
         featuredVideo: true,
         isPremium: true,
+        isFeatured: true,
         isPublished: true,
         status: true,
         viewCount: true,
@@ -684,6 +656,7 @@ export async function getPostsPaginated(
         featuredImage: true,
         featuredVideo: true,
         isPremium: true,
+        isFeatured: true,
         isPublished: true,
         status: true,
         viewCount: true,

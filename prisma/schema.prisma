@@ -79,6 +79,7 @@ model Post {
   featuredImage String?
   featuredVideo String?
   isPremium     Boolean    @default(false)
+  isFeatured    Boolean    @default(false)
   isPublished   Boolean    @default(false)
   status        PostStatus @default(DRAFT)
   viewCount     Int        @default(0)
@@ -97,6 +98,7 @@ model Post {
   @@index([categoryId, isPublished, createdAt(sort: Desc)])
   @@index([authorId, createdAt(sort: Desc)])
   @@index([isPremium, isPublished])
+  @@index([isFeatured, isPublished])
   @@index([status, createdAt(sort: Desc)])
   @@index([title])
   @@index([isPublished, isPremium, createdAt(sort: Desc)])

@@ -52,6 +52,7 @@ import {
   IconCrown,
   IconLoader,
   IconX,
+  IconStar,
 } from "@tabler/icons-react";
 
 // Force dynamic rendering for this page
@@ -255,15 +256,12 @@ async function PostsManagementContent({
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Pending Review
+                  Featured Posts
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {
-                    allPosts.filter((p) => p.status === "PENDING_APPROVAL")
-                      .length
-                  }
+                  {allPosts.filter((p) => p.isFeatured).length}
                 </div>
               </CardContent>
             </Card>
@@ -314,6 +312,7 @@ async function PostsManagementContent({
                   <TableHead>Category</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Type</TableHead>
+                  <TableHead>Featured</TableHead>
                   <TableHead>Views</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="w-[70px]">Actions</TableHead>
@@ -394,6 +393,13 @@ async function PostsManagementContent({
                           "Free"
                         )}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {post.isFeatured && (
+                        <div className="flex items-center justify-center">
+                          <IconStar className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="text-center">
                       {post.viewCount}
