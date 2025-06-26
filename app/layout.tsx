@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { GeistMono } from "geist/font/mono";
+import { Analytics } from "@vercel/analytics/next";
+import "./globals.css";
+
 import { ThemeProvider } from "@/components/ui/theme";
 import { Toaster } from "@/components/ui/sonner";
 import { GoogleOneTap } from "@/components/google-one-tap";
-import "./globals.css";
-import { headers } from "next/headers";
 import { getBaseUrl } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -165,6 +167,7 @@ export default async function RootLayout({
         >
           {children}
           <GoogleOneTap />
+          <Analytics />
           <Toaster />
         </ThemeProvider>
       </body>
