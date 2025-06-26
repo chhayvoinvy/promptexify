@@ -2,9 +2,11 @@
 -- Supabase Row Level Security (RLS) Policies
 -- =============================================
 -- This script sets up comprehensive RLS policies for the promptexify database
+-- It is now idempotent and can be run multiple times safely.
 -- Execute this in Supabase SQL Editor
 
 -- Enable RLS on all tables
+-- These statements are safe to run multiple times.
 ALTER TABLE "users" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "categories" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "tags" ENABLE ROW LEVEL SECURITY;
@@ -19,10 +21,12 @@ ALTER TABLE "logs" ENABLE ROW LEVEL SECURITY;
 -- =============================================
 
 -- Users can read their own profile
+DROP POLICY IF EXISTS "Users can read own profile" ON "users";
 CREATE POLICY "Users can read own profile" ON "users"
   FOR SELECT USING (auth.uid()::text = "id");
 
 -- Users can update their own profile (limited fields)
+DROP POLICY IF EXISTS "Users can update own profile" ON "users";
 CREATE POLICY "Users can update own profile" ON "users"
   FOR UPDATE USING (auth.uid()::text = "id")
   WITH CHECK (
@@ -34,6 +38,7 @@ CREATE POLICY "Users can update own profile" ON "users"
   );
 
 -- Admins can read all users
+DROP POLICY IF EXISTS "Admins can read all users" ON "users";
 CREATE POLICY "Admins can read all users" ON "users"
   FOR SELECT USING (
     EXISTS (
@@ -43,6 +48,7 @@ CREATE POLICY "Admins can read all users" ON "users"
   );
 
 -- Admins can update all users
+DROP POLICY IF EXISTS "Admins can update all users" ON "users";
 CREATE POLICY "Admins can update all users" ON "users"
   FOR UPDATE USING (
     EXISTS (
@@ -52,6 +58,7 @@ CREATE POLICY "Admins can update all users" ON "users"
   );
 
 -- Public can read limited user info for posts
+DROP POLICY IF EXISTS "Public can read user info for posts" ON "users";
 CREATE POLICY "Public can read user info for posts" ON "users"
   FOR SELECT USING (true);
   -- This will be restricted by SELECT in application layer to only include name, avatar, id
@@ -61,10 +68,12 @@ CREATE POLICY "Public can read user info for posts" ON "users"
 -- =============================================
 
 -- Anyone can read categories
+DROP POLICY IF EXISTS "Anyone can read categories" ON "categories";
 CREATE POLICY "Anyone can read categories" ON "categories"
   FOR SELECT USING (true);
 
 -- Only admins can create/update/delete categories
+DROP POLICY IF EXISTS "Admins can manage categories" ON "categories";
 CREATE POLICY "Admins can manage categories" ON "categories"
   FOR ALL USING (
     EXISTS (
@@ -78,10 +87,12 @@ CREATE POLICY "Admins can manage categories" ON "categories"
 -- =============================================
 
 -- Anyone can read tags
+DROP POLICY IF EXISTS "Anyone can read tags" ON "tags";
 CREATE POLICY "Anyone can read tags" ON "tags"
   FOR SELECT USING (true);
 
 -- Only admins can create/update/delete tags
+DROP POLICY IF EXISTS "Admins can manage tags" ON "tags";
 CREATE POLICY "Admins can manage tags" ON "tags"
   FOR ALL USING (
     EXISTS (
@@ -95,12 +106,14 @@ CREATE POLICY "Admins can manage tags" ON "tags"
 -- =============================================
 
 -- Anyone can read published posts
+DROP POLICY IF EXISTS "Anyone can read published posts" ON "posts";
 CREATE POLICY "Anyone can read published posts" ON "posts"
   FOR SELECT USING (
     "isPublished" = true AND "status" = 'APPROVED'
   );
 
 -- Premium users can read premium posts (if they have active subscription)
+DROP POLICY IF EXISTS "Premium users can read premium posts" ON "posts";
 CREATE POLICY "Premium users can read premium posts" ON "posts"
   FOR SELECT USING (
     "isPublished" = true AND 
@@ -123,12 +136,14 @@ CREATE POLICY "Premium users can read premium posts" ON "posts"
   );
 
 -- Authors can read their own posts (all statuses)
+DROP POLICY IF EXISTS "Authors can read own posts" ON "posts";
 CREATE POLICY "Authors can read own posts" ON "posts"
   FOR SELECT USING (
     "authorId" = auth.uid()::text
   );
 
 -- Authors can create posts
+DROP POLICY IF EXISTS "Authors can create posts" ON "posts";
 CREATE POLICY "Authors can create posts" ON "posts"
   FOR INSERT WITH CHECK (
     "authorId" = auth.uid()::text AND
@@ -136,6 +151,7 @@ CREATE POLICY "Authors can create posts" ON "posts"
   );
 
 -- Authors can update their own posts
+DROP POLICY IF EXISTS "Authors can update own posts" ON "posts";
 CREATE POLICY "Authors can update own posts" ON "posts"
   FOR UPDATE USING (
     "authorId" = auth.uid()::text
@@ -148,12 +164,14 @@ CREATE POLICY "Authors can update own posts" ON "posts"
   );
 
 -- Authors can delete their own posts
+DROP POLICY IF EXISTS "Authors can delete own posts" ON "posts";
 CREATE POLICY "Authors can delete own posts" ON "posts"
   FOR DELETE USING (
     "authorId" = auth.uid()::text
   );
 
 -- Admins can manage all posts
+DROP POLICY IF EXISTS "Admins can manage all posts" ON "posts";
 CREATE POLICY "Admins can manage all posts" ON "posts"
   FOR ALL USING (
     EXISTS (
@@ -167,12 +185,14 @@ CREATE POLICY "Admins can manage all posts" ON "posts"
 -- =============================================
 
 -- Users can read their own bookmarks
+DROP POLICY IF EXISTS "Users can read own bookmarks" ON "bookmarks";
 CREATE POLICY "Users can read own bookmarks" ON "bookmarks"
   FOR SELECT USING (
     "userId" = auth.uid()::text
   );
 
 -- Users can create their own bookmarks
+DROP POLICY IF EXISTS "Users can create own bookmarks" ON "bookmarks";
 CREATE POLICY "Users can create own bookmarks" ON "bookmarks"
   FOR INSERT WITH CHECK (
     "userId" = auth.uid()::text AND
@@ -185,12 +205,14 @@ CREATE POLICY "Users can create own bookmarks" ON "bookmarks"
   );
 
 -- Users can delete their own bookmarks
+DROP POLICY IF EXISTS "Users can delete own bookmarks" ON "bookmarks";
 CREATE POLICY "Users can delete own bookmarks" ON "bookmarks"
   FOR DELETE USING (
     "userId" = auth.uid()::text
   );
 
 -- Admins can read all bookmarks
+DROP POLICY IF EXISTS "Admins can read all bookmarks" ON "bookmarks";
 CREATE POLICY "Admins can read all bookmarks" ON "bookmarks"
   FOR SELECT USING (
     EXISTS (
@@ -204,12 +226,14 @@ CREATE POLICY "Admins can read all bookmarks" ON "bookmarks"
 -- =============================================
 
 -- Users can read their own favorites
+DROP POLICY IF EXISTS "Users can read own favorites" ON "favorites";
 CREATE POLICY "Users can read own favorites" ON "favorites"
   FOR SELECT USING (
     "userId" = auth.uid()::text
   );
 
 -- Users can create their own favorites
+DROP POLICY IF EXISTS "Users can create own favorites" ON "favorites";
 CREATE POLICY "Users can create own favorites" ON "favorites"
   FOR INSERT WITH CHECK (
     "userId" = auth.uid()::text AND
@@ -222,12 +246,14 @@ CREATE POLICY "Users can create own favorites" ON "favorites"
   );
 
 -- Users can delete their own favorites
+DROP POLICY IF EXISTS "Users can delete own favorites" ON "favorites";
 CREATE POLICY "Users can delete own favorites" ON "favorites"
   FOR DELETE USING (
     "userId" = auth.uid()::text
   );
 
 -- Admins can read all favorites (for analytics)
+DROP POLICY IF EXISTS "Admins can read all favorites" ON "favorites";
 CREATE POLICY "Admins can read all favorites" ON "favorites"
   FOR SELECT USING (
     EXISTS (
@@ -237,6 +263,7 @@ CREATE POLICY "Admins can read all favorites" ON "favorites"
   );
 
 -- Public can read favorite counts for posts (anonymous aggregation)
+DROP POLICY IF EXISTS "Public can read favorite counts" ON "favorites";
 CREATE POLICY "Public can read favorite counts" ON "favorites"
   FOR SELECT USING (
     -- This will be used for counting only, not individual records
@@ -248,6 +275,7 @@ CREATE POLICY "Public can read favorite counts" ON "favorites"
 -- =============================================
 
 -- Anyone can create views for published posts (for analytics)
+DROP POLICY IF EXISTS "Anyone can create post views" ON "views";
 CREATE POLICY "Anyone can create post views" ON "views"
   FOR INSERT WITH CHECK (
     EXISTS (
@@ -257,6 +285,7 @@ CREATE POLICY "Anyone can create post views" ON "views"
   );
 
 -- Only admins can read view data
+DROP POLICY IF EXISTS "Admins can read all views" ON "views";
 CREATE POLICY "Admins can read all views" ON "views"
   FOR SELECT USING (
     EXISTS (
@@ -266,6 +295,7 @@ CREATE POLICY "Admins can read all views" ON "views"
   );
 
 -- Public can read view counts for posts (anonymous aggregation)
+DROP POLICY IF EXISTS "Public can read view counts" ON "views";
 CREATE POLICY "Public can read view counts" ON "views"
   FOR SELECT USING (
     -- This will be used for counting only, not individual records
@@ -277,6 +307,7 @@ CREATE POLICY "Public can read view counts" ON "views"
 -- =============================================
 
 -- Only admins can read logs
+DROP POLICY IF EXISTS "Admins can read all logs" ON "logs";
 CREATE POLICY "Admins can read all logs" ON "logs"
   FOR SELECT USING (
     EXISTS (
@@ -286,6 +317,7 @@ CREATE POLICY "Admins can read all logs" ON "logs"
   );
 
 -- System can create logs (for audit trail)
+DROP POLICY IF EXISTS "System can create logs" ON "logs";
 CREATE POLICY "System can create logs" ON "logs"
   FOR INSERT WITH CHECK (
     -- Allow system to create logs
@@ -293,6 +325,7 @@ CREATE POLICY "System can create logs" ON "logs"
   );
 
 -- Users can read their own logs
+DROP POLICY IF EXISTS "Users can read own logs" ON "logs";
 CREATE POLICY "Users can read own logs" ON "logs"
   FOR SELECT USING (
     "userId" = auth.uid()::text
@@ -303,6 +336,7 @@ CREATE POLICY "Users can read own logs" ON "logs"
 -- =============================================
 
 -- Function to check if user is admin
+-- CREATE OR REPLACE is already idempotent
 CREATE OR REPLACE FUNCTION is_admin()
 RETURNS BOOLEAN AS $$
 BEGIN
@@ -364,6 +398,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- =============================================
 
 -- Ensure we have indexes on columns used in RLS policies
+-- CREATE INDEX IF NOT EXISTS is already idempotent
 CREATE INDEX IF NOT EXISTS idx_users_id_role 
   ON "users"("id", "role");
 
@@ -445,4 +480,4 @@ MONITORING:
 3. Consider policy optimization if performance issues arise
 4. Regularly audit user permissions and access patterns
 5. Monitor featured posts access patterns and performance
-*/ 
+*/

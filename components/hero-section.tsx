@@ -66,8 +66,8 @@ export function HeroSection({ searchQuery, sort }: HeroSectionProps) {
           </h1>
           <p className="text-sm md:text-xl lg:text-xl xl:text-xl text-muted-foreground mb-6">
             Discover amazing prompts and rulesets for AI code editor, image
-            generation, video creation, and more. Browse our curated collection
-            of free ready to use prompts.
+            generation, video creation, and more. Browse our featured collection
+            of hand-picked, ready-to-use prompts.
           </p>
           {/* Search Bar */}
           <form method="GET" className="relative max-w-xl mx-auto">

@@ -34,8 +34,11 @@ async function PostGrid({
 
   const posts = await getPostsWithSorting(userId, sortBy);
 
+  // Filter for featured posts first
+  const featuredPosts = posts.filter((post) => post.isFeatured);
+
   const filteredPosts = searchQuery
-    ? posts.filter(
+    ? featuredPosts.filter(
         (post) =>
           post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
           post.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -43,7 +46,7 @@ async function PostGrid({
             tag.name.toLowerCase().includes(searchQuery.toLowerCase())
           )
       )
-    : posts.slice(0, 12); // Show latest 12 posts on home
+    : featuredPosts.slice(0, 12); // Show latest 12 featured posts on home
 
   return <PostMasonryGrid posts={filteredPosts} userType={userType} />;
 }
@@ -105,13 +108,23 @@ export default async function HomePage({ searchParams }: SearchProps) {
 
       {/* Posts Section */}
       <section className="pb-12">
-        {searchQuery && (
+        {searchQuery ? (
           <div className="mb-8">
             <h2 className="text-2xl font-semibold mb-2">
-              Search Results for &ldquo;{searchQuery}&rdquo;
+              Featured Results for &ldquo;{searchQuery}&rdquo;
             </h2>
             <p className="text-muted-foreground">
-              Showing all prompts matching your search criteria
+              Showing featured prompts matching your search criteria
+            </p>
+          </div>
+        ) : (
+          <div className="mb-8 text-center">
+            <h2 className="text-2xl md:text-3xl font-semibold mb-2">
+              Featured Prompts
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Discover our hand-picked collection of the best prompts, carefully
+              curated by our team
             </p>
           </div>
         )}
@@ -127,7 +140,7 @@ export default async function HomePage({ searchParams }: SearchProps) {
           <div className="text-center mt-12">
             <Link href="/directory">
               <Button size="lg" variant="outline">
-                View All Prompts
+                Browse All Prompts
               </Button>
             </Link>
           </div>

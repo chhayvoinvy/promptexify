@@ -35,7 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { Plus } from "lucide-react";
+import { Plus, Filter, X } from "lucide-react";
 import { PostActionsDropdown } from "@/components/dashboard/(actions)/post-actions-dropdown";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
@@ -45,6 +45,7 @@ import {
   getAllPosts,
   getUserPostsPaginated,
   getUserPosts,
+  getAllCategories,
 } from "@/lib/content";
 import { redirect } from "next/navigation";
 import {
@@ -53,7 +54,14 @@ import {
   IconLoader,
   IconX,
   IconStar,
+  IconCalendar,
+  IconEye,
 } from "@tabler/icons-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 // Force dynamic rendering for this page
 export const dynamic = "force-dynamic";
@@ -65,6 +73,11 @@ interface PostsManagementPageProps {
   searchParams: Promise<{
     page?: string;
     pageSize?: string;
+    category?: string;
+    status?: string;
+    type?: string;
+    featured?: string;
+    sortBy?: string;
   }>;
 }
 
@@ -376,29 +389,32 @@ async function PostsManagementContent({
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant={post.isPremium ? "default" : "outline"}
-                        className={
-                          post.isPremium
-                            ? "text-xs bg-gradient-to-r from-teal-500 to-sky-200 dark:from-teal-400 dark:to-sky-200"
-                            : "text-xs"
-                        }
-                      >
-                        {post.isPremium ? (
-                          <>
-                            <IconCrown className="mr-0.5 h-3 w-3" />
-                            Premium
-                          </>
-                        ) : (
-                          "Free"
-                        )}
-                      </Badge>
+                      <div className="flex items-center justify-center">
+                        <Badge
+                          variant={post.isPremium ? "default" : "outline"}
+                          className={
+                            post.isPremium
+                              ? "text-xs bg-gradient-to-r from-zinc-200 to-zinc-300 dark:from-zinc-300 dark:to-zinc-400"
+                              : "text-xs"
+                          }
+                        >
+                          {post.isPremium ? (
+                            <IconCrown className="h-3 w-3" />
+                          ) : (
+                            "Free"
+                          )}
+                        </Badge>
+                      </div>
                     </TableCell>
                     <TableCell className="text-center">
-                      {post.isFeatured && (
-                        <div className="flex items-center justify-center">
-                          <IconStar className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                        </div>
+                      {post.isFeatured ? (
+                        <Badge variant="secondary" className="text-xs">
+                          Yes
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-xs">
+                          <IconX className="h-3 w-3" />
+                        </Badge>
                       )}
                     </TableCell>
                     <TableCell className="text-center">

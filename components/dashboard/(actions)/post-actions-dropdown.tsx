@@ -222,7 +222,6 @@ export function PostActionsDropdown({
                   <DropdownMenuItem
                     onClick={handleApprove}
                     disabled={isPending || isApproving}
-                    className="text-green-600 focus:text-green-600"
                   >
                     {isApproving ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -234,7 +233,6 @@ export function PostActionsDropdown({
                   <DropdownMenuItem
                     onClick={handleReject}
                     disabled={isPending || isRejecting}
-                    className="text-orange-600 focus:text-orange-600"
                   >
                     {isRejecting ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -269,7 +267,6 @@ export function PostActionsDropdown({
               <DropdownMenuItem
                 onClick={handleToggleFeatured}
                 disabled={isPending || isTogglingFeatured}
-                className="text-yellow-600 focus:text-yellow-600"
               >
                 {isTogglingFeatured ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
