@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { GeistMono } from "geist/font/mono";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
@@ -114,10 +113,6 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Get nonce from headers (set by middleware)
-  const headersList = await headers();
-  const nonce = headersList.get("x-nonce") || "";
-
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -148,15 +143,6 @@ export default async function RootLayout({
         <link rel="manifest" href="/static/favicon/site.webmanifest" />
         <meta name="theme-color" content="#ffffff" />
         <meta name="msapplication-TileColor" content="#ffffff" />
-        {/* Nonce for CSP is available for any inline scripts/styles if needed */}
-        {nonce && (
-          <script
-            nonce={nonce}
-            dangerouslySetInnerHTML={{
-              __html: `window.__CSP_NONCE__ = "${nonce}";`,
-            }}
-          />
-        )}
       </head>
       <body className={GeistMono.className}>
         <ThemeProvider

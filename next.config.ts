@@ -85,8 +85,6 @@ const nextConfig: NextConfig = {
 
     const isDevelopment = process.env.NODE_ENV === "development";
 
-    // CSP will be handled by middleware for nonce support
-    // Only add non-CSP security headers here
     if (!isDevelopment) {
       return [
         {

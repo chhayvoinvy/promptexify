@@ -448,73 +448,6 @@ export function validateFileExtension(filename: string): boolean {
 }
 
 /**
- * Get environment-aware CSP directives
- * @deprecated Use lib/csp.ts instead for proper nonce-based CSP
- */
-function getCSPDirectives() {
-  const baseDirectives = {
-    "default-src": "'self'",
-    "img-src": "'self' data: https: blob:",
-    "font-src": "'self' data: https:",
-    "media-src": "'self' data: https: blob:",
-    "object-src": "'none'",
-    "base-uri": "'self'",
-    "form-action": "'self'",
-    "frame-ancestors": "'none'",
-    "upgrade-insecure-requests": "",
-  };
-
-  // Get Supabase URL for connect-src
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseConnectSrc = supabaseUrl
-    ? `'self' ${supabaseUrl} ${supabaseUrl.replace("https://", "wss://")}`
-    : "'self' https://*.supabase.co wss://*.supabase.co";
-
-  if (isProduction()) {
-    // Production CSP - strict and secure
-    return {
-      ...baseDirectives,
-      "script-src": "'self' 'wasm-unsafe-eval'", // Allow WASM for performance, no unsafe-inline
-      "style-src": "'self'", // No unsafe-inline in production
-      "connect-src": supabaseConnectSrc,
-      "worker-src": "'self' blob:",
-      "child-src": "'none'",
-      "manifest-src": "'self'",
-      // Add report-uri in production for monitoring
-      ...(process.env.CSP_REPORT_URI && {
-        "report-uri": process.env.CSP_REPORT_URI,
-        "report-to": "csp-violations",
-      }),
-    };
-  } else {
-    // Development CSP - more permissive for development tools
-    return {
-      ...baseDirectives,
-      "script-src": "'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'", // Allow for development tools
-      "style-src": "'self' 'unsafe-inline'", // Allow for development styling
-      "connect-src": `${supabaseConnectSrc} ws://localhost:* ws://127.0.0.1:* http://localhost:* http://127.0.0.1:*`, // Allow dev servers
-      "worker-src": "'self' blob:",
-      "child-src": "'self'",
-      "manifest-src": "'self'",
-    };
-  }
-}
-
-/**
- * Content Security Policy directives
- */
-export const CSP_DIRECTIVES = getCSPDirectives();
-
-/**
- * Generate CSP header value
- */
-export function generateCSPHeader(): string {
-  return Object.entries(CSP_DIRECTIVES)
-    .map(([directive, value]) => `${directive} ${value}`)
-    .join("; ");
-}
-
-/**
  * Get environment-aware security headers
  */
 function getSecurityHeaders() {
@@ -523,7 +456,6 @@ function getSecurityHeaders() {
     "X-Frame-Options": "DENY",
     "X-XSS-Protection": "1; mode=block",
     "Referrer-Policy": "strict-origin-when-cross-origin",
-    "Content-Security-Policy": generateCSPHeader(),
   };
 
   if (isProduction()) {
@@ -565,7 +497,6 @@ export const SECURITY_HEADERS = getSecurityHeaders();
 export function getEnhancedSecurityHeaders() {
   return {
     ...getSecurityHeaders(),
-    "Content-Security-Policy": generateCSPHeader(),
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
     "X-XSS-Protection": "1; mode=block",

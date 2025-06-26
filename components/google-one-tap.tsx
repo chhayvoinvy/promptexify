@@ -20,7 +20,6 @@ declare global {
         };
       };
     };
-    __CSP_NONCE__?: string;
   }
 }
 
@@ -32,20 +31,11 @@ export function GoogleOneTap() {
     // Only show for unauthenticated users
     if (loading || user) return;
 
-    // Get nonce from window if available (set by layout)
-    const nonce = window.__CSP_NONCE__;
-
     // Load Google One Tap script
     const script = document.createElement("script");
     script.src = "https://accounts.google.com/gsi/client";
     script.async = true;
     script.defer = true;
-
-    // Set nonce if available for CSP compliance
-    if (nonce) {
-      script.nonce = nonce;
-    }
-
     document.head.appendChild(script);
 
     script.onload = () => {

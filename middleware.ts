@@ -2,22 +2,11 @@ import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "./lib/supabase/middleware";
 import { csrfProtection } from "./lib/csrf";
 import { SecurityEvents, getClientIP, sanitizeUserAgent } from "./lib/audit";
-import {
-  generateNonce,
-  generateCSPHeader,
-  generateReportingEndpoints,
-} from "./lib/csp";
 
 export async function middleware(request: NextRequest) {
   try {
-    // Generate nonce for CSP
-    const nonce = generateNonce();
-
     // Check environment
     const isDevelopment = process.env.NODE_ENV === "development";
-    const disableCSP =
-      (isDevelopment && process.env.DISABLE_CSP_DEV === "true") ||
-      process.env.DISABLE_CSP_EMERGENCY === "true";
 
     // First, handle Supabase session
     const response = await updateSession(request);
@@ -47,25 +36,6 @@ export async function middleware(request: NextRequest) {
             },
           }
         );
-      }
-    }
-
-    // Only set CSP if not disabled in development
-    if (!disableCSP) {
-      // Generate and set CSP header with nonce
-      const cspHeader = generateCSPHeader(nonce);
-
-      response.headers.set("Content-Security-Policy", cspHeader);
-
-      // Set nonce in custom header for app to use
-      response.headers.set("x-nonce", nonce);
-
-      // Add reporting endpoints for CSP violations in production
-      if (!isDevelopment) {
-        const reportingEndpoints = generateReportingEndpoints();
-        if (reportingEndpoints) {
-          response.headers.set("Reporting-Endpoints", reportingEndpoints);
-        }
       }
     }
 
