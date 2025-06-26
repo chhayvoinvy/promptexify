@@ -106,6 +106,10 @@ export function generateCSPDirectives(nonce: string): Record<string, string> {
     "https://*.s3.amazonaws.com",
     "https://s3.amazonaws.com",
     "https://*.cloudfront.net",
+    // Google APIs
+    "https://accounts.google.com",
+    "https://www.googleapis.com",
+    "https://securetoken.googleapis.com",
     ...devSources,
   ];
 
@@ -118,6 +122,8 @@ export function generateCSPDirectives(nonce: string): Record<string, string> {
     // Stripe checkout
     "https://checkout.stripe.com",
     "https://js.stripe.com",
+    // Google One Tap
+    "https://accounts.google.com",
   ];
 
   // Manifest source
@@ -162,12 +168,22 @@ export function generateCSPDirectives(nonce: string): Record<string, string> {
         "'wasm-unsafe-eval'", // For WASM support
         // Stripe
         "https://js.stripe.com",
+        // Google One Tap
+        "https://accounts.google.com",
+        "https://www.gstatic.com",
+        // Allow specific inline hashes for Next.js
+        "'strict-dynamic'", // Allow scripts loaded by nonce to load additional scripts
       ].join(" "),
       "style-src": [
         baseSources.self,
         `'nonce-${nonce}'`,
         // Allow specific inline styles for critical CSS
         "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='", // Empty string hash
+        // Google Fonts and external styles
+        "https://fonts.googleapis.com",
+        "https://fonts.gstatic.com",
+        // Temporarily allow unsafe-inline for production debugging - should be removed and replaced with nonces
+        "'unsafe-inline'",
       ].join(" "),
       "img-src": imgSrc.join(" "),
       "font-src": fontSrc.join(" "),
@@ -175,6 +191,7 @@ export function generateCSPDirectives(nonce: string): Record<string, string> {
       "connect-src": connectSrc.join(" "),
       "worker-src": workerSrc.join(" "),
       "child-src": childSrc.join(" "),
+      "frame-src": childSrc.join(" "), // Same as child-src for iframe compatibility
       "manifest-src": manifestSrc.join(" "),
       // Add report URI for CSP violations in production
       ...(process.env.CSP_REPORT_URI && {
