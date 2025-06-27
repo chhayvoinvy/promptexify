@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { signInWithOAuth } from "@/lib/auth";
 import { magicLinkAction } from "@/actions/auth";
 import { magicLinkSchema, type MagicLinkData } from "@/lib/schemas";
+import { useCSRFForm } from "@/hooks/use-csrf";
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" {...props}>
@@ -42,6 +43,7 @@ export function SignUpForm() {
   const [isGooglePending, startGoogleTransition] = useTransition();
   const [emailSent, setEmailSent] = useState(false);
   const router = useRouter();
+  const { createFormDataWithCSRF, isReady } = useCSRFForm();
 
   const form = useForm<MagicLinkData>({
     resolver: zodResolver(magicLinkSchema),
@@ -52,14 +54,18 @@ export function SignUpForm() {
   });
 
   async function handleMagicLinkSignUp(data: MagicLinkData) {
+    if (!isReady) {
+      toast.error("Security verification in progress. Please wait.");
+      return;
+    }
+
     startMagicLinkTransition(async () => {
       try {
-        // Create form data
-        const formData = new FormData();
-        formData.append("email", data.email);
-        if (data.name) {
-          formData.append("name", data.name);
-        }
+        // Create form data with CSRF protection
+        const formData = createFormDataWithCSRF({
+          email: data.email,
+          name: data.name || "",
+        });
 
         // Call server action
         const result = await magicLinkAction(formData);
@@ -133,7 +139,7 @@ export function SignUpForm() {
       <Button
         variant="outline"
         onClick={handleGoogleSignUp}
-        disabled={isGooglePending || isMagicLinkPending}
+        disabled={isGooglePending || isMagicLinkPending || !isReady}
         className="w-full"
       >
         {isGooglePending ? (

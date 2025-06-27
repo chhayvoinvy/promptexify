@@ -5,6 +5,7 @@ import { requireAuth, getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { handleAuthRedirect } from "./auth";
+import { withCSRFProtection } from "@/lib/security";
 
 // Schema for updating user profile
 const updateUserProfileSchema = z.object({
@@ -15,49 +16,51 @@ const updateUserProfileSchema = z.object({
     .trim(),
 });
 
-export async function updateUserProfileAction(formData: FormData) {
-  try {
-    // Require authentication
-    const user = await requireAuth();
+export const updateUserProfileAction = withCSRFProtection(
+  async (formData: FormData) => {
+    try {
+      // Require authentication
+      const user = await requireAuth();
 
-    // Extract and validate form data
-    const name = formData.get("name") as string;
+      // Extract and validate form data
+      const name = formData.get("name") as string;
 
-    const validatedData = updateUserProfileSchema.safeParse({ name });
+      const validatedData = updateUserProfileSchema.safeParse({ name });
 
-    if (!validatedData.success) {
+      if (!validatedData.success) {
+        return {
+          success: false,
+          error: validatedData.error.errors[0]?.message || "Invalid input",
+        };
+      }
+
+      // Update user profile in database
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          name: validatedData.data.name,
+          updatedAt: new Date(),
+        },
+      });
+
+      // Revalidate the account page to show updated data
+      revalidatePath("/dashboard/account");
+
+      return {
+        success: true,
+        message: "Profile updated successfully",
+      };
+    } catch (error) {
+      console.error("Update user profile error:", error);
       return {
         success: false,
-        error: validatedData.error.errors[0]?.message || "Invalid input",
+        error: "Failed to update profile. Please try again.",
       };
+    } finally {
+      await prisma.$disconnect();
     }
-
-    // Update user profile in database
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        name: validatedData.data.name,
-        updatedAt: new Date(),
-      },
-    });
-
-    // Revalidate the account page to show updated data
-    revalidatePath("/dashboard/account");
-
-    return {
-      success: true,
-      message: "Profile updated successfully",
-    };
-  } catch (error) {
-    console.error("Update user profile error:", error);
-    return {
-      success: false,
-      error: "Failed to update profile. Please try again.",
-    };
-  } finally {
-    await prisma.$disconnect();
   }
-}
+);
 
 export async function getUserProfileAction() {
   try {

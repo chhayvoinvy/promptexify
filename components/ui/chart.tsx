@@ -5,6 +5,12 @@ import * as RechartsPrimitive from "recharts";
 
 import { cn } from "@/lib/utils";
 
+declare global {
+  interface Window {
+    __CSP_NONCE__?: string;
+  }
+}
+
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: "", dark: ".dark" } as const;
 
@@ -78,8 +84,13 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null;
   }
 
+  // Get nonce from global variable if available
+  const nonce =
+    typeof window !== "undefined" ? window.__CSP_NONCE__ : undefined;
+
   return (
     <style
+      nonce={nonce}
       dangerouslySetInnerHTML={{
         __html: Object.entries(THEMES)
           .map(

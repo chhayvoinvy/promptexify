@@ -13,43 +13,58 @@ import {
   type MagicLinkData,
 } from "@/lib/schemas";
 import { redirect } from "next/navigation";
+import { withCSRFProtection, handleSecureActionError } from "@/lib/security";
 
 // Helper function to handle authentication redirects properly
 function handleAuthRedirect(): never {
   redirect("/signin");
 }
 
-// Re-export auth functions as server actions
-export async function signInAction(formData: FormData) {
-  // Extract data from FormData
-  const data: SignInData = {
-    email: formData.get("email") as string,
-    password: formData.get("password") as string,
-  };
+// Re-export auth functions as server actions with CSRF protection
+export const signInAction = withCSRFProtection(async (formData: FormData) => {
+  try {
+    // Extract data from FormData
+    const data: SignInData = {
+      email: formData.get("email") as string,
+      password: formData.get("password") as string,
+    };
 
-  return await signInWithPassword(data);
-}
+    return await signInWithPassword(data);
+  } catch (error) {
+    return handleSecureActionError(error);
+  }
+});
 
-export async function signUpAction(formData: FormData) {
-  // Extract data from FormData
-  const data: SignUpData = {
-    email: formData.get("email") as string,
-    password: formData.get("password") as string,
-    name: formData.get("name") as string,
-  };
+export const signUpAction = withCSRFProtection(async (formData: FormData) => {
+  try {
+    // Extract data from FormData
+    const data: SignUpData = {
+      email: formData.get("email") as string,
+      password: formData.get("password") as string,
+      name: formData.get("name") as string,
+    };
 
-  return await signUpWithPassword(data);
-}
+    return await signUpWithPassword(data);
+  } catch (error) {
+    return handleSecureActionError(error);
+  }
+});
 
-export async function magicLinkAction(formData: FormData) {
-  // Extract data from FormData
-  const data: MagicLinkData = {
-    email: formData.get("email") as string,
-    name: (formData.get("name") as string) || undefined,
-  };
+export const magicLinkAction = withCSRFProtection(
+  async (formData: FormData) => {
+    try {
+      // Extract data from FormData
+      const data: MagicLinkData = {
+        email: formData.get("email") as string,
+        name: (formData.get("name") as string) || undefined,
+      };
 
-  return await signInWithMagicLink(data);
-}
+      return await signInWithMagicLink(data);
+    } catch (error) {
+      return handleSecureActionError(error);
+    }
+  }
+);
 
 export async function oauthAction(provider: "google") {
   return await signInWithOAuth(provider);

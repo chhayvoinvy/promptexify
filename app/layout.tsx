@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/ui/theme";
 import { Toaster } from "@/components/ui/sonner";
 import { GoogleOneTap } from "@/components/google-one-tap";
 import { getBaseUrl } from "@/lib/utils";
+import { CSPNonce } from "@/lib/security";
 
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseUrl()),
@@ -108,11 +109,15 @@ export const metadata: Metadata = {
   manifest: "/static/favicon/site.webmanifest",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Get CSP nonce for inline scripts/styles (only in production)
+  const nonce = await CSPNonce.getFromHeaders();
+  const isProduction = process.env.NODE_ENV === "production";
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -143,6 +148,25 @@ export default function RootLayout({
         <link rel="manifest" href="/static/favicon/site.webmanifest" />
         <meta name="theme-color" content="#ffffff" />
         <meta name="msapplication-TileColor" content="#ffffff" />
+        {/* Only set nonce in production mode */}
+        {nonce && isProduction && (
+          <script
+            nonce={nonce}
+            suppressHydrationWarning={true}
+            dangerouslySetInnerHTML={{
+              __html: `window.__CSP_NONCE__ = "${nonce}";`,
+            }}
+          />
+        )}
+        {/* In development, set global without nonce to avoid CSP conflicts */}
+        {!isProduction && (
+          <script
+            suppressHydrationWarning={true}
+            dangerouslySetInnerHTML={{
+              __html: `window.__CSP_NONCE__ = null; // Development mode - no CSP nonces`,
+            }}
+          />
+        )}
       </head>
       <body className={GeistMono.className}>
         <ThemeProvider

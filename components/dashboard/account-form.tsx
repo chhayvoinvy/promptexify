@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { updateUserProfileAction } from "@/actions";
+import { useCSRFForm } from "@/hooks/use-csrf";
 import {
   Card,
   CardContent,
@@ -44,12 +45,25 @@ export function AccountForm({ user }: AccountFormProps) {
     type: "success" | "error" | null;
     message: string;
   }>({ type: null, message: "" });
+  const { createFormDataWithCSRF, isReady } = useCSRFForm();
 
   function handleSubmit(formData: FormData) {
+    if (!isReady) {
+      setFeedback({
+        type: "error",
+        message: "Security verification in progress. Please wait.",
+      });
+      return;
+    }
+
     startTransition(async () => {
       setFeedback({ type: null, message: "" });
 
-      const result = await updateUserProfileAction(formData);
+      // Add CSRF protection to form data
+      const name = formData.get("name") as string;
+      const secureFormData = createFormDataWithCSRF({ name });
+
+      const result = await updateUserProfileAction(secureFormData);
 
       if (result.success) {
         setFeedback({
@@ -110,7 +124,7 @@ export function AccountForm({ user }: AccountFormProps) {
                   required
                   maxLength={50}
                   className="max-w-md"
-                  disabled={isPending}
+                  disabled={isPending || !isReady}
                 />
               </div>
 
@@ -131,8 +145,16 @@ export function AccountForm({ user }: AccountFormProps) {
                 </p>
               </div>
 
-              <Button type="submit" className="mt-4" disabled={isPending}>
-                {isPending ? "Saving..." : "Save Changes"}
+              <Button
+                type="submit"
+                className="mt-4"
+                disabled={isPending || !isReady}
+              >
+                {isPending
+                  ? "Saving..."
+                  : isReady
+                  ? "Save Changes"
+                  : "Initializing..."}
               </Button>
             </form>
           </CardContent>

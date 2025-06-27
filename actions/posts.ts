@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { handleAuthRedirect } from "./auth";
 import { revalidateCache, CACHE_TAGS } from "@/lib/cache";
+import { withCSRFProtection, handleSecureActionError } from "@/lib/security";
 
 import {
   sanitizeInput,
@@ -15,86 +16,253 @@ import {
 } from "@/lib/sanitize";
 
 // Post management actions
-export async function createPostAction(formData: FormData) {
-  try {
-    // Get the current user
-    const currentUser = await getCurrentUser();
-    if (!currentUser?.userData) {
-      handleAuthRedirect();
+export const createPostAction = withCSRFProtection(
+  async (formData: FormData) => {
+    try {
+      // Get the current user
+      const currentUser = await getCurrentUser();
+      if (!currentUser?.userData) {
+        handleAuthRedirect();
+      }
+      const user = currentUser.userData;
+
+      // Check if user has permission to create posts (both USER and ADMIN can create)
+      if (user.role !== "ADMIN" && user.role !== "USER") {
+        throw new Error("Unauthorized: Only registered users can create posts");
+      }
+
+      // Extract and validate form data
+      const rawTitle = formData.get("title") as string;
+      const rawSlug = formData.get("slug") as string;
+      const rawDescription = formData.get("description") as string;
+      const rawContent = formData.get("content") as string;
+      const featuredImage = formData.get("featuredImage") as string;
+      const featuredVideo = formData.get("featuredVideo") as string;
+      const category = formData.get("category") as string;
+      const tags = formData.get("tags") as string;
+
+      // Sanitize inputs for enhanced security
+      const title = sanitizeInput(rawTitle);
+      const description = rawDescription ? sanitizeInput(rawDescription) : null;
+      const content = sanitizeContent(rawContent);
+
+      // Generate slug if not provided
+      const slug =
+        rawSlug ||
+        title
+          .toLowerCase()
+          .replace(/\s+/g, "-")
+          .replace(/[^\w-]/g, "");
+
+      // Handle publish/status logic based on user role
+      let isPublished = false;
+      let status: PostStatus = PostStatus.DRAFT;
+
+      if (user.role === "ADMIN") {
+        // Admin can publish directly and control status
+        isPublished = formData.get("isPublished") === "on";
+        status = isPublished ? PostStatus.APPROVED : PostStatus.DRAFT;
+      } else {
+        // Regular users create posts with PENDING_APPROVAL status
+        isPublished = false;
+        status = PostStatus.PENDING_APPROVAL;
+      }
+
+      const isPremium = formData.get("isPremium") === "on";
+
+      // Validate required fields
+      if (!title || !content || !category) {
+        throw new Error("Missing required fields");
+      }
+
+      // Get category ID
+      const categoryRecord = await prisma.category.findUnique({
+        where: { slug: category },
+      });
+
+      if (!categoryRecord) {
+        throw new Error("Invalid category");
+      }
+
+      // Process and sanitize tags
+      const tagNames = tags
+        ? tags
+            .split(",")
+            .map((tag) => sanitizeInput(tag.trim()))
+            .filter(Boolean)
+        : [];
+      const tagConnections = [];
+
+      for (const tagName of tagNames) {
+        // Use enhanced tag slug sanitization
+        const tagSlug = sanitizeTagSlug(tagName);
+        if (tagSlug) {
+          const tag = await prisma.tag.upsert({
+            where: { slug: tagSlug },
+            update: {},
+            create: {
+              name: tagName,
+              slug: tagSlug,
+            },
+          });
+          tagConnections.push({ id: tag.id });
+        }
+      }
+
+      // Create the post
+      await prisma.post.create({
+        data: {
+          title,
+          slug,
+          description: description || null,
+          content,
+          featuredImage: featuredImage || null,
+          featuredVideo: featuredVideo || null,
+          isPremium,
+          isPublished,
+          status: status,
+          authorId: user.id,
+          categoryId: categoryRecord.id,
+          tags: {
+            connect: tagConnections,
+          },
+        },
+      });
+
+      // Revalidate cache tags for posts
+      revalidateCache([
+        CACHE_TAGS.POSTS,
+        CACHE_TAGS.POST_BY_SLUG,
+        CACHE_TAGS.CATEGORIES,
+        CACHE_TAGS.SEARCH_RESULTS,
+      ]);
+
+      // Revalidate cache tags for updated post
+      revalidateCache([
+        CACHE_TAGS.POSTS,
+        CACHE_TAGS.POST_BY_SLUG,
+        CACHE_TAGS.POST_BY_ID,
+        CACHE_TAGS.SEARCH_RESULTS,
+      ]);
+
+      revalidatePath("/dashboard/posts");
+      redirect("/dashboard/posts");
+    } catch (error) {
+      // Check if this is a Next.js redirect
+      if (error && typeof error === "object" && "digest" in error) {
+        const errorDigest = (error as { digest?: string }).digest;
+        if (
+          typeof errorDigest === "string" &&
+          errorDigest.includes("NEXT_REDIRECT")
+        ) {
+          // This is a redirect - re-throw it to allow the redirect to proceed
+          throw error;
+        }
+      }
+
+      console.error("Error creating post:", error);
+      throw new Error("Failed to create post");
     }
-    const user = currentUser.userData;
+  }
+);
 
-    // Check if user has permission to create posts (both USER and ADMIN can create)
-    if (user.role !== "ADMIN" && user.role !== "USER") {
-      throw new Error("Unauthorized: Only registered users can create posts");
-    }
+export const updatePostAction = withCSRFProtection(
+  async (formData: FormData) => {
+    try {
+      // Get the current user
+      const currentUser = await getCurrentUser();
+      if (!currentUser?.userData) {
+        handleAuthRedirect();
+      }
+      const user = currentUser.userData;
 
-    // Extract and validate form data
-    const rawTitle = formData.get("title") as string;
-    const rawSlug = formData.get("slug") as string;
-    const rawDescription = formData.get("description") as string;
-    const rawContent = formData.get("content") as string;
-    const featuredImage = formData.get("featuredImage") as string;
-    const featuredVideo = formData.get("featuredVideo") as string;
-    const category = formData.get("category") as string;
-    const tags = formData.get("tags") as string;
+      // Extract form data
+      const id = formData.get("id") as string;
+      const title = formData.get("title") as string;
+      const slug = formData.get("slug") as string;
+      const description = formData.get("description") as string;
+      const content = formData.get("content") as string;
+      const featuredImage = formData.get("featuredImage") as string;
+      const featuredVideo = formData.get("featuredVideo") as string;
+      const category = formData.get("category") as string;
+      const tags = formData.get("tags") as string;
+      const isPremium = formData.get("isPremium") === "on";
 
-    // Sanitize inputs for enhanced security
-    const title = sanitizeInput(rawTitle);
-    const description = rawDescription ? sanitizeInput(rawDescription) : null;
-    const content = sanitizeContent(rawContent);
+      // Validate required fields
+      if (!id || !title || !content || !category) {
+        throw new Error("Missing required fields");
+      }
 
-    // Generate slug if not provided
-    const slug =
-      rawSlug ||
-      title
-        .toLowerCase()
-        .replace(/\s+/g, "-")
-        .replace(/[^\w-]/g, "");
+      // Check if post exists and user has permission
+      const existingPost = await prisma.post.findUnique({
+        where: { id },
+        include: {
+          author: true,
+        },
+      });
 
-    // Handle publish/status logic based on user role
-    let isPublished = false;
-    let status: PostStatus = PostStatus.DRAFT;
+      if (!existingPost) {
+        throw new Error("Post not found");
+      }
 
-    if (user.role === "ADMIN") {
-      // Admin can publish directly and control status
-      isPublished = formData.get("isPublished") === "on";
-      status = isPublished ? PostStatus.APPROVED : PostStatus.DRAFT;
-    } else {
-      // Regular users create posts with PENDING_APPROVAL status
-      isPublished = false;
-      status = PostStatus.PENDING_APPROVAL;
-    }
+      // Check user permissions
+      if (user.role === "ADMIN") {
+        // Admin can edit any post
+      } else if (user.role === "USER") {
+        // Users can only edit their own posts that haven't been approved yet
+        if (existingPost.authorId !== user.id) {
+          throw new Error("Unauthorized: You can only edit your own posts");
+        }
+        // Disable editing once post has been approved or rejected by admin
+        if (existingPost.status === "APPROVED") {
+          throw new Error(
+            "Cannot edit approved posts. Please contact support for further assistance."
+          );
+        }
+        if (existingPost.status === "REJECTED") {
+          throw new Error(
+            "Cannot edit rejected posts. Please contact support or create a new post."
+          );
+        }
+      } else {
+        throw new Error("Unauthorized: Invalid user role");
+      }
 
-    const isPremium = formData.get("isPremium") === "on";
+      // Handle publish/status logic based on user role
+      let isPublished = existingPost.isPublished;
+      let status: PostStatus = existingPost.status as PostStatus;
 
-    // Validate required fields
-    if (!title || !content || !category) {
-      throw new Error("Missing required fields");
-    }
+      if (user.role === "ADMIN") {
+        // Admin can control publish status and status
+        const requestedPublish = formData.get("isPublished") === "on";
+        isPublished = requestedPublish;
+        status = requestedPublish ? PostStatus.APPROVED : PostStatus.DRAFT;
+      } else {
+        // Regular users cannot change publish status - stays pending approval
+        isPublished = false;
+        status = PostStatus.PENDING_APPROVAL;
+      }
 
-    // Get category ID
-    const categoryRecord = await prisma.category.findUnique({
-      where: { slug: category },
-    });
+      // Get category ID
+      const categoryRecord = await prisma.category.findUnique({
+        where: { slug: category },
+      });
 
-    if (!categoryRecord) {
-      throw new Error("Invalid category");
-    }
+      if (!categoryRecord) {
+        throw new Error("Invalid category");
+      }
 
-    // Process and sanitize tags
-    const tagNames = tags
-      ? tags
-          .split(",")
-          .map((tag) => sanitizeInput(tag.trim()))
-          .filter(Boolean)
-      : [];
-    const tagConnections = [];
+      // Process tags
+      const tagNames = tags
+        ? tags
+            .split(",")
+            .map((tag) => tag.trim())
+            .filter(Boolean)
+        : [];
+      const tagConnections = [];
 
-    for (const tagName of tagNames) {
-      // Use enhanced tag slug sanitization
-      const tagSlug = sanitizeTagSlug(tagName);
-      if (tagSlug) {
+      for (const tagName of tagNames) {
+        const tagSlug = tagName.toLowerCase().replace(/\s+/g, "-");
         const tag = await prisma.tag.upsert({
           where: { slug: tagSlug },
           update: {},
@@ -105,220 +273,57 @@ export async function createPostAction(formData: FormData) {
         });
         tagConnections.push({ id: tag.id });
       }
-    }
 
-    // Create the post
-    await prisma.post.create({
-      data: {
-        title,
-        slug,
-        description: description || null,
-        content,
-        featuredImage: featuredImage || null,
-        featuredVideo: featuredVideo || null,
-        isPremium,
-        isPublished,
-        status: status,
-        authorId: user.id,
-        categoryId: categoryRecord.id,
-        tags: {
-          connect: tagConnections,
-        },
-      },
-    });
-
-    // Revalidate cache tags for posts
-    revalidateCache([
-      CACHE_TAGS.POSTS,
-      CACHE_TAGS.POST_BY_SLUG,
-      CACHE_TAGS.CATEGORIES,
-      CACHE_TAGS.SEARCH_RESULTS,
-    ]);
-
-    // Revalidate cache tags for updated post
-    revalidateCache([
-      CACHE_TAGS.POSTS,
-      CACHE_TAGS.POST_BY_SLUG,
-      CACHE_TAGS.POST_BY_ID,
-      CACHE_TAGS.SEARCH_RESULTS,
-    ]);
-
-    revalidatePath("/dashboard/posts");
-    redirect("/dashboard/posts");
-  } catch (error) {
-    // Check if this is a Next.js redirect
-    if (error && typeof error === "object" && "digest" in error) {
-      const errorDigest = (error as { digest?: string }).digest;
-      if (
-        typeof errorDigest === "string" &&
-        errorDigest.includes("NEXT_REDIRECT")
-      ) {
-        // This is a redirect - re-throw it to allow the redirect to proceed
-        throw error;
-      }
-    }
-
-    console.error("Error creating post:", error);
-    throw new Error("Failed to create post");
-  }
-}
-
-export async function updatePostAction(formData: FormData) {
-  try {
-    // Get the current user
-    const currentUser = await getCurrentUser();
-    if (!currentUser?.userData) {
-      handleAuthRedirect();
-    }
-    const user = currentUser.userData;
-
-    // Extract form data
-    const id = formData.get("id") as string;
-    const title = formData.get("title") as string;
-    const slug = formData.get("slug") as string;
-    const description = formData.get("description") as string;
-    const content = formData.get("content") as string;
-    const featuredImage = formData.get("featuredImage") as string;
-    const featuredVideo = formData.get("featuredVideo") as string;
-    const category = formData.get("category") as string;
-    const tags = formData.get("tags") as string;
-    const isPremium = formData.get("isPremium") === "on";
-
-    // Validate required fields
-    if (!id || !title || !content || !category) {
-      throw new Error("Missing required fields");
-    }
-
-    // Check if post exists and user has permission
-    const existingPost = await prisma.post.findUnique({
-      where: { id },
-      include: {
-        author: true,
-      },
-    });
-
-    if (!existingPost) {
-      throw new Error("Post not found");
-    }
-
-    // Check user permissions
-    if (user.role === "ADMIN") {
-      // Admin can edit any post
-    } else if (user.role === "USER") {
-      // Users can only edit their own posts that haven't been approved yet
-      if (existingPost.authorId !== user.id) {
-        throw new Error("Unauthorized: You can only edit your own posts");
-      }
-      // Disable editing once post has been approved or rejected by admin
-      if (existingPost.status === "APPROVED") {
-        throw new Error(
-          "Cannot edit approved posts. Please contact support for further assistance."
-        );
-      }
-      if (existingPost.status === "REJECTED") {
-        throw new Error(
-          "Cannot edit rejected posts. Please contact support or create a new post."
-        );
-      }
-    } else {
-      throw new Error("Unauthorized: Invalid user role");
-    }
-
-    // Handle publish/status logic based on user role
-    let isPublished = existingPost.isPublished;
-    let status: PostStatus = existingPost.status as PostStatus;
-
-    if (user.role === "ADMIN") {
-      // Admin can control publish status and status
-      const requestedPublish = formData.get("isPublished") === "on";
-      isPublished = requestedPublish;
-      status = requestedPublish ? PostStatus.APPROVED : PostStatus.DRAFT;
-    } else {
-      // Regular users cannot change publish status - stays pending approval
-      isPublished = false;
-      status = PostStatus.PENDING_APPROVAL;
-    }
-
-    // Get category ID
-    const categoryRecord = await prisma.category.findUnique({
-      where: { slug: category },
-    });
-
-    if (!categoryRecord) {
-      throw new Error("Invalid category");
-    }
-
-    // Process tags
-    const tagNames = tags
-      ? tags
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter(Boolean)
-      : [];
-    const tagConnections = [];
-
-    for (const tagName of tagNames) {
-      const tagSlug = tagName.toLowerCase().replace(/\s+/g, "-");
-      const tag = await prisma.tag.upsert({
-        where: { slug: tagSlug },
-        update: {},
-        create: {
-          name: tagName,
-          slug: tagSlug,
+      // Update the post
+      await prisma.post.update({
+        where: { id },
+        data: {
+          title,
+          slug,
+          description: description || null,
+          content,
+          featuredImage: featuredImage || null,
+          featuredVideo: featuredVideo || null,
+          isPremium,
+          isPublished,
+          status: status,
+          categoryId: categoryRecord.id,
+          tags: {
+            set: tagConnections,
+          },
+          updatedAt: new Date(),
         },
       });
-      tagConnections.push({ id: tag.id });
-    }
 
-    // Update the post
-    await prisma.post.update({
-      where: { id },
-      data: {
-        title,
-        slug,
-        description: description || null,
-        content,
-        featuredImage: featuredImage || null,
-        featuredVideo: featuredVideo || null,
-        isPremium,
-        isPublished,
-        status: status,
-        categoryId: categoryRecord.id,
-        tags: {
-          set: tagConnections,
-        },
-        updatedAt: new Date(),
-      },
-    });
+      revalidatePath("/dashboard/posts");
+      revalidatePath(`/entry/${id}`);
+      // Revalidate cache tags for updated post
+      revalidateCache([
+        CACHE_TAGS.POSTS,
+        CACHE_TAGS.POST_BY_SLUG,
+        CACHE_TAGS.POST_BY_ID,
+        CACHE_TAGS.SEARCH_RESULTS,
+      ]);
 
-    revalidatePath("/dashboard/posts");
-    revalidatePath(`/entry/${id}`);
-    // Revalidate cache tags for updated post
-    revalidateCache([
-      CACHE_TAGS.POSTS,
-      CACHE_TAGS.POST_BY_SLUG,
-      CACHE_TAGS.POST_BY_ID,
-      CACHE_TAGS.SEARCH_RESULTS,
-    ]);
-
-    redirect("/dashboard/posts");
-  } catch (error) {
-    // Check if this is a Next.js redirect
-    if (error && typeof error === "object" && "digest" in error) {
-      const errorDigest = (error as { digest?: string }).digest;
-      if (
-        typeof errorDigest === "string" &&
-        errorDigest.includes("NEXT_REDIRECT")
-      ) {
-        // This is a redirect - re-throw it to allow the redirect to proceed
-        throw error;
+      redirect("/dashboard/posts");
+    } catch (error) {
+      // Check if this is a Next.js redirect
+      if (error && typeof error === "object" && "digest" in error) {
+        const errorDigest = (error as { digest?: string }).digest;
+        if (
+          typeof errorDigest === "string" &&
+          errorDigest.includes("NEXT_REDIRECT")
+        ) {
+          // This is a redirect - re-throw it to allow the redirect to proceed
+          throw error;
+        }
       }
-    }
 
-    console.error("Error updating post:", error);
-    throw new Error("Failed to update post");
+      console.error("Error updating post:", error);
+      throw new Error("Failed to update post");
+    }
   }
-}
+);
 
 export async function approvePostAction(postId: string) {
   try {

@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 
 declare global {
   interface Window {
+    __CSP_NONCE__?: string;
     google?: {
       accounts: {
         id: {
@@ -26,16 +27,23 @@ declare global {
 export function GoogleOneTap() {
   const { user, loading } = useAuth();
   const supabase = createClient();
+  const [nonce] = useState(() => {
+    // Get nonce from global variable set in layout
+    return typeof window !== "undefined" ? window.__CSP_NONCE__ || null : null;
+  });
 
   useEffect(() => {
     // Only show for unauthenticated users
     if (loading || user) return;
 
-    // Load Google One Tap script
+    // Load Google One Tap script with nonce if available
     const script = document.createElement("script");
     script.src = "https://accounts.google.com/gsi/client";
     script.async = true;
     script.defer = true;
+    if (nonce) {
+      script.nonce = nonce;
+    }
     document.head.appendChild(script);
 
     script.onload = () => {
