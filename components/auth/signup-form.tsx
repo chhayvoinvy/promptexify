@@ -12,7 +12,8 @@ import { Form } from "@/components/ui/form";
 import { InputForm } from "@/components/ui/input-form";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { signInWithMagicLink, signInWithOAuth } from "@/lib/auth";
+import { signInWithOAuth } from "@/lib/auth";
+import { magicLinkAction } from "@/actions/auth";
 import { magicLinkSchema, type MagicLinkData } from "@/lib/schemas";
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -52,13 +53,32 @@ export function SignUpForm() {
 
   async function handleMagicLinkSignUp(data: MagicLinkData) {
     startMagicLinkTransition(async () => {
-      const result = await signInWithMagicLink(data);
+      try {
+        // Create form data
+        const formData = new FormData();
+        formData.append("email", data.email);
+        if (data.name) {
+          formData.append("name", data.name);
+        }
 
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        setEmailSent(true);
-        toast.success(result.message || "Check your email for the magic link!");
+        // Call server action
+        const result = await magicLinkAction(formData);
+
+        if (result.error) {
+          toast.error(result.error);
+        } else {
+          setEmailSent(true);
+          const successMessage =
+            "message" in result
+              ? result.message
+              : "Check your email for the magic link!";
+          toast.success(
+            successMessage || "Check your email for the magic link!"
+          );
+        }
+      } catch (error) {
+        console.error("Magic link error:", error);
+        toast.error("An unexpected error occurred. Please try again.");
       }
     });
   }
@@ -174,7 +194,7 @@ export function SignUpForm() {
             {isMagicLinkPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Sending link...
+                Sending...
               </>
             ) : (
               <>

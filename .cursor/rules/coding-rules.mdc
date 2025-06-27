@@ -48,6 +48,10 @@ alwaysApply: true
     - Use only for Web API access in small components.
     - Avoid for data fetching or state management.
 
+  Security
+  - Use csrf for forms
+  - Sanitize inputs
+
   Techstacks used in the project:
   - Using Supabase for authentication and Prisma with PostgreSQL for database. 
   - The system has a hybrid approach where: Supabase handles authentication (login, signup, session management) and Prisma manages the user profile data in local database (including the role field).

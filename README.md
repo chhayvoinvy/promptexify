@@ -1,3 +1,5 @@
-TODO:
+# Promptexify
 
-[] Add a prompt generator page
+<!-- Your existing README content -->
+
+<!-- Rest of your existing README content -->

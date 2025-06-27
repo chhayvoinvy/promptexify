@@ -20,15 +20,34 @@ function handleAuthRedirect(): never {
 }
 
 // Re-export auth functions as server actions
-export async function signInAction(data: SignInData) {
+export async function signInAction(formData: FormData) {
+  // Extract data from FormData
+  const data: SignInData = {
+    email: formData.get("email") as string,
+    password: formData.get("password") as string,
+  };
+
   return await signInWithPassword(data);
 }
 
-export async function signUpAction(data: SignUpData) {
+export async function signUpAction(formData: FormData) {
+  // Extract data from FormData
+  const data: SignUpData = {
+    email: formData.get("email") as string,
+    password: formData.get("password") as string,
+    name: formData.get("name") as string,
+  };
+
   return await signUpWithPassword(data);
 }
 
-export async function magicLinkAction(data: MagicLinkData) {
+export async function magicLinkAction(formData: FormData) {
+  // Extract data from FormData
+  const data: MagicLinkData = {
+    email: formData.get("email") as string,
+    name: (formData.get("name") as string) || undefined,
+  };
+
   return await signInWithMagicLink(data);
 }
 

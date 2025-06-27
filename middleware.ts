@@ -1,53 +1,28 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "./lib/supabase/middleware";
-import { csrfProtection } from "./lib/csrf";
 import { SecurityEvents, getClientIP, sanitizeUserAgent } from "./lib/audit";
 
 export async function middleware(request: NextRequest) {
   try {
-    // Check environment
-    const isDevelopment = process.env.NODE_ENV === "development";
-
-    // First, handle Supabase session
+    // Handle Supabase session
     const response = await updateSession(request);
 
-    // Skip CSRF protection in development for easier development
-    if (!isDevelopment) {
-      // Apply CSRF protection for state-changing requests in production only
-      const csrfValid = await csrfProtection(request);
+    // Log successful state-changing requests for monitoring
+    if (["POST", "PUT", "DELETE", "PATCH"].includes(request.method)) {
+      const pathname = request.nextUrl.pathname;
 
-      if (!csrfValid) {
-        // Log CSRF violation
-        await SecurityEvents.inputValidationFailure(
-          undefined,
-          "csrf_token",
-          "invalid_or_missing",
-          getClientIP(request)
-        );
+      // Don't log internal/sensitive endpoints
+      const skipLogging = ["/api/webhooks/", "/api/upload/"];
 
-        return NextResponse.json(
-          { error: "Invalid or missing CSRF token" },
-          {
-            status: 403,
-            headers: {
-              "Content-Type": "application/json",
-              "X-Content-Type-Options": "nosniff",
-              "X-Frame-Options": "DENY",
-            },
-          }
+      if (!skipLogging.some((path) => pathname.startsWith(path))) {
+        console.log(
+          `[SECURITY] ${request.method} ${pathname} - IP: ${getClientIP(
+            request
+          )} - User-Agent: ${sanitizeUserAgent(
+            request.headers.get("user-agent")
+          )}`
         );
       }
-    }
-
-    // Log successful request for monitoring (only state-changing requests)
-    if (["POST", "PUT", "DELETE", "PATCH"].includes(request.method)) {
-      console.log(
-        `[SECURITY] ${request.method} ${
-          request.nextUrl.pathname
-        } - IP: ${getClientIP(request)} - User-Agent: ${sanitizeUserAgent(
-          request.headers.get("user-agent")
-        )}`
-      );
     }
 
     return response;
@@ -63,7 +38,10 @@ export async function middleware(request: NextRequest) {
     );
 
     return NextResponse.json(
-      { error: "Internal server error" },
+      {
+        error: "Internal server error",
+        code: "MIDDLEWARE_ERROR",
+      },
       {
         status: 500,
         headers: {
