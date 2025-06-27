@@ -36,26 +36,57 @@ async function AccountContent() {
 function AccountLoading() {
   return (
     <div className="space-y-6">
+      {/* Header skeleton */}
       <div>
         <div className="h-8 w-48 bg-muted rounded animate-pulse" />
         <div className="h-4 w-64 bg-muted rounded animate-pulse mt-2" />
       </div>
 
-      <div className="grid gap-6">
-        <Card>
+      {/* Two cards side by side layout */}
+      <div className="gap-6 flex">
+        {/* Profile Information Card Skeleton */}
+        <Card className="w-full">
           <CardContent className="space-y-4 p-6">
-            <div className="h-6 w-32 bg-muted rounded animate-pulse" />
-            <div className="h-4 w-48 bg-muted rounded animate-pulse" />
-            <div className="h-10 w-full max-w-md bg-muted rounded animate-pulse" />
-            <div className="h-10 w-full max-w-md bg-muted rounded animate-pulse" />
-            <div className="h-10 w-24 bg-muted rounded animate-pulse" />
+            {/* Card header skeleton */}
+            <div className="flex items-center gap-2 mb-4">
+              <div className="h-5 w-5 bg-muted rounded animate-pulse" />
+              <div className="h-6 w-32 bg-muted rounded animate-pulse" />
+            </div>
+            <div className="h-4 w-48 bg-muted rounded animate-pulse mb-4" />
+
+            {/* Form fields skeleton */}
+            <div className="space-y-4">
+              <div className="grid gap-2">
+                <div className="h-4 w-16 bg-muted rounded animate-pulse" />
+                <div className="h-10 w-full max-w-md bg-muted rounded animate-pulse" />
+              </div>
+
+              <div className="grid gap-2">
+                <div className="h-4 w-20 bg-muted rounded animate-pulse" />
+                <div className="flex items-center gap-2">
+                  <div className="h-10 w-full max-w-md bg-muted rounded animate-pulse" />
+                  <div className="h-4 w-4 bg-muted rounded animate-pulse" />
+                </div>
+                <div className="h-3 w-64 bg-muted rounded animate-pulse" />
+              </div>
+
+              <div className="h-10 w-24 bg-muted rounded animate-pulse mt-4" />
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Account Details Card Skeleton */}
+        <Card className="w-full">
           <CardContent className="p-6">
-            <div className="h-6 w-32 bg-muted rounded animate-pulse mb-4" />
-            <div className="grid gap-4 sm:grid-cols-2">
+            {/* Card header skeleton */}
+            <div className="flex items-center gap-2 mb-4">
+              <div className="h-5 w-5 bg-muted rounded animate-pulse" />
+              <div className="h-6 w-32 bg-muted rounded animate-pulse" />
+            </div>
+            <div className="h-4 w-48 bg-muted rounded animate-pulse mb-6" />
+
+            {/* Account details list skeleton */}
+            <div className="space-y-4">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="flex items-center justify-between">
                   <div className="h-4 w-20 bg-muted rounded animate-pulse" />

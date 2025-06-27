@@ -68,11 +68,10 @@ export function AccountForm({ user }: AccountFormProps) {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-6">
-        <p className="text-muted-foreground">
-          Manage your account information and preferences
-        </p>
-
+      <p className="text-muted-foreground">
+        Manage your account information and preferences
+      </p>
+      <div className="gap-6 flex">
         {/* Feedback Alert */}
         {feedback.type && (
           <Alert
@@ -88,7 +87,7 @@ export function AccountForm({ user }: AccountFormProps) {
         )}
 
         {/* Profile Information Card */}
-        <Card>
+        <Card className="w-full">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
@@ -140,7 +139,7 @@ export function AccountForm({ user }: AccountFormProps) {
         </Card>
 
         {/* Account Details Card */}
-        <Card>
+        <Card className="w-full">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
@@ -151,7 +150,7 @@ export function AccountForm({ user }: AccountFormProps) {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Account Type</span>
                 <Badge

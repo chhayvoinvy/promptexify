@@ -33,7 +33,7 @@ export default function GlobalError({
                   </CardTitle>
                   <CardDescription className="text-lg text-muted-foreground max-w-md mx-auto">
                     We encountered an unexpected error. Our team has been
-                    notified and is working on a fix.
+                    notified and is working on a fix. Please try again later.
                   </CardDescription>
                 </div>
               </CardHeader>
