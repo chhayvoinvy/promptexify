@@ -55,8 +55,8 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Services */}
-          <div className="space-y-3 sm:space-y-4">
+          {/* Services (Temporary hidden)*/}
+          <div className="space-y-3 sm:space-y-4 opacity-0">
             <h3 className="font-semibold text-sm">Services</h3>
             <ul className="space-y-2 text-sm">
               <li>
