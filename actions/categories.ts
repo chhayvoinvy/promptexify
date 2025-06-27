@@ -3,7 +3,6 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { handleAuthRedirect } from "./auth";
 import { withCSRFProtection } from "@/lib/security";
 
@@ -48,7 +47,7 @@ export const createCategoryAction = withCSRFProtection(
       }
 
       // Create the category
-      await prisma.category.create({
+      const newCategory = await prisma.category.create({
         data: {
           name,
           slug,
@@ -58,22 +57,18 @@ export const createCategoryAction = withCSRFProtection(
       });
 
       revalidatePath("/dashboard/categories");
-      redirect("/dashboard/categories");
+      return {
+        success: true,
+        message: `Category "${newCategory.name}" created successfully`,
+        category: newCategory,
+      };
     } catch (error) {
-      // Check if this is a Next.js redirect
-      if (error && typeof error === "object" && "digest" in error) {
-        const errorDigest = (error as { digest?: string }).digest;
-        if (
-          typeof errorDigest === "string" &&
-          errorDigest.includes("NEXT_REDIRECT")
-        ) {
-          // This is a redirect - re-throw it to allow the redirect to proceed
-          throw error;
-        }
-      }
-
       console.error("Error creating category:", error);
-      throw new Error("Failed to create category");
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Failed to create category",
+      };
     }
   }
 );
@@ -155,7 +150,7 @@ export const updateCategoryAction = withCSRFProtection(
       }
 
       // Update the category
-      await prisma.category.update({
+      const updatedCategory = await prisma.category.update({
         where: { id },
         data: {
           name,
@@ -167,22 +162,18 @@ export const updateCategoryAction = withCSRFProtection(
       });
 
       revalidatePath("/dashboard/categories");
-      redirect("/dashboard/categories");
+      return {
+        success: true,
+        message: `Category "${updatedCategory.name}" updated successfully`,
+        category: updatedCategory,
+      };
     } catch (error) {
-      // Check if this is a Next.js redirect
-      if (error && typeof error === "object" && "digest" in error) {
-        const errorDigest = (error as { digest?: string }).digest;
-        if (
-          typeof errorDigest === "string" &&
-          errorDigest.includes("NEXT_REDIRECT")
-        ) {
-          // This is a redirect - re-throw it to allow the redirect to proceed
-          throw error;
-        }
-      }
-
       console.error("Error updating category:", error);
-      throw new Error("Failed to update category");
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Failed to update category",
+      };
     }
   }
 );
@@ -252,13 +243,11 @@ export const deleteCategoryAction = withCSRFProtection(
       };
     } catch (error) {
       console.error("Error deleting category:", error);
-
-      // If it's a known error with a message, throw it as is
-      if (error instanceof Error) {
-        throw error;
-      }
-
-      throw new Error("Failed to delete category");
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Failed to delete category",
+      };
     }
   }
 );

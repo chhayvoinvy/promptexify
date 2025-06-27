@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useEffect, useTransition } from "react";
 import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { Button } from "@/components/ui/button";
@@ -13,18 +16,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { getCurrentUser } from "@/lib/auth";
-import { getAllCategories } from "@/lib/content";
-import { redirect, notFound } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { updateCategoryAction } from "@/actions";
-import { PrismaClient } from "@/lib/generated/prisma";
-
-const prisma = new PrismaClient();
-
-// Force dynamic rendering for this page
-export const dynamic = "force-dynamic";
+import { useAuth } from "@/hooks/use-auth";
+import { useCSRFForm } from "@/hooks/use-csrf";
 
 interface EditCategoryPageProps {
   params: Promise<{
@@ -32,46 +30,154 @@ interface EditCategoryPageProps {
   }>;
 }
 
-export default async function EditCategoryPage({
-  params,
-}: EditCategoryPageProps) {
-  const { id } = await params;
-  const user = await getCurrentUser();
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  parentId: string | null;
+  parent?: Category | null;
+  children: Category[];
+  _count: {
+    posts: number;
+  };
+}
 
-  // Check if user is authenticated and has admin role
-  if (!user) {
-    redirect("/signin");
+// Force dynamic rendering for this page
+export const dynamic = "force-dynamic";
+
+export default function EditCategoryPage({ params }: EditCategoryPageProps) {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [category, setCategory] = useState<Category | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [categoryId, setCategoryId] = useState<string>("");
+  const { createFormDataWithCSRF, isReady } = useCSRFForm();
+
+  // Get category ID from params
+  useEffect(() => {
+    async function getParams() {
+      const resolvedParams = await params;
+      setCategoryId(resolvedParams.id);
+    }
+    getParams();
+  }, [params]);
+
+  // Redirect if not authenticated or not authorized
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        router.push("/signin");
+        return;
+      }
+      if (user.userData?.role !== "ADMIN") {
+        router.push("/dashboard");
+        return;
+      }
+    }
+  }, [user, loading, router]);
+
+  // Fetch category and all categories data
+  useEffect(() => {
+    async function fetchData() {
+      if (!categoryId) return;
+
+      try {
+        setDataLoading(true);
+
+        // Fetch current category and all categories in parallel
+        const [categoryResponse, categoriesResponse] = await Promise.all([
+          fetch(`/api/categories/${categoryId}`),
+          fetch("/api/categories"),
+        ]);
+
+        if (categoryResponse.ok && categoriesResponse.ok) {
+          const [categoryData, allCategories] = await Promise.all([
+            categoryResponse.json(),
+            categoriesResponse.json(),
+          ]);
+
+          setCategory(categoryData);
+
+          // Filter for parent categories (only categories without parents and not the current category)
+          const parentCategories = allCategories.filter(
+            (cat: Category) => !cat.parent && cat.id !== categoryId
+          );
+          setCategories(parentCategories);
+        } else if (categoryResponse.status === 404) {
+          router.push("/404");
+        } else {
+          toast.error("Failed to load category");
+          router.push("/dashboard/categories");
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        toast.error("Failed to load category");
+        router.push("/dashboard/categories");
+      } finally {
+        setDataLoading(false);
+      }
+    }
+
+    if (user?.userData?.role === "ADMIN" && categoryId) {
+      fetchData();
+    }
+  }, [user, categoryId, router]);
+
+  // Show loading state
+  if (loading || dataLoading || !category) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-2">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <p className="text-sm text-muted-foreground mt-2">Loading...</p>
+      </div>
+    );
   }
 
-  // Temporarily disabled for testing - uncomment to re-enable admin protection
-  if (user.userData?.role !== "ADMIN") {
-    redirect("/dashboard");
-  }
+  const handleSubmit = async (formData: FormData) => {
+    if (isSubmitting || !isReady) {
+      if (!isReady) {
+        toast.error("Security verification in progress. Please wait.");
+      }
+      return;
+    }
 
-  const [category, allCategories] = await Promise.all([
-    prisma.category.findUnique({
-      where: { id },
-      include: {
-        parent: true,
-        children: true,
-        _count: {
-          select: {
-            posts: true,
-          },
-        },
-      },
-    }),
-    getAllCategories(),
-  ]);
+    setIsSubmitting(true);
+    startTransition(async () => {
+      try {
+        // Add CSRF protection to form data
+        const name = formData.get("name") as string;
+        const slug = formData.get("slug") as string;
+        const description = formData.get("description") as string;
+        const parentId = formData.get("parentId") as string;
 
-  if (!category) {
-    notFound();
-  }
+        const secureFormData = createFormDataWithCSRF({
+          id: category.id,
+          name,
+          slug,
+          description: description || "",
+          parentId: parentId === "none" ? "" : parentId || "",
+        });
 
-  // Get parent categories for selection (only categories without parents and not the current category)
-  const parentCategories = allCategories.filter(
-    (cat) => !cat.parent && cat.id !== category.id
-  );
+        const result = await updateCategoryAction(secureFormData);
+
+        if (result.success) {
+          toast.success(result.message || "Category updated successfully");
+          router.push("/dashboard/categories");
+        } else {
+          toast.error(result.error || "Failed to update category");
+        }
+      } catch (error) {
+        console.error("Error updating category:", error);
+        toast.error("Failed to update category");
+      } finally {
+        setIsSubmitting(false);
+      }
+    });
+  };
 
   return (
     <SidebarProvider
@@ -82,7 +188,7 @@ export default async function EditCategoryPage({
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" user={user} />
+      <AppSidebar variant="inset" user={user!} />
       <SidebarInset>
         <SiteHeader />
         <div className="flex flex-1 flex-col gap-4 p-4">
@@ -96,9 +202,7 @@ export default async function EditCategoryPage({
           </div>
 
           <div className="max-w-2xl">
-            <form action={updateCategoryAction} className="space-y-6">
-              <input type="hidden" name="id" value={category.id} />
-
+            <form action={handleSubmit} className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Category Details</CardTitle>
@@ -113,6 +217,7 @@ export default async function EditCategoryPage({
                         defaultValue={category.name}
                         placeholder="Enter category name..."
                         required
+                        disabled={isSubmitting || !isReady}
                       />
                     </div>
 
@@ -124,6 +229,7 @@ export default async function EditCategoryPage({
                         defaultValue={category.slug}
                         placeholder="Auto-generated from name"
                         required
+                        disabled={isSubmitting || !isReady}
                       />
                       <p className="text-xs text-muted-foreground">
                         URL-friendly version of the name (lowercase, no spaces)
@@ -139,6 +245,7 @@ export default async function EditCategoryPage({
                       defaultValue={category.description || ""}
                       placeholder="Brief description of the category..."
                       rows={3}
+                      disabled={isSubmitting || !isReady}
                     />
                   </div>
 
@@ -147,6 +254,7 @@ export default async function EditCategoryPage({
                     <Select
                       name="parentId"
                       defaultValue={category.parentId || "none"}
+                      disabled={isSubmitting || !isReady}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select parent category (leave empty for top-level)" />
@@ -155,7 +263,7 @@ export default async function EditCategoryPage({
                         <SelectItem value="none">
                           No parent (top-level category)
                         </SelectItem>
-                        {parentCategories.map((parentCategory) => (
+                        {categories.map((parentCategory) => (
                           <SelectItem
                             key={parentCategory.id}
                             value={parentCategory.id}
@@ -197,8 +305,12 @@ export default async function EditCategoryPage({
               </Card>
 
               <div className="flex gap-4">
-                <Button type="submit" className="flex-1">
-                  Update Category
+                <Button
+                  type="submit"
+                  className="flex-1"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Updating..." : "Update Category"}
                 </Button>
                 <Button type="button" variant="outline" asChild>
                   <Link href="/dashboard/categories">Cancel</Link>

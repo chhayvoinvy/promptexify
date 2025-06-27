@@ -4,7 +4,8 @@ import { NextRequest } from "next/server";
 // CSRF Protection
 export class CSRFProtection {
   private static readonly CSRF_TOKEN_LENGTH = 32;
-  private static readonly CSRF_COOKIE_NAME = "__Host-csrf-token";
+  private static readonly CSRF_COOKIE_NAME =
+    process.env.NODE_ENV === "production" ? "__Host-csrf-token" : "csrf-token";
   private static readonly CSRF_HEADER_NAME = "x-csrf-token";
 
   /**
@@ -33,13 +34,26 @@ export class CSRFProtection {
    */
   static async setToken(token: string): Promise<void> {
     const cookieStore = await cookies();
-    cookieStore.set(this.CSRF_COOKIE_NAME, token, {
+    const isProduction = process.env.NODE_ENV === "production";
+
+    // Try multiple cookie strategies for better compatibility
+    const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: isProduction,
+      sameSite: "lax" as const,
       path: "/",
       maxAge: 60 * 60 * 24, // 24 hours
-    });
+    };
+
+    cookieStore.set(this.CSRF_COOKIE_NAME, token, cookieOptions);
+
+    // In development, also try setting without httpOnly for debugging
+    if (!isProduction) {
+      cookieStore.set(`${this.CSRF_COOKIE_NAME}-debug`, token, {
+        ...cookieOptions,
+        httpOnly: false,
+      });
+    }
   }
 
   /**
@@ -47,7 +61,16 @@ export class CSRFProtection {
    */
   static async getTokenFromCookie(): Promise<string | null> {
     const cookieStore = await cookies();
-    return cookieStore.get(this.CSRF_COOKIE_NAME)?.value || null;
+    const isProduction = process.env.NODE_ENV === "production";
+
+    let token = cookieStore.get(this.CSRF_COOKIE_NAME)?.value || null;
+
+    // In development, try fallback to debug cookie if main cookie not found
+    if (!token && !isProduction) {
+      token = cookieStore.get(`${this.CSRF_COOKIE_NAME}-debug`)?.value || null;
+    }
+
+    return token;
   }
 
   /**

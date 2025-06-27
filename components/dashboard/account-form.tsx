@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
+import { toast } from "sonner";
 import { updateUserProfileAction } from "@/actions";
 import { useCSRFForm } from "@/hooks/use-csrf";
 import {
@@ -14,15 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  User,
-  Mail,
-  Calendar,
-  Shield,
-  Crown,
-  CheckCircle,
-  AlertCircle,
-} from "lucide-react";
+import { User, Mail, Calendar, Shield, Crown } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface AccountFormProps {
@@ -41,41 +34,32 @@ interface AccountFormProps {
 
 export function AccountForm({ user }: AccountFormProps) {
   const [isPending, startTransition] = useTransition();
-  const [feedback, setFeedback] = useState<{
-    type: "success" | "error" | null;
-    message: string;
-  }>({ type: null, message: "" });
   const { createFormDataWithCSRF, isReady } = useCSRFForm();
 
   function handleSubmit(formData: FormData) {
     if (!isReady) {
-      setFeedback({
-        type: "error",
-        message: "Security verification in progress. Please wait.",
-      });
+      toast.error("Security verification in progress. Please wait.");
       return;
     }
 
     startTransition(async () => {
-      setFeedback({ type: null, message: "" });
+      try {
+        // Add CSRF protection to form data
+        const name = formData.get("name") as string;
+        const secureFormData = createFormDataWithCSRF({ name });
 
-      // Add CSRF protection to form data
-      const name = formData.get("name") as string;
-      const secureFormData = createFormDataWithCSRF({ name });
+        const result = await updateUserProfileAction(secureFormData);
 
-      const result = await updateUserProfileAction(secureFormData);
-
-      if (result.success) {
-        setFeedback({
-          type: "success",
-          message: result.message || "Profile updated successfully!",
-        });
-      } else {
-        setFeedback({
-          type: "error",
-          message:
-            result.error || "Failed to update profile. Please try again.",
-        });
+        if (result.success) {
+          toast.success(result.message || "Profile updated successfully!");
+        } else {
+          toast.error(
+            result.error || "Failed to update profile. Please try again."
+          );
+        }
+      } catch (error) {
+        console.error("Error updating profile:", error);
+        toast.error("An unexpected error occurred. Please try again.");
       }
     });
   }
@@ -86,20 +70,6 @@ export function AccountForm({ user }: AccountFormProps) {
         Manage your account information and preferences
       </p>
       <div className="gap-6 flex">
-        {/* Feedback Alert */}
-        {feedback.type && (
-          <Alert
-            variant={feedback.type === "error" ? "destructive" : "default"}
-          >
-            {feedback.type === "success" ? (
-              <CheckCircle className="h-4 w-4" />
-            ) : (
-              <AlertCircle className="h-4 w-4" />
-            )}
-            <AlertDescription>{feedback.message}</AlertDescription>
-          </Alert>
-        )}
-
         {/* Profile Information Card */}
         <Card className="w-full">
           <CardHeader>

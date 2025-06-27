@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useEffect, useTransition } from "react";
 import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { Button } from "@/components/ui/button";
@@ -13,33 +16,125 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { getCurrentUser } from "@/lib/auth";
-import { getAllCategories } from "@/lib/content";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { createCategoryAction } from "@/actions";
+import { useAuth } from "@/hooks/use-auth";
+import { useCSRFForm } from "@/hooks/use-csrf";
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  parent?: string;
+}
 
 // Force dynamic rendering for this page
 export const dynamic = "force-dynamic";
 
-export default async function NewCategoryPage() {
-  const user = await getCurrentUser();
+export default function NewCategoryPage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const { createFormDataWithCSRF, isReady } = useCSRFForm();
 
-  // Check if user is authenticated and has admin role
-  if (!user) {
-    redirect("/signin");
+  // Redirect if not authenticated or not authorized
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        router.push("/signin");
+        return;
+      }
+      if (user.userData?.role !== "ADMIN") {
+        router.push("/dashboard");
+        return;
+      }
+    }
+  }, [user, loading, router]);
+
+  // Fetch categories for parent selection
+  useEffect(() => {
+    async function fetchCategories() {
+      try {
+        setCategoriesLoading(true);
+        const response = await fetch("/api/categories");
+        if (response.ok) {
+          const data = await response.json();
+          // Filter for parent categories (only categories without parents)
+          const parentCategories = data.filter((cat: Category) => !cat.parent);
+          setCategories(parentCategories);
+        } else {
+          console.error("Failed to fetch categories");
+          toast.error("Failed to load categories");
+        }
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+        toast.error("Failed to load categories");
+      } finally {
+        setCategoriesLoading(false);
+      }
+    }
+
+    if (user?.userData?.role === "ADMIN") {
+      fetchCategories();
+    }
+  }, [user]);
+
+  // Show loading state while checking auth
+  if (loading || categoriesLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-2">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <p className="text-sm text-muted-foreground mt-2">Loading...</p>
+      </div>
+    );
   }
 
-  // Temporarily disabled for testing - uncomment to re-enable admin protection
-  if (user.userData?.role !== "ADMIN") {
-    redirect("/dashboard");
-  }
+  const handleSubmit = async (formData: FormData) => {
+    if (isSubmitting || !isReady) {
+      if (!isReady) {
+        toast.error("Security verification in progress. Please wait.");
+      }
+      return;
+    }
 
-  const categories = await getAllCategories();
+    setIsSubmitting(true);
+    startTransition(async () => {
+      try {
+        // Add CSRF protection to form data
+        const name = formData.get("name") as string;
+        const slug = formData.get("slug") as string;
+        const description = formData.get("description") as string;
+        const parentId = formData.get("parentId") as string;
 
-  // Get parent categories for selection (only categories without parents)
-  const parentCategories = categories.filter((cat) => !cat.parent);
+        const secureFormData = createFormDataWithCSRF({
+          name,
+          slug: slug || "",
+          description: description || "",
+          parentId: parentId === "none" ? "" : parentId || "",
+        });
+
+        const result = await createCategoryAction(secureFormData);
+
+        if (result.success) {
+          toast.success(result.message || "Category created successfully");
+          router.push("/dashboard/categories");
+        } else {
+          toast.error(result.error || "Failed to create category");
+        }
+      } catch (error) {
+        console.error("Error creating category:", error);
+        toast.error("An unexpected error occurred");
+      } finally {
+        setIsSubmitting(false);
+      }
+    });
+  };
 
   return (
     <SidebarProvider
@@ -50,7 +145,7 @@ export default async function NewCategoryPage() {
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" user={user} />
+      <AppSidebar variant="inset" user={user!} />
       <SidebarInset>
         <SiteHeader />
         <div className="flex flex-1 flex-col gap-4 p-4">
@@ -69,7 +164,7 @@ export default async function NewCategoryPage() {
           </div>
 
           <div className="max-w-2xl">
-            <form action={createCategoryAction} className="space-y-6">
+            <form action={handleSubmit} className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Category Details</CardTitle>
@@ -83,15 +178,17 @@ export default async function NewCategoryPage() {
                         name="name"
                         placeholder="Enter category name..."
                         required
+                        disabled={isSubmitting || !isReady}
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="slug">Slug *</Label>
+                      <Label htmlFor="slug">Slug</Label>
                       <Input
                         id="slug"
                         name="slug"
                         placeholder="Auto-generated from name"
+                        disabled={isSubmitting || !isReady}
                       />
                       <p className="text-xs text-muted-foreground">
                         URL-friendly version of the name (lowercase, no spaces)
@@ -106,12 +203,13 @@ export default async function NewCategoryPage() {
                       name="description"
                       placeholder="Brief description of the category..."
                       rows={3}
+                      disabled={isSubmitting || !isReady}
                     />
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="parentId">Parent Category (Optional)</Label>
-                    <Select name="parentId">
+                    <Select name="parentId" disabled={isSubmitting || !isReady}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select parent category (leave empty for top-level)" />
                       </SelectTrigger>
@@ -119,7 +217,7 @@ export default async function NewCategoryPage() {
                         <SelectItem value="none">
                           No parent (top-level category)
                         </SelectItem>
-                        {parentCategories.map((category) => (
+                        {categories.map((category) => (
                           <SelectItem key={category.id} value={category.id}>
                             {category.name}
                           </SelectItem>
@@ -135,8 +233,16 @@ export default async function NewCategoryPage() {
               </Card>
 
               <div className="flex gap-4">
-                <Button type="submit" className="flex-1">
-                  Create Category
+                <Button
+                  type="submit"
+                  className="flex-1"
+                  disabled={isSubmitting || !isReady}
+                >
+                  {isSubmitting
+                    ? "Creating..."
+                    : isReady
+                    ? "Create Category"
+                    : "Initializing..."}
                 </Button>
                 <Button type="button" variant="outline" asChild>
                   <Link href="/dashboard/categories">Cancel</Link>

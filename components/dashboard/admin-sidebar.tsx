@@ -19,7 +19,7 @@ import Image from "next/image";
 import { NavDocuments } from "@/components/dashboard/nav-documents";
 import { NavMain } from "@/components/dashboard/nav-main";
 import { NavSecondary } from "@/components/dashboard/nav-secondary";
-import { NavUser } from "@/components/dashboard/nav-user";
+import { NavUser } from "@/components/dashboard/admin-nav-user";
 import {
   Sidebar,
   SidebarContent,
@@ -115,7 +115,8 @@ const navigationData: {
       title: "Posts",
       url: "/dashboard/posts",
       icon: IconEdit,
-      allowUser: true, // Allow both USER and ADMIN roles
+      adminOnly: true, // Admin only
+      // allowUser: true, // Allow both USER and ADMIN roles (Temporary disabled)
     },
     {
       title: "Categories",

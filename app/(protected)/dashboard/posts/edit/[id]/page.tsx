@@ -23,6 +23,7 @@ import Link from "next/link";
 import { TagSelector } from "@/components/tag-selector";
 import { MediaUpload } from "@/components/media-upload";
 import { useAuth } from "@/hooks/use-auth";
+import { useCSRFForm } from "@/hooks/use-csrf";
 import { updatePostAction } from "@/actions";
 import { toast } from "sonner";
 
@@ -69,6 +70,7 @@ export default function EditPostPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const params = useParams();
+  const { createFormDataWithCSRF, isReady } = useCSRFForm();
   const [post, setPost] = useState<Post | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
@@ -180,6 +182,11 @@ export default function EditPostPage() {
 
     if (isSubmitting || !post) return;
 
+    if (!isReady) {
+      toast.error("Security verification in progress. Please wait.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -249,12 +256,14 @@ export default function EditPostPage() {
           });
         }
 
-        // If there were failed tags, we could show a warning but still continue
+        // If there were failed tags, show a warning but still continue
         if (failedTags.length > 0) {
           console.warn(
             `Some tags could not be created: ${failedTags.join(", ")}`
           );
-          // You could add a toast notification here if you have one
+          toast.warning(
+            `Some tags could not be created: ${failedTags.join(", ")}`
+          );
         }
       }
 
@@ -270,8 +279,17 @@ export default function EditPostPage() {
       formData.set("tags", selectedTags.join(", "));
       formData.set("id", post.id);
 
+      // Convert FormData to plain object for CSRF protection
+      const formObject: Record<string, FormDataEntryValue> = {};
+      for (const [key, value] of formData.entries()) {
+        formObject[key] = value;
+      }
+
+      // Create form data with CSRF protection
+      const secureFormData = createFormDataWithCSRF(formObject);
+
       // Update the post first
-      await updatePostAction(formData);
+      await updatePostAction(secureFormData);
 
       // Show success message - redirect is handled by server action
       toast.success("Post updated successfully!");
@@ -719,8 +737,16 @@ export default function EditPostPage() {
             </Card>
 
             <div className="flex gap-4">
-              <Button type="submit" className="flex-1" disabled={isSubmitting}>
-                {isSubmitting ? "Updating..." : "Update Post"}
+              <Button
+                type="submit"
+                className="flex-1"
+                disabled={isSubmitting || !isReady}
+              >
+                {isSubmitting
+                  ? "Updating..."
+                  : isReady
+                  ? "Update Post"
+                  : "Initializing..."}
               </Button>
               <Button
                 type="button"

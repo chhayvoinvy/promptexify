@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createTagAction } from "@/actions";
 import { useAuth } from "@/hooks/use-auth";
+import { useCSRFForm } from "@/hooks/use-csrf";
 
 // Force dynamic rendering for this page
 export const dynamic = "force-dynamic";
@@ -23,6 +24,7 @@ export default function NewTagPage() {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { createFormDataWithCSRF, isReady } = useCSRFForm();
 
   // Redirect if not authenticated or not authorized
   if (!loading) {
@@ -50,12 +52,26 @@ export default function NewTagPage() {
   }
 
   const handleSubmit = async (formData: FormData) => {
-    if (isSubmitting) return;
+    if (isSubmitting || !isReady) {
+      if (!isReady) {
+        toast.error("Security verification in progress. Please wait.");
+      }
+      return;
+    }
 
     setIsSubmitting(true);
     startTransition(async () => {
       try {
-        const result = await createTagAction(formData);
+        // Add CSRF protection to form data
+        const name = formData.get("name") as string;
+        const slug = formData.get("slug") as string;
+
+        const secureFormData = createFormDataWithCSRF({
+          name,
+          slug: slug || "",
+        });
+
+        const result = await createTagAction(secureFormData);
 
         if (result.success) {
           toast.success(result.message || "Tag created successfully");
@@ -111,6 +127,7 @@ export default function NewTagPage() {
                     name="name"
                     placeholder="Enter tag name"
                     required
+                    disabled={isSubmitting || !isReady}
                   />
                   <p className="text-sm text-muted-foreground">
                     The display name for this tag (e.g., &quot;Machine
@@ -125,6 +142,7 @@ export default function NewTagPage() {
                     id="slug"
                     name="slug"
                     placeholder="tag-slug (leave empty to auto-generate)"
+                    disabled={isSubmitting || !isReady}
                   />
                   <p className="text-sm text-muted-foreground">
                     URL-friendly version of the name. If left empty, will be
@@ -136,8 +154,16 @@ export default function NewTagPage() {
             </Card>
 
             <div className="flex gap-4">
-              <Button type="submit" className="flex-1" disabled={isSubmitting}>
-                {isSubmitting ? "Creating..." : "Create Tag"}
+              <Button
+                type="submit"
+                className="flex-1"
+                disabled={isSubmitting || !isReady}
+              >
+                {isSubmitting
+                  ? "Creating..."
+                  : isReady
+                  ? "Create Tag"
+                  : "Initializing..."}
               </Button>
               <Button type="button" variant="outline" asChild>
                 <Link href="/dashboard/tags">Cancel</Link>

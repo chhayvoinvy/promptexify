@@ -50,22 +50,21 @@ export function CategoryActionsDropdown({
 
     setIsDeleting(true);
     startTransition(async () => {
-      try {
-        const formData = new FormData();
-        formData.append("id", category.id);
+      const formData = new FormData();
+      formData.append("id", category.id);
 
-        await deleteCategoryAction(formData);
+      const result = await deleteCategoryAction(formData);
 
-        toast.success(`Category "${category.name}" deleted successfully`);
-        setShowDeleteDialog(false);
-      } catch (error) {
-        console.error("Delete failed:", error);
-        toast.error(
-          error instanceof Error ? error.message : "Failed to delete category"
+      if (result.success) {
+        toast.success(
+          result.message || `Category "${category.name}" deleted successfully`
         );
-      } finally {
-        setIsDeleting(false);
+        setShowDeleteDialog(false);
+      } else {
+        toast.error(result.error || "Failed to delete category");
       }
+
+      setIsDeleting(false);
     });
   };
 

@@ -25,6 +25,7 @@ import { MediaUpload } from "@/components/media-upload";
 import { TagSelector } from "@/components/tag-selector";
 import { createPostAction } from "@/actions";
 import { useAuth } from "@/hooks/use-auth";
+import { useCSRFForm } from "@/hooks/use-csrf";
 
 interface Category {
   id: string;
@@ -42,6 +43,7 @@ interface Tag {
 export default function NewPostPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const { createFormDataWithCSRF, isReady } = useCSRFForm();
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [featuredImageUrl, setFeaturedImageUrl] = useState("");
@@ -118,6 +120,11 @@ export default function NewPostPage() {
     e.preventDefault();
 
     if (isSubmitting) return;
+
+    if (!isReady) {
+      toast.error("Security verification in progress. Please wait.");
+      return;
+    }
 
     setIsSubmitting(true);
 
@@ -210,7 +217,15 @@ export default function NewPostPage() {
       // Add the selected tags to form data
       formData.set("tags", selectedTags.join(", "));
 
-      await createPostAction(formData);
+      // Convert FormData to plain object for CSRF protection
+      const formObject: Record<string, FormDataEntryValue> = {};
+      for (const [key, value] of formData.entries()) {
+        formObject[key] = value;
+      }
+
+      // Create form data with CSRF protection
+      const secureFormData = createFormDataWithCSRF(formObject);
+      await createPostAction(secureFormData);
 
       // Show success message - redirect is handled by server action
       toast.success("Post submitted successfully!");
@@ -531,8 +546,16 @@ export default function NewPostPage() {
             </Card>
 
             <div className="flex gap-4">
-              <Button type="submit" className="flex-1" disabled={isSubmitting}>
-                {isSubmitting ? "Submitting..." : "Submit Prompt"}
+              <Button
+                type="submit"
+                className="flex-1"
+                disabled={isSubmitting || !isReady}
+              >
+                {isSubmitting
+                  ? "Submitting..."
+                  : isReady
+                  ? "Submit Prompt"
+                  : "Initializing..."}
               </Button>
               <Button
                 type="button"
