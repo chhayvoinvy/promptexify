@@ -5,10 +5,10 @@
 <rect x="15" width="501" height="522" rx="250.5" fill="black"/>
 </mask>
 <g mask="url(#mask0_9_18)">
-<rect x="288.905" y="148" width="29.8247" height="417.545" fill="white"/>
-<rect width="161.905" height="255.64" transform="matrix(-1 0 0 1 288.905 148)" fill="white"/>
-<rect width="97.9954" height="97.9954" transform="matrix(-1 0 0 1 455.071 148)" fill="#67F3C2"/>
-<rect width="46.8673" height="46.8673" transform="matrix(-1 0 0 1 403.943 305.645)" fill="#67F3C2"/>
+<rect x="268" y="148" width="61" height="418" fill="white"/>
+<rect width="161.905" height="255.64" transform="matrix(-1 0 0 1 276.905 148)" fill="white"/>
+<rect width="97.9954" height="97.9954" transform="matrix(-1 0 0 1 443.071 148)" fill="white"/>
+<rect width="59" height="59" transform="matrix(-1 0 0 1 405 261)" fill="white"/>
 </g>
 </g>
 <defs>
