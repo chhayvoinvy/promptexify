@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { createUserInDatabaseAction } from "@/actions/auth";
 
 declare global {
   interface Window {
@@ -52,12 +53,24 @@ export function GoogleOneTap() {
           client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
           callback: async (response) => {
             try {
-              const { error } = await supabase.auth.signInWithIdToken({
+              const { data, error } = await supabase.auth.signInWithIdToken({
                 provider: "google",
                 token: response.credential,
               });
 
-              if (!error) {
+              if (!error && data.user) {
+                // Create or update user in the database
+                const result = await createUserInDatabaseAction(data.user);
+
+                if (result.error) {
+                  console.error(
+                    "Failed to create user in database:",
+                    result.error
+                  );
+                }
+
+                // Redirect to home page regardless of database creation result
+                // to prevent blocking user access
                 window.location.href = "/";
               }
 

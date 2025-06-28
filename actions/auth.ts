@@ -6,6 +6,7 @@ import {
   signInWithMagicLink,
   signInWithOAuth,
   signOut,
+  upsertUserInDatabase,
 } from "@/lib/auth";
 import {
   type SignInData,
@@ -68,6 +69,32 @@ export const magicLinkAction = withCSRFProtection(
 
 export async function oauthAction(provider: "google") {
   return await signInWithOAuth(provider);
+}
+
+// Server action to create/update user in database after Google One Tap authentication
+export async function createUserInDatabaseAction(userData: {
+  id: string;
+  email?: string;
+  user_metadata?: {
+    name?: string;
+    full_name?: string;
+    avatar_url?: string;
+  };
+  app_metadata?: {
+    provider?: string;
+    providers?: string[];
+  };
+}) {
+  try {
+    await upsertUserInDatabase(userData);
+    return { success: true };
+  } catch (error) {
+    console.error("Error creating user in database:", error);
+    return {
+      error: "Failed to create user in database",
+      success: false,
+    };
+  }
 }
 
 export async function signOutAction() {

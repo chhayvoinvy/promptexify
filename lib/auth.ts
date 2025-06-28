@@ -413,7 +413,7 @@ export async function requirePremiumAccess() {
 }
 
 // Helper function to create/update user in Prisma database
-async function upsertUserInDatabase(supabaseUser: {
+export async function upsertUserInDatabase(supabaseUser: {
   id: string;
   email?: string;
   user_metadata?: {
