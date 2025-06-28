@@ -115,8 +115,8 @@ const navigationData: {
       title: "Posts",
       url: "/dashboard/posts",
       icon: IconEdit,
-      adminOnly: true, // Admin only
-      // allowUser: true, // Allow both USER and ADMIN roles (Temporary disabled)
+      // adminOnly: true, // Admin only
+      allowUser: true, // Allow both USER and ADMIN roles (Temporary disabled)
     },
     {
       title: "Categories",

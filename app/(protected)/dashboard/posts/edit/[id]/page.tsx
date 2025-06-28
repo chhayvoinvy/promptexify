@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Check, Info, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { TagSelector } from "@/components/tag-selector";
 import { MediaUpload } from "@/components/media-upload";
@@ -683,7 +683,7 @@ export default function EditPostPage() {
                       <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
                         <div className="flex items-start space-x-3">
                           <div className="text-green-600 dark:text-green-400">
-                            ✅
+                            <Check className="h-4 w-4" />
                           </div>
                           <div>
                             <h4 className="font-medium text-green-900 dark:text-green-100">
@@ -700,7 +700,7 @@ export default function EditPostPage() {
                       <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
                         <div className="flex items-start space-x-3">
                           <div className="text-blue-600 dark:text-blue-400">
-                            ℹ️
+                            <Info className="h-4 w-4" />
                           </div>
                           <div>
                             <h4 className="font-medium text-blue-900 dark:text-blue-100">

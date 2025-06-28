@@ -25,6 +25,21 @@ interface TagSelectorProps {
   className?: string;
 }
 
+// Define the banned tag name patterns consistently with server-side logic
+const BANNED_TAG_NAME_PATTERNS = [
+  // Expanded list of reserved/brand/role names, common suspicious names, and spam/scam keywords
+  /\b(admin|test|user|null|undefined|script|root|guest|supervisor|editor|google|facebook|instagram|twitter|youtube|tiktok|linkedin|microsoft|apple|meta|openai|telegram|whatsapp|amazon|ebay|paypal|visa|mastercard|amex|discover|bank|account|security|support|official|system|developer|webmaster|noreply|daemon|anonymous|anon|temp|spam|junk|fake|bot|robot|phish|scam|fraud|malware|virus|hack|cracker|exploit|banned|blocked|restricted|error|failure|delete|remove|cancel|void|invalid|licen(s|c)e|premium|pro|vip|gold|silver|bronze|free|discount|sale|offer|deal|promo|coupon|winner|prize|lucky|congratulations|claim|collect|verify|urgent|alert|warning|important|action|required|immediately|now|click|link|download|install|update|upgrade|subscribe|unsubscribe|register|login|signup|password|otp|code|pin|secret|private|confidential|billing|invoice|payment|refund|chargeback|dispute|legal|policy|terms|conditions|agreement|copyright|trademark|patent|brand|company|corporation|inc|ltd|llc|gmbh|co|org|net|com|info|biz|site|website|forum|blog|shop|store|online|service|solution|portal|dashboard|management|control|console|panel|bitcoin|crypto|forex|invest|profit|dividend|cash|money|banker|trader|loan|credit|debt|mortgage|finance|wealth|fortune|response|reply|confirm|open|report|abuse|compromise|breach|server|client|network|database|placeholder|default|unknown|qwert|asdfg)\b/i,
+  // Offensive/bad words (expand as needed) - be cautious with this list for names
+  /\b(fuck|suck|shit|bitch|asshole|damn|cunt|dick|bastard|slut|whore|motherfucker|pussy|nigger|faggot|retard|idiot|moron|stupid|loser|wanker|chink|gook|kyke|spic|terrorist|jihad|bomb|kill|murder|rape|pedophile|porn|sex|erotic|naked| XXX | hentai|boob|ass|tits|vagina|penis)\b/i,
+  /^(.)\1{4,}$/, // 5+ repeated characters (e.g., "aaaaa")
+  /^\s+$|^$|^\s*$/, // Only spaces or empty, or only whitespace
+  /\s{4,}/, // 4+ consecutive spaces
+  /(\d)\1{4,}/, // 5+ repeated digits (e.g., "11111")
+  /([^a-zA-Z\d\s\-_])\1{4,}/, // 5+ repeated non-alphanumeric, non-whitespace chars (excluding _ and - for tags)
+  /\b[A-Z]{5,}\d{3,}\b/, // e.g., USER12345 (blocks capital letters followed by numbers)
+  /\b\d{6,}\b/, // e.g., 123456789 (blocks long sequences of only numbers)
+];
+
 export function TagSelector({
   availableTags,
   selectedTags,
@@ -37,6 +52,9 @@ export function TagSelector({
 }: TagSelectorProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [showAll, setShowAll] = useState(false);
+  const [tagValidationError, setTagValidationError] = useState<string | null>(
+    null
+  );
 
   // Filter available tags based on search query
   const filteredAvailableTags = useMemo(() => {
@@ -79,13 +97,36 @@ export function TagSelector({
   }, [pendingTags, searchQuery]);
 
   // Validate tag name format (only a-z, A-Z, 0-9, spaces, hyphens, underscores)
-  const isValidTagName = (name: string): boolean => {
-    return (
-      /^[a-zA-Z0-9\s\-_]+$/.test(name) &&
-      name.trim().length > 0 &&
-      name.length <= 50
-    );
-  };
+  const isValidTagName = useCallback((name: string): boolean => {
+    const trimmedName = name.trim();
+
+    // Check basic format and length first
+    if (!/^[a-zA-Z0-9\s\-_]+$/.test(trimmedName)) {
+      setTagValidationError(
+        "Tag name can only contain letters, numbers, spaces, hyphens, and underscores."
+      );
+      return false;
+    }
+    if (trimmedName.length === 0) {
+      setTagValidationError("Tag name cannot be empty.");
+      return false;
+    }
+    if (trimmedName.length > 50) {
+      setTagValidationError("Tag name cannot exceed 50 characters.");
+      return false;
+    }
+
+    // Check against banned patterns
+    for (const pattern of BANNED_TAG_NAME_PATTERNS) {
+      if (pattern.test(trimmedName)) {
+        setTagValidationError("Not allowed. Please choose a different one.");
+        return false;
+      }
+    }
+
+    setTagValidationError(null); // Clear error if valid
+    return true;
+  }, []);
 
   // Check if we can add a new pending tag
   const canAddPendingTag = useMemo(() => {
@@ -93,7 +134,7 @@ export function TagSelector({
     return (
       searchTrimmed &&
       searchTrimmed.length > 0 &&
-      isValidTagName(searchTrimmed) &&
+      isValidTagName(searchTrimmed) && // This now includes the pattern check
       !exactMatch &&
       !pendingMatch &&
       !selectedTags.some(
@@ -102,7 +143,15 @@ export function TagSelector({
       selectedTags.length < maxTags &&
       !disabled
     );
-  }, [searchQuery, exactMatch, pendingMatch, selectedTags, maxTags, disabled]);
+  }, [
+    searchQuery,
+    isValidTagName,
+    exactMatch,
+    pendingMatch,
+    selectedTags,
+    maxTags,
+    disabled,
+  ]);
 
   // Handle key down events on search input
   const handleSearchKeyDown = useCallback(
@@ -112,6 +161,12 @@ export function TagSelector({
 
         const searchTrimmed = searchQuery.trim();
         if (!searchTrimmed) return;
+
+        // Perform validation here before attempting to add/select
+        if (!isValidTagName(searchTrimmed)) {
+          // Error message already set by isValidTagName
+          return;
+        }
 
         if (exactMatch) {
           // If exact match exists, select it
@@ -124,6 +179,7 @@ export function TagSelector({
               onTagsChange([...selectedTags, exactMatch.name]);
             }
           }
+          setSearchQuery(""); // Clear search after selection/deselection
         } else if (pendingMatch) {
           // If pending match exists, select it
           if (selectedTags.includes(pendingMatch)) {
@@ -135,6 +191,7 @@ export function TagSelector({
               onTagsChange([...selectedTags, pendingMatch]);
             }
           }
+          setSearchQuery(""); // Clear search after selection/deselection
         } else if (canAddPendingTag) {
           // Add as pending tag, ensuring no duplicates
           const newTagName = searchTrimmed;
@@ -166,6 +223,7 @@ export function TagSelector({
       onPendingTagsChange,
       pendingTags,
       maxTags,
+      isValidTagName, // Include isValidTagName in dependencies
     ]
   );
 
@@ -174,6 +232,8 @@ export function TagSelector({
     (tagName: string) => {
       if (disabled) return;
 
+      // When clicking an existing tag, we don't need to validate its name,
+      // as it's assumed to be pre-existing and valid from the database.
       if (selectedTags.includes(tagName)) {
         // Remove tag
         onTagsChange(selectedTags.filter((tag) => tag !== tagName));
@@ -204,6 +264,7 @@ export function TagSelector({
   // Clear search
   const clearSearch = useCallback(() => {
     setSearchQuery("");
+    setTagValidationError(null); // Clear validation error when clearing search
   }, []);
 
   return (
@@ -283,8 +344,19 @@ export function TagSelector({
             onChange={(e) => {
               const value = e.target.value;
               // Only allow valid characters for tag names: a-z, A-Z, 0-9, spaces, hyphens, underscores
+              // This is a basic filter for immediate input, full validation is in isValidTagName
               if (value === "" || /^[a-zA-Z0-9\s\-_]*$/.test(value)) {
                 setSearchQuery(value.substring(0, 50)); // Limit length to 50 characters
+                // Validate on change to provide immediate feedback
+                if (value.trim()) {
+                  isValidTagName(value); // This will set tagValidationError
+                } else {
+                  setTagValidationError(null); // Clear error if input is empty
+                }
+              } else {
+                setTagValidationError(
+                  "Invalid characters detected in tag name."
+                );
               }
             }}
             onKeyDown={handleSearchKeyDown}
@@ -306,7 +378,7 @@ export function TagSelector({
         </div>
 
         {/* Show add new tag hint */}
-        {canAddPendingTag && (
+        {canAddPendingTag && !tagValidationError && (
           <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
             <Plus className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             <p className="text-sm text-blue-700 dark:text-blue-300">
@@ -320,12 +392,11 @@ export function TagSelector({
         )}
 
         {/* Show validation error for invalid tag names */}
-        {searchQuery.trim() && !isValidTagName(searchQuery.trim()) && (
+        {tagValidationError && (
           <div className="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
             <X className="w-4 h-4 text-red-600 dark:text-red-400" />
             <p className="text-sm text-red-700 dark:text-red-300">
-              Tag name can only contain letters, numbers, spaces, hyphens, and
-              underscores. Maximum 50 characters.
+              {tagValidationError}
             </p>
           </div>
         )}

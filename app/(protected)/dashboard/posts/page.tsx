@@ -419,7 +419,7 @@ async function PostsManagementContent({
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center justify-center">
+                      <div className="flex items-center">
                         <Badge
                           variant={post.isPremium ? "default" : "outline"}
                           className={
@@ -436,7 +436,7 @@ async function PostsManagementContent({
                         </Badge>
                       </div>
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell>
                       {post.isFeatured ? (
                         <Badge variant="secondary" className="text-xs">
                           Yes
@@ -447,10 +447,8 @@ async function PostsManagementContent({
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-center">
-                      {post.viewCount}
-                    </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell>{post.viewCount}</TableCell>
+                    <TableCell>
                       {new Date(post.createdAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
