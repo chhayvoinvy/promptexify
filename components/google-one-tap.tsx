@@ -16,6 +16,7 @@ declare global {
             callback: (response: { credential: string }) => void;
             auto_select?: boolean;
             cancel_on_tap_outside?: boolean;
+            use_fedcm_for_prompt?: boolean;
           }) => void;
           prompt: () => void;
           cancel: () => void;
@@ -51,6 +52,7 @@ export function GoogleOneTap() {
       if (window.google) {
         window.google.accounts.id.initialize({
           client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+          use_fedcm_for_prompt: true,
           callback: async (response) => {
             try {
               const { data, error } = await supabase.auth.signInWithIdToken({
