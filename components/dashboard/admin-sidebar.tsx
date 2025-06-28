@@ -14,7 +14,6 @@ import {
   type Icon,
 } from "@tabler/icons-react";
 import Link from "next/link";
-import Image from "next/image";
 
 import { NavDocuments } from "@/components/dashboard/nav-documents";
 import { NavMain } from "@/components/dashboard/nav-main";
@@ -29,6 +28,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { LogoType } from "@/components/ui/logo";
 
 // Types Interfaces
 // ------------------------------------------------------------
@@ -179,13 +179,9 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
               className="data-[slot=sidebar-menu-button]:!px-2 data-[slot=sidebar-menu-button]:!py-5"
             >
               <Link href="/dashboard" className="flex items-center">
-                <Image
-                  src="/static/logo/logo-type-white.svg"
-                  alt="Logo"
-                  width={100}
-                  height={16}
-                  className="object-contain"
-                />
+                <div className="max-w-[120px]">
+                  <LogoType href={null} />
+                </div>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

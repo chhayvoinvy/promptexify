@@ -13,6 +13,7 @@ interface LogoProps {
   height?: number;
 }
 
+// Main Logo
 function LogoImage({
   width = 180,
   height = 28,
@@ -57,6 +58,7 @@ function LogoImage({
   );
 }
 
+// Logo Symbol
 function LogoSymbolSVG({
   width = 58,
   height = 58,
@@ -104,6 +106,55 @@ function LogoSymbolSVG({
   );
 }
 
+// Logo Type Compact
+function LogoTypo({
+  width = 58,
+  height = 58,
+  className,
+}: {
+  width?: number;
+  height?: number;
+  className?: string;
+}) {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Prevent hydration mismatch by not rendering until mounted
+  if (!mounted) {
+    return (
+      <div
+        className={cn(
+          "rounded-full transition-opacity duration-200",
+          className
+        )}
+        style={{ width, height }}
+      />
+    );
+  }
+
+  const isDark = resolvedTheme === "dark";
+  const symbolSrc = isDark
+    ? "/static/logo/logo-type-white.svg"
+    : "/static/logo/logo-type-dark.svg";
+
+  return (
+    <Image
+      src={symbolSrc}
+      alt="Promptexify Logo Type"
+      width={width}
+      height={height}
+      style={{ width: "auto", height: "auto" }}
+      className={cn("transition-opacity duration-200", className)}
+      priority
+    />
+  );
+}
+
+// Exported Logo Component
 export function Logo({
   href = "/",
   className,
@@ -125,17 +176,29 @@ export function Logo({
   );
 }
 
-export function LogoCompact({
+// Exported Logo Compact Component
+export function LogoType({
   href = "/",
   className,
-  width = 130,
-  height = 22,
+  width = 180,
+  height = 28,
 }: LogoProps) {
+  const logoElement = (
+    <LogoTypo width={width} height={height} className={className} />
+  );
+
+  if (href === null) {
+    return logoElement;
+  }
+
   return (
-    <Logo href={href} className={className} width={width} height={height} />
+    <Link href={href} className="block">
+      {logoElement}
+    </Link>
   );
 }
 
+// Exported Logo Symbol Component
 export function LogoSymbol({
   href = "/",
   className,

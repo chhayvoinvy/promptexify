@@ -6,7 +6,7 @@ import { Menu, ChevronDown, ChevronRight } from "lucide-react";
 import { Navbar } from "@/components/ui/navbar";
 import { UserProfileDropdown } from "@/components/user-profile-dropdown";
 import { useAuth } from "@/hooks/use-auth";
-import { LogoCompact } from "@/components/ui/logo";
+import { Logo } from "@/components/ui/logo";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -285,7 +285,7 @@ export function Header() {
         {/* Desktop Layout */}
         <div className="hidden lg:grid lg:grid-cols-3 h-full items-center">
           <div className="flex items-center justify-self-start">
-            <LogoCompact />
+            <Logo />
           </div>
           <div className="flex items-center justify-self-center">
             <nav className="flex items-center">
@@ -314,7 +314,7 @@ export function Header() {
         {/* Mobile Layout */}
         <div className="flex lg:hidden items-center justify-between h-full">
           <div className="flex items-center">
-            <LogoCompact />
+            <Logo />
           </div>
 
           <div className="flex items-center space-x-2">

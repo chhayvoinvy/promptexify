@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Github, Twitter, Instagram, Youtube, Facebook } from "lucide-react";
-import { LogoCompact } from "@/components/ui/logo";
+import { Logo } from "@/components/ui/logo";
 import { Container } from "@/components/ui/container";
 
 export function Footer() {
@@ -10,7 +10,7 @@ export function Footer() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 lg:gap-10 xl:gap-13 items-start justify-center">
           {/* Brand and Description */}
           <div className="space-y-4 col-span-1 sm:col-span-2 md:col-span-2 lg:col-span-3">
-            <LogoCompact />
+            <Logo />
             <p className="text-sm text-muted-foreground max-w-md">
               A comprehensive collection of AI prompts to enhance your
               creativity and productivity across various tools and platforms.
