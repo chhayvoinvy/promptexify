@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { CSPNonce } from "@/lib/security";
 
 interface CSRFHookReturn {
   token: string | null;
@@ -135,4 +136,20 @@ export function useCSRFForm() {
     getHeadersWithCSRF,
     isReady: !isLoading && !error && !!token,
   };
+}
+
+/**
+ * Hook to get CSP nonce for client components
+ * Returns the nonce value or null if not available
+ */
+export function useNonce(): string | null {
+  const [nonce, setNonce] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Get nonce from window global on client side
+    const nonceValue = CSPNonce.getFromWindow();
+    setNonce(nonceValue);
+  }, []);
+
+  return nonce;
 }

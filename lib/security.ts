@@ -1,4 +1,3 @@
-import { cookies, headers } from "next/headers";
 import { NextRequest } from "next/server";
 
 // CSRF Protection
@@ -33,6 +32,7 @@ export class CSRFProtection {
    * Set CSRF token in secure cookie
    */
   static async setToken(token: string): Promise<void> {
+    const { cookies } = await import("next/headers");
     const cookieStore = await cookies();
     const isProduction = process.env.NODE_ENV === "production";
 
@@ -60,6 +60,7 @@ export class CSRFProtection {
    * Get CSRF token from cookie
    */
   static async getTokenFromCookie(): Promise<string | null> {
+    const { cookies } = await import("next/headers");
     const cookieStore = await cookies();
     const isProduction = process.env.NODE_ENV === "production";
 
@@ -179,6 +180,24 @@ export class CSRFProtection {
 }
 
 // CSP Nonce Management
+/**
+ * Content Security Policy (CSP) Implementation
+ *
+ * This implementation follows Next.js best practices for CSP with nonces:
+ *
+ * 1. Middleware generates unique nonces for each request in production
+ * 2. Nonces are passed via headers (x-nonce) for Server Components
+ * 3. Nonces are set in window.__CSP_NONCE__ for Client Components
+ * 4. Development mode uses 'unsafe-inline' for easier development
+ * 5. Production mode uses strict CSP with nonces and hashes for known inline styles
+ *
+ * Usage in components:
+ * - Server Components: const nonce = await CSPNonce.getFromHeaders()
+ * - Client Components: const nonce = CSPNonce.getFromWindow() or useNonce() hook
+ * - Always apply nonce to dynamic <script> and <style> tags
+ *
+ * Static inline styles are handled via SHA-256 hashes in the CSP policy.
+ */
 export class CSPNonce {
   /**
    * Generate a cryptographically secure nonce using Web Crypto API
@@ -193,19 +212,37 @@ export class CSPNonce {
 
   /**
    * Get nonce from request headers (for Server Components)
+   * Note: This method should be imported and used only in Server Components
    */
   static async getFromHeaders(): Promise<string | null> {
+    // This will be imported from next/headers only in server components
+    const { headers } = await import("next/headers");
     const headersList = await headers();
     return headersList.get("x-nonce");
   }
 
   /**
    * Get nonce for client components (via cookie)
+   * Note: This method should be imported and used only in Server Components
    */
   static async getFromCookie(): Promise<string | null> {
+    // This will be imported from next/headers only in server components
+    const { cookies } = await import("next/headers");
     const cookieStore = await cookies();
     const nonceCookie = cookieStore.get("csp-nonce");
     return nonceCookie?.value || null;
+  }
+
+  /**
+   * Get nonce for client components from window global (synchronous)
+   * This is the preferred method for client components
+   */
+  static getFromWindow(): string | null {
+    if (typeof window === "undefined") return null;
+    return (
+      (window as typeof window & { __CSP_NONCE__?: string }).__CSP_NONCE__ ||
+      null
+    );
   }
 }
 
@@ -263,11 +300,12 @@ export class SecurityHeaders {
     const isProduction = process.env.NODE_ENV === "production";
 
     if (isProduction) {
-      // Strict production CSP
+      // Strict production CSP with required hashes for inline styles
       const csp = [
         "default-src 'self'",
         `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://www.googletagmanager.com https://www.google-analytics.com https://accounts.google.com https://vitals.vercel-insights.com https://va.vercel-scripts.com`,
-        `style-src 'self' 'nonce-${nonce}' https://fonts.googleapis.com https://accounts.google.com`,
+        // Updated style-src with hashes for Next.js and library inline styles
+        `style-src 'self' 'nonce-${nonce}' 'unsafe-hashes' https://fonts.googleapis.com https://accounts.google.com 'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=' 'sha256-x85h1XW/2dJE1/4ZlPDVBP4T1CrmEDhiFyPqP+DSWBM=' 'sha256-KpSV7LuPYEu58+3u9LJr9v5Drm0uIKEv0h3u/+NVNm8=' 'sha256-dkh56gAXwLNJwJkQM7pk7ARvLt6jnCYX4BrpsIFTxqI=' 'sha256-Mv4McvPit7qlZWszmT/z0tW/0B8ovLjbHgAYqhyu7mE=' 'sha256-lwQz+ARlP3Bxlcabv9wCZkYN0WBKz7AI92HngvUijoM=' 'sha256-zlqnbDt84zf1iSefLU/ImC54isoprH/MRiVZGskwexk=' 'sha256-mf/UeN4J7RwvsimPJmmeFQFxedoyNr/nO9Q1L1vCL7k=' 'sha256-CIxDM5jnsGiKqXs2v7NKCY5MzdR9gu6TtiMJrDw29AY=' 'sha256-skqujXORqzxt1aE0NNXxujEanPTX6raoqSscTV/Ww/Y=' 'sha256-42kZcIwrKnihEZTada4V2Yh9EaONiZ1iuXhdtLJ43N8='`,
         "img-src 'self' blob: data: https: https://*.s3.amazonaws.com https://*.cloudfront.net",
         "font-src 'self' https://fonts.gstatic.com",
         "connect-src 'self' https://api.stripe.com https://*.supabase.co https://*.s3.amazonaws.com https://*.cloudfront.net https://vitals.vercel-analytics.com https://accounts.google.com",

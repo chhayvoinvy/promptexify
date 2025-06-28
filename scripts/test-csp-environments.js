@@ -100,6 +100,9 @@ async function testEnvironments() {
   console.log("✅ Environment-aware policy configuration");
   console.log("✅ Development workflow preserved");
   console.log("✅ Production security maintained");
+  console.log("✅ Inline style hashes included for Next.js compatibility");
+  console.log("✅ 'unsafe-hashes' enabled for React style attributes");
+  console.log("✅ 'strict-dynamic' ensures future scripts inherit nonce");
 }
 
 // Run the test

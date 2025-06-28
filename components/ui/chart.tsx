@@ -85,6 +85,7 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   }
 
   // Get nonce from global variable if available
+  // This follows Next.js CSP best practices for dynamic inline styles
   const nonce =
     typeof window !== "undefined" ? window.__CSP_NONCE__ : undefined;
 
