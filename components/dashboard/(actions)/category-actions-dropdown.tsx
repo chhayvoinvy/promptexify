@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal, Edit, Trash2, Loader2 } from "lucide-react";
 import { deleteCategoryAction } from "@/actions";
+import { useCSRFForm } from "@/hooks/use-csrf";
 
 interface Category {
   id: string;
@@ -44,27 +45,37 @@ export function CategoryActionsDropdown({
   const [isPending, startTransition] = useTransition();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const { createFormDataWithCSRF, isReady } = useCSRFForm();
 
   const handleDelete = async () => {
-    if (isPending || isDeleting) return;
+    if (isPending || isDeleting || !isReady) {
+      if (!isReady) {
+        toast.error("Security verification in progress. Please wait.");
+      }
+      return;
+    }
 
     setIsDeleting(true);
     startTransition(async () => {
-      const formData = new FormData();
-      formData.append("id", category.id);
+      try {
+        // Add CSRF protection to form data
+        const secureFormData = createFormDataWithCSRF({ id: category.id });
+        const result = await deleteCategoryAction(secureFormData);
 
-      const result = await deleteCategoryAction(formData);
-
-      if (result.success) {
-        toast.success(
-          result.message || `Category "${category.name}" deleted successfully`
-        );
-        setShowDeleteDialog(false);
-      } else {
-        toast.error(result.error || "Failed to delete category");
+        if (result.success) {
+          toast.success(
+            result.message || `Category "${category.name}" deleted successfully`
+          );
+          setShowDeleteDialog(false);
+        } else {
+          toast.error(result.error || "Failed to delete category");
+        }
+      } catch (error) {
+        console.error("Error deleting category:", error);
+        toast.error("An unexpected error occurred");
+      } finally {
+        setIsDeleting(false);
       }
-
-      setIsDeleting(false);
     });
   };
 
@@ -78,7 +89,7 @@ export function CategoryActionsDropdown({
           <Button
             variant="ghost"
             className="h-8 w-8 p-0"
-            disabled={isPending || isDeleting}
+            disabled={isPending || isDeleting || !isReady}
           >
             <span className="sr-only">Open menu</span>
             {isDeleting ? (
@@ -100,8 +111,8 @@ export function CategoryActionsDropdown({
               e.preventDefault();
               setShowDeleteDialog(true);
             }}
-            disabled={!canDelete}
-            className={!canDelete ? "opacity-50" : ""}
+            disabled={!canDelete || !isReady}
+            className={!canDelete || !isReady ? "opacity-50" : ""}
           >
             <Trash2 className="mr-2 h-4 w-4 text-destructive" />
             <span className="text-destructive">Delete category</span>
@@ -130,7 +141,7 @@ export function CategoryActionsDropdown({
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={handleDelete}
-              disabled={isDeleting || !canDelete}
+              disabled={isDeleting || !canDelete || !isReady}
             >
               {isDeleting ? (
                 <>
