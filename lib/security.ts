@@ -267,10 +267,11 @@ export class SecurityHeaders {
       const csp = [
         "default-src 'self'",
         `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://www.googletagmanager.com https://www.google-analytics.com https://accounts.google.com https://vitals.vercel-insights.com https://va.vercel-scripts.com`,
-        `style-src 'self' 'nonce-${nonce}' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com`,
+        `style-src 'self' 'nonce-${nonce}' https://fonts.googleapis.com https://accounts.google.com`,
         "img-src 'self' blob: data: https: https://*.s3.amazonaws.com https://*.cloudfront.net",
         "font-src 'self' https://fonts.gstatic.com",
-        "connect-src 'self' https://api.stripe.com https://*.supabase.co https://*.s3.amazonaws.com https://*.cloudfront.net https://vitals.vercel-analytics.com",
+        "connect-src 'self' https://api.stripe.com https://*.supabase.co https://*.s3.amazonaws.com https://*.cloudfront.net https://vitals.vercel-analytics.com https://accounts.google.com",
+        "frame-src 'self' https://accounts.google.com",
         "media-src 'self' blob: data: https://*.s3.amazonaws.com https://*.cloudfront.net",
         "object-src 'none'",
         "base-uri 'self'",
