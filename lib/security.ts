@@ -198,6 +198,29 @@ export class CSRFProtection {
  *
  * Static inline styles are handled via SHA-256 hashes in the CSP policy.
  */
+
+// CSP Hash Constants for known inline content
+const CSP_HASHES = {
+  // Script hashes for known inline scripts
+  SCRIPTS: [
+    "'sha256-42kZcIwrKnihEZTada4V2Yh9EaONiZ1iuXhdtLJ43N8='", // Next.js or Analytics inline script
+  ],
+  // Style hashes for Next.js and library inline styles
+  STYLES: [
+    "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='", // Empty style
+    "'sha256-x85h1XW/2dJE1/4ZlPDVBP4T1CrmEDhiFyPqP+DSWBM='", // Next.js style
+    "'sha256-KpSV7LuPYEu58+3u9LJr9v5Drm0uIKEv0h3u/+NVNm8='", // React inline style
+    "'sha256-dkh56gAXwLNJwJkQM7pk7ARvLt6jnCYX4BrpsIFTxqI='", // Component style
+    "'sha256-Mv4McvPit7qlZWszmT/z0tW/0B8ovLjbHgAYqhyu7mE='", // UI library style
+    "'sha256-lwQz+ARlP3Bxlcabv9wCZkYN0WBKz7AI92HngvUijoM='", // Chart library style
+    "'sha256-zlqnbDt84zf1iSefLU/ImC54isoprH/MRiVZGskwexk='", // Animation style
+    "'sha256-mf/UeN4J7RwvsimPJmmeFQFxedoyNr/nO9Q1L1vCL7k='", // Theme style
+    "'sha256-CIxDM5jnsGiKqXs2v7NKCY5MzdR9gu6TtiMJrDw29AY='", // Dynamic style
+    "'sha256-skqujXORqzxt1aE0NNXxujEanPTX6raoqSscTV/Ww/Y='", // Responsive style
+    "'sha256-42kZcIwrKnihEZTada4V2Yh9EaONiZ1iuXhdtLJ43N8='", // Additional style
+  ],
+};
+
 export class CSPNonce {
   /**
    * Generate a cryptographically secure nonce using Web Crypto API
@@ -243,6 +266,26 @@ export class CSPNonce {
       (window as typeof window & { __CSP_NONCE__?: string }).__CSP_NONCE__ ||
       null
     );
+  }
+
+  /**
+   * Calculate SHA-256 hash for inline content (for development/debugging)
+   * Use this to generate hashes for new inline scripts or styles
+   *
+   * @param content - The inline content to hash
+   * @returns Promise<string> - The SHA-256 hash in CSP format
+   *
+   * Example:
+   * const hash = await CSPNonce.calculateHash('console.log("test");');
+   * console.log(hash); // 'sha256-...'
+   */
+  static async calculateHash(content: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(content);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashBase64 = btoa(String.fromCharCode(...hashArray));
+    return `'sha256-${hashBase64}'`;
   }
 }
 
@@ -303,9 +346,13 @@ export class SecurityHeaders {
       // Strict production CSP with required hashes for inline styles
       const csp = [
         "default-src 'self'",
-        `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://www.googletagmanager.com https://www.google-analytics.com https://accounts.google.com https://vitals.vercel-insights.com https://va.vercel-scripts.com`,
+        `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${CSP_HASHES.SCRIPTS.join(
+          " "
+        )} https://www.googletagmanager.com https://www.google-analytics.com https://accounts.google.com https://vitals.vercel-insights.com https://va.vercel-scripts.com`,
         // Updated style-src with hashes for Next.js and library inline styles
-        `style-src 'self' 'nonce-${nonce}' 'unsafe-hashes' https://fonts.googleapis.com https://accounts.google.com 'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=' 'sha256-x85h1XW/2dJE1/4ZlPDVBP4T1CrmEDhiFyPqP+DSWBM=' 'sha256-KpSV7LuPYEu58+3u9LJr9v5Drm0uIKEv0h3u/+NVNm8=' 'sha256-dkh56gAXwLNJwJkQM7pk7ARvLt6jnCYX4BrpsIFTxqI=' 'sha256-Mv4McvPit7qlZWszmT/z0tW/0B8ovLjbHgAYqhyu7mE=' 'sha256-lwQz+ARlP3Bxlcabv9wCZkYN0WBKz7AI92HngvUijoM=' 'sha256-zlqnbDt84zf1iSefLU/ImC54isoprH/MRiVZGskwexk=' 'sha256-mf/UeN4J7RwvsimPJmmeFQFxedoyNr/nO9Q1L1vCL7k=' 'sha256-CIxDM5jnsGiKqXs2v7NKCY5MzdR9gu6TtiMJrDw29AY=' 'sha256-skqujXORqzxt1aE0NNXxujEanPTX6raoqSscTV/Ww/Y=' 'sha256-42kZcIwrKnihEZTada4V2Yh9EaONiZ1iuXhdtLJ43N8='`,
+        `style-src 'self' 'nonce-${nonce}' 'unsafe-hashes' https://fonts.googleapis.com https://accounts.google.com ${CSP_HASHES.STYLES.join(
+          " "
+        )}`,
         "img-src 'self' blob: data: https: https://*.s3.amazonaws.com https://*.cloudfront.net",
         "font-src 'self' https://fonts.gstatic.com",
         "connect-src 'self' https://api.stripe.com https://*.supabase.co https://*.s3.amazonaws.com https://*.cloudfront.net https://vitals.vercel-analytics.com https://accounts.google.com",

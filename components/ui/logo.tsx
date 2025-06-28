@@ -50,6 +50,7 @@ function LogoImage({
       alt="Promptexify logo"
       width={width}
       height={height}
+      style={{ width: "135px", height: "auto" }}
       className={cn("transition-opacity duration-200", className)}
       priority
     />
