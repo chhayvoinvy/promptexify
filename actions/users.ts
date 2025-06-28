@@ -3,18 +3,10 @@
 import { prisma } from "@/lib/prisma";
 import { requireAuth, getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 import { handleAuthRedirect } from "./auth";
-import { withCSRFProtection } from "@/lib/security";
-
-// Schema for updating user profile
-const updateUserProfileSchema = z.object({
-  name: z
-    .string()
-    .min(1, "Name is required")
-    .max(50, "Name must be less than 50 characters")
-    .trim(),
-});
+import { withCSRFProtection, handleSecureActionError } from "@/lib/security";
+import { updateUserProfileSchema } from "@/lib/schemas";
+import { sanitizeInput } from "@/lib/sanitize";
 
 export const updateUserProfileAction = withCSRFProtection(
   async (formData: FormData) => {
@@ -22,15 +14,91 @@ export const updateUserProfileAction = withCSRFProtection(
       // Require authentication
       const user = await requireAuth();
 
-      // Extract and validate form data
-      const name = formData.get("name") as string;
+      // Extract form data
+      const rawName = formData.get("name") as string;
 
-      const validatedData = updateUserProfileSchema.safeParse({ name });
+      // SECURITY: Pre-sanitize input before validation
+      const sanitizedName = rawName ? sanitizeInput(rawName) : "";
 
-      if (!validatedData.success) {
+      // Validate input using centralized schema
+      const validationResult = updateUserProfileSchema.safeParse({
+        name: sanitizedName,
+      });
+
+      if (!validationResult.success) {
+        // Log validation failure for security monitoring
+        console.warn(
+          `[SECURITY] Profile update validation failed for user ${user.id}:`,
+          validationResult.error.errors
+        );
+
         return {
           success: false,
-          error: validatedData.error.errors[0]?.message || "Invalid input",
+          error:
+            validationResult.error.errors[0]?.message || "Invalid input format",
+        };
+      }
+
+      const { name } = validationResult.data;
+
+      // SECURITY: Additional server-side validation
+      if (!name || name.trim().length < 2) {
+        return {
+          success: false,
+          error: "Name must be at least 2 characters long",
+        };
+      }
+
+      // SECURITY: Check for suspicious patterns
+      const suspiciousPatterns = [
+        /^[aA\s]+$/, // All A's and spaces
+        /^[zZ\s]+$/, // All Z's and spaces
+        /(admin|test|user|null|undefined|script|root|guest)/i, // Common suspicious names
+        /^(.)\1{4,}$/, // 5+ repeated characters in a row
+        /^\s+$|^$|^\s*$/, // Only spaces or empty
+        /\s{4,}/, // 4+ consecutive spaces
+      ];
+
+      for (const pattern of suspiciousPatterns) {
+        if (pattern.test(name)) {
+          console.warn(
+            `[SECURITY] Suspicious name pattern detected: ${name} for user ${user.id}`
+          );
+
+          // Log suspicious activity
+          import("@/lib/security-monitor").then(({ SecurityAlert }) => {
+            SecurityAlert.suspiciousRequest(
+              "Suspicious name pattern in profile update",
+              { name, pattern: pattern.toString() },
+              user.id
+            ).catch(console.error);
+          });
+
+          return {
+            success: false,
+            error:
+              "Invalid name format. Please use a real name with letters and spaces only.",
+          };
+        }
+      }
+
+      // SECURITY: Additional check for reasonable name format
+      const trimmedName = name.trim();
+      const nameParts = trimmedName.split(/\s+/);
+
+      // Allow 1-4 name parts (e.g., "John", "Mary Jane", "Mary Jane Smith", "Mary Jane Smith Johnson")
+      if (nameParts.length > 4) {
+        return {
+          success: false,
+          error: "Name can have maximum 4 parts (first, middle, last names).",
+        };
+      }
+
+      // Each name part should be at least 1 character
+      if (nameParts.some((part) => part.length < 1)) {
+        return {
+          success: false,
+          error: "Each name part must contain at least one letter.",
         };
       }
 
@@ -38,7 +106,7 @@ export const updateUserProfileAction = withCSRFProtection(
       await prisma.user.update({
         where: { id: user.id },
         data: {
-          name: validatedData.data.name,
+          name: name,
           updatedAt: new Date(),
         },
       });
@@ -51,10 +119,10 @@ export const updateUserProfileAction = withCSRFProtection(
         message: "Profile updated successfully",
       };
     } catch (error) {
-      console.error("Update user profile error:", error);
+      const errorResult = handleSecureActionError(error);
       return {
         success: false,
-        error: "Failed to update profile. Please try again.",
+        error: errorResult.error,
       };
     } finally {
       await prisma.$disconnect();
@@ -64,12 +132,18 @@ export const updateUserProfileAction = withCSRFProtection(
 
 export async function getUserProfileAction() {
   try {
-    // Require authentication
-    const user = await requireAuth();
+    // Require authentication and get full user data (both Supabase and Prisma)
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.userData) {
+      return {
+        success: false,
+        error: "User not authenticated",
+      };
+    }
 
-    // Get user profile data
+    // Get user profile data from Prisma
     const userProfile = await prisma.user.findUnique({
-      where: { id: user.id },
+      where: { id: currentUser.id },
       select: {
         id: true,
         email: true,
@@ -90,9 +164,16 @@ export async function getUserProfileAction() {
       };
     }
 
+    // Combine Prisma data with Supabase auth data (including last_sign_in_at)
+    const userActivityData = {
+      ...userProfile,
+      lastSignInAt: currentUser.last_sign_in_at || null,
+      emailConfirmedAt: currentUser.email_confirmed_at || null,
+    };
+
     return {
       success: true,
-      user: userProfile,
+      user: userActivityData,
     };
   } catch (error) {
     console.error("Get user profile error:", error);

@@ -228,8 +228,14 @@ export async function GET(request: NextRequest) {
       premium,
     } = validationResult.data;
 
-    // Sanitize search query
-    const sanitizedSearch = search ? sanitizeSearchQuery(search) : "";
+    // Sanitize search query with security monitoring
+    const sanitizedSearch = search
+      ? sanitizeSearchQuery(search, {
+          userId,
+          ip: getClientIdentifier(request, userId),
+          logSuspicious: true,
+        })
+      : "";
 
     // Calculate pagination with validated values
     const skip = (page - 1) * limit;

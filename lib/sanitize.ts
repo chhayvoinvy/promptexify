@@ -318,27 +318,86 @@ export function sanitizeRichContent(content: string): string {
 
 /**
  * Sanitize search query to prevent injection attacks
+ * Enhanced security version with additional pattern detection
  */
-export function sanitizeSearchQuery(query: string): string {
+export function sanitizeSearchQuery(
+  query: string,
+  options?: {
+    userId?: string;
+    ip?: string;
+    logSuspicious?: boolean;
+  }
+): string {
   if (typeof query !== "string") {
     return "";
   }
 
-  return (
-    query
-      .trim()
-      // Remove null bytes
-      .replace(/\0/g, "")
-      // Remove SQL injection patterns
-      .replace(/[';\\]/g, "")
-      // Remove script tags
-      .replace(/<[^>]*>/g, "")
-      // Normalize whitespace
-      .replace(/\s+/g, " ")
-      // Limit length
-      .substring(0, 100)
-      .trim()
-  );
+  const { userId, ip, logSuspicious = true } = options || {};
+
+  // SECURITY: Enhanced sanitization
+  const sanitized = query
+    .trim()
+    // Remove null bytes and control characters
+    .replace(/[\0-\x1F\x7F-\x9F]/g, "")
+    // Remove SQL injection patterns (more comprehensive)
+    .replace(/[';\\"`]/g, "")
+    // Remove script tags and HTML
+    .replace(/<[^>]*>/g, "")
+    // Remove potentially dangerous URL patterns
+    .replace(/javascript:/gi, "")
+    .replace(/data:/gi, "")
+    .replace(/vbscript:/gi, "")
+    // Remove excessive special characters (keep only basic ones)
+    .replace(/[^\w\s\-_.]/g, "")
+    // Normalize whitespace
+    .replace(/\s+/g, " ")
+    // Remove leading/trailing special characters
+    .replace(/^[\s\-_.]+|[\s\-_.]+$/g, "")
+    // Limit length
+    .substring(0, 100)
+    .trim();
+
+  // SECURITY: Additional validation - must contain at least one alphanumeric character
+  if (sanitized && !/[a-zA-Z0-9]/.test(sanitized)) {
+    return "";
+  }
+
+  // SECURITY: Block suspicious patterns
+  const suspiciousPatterns = [
+    { pattern: /union\s+select/i, name: "SQL_UNION_SELECT" },
+    { pattern: /drop\s+table/i, name: "SQL_DROP_TABLE" },
+    { pattern: /insert\s+into/i, name: "SQL_INSERT" },
+    { pattern: /delete\s+from/i, name: "SQL_DELETE" },
+    { pattern: /update\s+set/i, name: "SQL_UPDATE" },
+    { pattern: /exec\s*\(/i, name: "SQL_EXEC" },
+    { pattern: /script\s*>/i, name: "XSS_SCRIPT" },
+    { pattern: /on\s*error/i, name: "JS_ERROR_HANDLER" },
+    { pattern: /\.\.\/+/, name: "PATH_TRAVERSAL" },
+    { pattern: /\$\{/, name: "TEMPLATE_INJECTION" },
+    { pattern: /%[0-9a-f]{2}/i, name: "URL_ENCODING" },
+  ];
+
+  for (const { pattern, name } of suspiciousPatterns) {
+    if (pattern.test(sanitized)) {
+      console.warn(
+        `[SECURITY] Suspicious search pattern blocked: ${name} - ${sanitized}`
+      );
+
+      // Log suspicious pattern if enabled
+      if (logSuspicious) {
+        // Dynamically import to avoid circular dependencies
+        import("@/lib/security-monitor").then(({ SecurityAlert }) => {
+          SecurityAlert.suspiciousSearchPattern(query, name, userId, ip).catch(
+            console.error
+          );
+        });
+      }
+
+      return "";
+    }
+  }
+
+  return sanitized;
 }
 
 /**

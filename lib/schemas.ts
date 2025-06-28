@@ -202,22 +202,48 @@ export const fileUploadSchema = z.object({
     .refine((val) => val.length > 0, "Title cannot be empty after trimming"),
 });
 
-// User profile schemas
+// User profile schemas with enhanced security
 export const updateUserProfileSchema = z.object({
   name: z
     .string()
     .min(2, "Name must be at least 2 characters")
-    .max(100, "Name must be 100 characters or less")
-    .regex(/^[a-zA-Z\s-'\.]+$/, "Name contains invalid characters")
-    .transform((val) => val.trim())
+    .max(50, "Name must be 50 characters or less")
+    // SECURITY: Allow a-z, A-Z, and spaces (for firstname lastname)
+    .regex(
+      /^[a-zA-Z\s]+$/,
+      "Name can only contain letters (a-z, A-Z) and spaces"
+    )
+    .transform((val) => val.trim().replace(/\s+/g, " ")) // Normalize multiple spaces to single space
     .refine(
       (val) => val.length >= 2,
       "Name must be at least 2 characters after trimming"
     )
-    .optional(),
+    .refine(
+      (val) => val.length <= 50,
+      "Name must be 50 characters or less after trimming"
+    )
+    // SECURITY: Ensure name doesn't start or end with spaces and has actual letters
+    .refine(
+      (val) => /^[a-zA-Z].*[a-zA-Z]$|^[a-zA-Z]$/.test(val),
+      "Name must start and end with letters"
+    )
+    // SECURITY: Prevent excessive spaces (max 3 consecutive spaces)
+    .refine(
+      (val) => !/\s{4,}/.test(val),
+      "Name cannot contain excessive spaces"
+    )
+    // SECURITY: Additional validation to prevent suspicious patterns
+    .refine((val) => {
+      const withoutSpaces = val.replace(/\s/g, "");
+      return !(
+        (/^[aeiouAEIOU]+$/.test(withoutSpaces) && withoutSpaces.length > 10) ||
+        /((.)\2{4,})/.test(withoutSpaces)
+      );
+    }, "Invalid name format"),
   bio: z
     .string()
-    .max(500, "Bio must be 500 characters or less")
+    .max(200, "Bio must be 200 characters or less")
+    .regex(/^[a-zA-Z0-9\s.,!?-]*$/, "Bio contains invalid characters")
     .transform((val) => val.trim())
     .optional()
     .nullable(),
@@ -229,8 +255,16 @@ export const searchSchema = z.object({
   q: z
     .string()
     .max(100, "Search query must be 100 characters or less")
-    .regex(/^[a-zA-Z0-9\s-_.#@]*$/, "Search query contains invalid characters")
+    .regex(/^[a-zA-Z0-9\s\-_.]*$/, "Search query contains invalid characters")
     .transform((val) => val.trim())
+    .refine(
+      (val) => !val || val.length === 0 || val.replace(/\s+/g, "").length > 0,
+      "Search query cannot be only whitespace"
+    )
+    .refine(
+      (val) => !val || !/^[\s\-_.]*$/.test(val),
+      "Search query must contain at least one alphanumeric character"
+    )
     .optional(),
   page: z.coerce
     .number()

@@ -20,6 +20,11 @@ export enum SecurityEventType {
   FORM_TAMPERING = "form_tampering",
   INVALID_SESSION = "invalid_session",
   SECURITY_HEADER_MISSING = "security_header_missing",
+  FAILED_LOGIN = "failed_login",
+  MALICIOUS_PAYLOAD = "malicious_payload",
+  FILE_UPLOAD_ABUSE = "file_upload_abuse",
+  SEARCH_ABUSE = "search_abuse",
+  SUSPICIOUS_SEARCH_PATTERN = "suspicious_search_pattern",
 }
 
 export class SecurityMonitor {
@@ -342,6 +347,42 @@ export const SecurityAlert = {
     await SecurityMonitor.logSecurityEvent(
       SecurityEventType.FORM_TAMPERING,
       { formName, ...details },
+      "high",
+      userId
+    );
+  },
+
+  /**
+   * Log search abuse (excessive search requests)
+   */
+  searchAbuse: async (searchQuery: string, userId?: string, ip?: string) => {
+    await SecurityMonitor.logSecurityEvent(
+      SecurityEventType.SEARCH_ABUSE,
+      {
+        searchQuery: searchQuery.substring(0, 100), // Truncate for logging
+        ip,
+      },
+      "high",
+      userId
+    );
+  },
+
+  /**
+   * Log suspicious search pattern
+   */
+  suspiciousSearchPattern: async (
+    searchQuery: string,
+    pattern: string,
+    userId?: string,
+    ip?: string
+  ) => {
+    await SecurityMonitor.logSecurityEvent(
+      SecurityEventType.SUSPICIOUS_SEARCH_PATTERN,
+      {
+        searchQuery: searchQuery.substring(0, 100), // Truncate for logging
+        pattern,
+        ip,
+      },
       "high",
       userId
     );
