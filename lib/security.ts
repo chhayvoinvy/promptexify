@@ -219,6 +219,7 @@ const CSP_HASHES = {
     "'sha256-skqujXORqzxt1aE0NNXxujEanPTX6raoqSscTV/Ww/Y='", // Responsive style
     "'sha256-42kZcIwrKnihEZTada4V2Yh9EaONiZ1iuXhdtLJ43N8='", // Additional style
     "'sha256-8qxaJlBHRbX6fXl4iM449sWYeJajq1ieb9K3hFRSWJc='", // Google One Tap
+    "'sha256-8VvECQWAC1C2TMUane5XP25qXs61T8zAOUgUJxMUq0M='", // Google Accounts inline style
   ],
 };
 
