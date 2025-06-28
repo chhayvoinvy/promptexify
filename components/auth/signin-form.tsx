@@ -49,7 +49,6 @@ export function SignInForm() {
     resolver: zodResolver(magicLinkSchema),
     defaultValues: {
       email: "",
-      name: "",
     },
   });
 
@@ -64,7 +63,6 @@ export function SignInForm() {
         // Create form data with CSRF protection
         const formData = createFormDataWithCSRF({
           email: data.email,
-          name: data.name || "",
         });
 
         // Call server action
@@ -173,15 +171,6 @@ export function SignInForm() {
           onSubmit={form.handleSubmit(handleMagicLinkSignIn)}
           className="space-y-4"
         >
-          <InputForm
-            control={form.control}
-            name="name"
-            label="Name (Optional)"
-            type="text"
-            placeholder="John Doe"
-            disabled={isMagicLinkPending || isGooglePending || !isReady}
-          />
-
           <InputForm
             control={form.control}
             name="email"
