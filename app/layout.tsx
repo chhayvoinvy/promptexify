@@ -13,19 +13,23 @@ export const metadata: Metadata = {
   metadataBase: new URL(getBaseUrl()),
   title: {
     default:
-      "Promptexify - AI Prompt Directory for ChatGPT, Claude, Midjourney & DALL-E",
+      "Promptexify - AI Prompt Directory for ChatGPT, Claude, Gemini, AI Code Editor, and more",
     template: "%s | Promptexify",
   },
   description:
-    "Discover and share high-quality AI prompts for ChatGPT, Claude, Midjourney, and DALL-E. Browse our comprehensive directory of tested prompts for creative writing, business, design, and more.",
+    "Discover and share high-quality AI prompts for ChatGPT, Claude, Gemini, AI Code Editor, and more. Browse our comprehensive directory of tested prompts for creative writing, business, design, and more.",
   keywords: [
     "AI prompts",
     "ChatGPT prompts",
     "Claude prompts",
-    "Midjourney prompts",
-    "DALL-E prompts",
+    "Gemini prompts",
+    "AI Code Editor prompts",
     "prompt engineering",
     "AI tools",
+    "AI prompt directory",
+    "AI prompt library",
+    "AI prompt engine",
+    "AI prompt generator",
     "prompt directory",
     "prompt library",
   ],
@@ -48,12 +52,13 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://promptexify.com",
     siteName: "Promptexify",
-    title: "Promptexify - AI Prompt Directory",
+    title:
+      "Promptexify - AI Prompt Directory for ChatGPT, Claude, Gemini, AI Code Editor, and more",
     description:
-      "Discover and share high-quality AI prompts for ChatGPT, Claude, Midjourney, and DALL-E.",
+      "Discover and share high-quality AI prompts for ChatGPT, Claude, Gemini, AI Code Editor, and more. Browse our comprehensive directory of tested prompts for creative writing, business, design, and more.",
     images: [
       {
-        url: "/static/auth-marketing.png",
+        url: "/static/og-image.png",
         width: 1200,
         height: 630,
         alt: "Promptexify - AI Prompt Directory",
@@ -62,10 +67,11 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Promptexify - AI Prompt Directory",
+    title:
+      "Promptexify - AI Prompt Directory for ChatGPT, Claude, Gemini, AI Code Editor, and more",
     description:
-      "Discover and share high-quality AI prompts for ChatGPT, Claude, Midjourney, and DALL-E.",
-    images: ["/static/auth-marketing.png"],
+      "Discover and share high-quality AI prompts for ChatGPT, Claude, Gemini, AI Code Editor, and more. Browse our comprehensive directory of tested prompts for creative writing, business, design, and more.",
+    images: ["/static/og-image.png"],
   },
   alternates: {
     canonical: "https://promptexify.com",
