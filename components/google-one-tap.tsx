@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { createUserInDatabaseAction } from "@/actions/auth";
+import { useRouter } from "next/navigation";
 
 declare global {
   interface Window {
@@ -28,6 +29,7 @@ declare global {
 
 export function GoogleOneTap() {
   const { user, loading } = useAuth();
+  const router = useRouter();
   const supabase = createClient();
   const [nonce] = useState(() => {
     // Get nonce from global variable set in layout
@@ -73,7 +75,7 @@ export function GoogleOneTap() {
 
                 // Redirect to home page regardless of database creation result
                 // to prevent blocking user access
-                window.location.href = "/";
+                router.push("/");
               }
 
               if (error) {

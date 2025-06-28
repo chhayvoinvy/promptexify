@@ -33,11 +33,13 @@ export function useAuth(): AuthState {
   useEffect(() => {
     const getUser = async () => {
       try {
+        // More robust check using getSession
         const {
-          data: { user: supabaseUser },
-        } = await supabase.auth.getUser();
+          data: { session },
+        } = await supabase.auth.getSession();
 
-        if (supabaseUser) {
+        if (session?.user) {
+          const supabaseUser = session.user;
           // Fetch additional user data from our API
           const response = await fetch("/api/user/profile");
           if (response.ok) {
@@ -47,6 +49,7 @@ export function useAuth(): AuthState {
               userData,
             });
           } else {
+            // If the profile fetch fails, still set the basic user
             setUser(supabaseUser);
           }
         } else {
