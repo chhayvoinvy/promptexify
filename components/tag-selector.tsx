@@ -101,9 +101,9 @@ export function TagSelector({
     const trimmedName = name.trim();
 
     // Check basic format and length first
-    if (!/^[a-zA-Z0-9\s\-_]+$/.test(trimmedName)) {
+    if (!/^[a-zA-Z0-9\s\-_,]+$/.test(trimmedName)) {
       setTagValidationError(
-        "Tag name can only contain letters, numbers, spaces, hyphens, and underscores."
+        "Tag name can only contain letters, numbers, spaces, hyphens, underscores, and commas."
       );
       return false;
     }
@@ -153,6 +153,92 @@ export function TagSelector({
     disabled,
   ]);
 
+  // Process bulk tag input (comma-separated)
+  const processBulkTagInput = useCallback(
+    (input: string) => {
+      const tagNames = input
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean);
+
+      const validTags: string[] = [];
+      const invalidTags: string[] = [];
+      const duplicateTags: string[] = [];
+
+      for (const tagName of tagNames) {
+        // Check if tag already exists in selected tags
+        if (
+          selectedTags.some(
+            (tag) => tag.toLowerCase() === tagName.toLowerCase()
+          ) ||
+          pendingTags.some((tag) => tag.toLowerCase() === tagName.toLowerCase())
+        ) {
+          duplicateTags.push(tagName);
+          continue;
+        }
+
+        // Validate tag name
+        if (isValidTagName(tagName)) {
+          validTags.push(tagName);
+        } else {
+          invalidTags.push(tagName);
+        }
+      }
+
+      // Add valid tags if we don't exceed the limit
+      if (validTags.length > 0) {
+        const tagsToAdd = validTags.slice(0, maxTags - selectedTags.length);
+        const newPendingTags = [...pendingTags];
+        const newSelectedTags = [...selectedTags];
+
+        for (const tagName of tagsToAdd) {
+          // Check if tag exists in available tags
+          const existingTag = availableTags.find(
+            (tag) => tag.name.toLowerCase() === tagName.toLowerCase()
+          );
+
+          if (existingTag) {
+            // Add existing tag
+            newSelectedTags.push(existingTag.name);
+          } else {
+            // Add as pending tag
+            newPendingTags.push(tagName);
+            newSelectedTags.push(tagName);
+          }
+        }
+
+        onTagsChange(newSelectedTags);
+        if (onPendingTagsChange) {
+          onPendingTagsChange(newPendingTags);
+        }
+
+        // Show feedback
+        if (tagsToAdd.length > 0) {
+          setTagValidationError(null);
+        }
+        if (invalidTags.length > 0) {
+          setTagValidationError(`Invalid tags: ${invalidTags.join(", ")}`);
+        }
+        if (duplicateTags.length > 0) {
+          setTagValidationError(
+            `Duplicate tags ignored: ${duplicateTags.join(", ")}`
+          );
+        }
+      }
+
+      setSearchQuery("");
+    },
+    [
+      selectedTags,
+      pendingTags,
+      availableTags,
+      maxTags,
+      isValidTagName,
+      onTagsChange,
+      onPendingTagsChange,
+    ]
+  );
+
   // Handle key down events on search input
   const handleSearchKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -161,6 +247,12 @@ export function TagSelector({
 
         const searchTrimmed = searchQuery.trim();
         if (!searchTrimmed) return;
+
+        // Check if input contains commas (bulk input)
+        if (searchTrimmed.includes(",")) {
+          processBulkTagInput(searchTrimmed);
+          return;
+        }
 
         // Perform validation here before attempting to add/select
         if (!isValidTagName(searchTrimmed)) {
@@ -223,7 +315,8 @@ export function TagSelector({
       onPendingTagsChange,
       pendingTags,
       maxTags,
-      isValidTagName, // Include isValidTagName in dependencies
+      isValidTagName,
+      processBulkTagInput,
     ]
   );
 
@@ -312,11 +405,10 @@ export function TagSelector({
             {selectedPendingTags.map((tagName) => (
               <Badge
                 key={`pending-${tagName}`}
-                variant="secondary"
-                className="cursor-pointer flex items-center gap-1 hover:bg-secondary/80 border-dashed border-2"
+                variant="default"
+                className="cursor-pointer flex items-center gap-1 hover:bg-primary/80"
                 onClick={() => handleRemoveTag(tagName)}
               >
-                <Clock className="w-3 h-3" />
                 {tagName}
                 <X className="w-3 h-3" />
               </Badge>
@@ -339,23 +431,27 @@ export function TagSelector({
           <Input
             id="tag-search"
             type="text"
-            placeholder="Search tags or press Enter to add new ones..."
+            placeholder="Search tags, add new ones, or use commas for bulk input. (e.g., 'background, ocean, bluesky')"
             value={searchQuery}
             onChange={(e) => {
               const value = e.target.value;
-              // Only allow valid characters for tag names: a-z, A-Z, 0-9, spaces, hyphens, underscores
-              // This is a basic filter for immediate input, full validation is in isValidTagName
-              if (value === "" || /^[a-zA-Z0-9\s\-_]*$/.test(value)) {
-                setSearchQuery(value.substring(0, 50)); // Limit length to 50 characters
+              // Allow commas for bulk input, plus valid characters for tag names
+              if (value === "" || /^[a-zA-Z0-9\s\-_,]*$/.test(value)) {
+                setSearchQuery(value.substring(0, 200)); // Increased limit for bulk input
                 // Validate on change to provide immediate feedback
                 if (value.trim()) {
-                  isValidTagName(value); // This will set tagValidationError
+                  // If input contains commas, don't validate until Enter is pressed
+                  if (!value.includes(",")) {
+                    isValidTagName(value); // This will set tagValidationError
+                  } else {
+                    setTagValidationError(null); // Clear error for bulk input
+                  }
                 } else {
                   setTagValidationError(null); // Clear error if input is empty
                 }
               } else {
                 setTagValidationError(
-                  "Invalid characters detected in tag name."
+                  "Invalid characters detected. Use letters, numbers, spaces, hyphens, underscores, and commas."
                 );
               }
             }}
@@ -378,15 +474,35 @@ export function TagSelector({
         </div>
 
         {/* Show add new tag hint */}
-        {canAddPendingTag && !tagValidationError && (
-          <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <Plus className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            <p className="text-sm text-blue-700 dark:text-blue-300">
+        {canAddPendingTag &&
+          !tagValidationError &&
+          !searchQuery.includes(",") && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <Plus className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                Press{" "}
+                <kbd className="px-1.5 py-0.5 text-xs bg-blue-100 dark:bg-blue-900 rounded border">
+                  Enter
+                </kbd>{" "}
+                to add &ldquo;{searchQuery}&rdquo; as a new tag.
+              </p>
+            </div>
+          )}
+
+        {/* Show bulk input hint */}
+        {searchQuery.includes(",") && !tagValidationError && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+            <Plus className="w-4 h-4 text-green-600 dark:text-green-400" />
+            <p className="text-sm text-green-700 dark:text-green-300">
               Press{" "}
-              <kbd className="px-1.5 py-0.5 text-xs bg-blue-100 dark:bg-blue-900 rounded border">
+              <kbd className="px-1.5 py-0.5 text-xs bg-green-100 dark:bg-green-900 rounded border">
                 Enter
               </kbd>{" "}
-              to add &ldquo;{searchQuery}&rdquo; as a new tag.
+              to add multiple tags:{" "}
+              {searchQuery
+                .split(",")
+                .map((tag) => `"${tag.trim()}"`)
+                .join(", ")}
             </p>
           </div>
         )}
@@ -468,8 +584,8 @@ export function TagSelector({
         </div>
       )}
 
-      {/* Pending Tags Info */}
-      {selectedPendingTags.length > 0 && (
+      {/* Pending Tags Info (disabled for now) */}
+      {/* {selectedPendingTags.length > 0 && (
         <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
           <div className="flex items-start gap-2">
             <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5" />
@@ -485,7 +601,7 @@ export function TagSelector({
             </div>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Hidden input for form submission */}
       <input type="hidden" name="tags" value={selectedTags.join(", ")} />

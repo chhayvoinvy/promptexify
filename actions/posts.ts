@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { handleAuthRedirect } from "./auth";
 import { revalidateCache, CACHE_TAGS } from "@/lib/cache";
-import { withCSRFProtection, handleSecureActionError } from "@/lib/security";
+import { withCSRFProtection } from "@/lib/security";
 
 import {
   sanitizeInput,
@@ -39,6 +39,7 @@ export const createPostAction = withCSRFProtection(
       const featuredImage = formData.get("featuredImage") as string;
       const featuredVideo = formData.get("featuredVideo") as string;
       const category = formData.get("category") as string;
+      const subcategory = formData.get("subcategory") as string;
       const tags = formData.get("tags") as string;
 
       // Sanitize inputs for enhanced security
@@ -75,9 +76,13 @@ export const createPostAction = withCSRFProtection(
         throw new Error("Missing required fields");
       }
 
-      // Get category ID
+      // Get category ID - prefer subcategory if provided, otherwise use main category
+      const selectedCategorySlug =
+        subcategory && subcategory !== "" && subcategory !== "none"
+          ? subcategory
+          : category;
       const categoryRecord = await prisma.category.findUnique({
-        where: { slug: category },
+        where: { slug: selectedCategorySlug },
       });
 
       if (!categoryRecord) {
@@ -185,6 +190,7 @@ export const updatePostAction = withCSRFProtection(
       const featuredImage = formData.get("featuredImage") as string;
       const featuredVideo = formData.get("featuredVideo") as string;
       const category = formData.get("category") as string;
+      const subcategory = formData.get("subcategory") as string;
       const tags = formData.get("tags") as string;
       const isPremium = formData.get("isPremium") === "on";
 
@@ -243,9 +249,13 @@ export const updatePostAction = withCSRFProtection(
         status = PostStatus.PENDING_APPROVAL;
       }
 
-      // Get category ID
+      // Get category ID - prefer subcategory if provided, otherwise use main category
+      const selectedCategorySlug =
+        subcategory && subcategory !== "" && subcategory !== "none"
+          ? subcategory
+          : category;
       const categoryRecord = await prisma.category.findUnique({
-        where: { slug: category },
+        where: { slug: selectedCategorySlug },
       });
 
       if (!categoryRecord) {

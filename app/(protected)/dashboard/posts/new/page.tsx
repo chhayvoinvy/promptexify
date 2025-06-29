@@ -422,14 +422,10 @@ export default function NewPostPage() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="parentCategory">Parent Category *</Label>
-                    <Select
-                      name="parentCategory"
-                      required
-                      disabled={isSubmitting}
-                    >
+                    <Label htmlFor="category">Category *</Label>
+                    <Select name="category" required disabled={isSubmitting}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select parent category" />
+                        <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                       <SelectContent>
                         {parentCategories.map((category) => (
@@ -437,17 +433,25 @@ export default function NewPostPage() {
                             {category.name}
                           </SelectItem>
                         ))}
+                        {categories
+                          .filter((cat) => cat.parent)
+                          .map((category) => (
+                            <SelectItem key={category.id} value={category.slug}>
+                              {category.name}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="category">Sub Category *</Label>
-                    <Select name="category" required disabled={isSubmitting}>
+                    <Label htmlFor="subcategory">Sub Category (Optional)</Label>
+                    <Select name="subcategory" disabled={isSubmitting}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select sub category" />
+                        <SelectValue placeholder="Select sub category (optional)" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="none">No sub category</SelectItem>
                         {categories
                           .filter((cat) => cat.parent)
                           .map((category) => (
