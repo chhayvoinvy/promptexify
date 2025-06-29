@@ -45,4 +45,11 @@ export {
 export { createTagAction, updateTagAction, deleteTagAction } from "./tags";
 
 // User profile actions
-export { updateUserProfileAction, getUserProfileAction } from "./users";
+export {
+  updateUserProfileAction,
+  getUserProfileAction,
+  getUserDashboardStatsAction,
+  getUserFavoritesCountAction,
+  getAdminDashboardStatsAction,
+  getAllUsersActivityAction,
+} from "./users";

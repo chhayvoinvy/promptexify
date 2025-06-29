@@ -335,3 +335,311 @@ export async function getUserFavoritesCountAction() {
     await prisma.$disconnect();
   }
 }
+
+/**
+ * Get comprehensive admin dashboard statistics
+ * Returns total counts and growth percentages for posts, users, categories, and tags
+ */
+/**
+ * Get all users with their activity data for admin dashboard
+ * Returns comprehensive user information including registration, posts, and last login
+ */
+export async function getAllUsersActivityAction() {
+  try {
+    // Require authentication and check admin role
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.userData) {
+      return {
+        success: false,
+        error: "User not authenticated",
+      };
+    }
+
+    // Check if user is admin
+    if (currentUser.userData.role !== "ADMIN") {
+      return {
+        success: false,
+        error: "Admin access required",
+      };
+    }
+
+    // Get all users with their activity data
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        avatar: true,
+        type: true,
+        role: true,
+        oauth: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: {
+          select: {
+            posts: {
+              where: { isPublished: true },
+            },
+            bookmarks: true,
+            favorites: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // Transform the data to match our schema requirements
+    const usersActivity = users.map((user, index) => ({
+      id: index + 1, // Use index for table row ID
+      userId: user.id, // Keep the actual user ID
+      name: user.name || "Unnamed User",
+      email: user.email,
+      role: user.role,
+      userType: user.type,
+      provider: user.oauth,
+      registeredOn: user.createdAt,
+      posts: user._count.posts,
+      lastLogin: null, // We'll need to get this from Supabase auth separately if needed
+      bookmarks: user._count.bookmarks,
+      favorites: user._count.favorites,
+    }));
+
+    return {
+      success: true,
+      users: usersActivity,
+    };
+  } catch (error) {
+    console.error("Get all users activity error:", error);
+    return {
+      success: false,
+      error: "Failed to load user activity data. Please try again.",
+    };
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+export async function getAdminDashboardStatsAction() {
+  try {
+    // Require authentication and check admin role
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.userData) {
+      return {
+        success: false,
+        error: "User not authenticated",
+      };
+    }
+
+    // Check if user is admin
+    if (currentUser.userData.role !== "ADMIN") {
+      return {
+        success: false,
+        error: "Admin access required",
+      };
+    }
+
+    // Get current date and date 30 days ago for growth calculation
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    // Get all statistics in parallel for better performance
+    const [
+      totalPosts,
+      totalUsers,
+      totalCategories,
+      totalTags,
+      newPostsThisMonth,
+      newUsersThisMonth,
+      newCategoriesThisMonth,
+      newTagsThisMonth,
+      previousMonthPosts,
+      previousMonthUsers,
+      previousMonthCategories,
+      previousMonthTags,
+    ] = await Promise.all([
+      // Current totals
+      prisma.post.count({
+        where: { isPublished: true },
+      }),
+      prisma.user.count(),
+      prisma.category.count(),
+      prisma.tag.count(),
+
+      // New items this month
+      prisma.post.count({
+        where: {
+          isPublished: true,
+          createdAt: { gte: thirtyDaysAgo },
+        },
+      }),
+      prisma.user.count({
+        where: {
+          createdAt: { gte: thirtyDaysAgo },
+        },
+      }),
+      prisma.category.count({
+        where: {
+          createdAt: { gte: thirtyDaysAgo },
+        },
+      }),
+      prisma.tag.count({
+        where: {
+          createdAt: { gte: thirtyDaysAgo },
+        },
+      }),
+
+      // Previous month data for growth calculation
+      prisma.post.count({
+        where: {
+          isPublished: true,
+          createdAt: {
+            gte: new Date(thirtyDaysAgo.getTime() - 30 * 24 * 60 * 60 * 1000),
+            lt: thirtyDaysAgo,
+          },
+        },
+      }),
+      prisma.user.count({
+        where: {
+          createdAt: {
+            gte: new Date(thirtyDaysAgo.getTime() - 30 * 24 * 60 * 60 * 1000),
+            lt: thirtyDaysAgo,
+          },
+        },
+      }),
+      prisma.category.count({
+        where: {
+          createdAt: {
+            gte: new Date(thirtyDaysAgo.getTime() - 30 * 24 * 60 * 60 * 1000),
+            lt: thirtyDaysAgo,
+          },
+        },
+      }),
+      prisma.tag.count({
+        where: {
+          createdAt: {
+            gte: new Date(thirtyDaysAgo.getTime() - 30 * 24 * 60 * 60 * 1000),
+            lt: thirtyDaysAgo,
+          },
+        },
+      }),
+    ]);
+
+    // Calculate growth percentages
+    const calculateGrowthPercentage = (current: number, previous: number) => {
+      if (previous === 0) return current > 0 ? 100 : 0;
+      return Math.round(((current - previous) / previous) * 100 * 100) / 100;
+    };
+
+    const postsGrowth = calculateGrowthPercentage(
+      newPostsThisMonth,
+      previousMonthPosts
+    );
+    const usersGrowth = calculateGrowthPercentage(
+      newUsersThisMonth,
+      previousMonthUsers
+    );
+    const categoriesGrowth = calculateGrowthPercentage(
+      newCategoriesThisMonth,
+      previousMonthCategories
+    );
+    const tagsGrowth = calculateGrowthPercentage(
+      newTagsThisMonth,
+      previousMonthTags
+    );
+
+    // Get additional insights
+    const [
+      totalViews,
+      totalBookmarks,
+      totalFavorites,
+      popularCategories,
+      recentActivity,
+    ] = await Promise.all([
+      prisma.view.count(),
+      prisma.bookmark.count(),
+      prisma.favorite.count(),
+
+      // Get top 3 most popular categories by post count
+      prisma.category.findMany({
+        select: {
+          id: true,
+          name: true,
+          _count: {
+            select: {
+              posts: {
+                where: { isPublished: true },
+              },
+            },
+          },
+        },
+        orderBy: {
+          posts: {
+            _count: "desc",
+          },
+        },
+        take: 3,
+      }),
+
+      // Get recent activity (last 5 published posts)
+      prisma.post.findMany({
+        where: { isPublished: true },
+        select: {
+          id: true,
+          title: true,
+          createdAt: true,
+          author: {
+            select: {
+              name: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+      }),
+    ]);
+
+    return {
+      success: true,
+      data: {
+        // Main statistics
+        posts: {
+          total: totalPosts,
+          newThisMonth: newPostsThisMonth,
+          growthPercentage: postsGrowth,
+        },
+        users: {
+          total: totalUsers,
+          newThisMonth: newUsersThisMonth,
+          growthPercentage: usersGrowth,
+        },
+        categories: {
+          total: totalCategories,
+          newThisMonth: newCategoriesThisMonth,
+          growthPercentage: categoriesGrowth,
+        },
+        tags: {
+          total: totalTags,
+          newThisMonth: newTagsThisMonth,
+          growthPercentage: tagsGrowth,
+        },
+
+        // Additional insights
+        engagement: {
+          totalViews,
+          totalBookmarks,
+          totalFavorites,
+        },
+        popularCategories,
+        recentActivity,
+      },
+    };
+  } catch (error) {
+    console.error("Get admin dashboard stats error:", error);
+    return {
+      success: false,
+      error: "Failed to load dashboard statistics. Please try again.",
+    };
+  } finally {
+    await prisma.$disconnect();
+  }
+}

@@ -1,7 +1,11 @@
 import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { ChartAreaInteractive } from "@/components/dashboard/user-chart";
 import { DataTable } from "@/components/dashboard/data-table";
-import { SectionCards } from "@/components/dashboard/section-cards";
+import {
+  SectionCards,
+  // EngagementCards,
+  PopularCategoriesCard,
+} from "@/components/dashboard/section-cards";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { UserStatsCards } from "@/components/dashboard/user-stats-cards";
 import { SecurityDashboard } from "@/components/dashboard/security-dashboard";
@@ -11,11 +15,10 @@ import { getCurrentUser } from "@/lib/auth";
 import {
   getUserDashboardStatsAction,
   getUserFavoritesCountAction,
+  getAdminDashboardStatsAction,
 } from "@/actions/users";
 import { redirect } from "next/navigation";
 import { Shield, BarChart3 } from "lucide-react";
-
-import data from "./data.json";
 
 // Force dynamic rendering for this page
 export const dynamic = "force-dynamic";
@@ -108,6 +111,17 @@ export default async function DashboardPage() {
   }
 
   // For ADMIN role, show the admin dashboard with tabs
+  // Fetch admin dashboard statistics
+  const adminDashboardStats = await getAdminDashboardStatsAction();
+
+  // Handle admin dashboard stats error
+  if (!adminDashboardStats.success) {
+    console.error(
+      "Failed to load admin dashboard stats:",
+      adminDashboardStats.error
+    );
+  }
+
   return (
     <SidebarProvider
       style={
@@ -158,10 +172,62 @@ export default async function DashboardPage() {
                     </TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="overview" className="space-y-6">
-                    <SectionCards />
+                  <TabsContent value="overview" className="space-y-3">
+                    {/* Main Dashboard Statistics Cards */}
+                    <SectionCards
+                      dashboardStats={
+                        adminDashboardStats.success
+                          ? adminDashboardStats.data
+                          : undefined
+                      }
+                      isLoading={!adminDashboardStats.success}
+                    />
+
+                    {/* Show error message if stats failed to load */}
+                    {!adminDashboardStats.success && (
+                      <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
+                        <p className="text-sm text-destructive">
+                          <strong>Error loading dashboard statistics:</strong>{" "}
+                          {adminDashboardStats.error}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Dashboard cards are showing loading state. Please
+                          refresh the page to try again.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Engagement Statistics Cards */}
+                    {/* <div>
+                      <EngagementCards
+                        dashboardStats={
+                          adminDashboardStats.success
+                            ? adminDashboardStats.data
+                            : undefined
+                        }
+                        isLoading={!adminDashboardStats.success}
+                      />
+                    </div> */}
+
+                    {/* Popular Categories and Insights */}
+                    <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-2">
+                      <PopularCategoriesCard
+                        dashboardStats={
+                          adminDashboardStats.success
+                            ? adminDashboardStats.data
+                            : undefined
+                        }
+                        isLoading={!adminDashboardStats.success}
+                      />
+
+                      {/* Recent Activity Card (you can implement this later) */}
+                      <div className="@xl/main:col-span-1">
+                        {/* Placeholder for future components like recent activity */}
+                      </div>
+                    </div>
+
                     <ChartAreaInteractive />
-                    <DataTable data={data} />
+                    <DataTable />
                   </TabsContent>
 
                   <TabsContent value="security" className="space-y-6">

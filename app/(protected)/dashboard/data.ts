@@ -127,7 +127,7 @@ const getDataChunk2 = (): DashboardItem[] => [
   },
   {
     id: 13,
-    header: "Past Performance",
+    header: "Content Categories",
     type: "Narrative",
     status: "Done",
     target: "22",
