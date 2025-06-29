@@ -217,6 +217,126 @@ async function _getAllTags(): Promise<TagWithCount[]> {
   });
 }
 
+async function _getTagsPaginated(
+  page: number = 1,
+  pageSize: number = 10,
+  searchQuery?: string,
+  sortBy: "name" | "created" | "posts" = "name"
+): Promise<PaginatedResult<TagWithCount>> {
+  // Ensure valid page and pageSize values
+  const validPage = Math.max(1, page);
+  const validPageSize = Math.max(1, Math.min(100, pageSize)); // Max 100 items per page
+  const skip = (validPage - 1) * validPageSize;
+
+  // Build where clause for search
+  const whereClause = searchQuery
+    ? {
+        OR: [
+          { name: { contains: searchQuery, mode: "insensitive" as const } },
+          { slug: { contains: searchQuery, mode: "insensitive" as const } },
+        ],
+      }
+    : {};
+
+  // Build order by clause for tags
+  let orderBy: { name: "asc" } | { createdAt: "desc" } = { name: "asc" };
+  if (sortBy === "created") {
+    orderBy = { createdAt: "desc" };
+  }
+  // Note: Sorting by post count will be handled after the query since
+  // Prisma doesn't support direct ordering by _count for related models
+
+  // Use Promise.all for parallel execution to improve performance
+  const [totalCount, rawTags] = await Promise.all([
+    // Get total count for pagination metadata
+    prisma.tag.count({
+      where: whereClause,
+    }),
+    // Get tags without pagination first if sorting by posts, otherwise with pagination
+    sortBy === "posts"
+      ? prisma.tag.findMany({
+          where: whereClause,
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            createdAt: true,
+            _count: {
+              select: {
+                posts: true,
+              },
+            },
+          },
+          orderBy: { name: "asc" }, // Default order first
+        })
+      : prisma.tag.findMany({
+          where: whereClause,
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            createdAt: true,
+            _count: {
+              select: {
+                posts: true,
+              },
+            },
+          },
+          orderBy,
+          skip,
+          take: validPageSize,
+        }),
+  ]);
+
+  // Handle manual sorting and pagination for post count
+  let tags = rawTags;
+  if (sortBy === "posts") {
+    // Sort by post count manually
+    tags = rawTags
+      .sort((a, b) => b._count.posts - a._count.posts)
+      .slice(skip, skip + validPageSize);
+  }
+
+  const totalPages = Math.ceil(totalCount / validPageSize);
+  const hasNextPage = validPage < totalPages;
+  const hasPreviousPage = validPage > 1;
+
+  return {
+    data: tags,
+    totalCount,
+    totalPages,
+    currentPage: validPage,
+    pageSize: validPageSize,
+    hasNextPage,
+    hasPreviousPage,
+  };
+}
+
+async function _searchTags(query: string): Promise<TagWithCount[]> {
+  return await prisma.tag.findMany({
+    where: {
+      OR: [
+        { name: { contains: query, mode: "insensitive" } },
+        { slug: { contains: query, mode: "insensitive" } },
+      ],
+    },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      createdAt: true,
+      _count: {
+        select: {
+          posts: true,
+        },
+      },
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+}
+
 async function _getPostsByCategory(
   categorySlug: string,
   includeUnpublished = false
@@ -285,6 +405,20 @@ export const getAllTags = createCachedFunction(
   "get-all-tags",
   CACHE_DURATIONS.STATIC_DATA,
   [CACHE_TAGS.TAGS]
+);
+
+export const getTagsPaginated = createCachedFunction(
+  _getTagsPaginated,
+  "get-tags-paginated",
+  CACHE_DURATIONS.STATIC_DATA,
+  [CACHE_TAGS.TAGS]
+);
+
+export const searchTags = createCachedFunction(
+  _searchTags,
+  "search-tags",
+  CACHE_DURATIONS.SEARCH,
+  [CACHE_TAGS.SEARCH_RESULTS]
 );
 
 // Cached versions for posts by category
