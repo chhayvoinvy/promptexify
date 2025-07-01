@@ -56,6 +56,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Calendar } from "lucide-react";
 
 // User activity schema for the user activity data
 export const userActivitySchema = z.object({
@@ -155,14 +156,9 @@ const userActivityColumns: ColumnDef<z.infer<typeof userActivitySchema>>[] = [
     accessorKey: "lastLogin",
     header: "Last Login",
     cell: ({ row }) => (
-      <div className="text-sm text-muted-foreground">
-        {row.original.lastLogin
-          ? new Intl.DateTimeFormat("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            }).format(new Date(row.original.lastLogin))
-          : "Never"}
+      <div className="text-sm text-muted-foreground flex items-center gap-1">
+        <Calendar className="h-3 w-3" />
+        {new Date(row.original.lastLogin || new Date()).toLocaleString()}
       </div>
     ),
   },
