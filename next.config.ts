@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 import { withContentlayer } from "next-contentlayer2";
 
 const nextConfig: NextConfig = {
+  // Enable standalone output for Docker production builds
+  output: "standalone",
   images: {
     remotePatterns: [
       {
