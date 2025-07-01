@@ -11,19 +11,21 @@ import { sanitizeSearchQuery, SECURITY_HEADERS } from "@/lib/sanitize";
 
 interface WhereClause {
   isPublished: boolean;
-  OR?: Array<{
-    title?: { contains: string; mode: "insensitive" };
-    description?: { contains: string; mode: "insensitive" };
-    content?: { contains: string; mode: "insensitive" };
-    tags?: {
-      some: {
-        name: { contains: string; mode: "insensitive" };
+  AND?: Array<{
+    OR?: Array<{
+      title?: { contains: string; mode: "insensitive" };
+      description?: { contains: string; mode: "insensitive" };
+      content?: { contains: string; mode: "insensitive" };
+      tags?: {
+        some: {
+          name: { contains: string; mode: "insensitive" };
+        };
       };
-    };
-    category?: {
-      slug?: string;
-      parent?: { slug: string };
-    };
+      category?: {
+        slug?: string;
+        parent?: { slug: string };
+      };
+    }>;
   }>;
   isPremium?: boolean;
 }
@@ -243,22 +245,25 @@ export async function GET(request: NextRequest) {
     // Build where clause for filtering
     const whereClause: WhereClause = {
       isPublished: true,
+      AND: [],
     };
 
     // Search filter - only if search term provided and not empty after sanitization
     if (sanitizedSearch && sanitizedSearch.length > 0) {
-      whereClause.OR = [
-        { title: { contains: sanitizedSearch, mode: "insensitive" } },
-        { description: { contains: sanitizedSearch, mode: "insensitive" } },
-        { content: { contains: sanitizedSearch, mode: "insensitive" } },
-        {
-          tags: {
-            some: {
-              name: { contains: sanitizedSearch, mode: "insensitive" },
+      whereClause.AND!.push({
+        OR: [
+          { title: { contains: sanitizedSearch, mode: "insensitive" } },
+          { description: { contains: sanitizedSearch, mode: "insensitive" } },
+          { content: { contains: sanitizedSearch, mode: "insensitive" } },
+          {
+            tags: {
+              some: {
+                name: { contains: sanitizedSearch, mode: "insensitive" },
+              },
             },
           },
-        },
-      ];
+        ],
+      });
     }
 
     // Category and subcategory filter with validation
@@ -274,7 +279,12 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      whereClause.OR = whereClause.OR || [];
+      const categoryConditions: Array<{
+        category?: {
+          slug?: string;
+          parent?: { slug: string };
+        };
+      }> = [];
 
       if (subcategory && subcategory !== "all") {
         // Validate subcategory slug format
@@ -289,14 +299,18 @@ export async function GET(request: NextRequest) {
         }
 
         // Filter by specific subcategory
-        whereClause.OR.push({ category: { slug: subcategory } });
+        categoryConditions.push({ category: { slug: subcategory } });
       } else {
         // Filter by parent category (includes all its subcategories)
-        whereClause.OR.push(
+        categoryConditions.push(
           { category: { slug: category } },
           { category: { parent: { slug: category } } }
         );
       }
+
+      whereClause.AND!.push({
+        OR: categoryConditions,
+      });
     }
 
     // Premium filter
@@ -307,6 +321,11 @@ export async function GET(request: NextRequest) {
         whereClause.isPremium = true;
       }
       // "all" or invalid values are ignored
+    }
+
+    // Clean up empty AND array to avoid unnecessary nesting
+    if (whereClause.AND && whereClause.AND.length === 0) {
+      delete whereClause.AND;
     }
 
     // Get posts and total count using optimized function

@@ -15,19 +15,21 @@ const prisma = new PrismaClient();
 
 interface WhereClause {
   isPublished: boolean;
-  OR?: Array<{
-    title?: { contains: string; mode: "insensitive" };
-    description?: { contains: string; mode: "insensitive" };
-    content?: { contains: string; mode: "insensitive" };
-    tags?: {
-      some: {
-        name: { contains: string; mode: "insensitive" };
+  AND?: Array<{
+    OR?: Array<{
+      title?: { contains: string; mode: "insensitive" };
+      description?: { contains: string; mode: "insensitive" };
+      content?: { contains: string; mode: "insensitive" };
+      tags?: {
+        some: {
+          name: { contains: string; mode: "insensitive" };
+        };
       };
-    };
-    category?: {
-      slug?: string;
-      parent?: { slug: string };
-    };
+      category?: {
+        slug?: string;
+        parent?: { slug: string };
+      };
+    }>;
   }>;
   isPremium?: boolean;
 }
@@ -156,38 +158,50 @@ async function DirectoryContent({
   // Build where clause for filtering (same as API)
   const whereClause: WhereClause = {
     isPublished: true,
+    AND: [],
   };
 
   // Search filter
   if (searchQuery) {
-    whereClause.OR = [
-      { title: { contains: searchQuery, mode: "insensitive" } },
-      { description: { contains: searchQuery, mode: "insensitive" } },
-      { content: { contains: searchQuery, mode: "insensitive" } },
-      {
-        tags: {
-          some: {
-            name: { contains: searchQuery, mode: "insensitive" },
+    whereClause.AND!.push({
+      OR: [
+        { title: { contains: searchQuery, mode: "insensitive" } },
+        { description: { contains: searchQuery, mode: "insensitive" } },
+        { content: { contains: searchQuery, mode: "insensitive" } },
+        {
+          tags: {
+            some: {
+              name: { contains: searchQuery, mode: "insensitive" },
+            },
           },
         },
-      },
-    ];
+      ],
+    });
   }
 
   // Category and subcategory filter
   if (categoryFilter && categoryFilter !== "all") {
-    whereClause.OR = whereClause.OR || [];
+    const categoryConditions: Array<{
+      category?: {
+        slug?: string;
+        parent?: { slug: string };
+      };
+    }> = [];
 
     if (subcategoryFilter && subcategoryFilter !== "all") {
       // Filter by specific subcategory
-      whereClause.OR.push({ category: { slug: subcategoryFilter } });
+      categoryConditions.push({ category: { slug: subcategoryFilter } });
     } else {
       // Filter by parent category (includes all its subcategories)
-      whereClause.OR.push(
+      categoryConditions.push(
         { category: { slug: categoryFilter } },
         { category: { parent: { slug: categoryFilter } } }
       );
     }
+
+    whereClause.AND!.push({
+      OR: categoryConditions,
+    });
   }
 
   // Premium filter
@@ -197,6 +211,11 @@ async function DirectoryContent({
     } else if (premiumFilter === "premium") {
       whereClause.isPremium = true;
     }
+  }
+
+  // Clean up empty AND array to avoid unnecessary nesting
+  if (whereClause.AND && whereClause.AND.length === 0) {
+    delete whereClause.AND;
   }
 
   // Get initial posts (first page) and total count
