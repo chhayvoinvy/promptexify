@@ -1,5 +1,7 @@
 # Docker Setup for Promptexify
 
+# For Local Development use ONLY docker-compose.dev.yml
+
 This directory contains Docker configuration files for running Promptexify in a containerized environment.
 
 ## Prerequisites

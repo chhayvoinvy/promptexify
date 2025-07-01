@@ -14,6 +14,8 @@ services:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
+      # Update base URL for different port
+      - NEXT_PUBLIC_BASE_URL=https://promptexify.dev:8443
     # Add development volumes for hot reloading
     volumes:
       - .:/app
@@ -24,6 +26,22 @@ services:
       - "3000:3000"
       - "24678:24678" # Next.js fast refresh
     command: npm run dev
+
+  # Override nginx to use different ports
+  nginx:
+    image: nginx:alpine
+    container_name: promptexify-nginx
+    ports:
+      - "8080:80" # HTTP on port 8080
+      - "8443:443" # HTTPS on port 8443
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - /Users/chhayvoinvy/.ssl/promptexify.dev:/etc/ssl/certs
+    networks:
+      - promptexify-network
+    depends_on:
+      - app
+    restart: unless-stopped
 
   # Development-specific database configuration
   postgres:
