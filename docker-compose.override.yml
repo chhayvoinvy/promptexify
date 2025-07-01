@@ -2,8 +2,6 @@
 # This file provides development-specific overrides when you want to switch to development mode
 # Use: docker-compose -f docker-compose.yml -f docker-compose.override.yml up
 
-version: "3.8"
-
 services:
   app:
     build:
