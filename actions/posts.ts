@@ -134,11 +134,12 @@ export const createPostAction = withCSRFProtection(
         },
       });
 
-      // Revalidate cache tags for posts
+      // Revalidate cache tags for posts and tags (since tags may have been created)
       revalidateCache([
         CACHE_TAGS.POSTS,
         CACHE_TAGS.POST_BY_SLUG,
         CACHE_TAGS.CATEGORIES,
+        CACHE_TAGS.TAGS, // Important: Invalidate tags cache when new tags are created
         CACHE_TAGS.SEARCH_RESULTS,
       ]);
 
@@ -147,6 +148,7 @@ export const createPostAction = withCSRFProtection(
         CACHE_TAGS.POSTS,
         CACHE_TAGS.POST_BY_SLUG,
         CACHE_TAGS.POST_BY_ID,
+        CACHE_TAGS.TAGS, // Important: Invalidate tags cache when new tags are created
         CACHE_TAGS.SEARCH_RESULTS,
       ]);
 
@@ -307,11 +309,12 @@ export const updatePostAction = withCSRFProtection(
 
       revalidatePath("/dashboard/posts");
       revalidatePath(`/entry/${id}`);
-      // Revalidate cache tags for updated post
+      // Revalidate cache tags for updated post and tags (since tags may have been created)
       revalidateCache([
         CACHE_TAGS.POSTS,
         CACHE_TAGS.POST_BY_SLUG,
         CACHE_TAGS.POST_BY_ID,
+        CACHE_TAGS.TAGS, // Important: Invalidate tags cache when new tags are created during updates
         CACHE_TAGS.SEARCH_RESULTS,
       ]);
 
@@ -377,10 +380,19 @@ export async function approvePostAction(postId: string) {
       },
     });
 
-    // Revalidate relevant paths
+    // Revalidate relevant paths and caches
     revalidatePath("/dashboard/posts");
     revalidatePath(`/entry/${postId}`);
+    revalidatePath(`/dashboard/posts/edit/${postId}`); // Important: Revalidate edit page
     revalidatePath("/"); // Home page might show published posts
+
+    // Invalidate cache for this specific post so edit page shows updated status
+    revalidateCache([
+      CACHE_TAGS.POSTS,
+      CACHE_TAGS.POST_BY_ID,
+      CACHE_TAGS.POST_BY_SLUG,
+      CACHE_TAGS.SEARCH_RESULTS,
+    ]);
 
     return {
       success: true,
@@ -435,8 +447,17 @@ export async function rejectPostAction(postId: string) {
       },
     });
 
-    // Revalidate relevant paths
+    // Revalidate relevant paths and caches
     revalidatePath("/dashboard/posts");
+    revalidatePath(`/dashboard/posts/edit/${postId}`); // Important: Revalidate edit page
+
+    // Invalidate cache for this specific post so edit page shows updated status
+    revalidateCache([
+      CACHE_TAGS.POSTS,
+      CACHE_TAGS.POST_BY_ID,
+      CACHE_TAGS.POST_BY_SLUG,
+      CACHE_TAGS.SEARCH_RESULTS,
+    ]);
 
     return {
       success: true,
@@ -493,10 +514,19 @@ export async function togglePostPublishAction(postId: string) {
       },
     });
 
-    // Revalidate relevant paths
+    // Revalidate relevant paths and caches
     revalidatePath("/dashboard/posts");
     revalidatePath(`/entry/${postId}`);
+    revalidatePath(`/dashboard/posts/edit/${postId}`); // Important: Revalidate edit page
     revalidatePath("/"); // Home page might show published posts
+
+    // Invalidate cache for this specific post so edit page shows updated status
+    revalidateCache([
+      CACHE_TAGS.POSTS,
+      CACHE_TAGS.POST_BY_ID,
+      CACHE_TAGS.POST_BY_SLUG,
+      CACHE_TAGS.SEARCH_RESULTS,
+    ]);
 
     return {
       success: true,
@@ -551,10 +581,19 @@ export async function togglePostFeaturedAction(postId: string) {
       },
     });
 
-    // Revalidate relevant paths
+    // Revalidate relevant paths and caches
     revalidatePath("/dashboard/posts");
     revalidatePath(`/entry/${postId}`);
+    revalidatePath(`/dashboard/posts/edit/${postId}`); // Important: Revalidate edit page
     revalidatePath("/"); // Home page might show featured posts
+
+    // Invalidate cache for this specific post so edit page shows updated status
+    revalidateCache([
+      CACHE_TAGS.POSTS,
+      CACHE_TAGS.POST_BY_ID,
+      CACHE_TAGS.POST_BY_SLUG,
+      CACHE_TAGS.SEARCH_RESULTS,
+    ]);
 
     return {
       success: true,
@@ -638,10 +677,18 @@ export async function deletePostAction(postId: string) {
       where: { id: postId },
     });
 
-    // Revalidate relevant paths
+    // Revalidate relevant paths and caches
     revalidatePath("/dashboard/posts");
     revalidatePath("/"); // Home page might show this post
     revalidatePath("/directory"); // Directory page might show this post
+
+    // Invalidate cache since post has been deleted
+    revalidateCache([
+      CACHE_TAGS.POSTS,
+      CACHE_TAGS.POST_BY_ID,
+      CACHE_TAGS.POST_BY_SLUG,
+      CACHE_TAGS.SEARCH_RESULTS,
+    ]);
 
     return {
       success: true,

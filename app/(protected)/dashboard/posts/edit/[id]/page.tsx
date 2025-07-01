@@ -34,7 +34,11 @@ interface Category {
   id: string;
   name: string;
   slug: string;
-  parent?: string;
+  parent?: {
+    id: string;
+    name: string;
+    slug: string;
+  };
 }
 
 interface Tag {
@@ -76,6 +80,7 @@ export default function EditPostPage() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [pendingTags, setPendingTags] = useState<string[]>([]); // New state for pending tags
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [featuredImageUrl, setFeaturedImageUrl] = useState("");
   const [featuredVideoUrl, setFeaturedVideoUrl] = useState("");
   const [originalImageUrl, setOriginalImageUrl] = useState("");
@@ -160,6 +165,10 @@ export default function EditPostPage() {
         setOriginalImageUrl(postData.featuredImage || "");
         setOriginalVideoUrl(postData.featuredVideo || "");
         setPostTitle(postData.title || "");
+        // Set the selected category (parent category if current is child, or current if parent)
+        setSelectedCategory(
+          postData.category.parent?.slug || postData.category.slug
+        );
       } catch (error) {
         console.error("Error fetching data:", error);
         setError("Failed to load post data");
@@ -409,6 +418,17 @@ export default function EditPostPage() {
     setPostTitle(title);
   }
 
+  function handleCategoryChange(categorySlug: string) {
+    setSelectedCategory(categorySlug);
+    // Reset subcategory when parent category changes
+    const subcategorySelect = document.querySelector(
+      '[name="subcategory"]'
+    ) as HTMLSelectElement;
+    if (subcategorySelect) {
+      subcategorySelect.value = "none";
+    }
+  }
+
   // Show loading state
   if (loading || isLoading || !user) {
     return (
@@ -594,6 +614,7 @@ export default function EditPostPage() {
                       }
                       required
                       disabled={isSubmitting}
+                      onValueChange={handleCategoryChange}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select category" />
@@ -604,13 +625,6 @@ export default function EditPostPage() {
                             {category.name}
                           </SelectItem>
                         ))}
-                        {categories
-                          .filter((cat) => cat.parent)
-                          .map((category) => (
-                            <SelectItem key={category.id} value={category.slug}>
-                              {category.name}
-                            </SelectItem>
-                          ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -630,7 +644,9 @@ export default function EditPostPage() {
                       <SelectContent>
                         <SelectItem value="none">No sub category</SelectItem>
                         {categories
-                          .filter((cat) => cat.parent)
+                          .filter(
+                            (cat) => cat.parent?.slug === selectedCategory
+                          )
                           .map((category) => (
                             <SelectItem key={category.id} value={category.slug}>
                               {category.name}

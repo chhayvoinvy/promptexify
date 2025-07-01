@@ -31,7 +31,11 @@ interface Category {
   id: string;
   name: string;
   slug: string;
-  parent?: string;
+  parent?: {
+    id: string;
+    name: string;
+    slug: string;
+  };
 }
 
 interface Tag {
@@ -51,6 +55,7 @@ export default function NewPostPage() {
   const [postTitle, setPostTitle] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [pendingTags, setPendingTags] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Redirect if not authenticated or not authorized
@@ -293,6 +298,17 @@ export default function NewPostPage() {
     }
   }
 
+  function handleCategoryChange(categorySlug: string) {
+    setSelectedCategory(categorySlug);
+    // Reset subcategory when parent category changes
+    const subcategorySelect = document.querySelector(
+      '[name="subcategory"]'
+    ) as HTMLSelectElement;
+    if (subcategorySelect) {
+      subcategorySelect.value = "none";
+    }
+  }
+
   // Show loading state
   if (loading || !user) {
     return (
@@ -423,7 +439,12 @@ export default function NewPostPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="category">Category *</Label>
-                    <Select name="category" required disabled={isSubmitting}>
+                    <Select
+                      name="category"
+                      required
+                      disabled={isSubmitting}
+                      onValueChange={handleCategoryChange}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
@@ -433,13 +454,6 @@ export default function NewPostPage() {
                             {category.name}
                           </SelectItem>
                         ))}
-                        {categories
-                          .filter((cat) => cat.parent)
-                          .map((category) => (
-                            <SelectItem key={category.id} value={category.slug}>
-                              {category.name}
-                            </SelectItem>
-                          ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -453,7 +467,9 @@ export default function NewPostPage() {
                       <SelectContent>
                         <SelectItem value="none">No sub category</SelectItem>
                         {categories
-                          .filter((cat) => cat.parent)
+                          .filter(
+                            (cat) => cat.parent?.slug === selectedCategory
+                          )
                           .map((category) => (
                             <SelectItem key={category.id} value={category.slug}>
                               {category.name}

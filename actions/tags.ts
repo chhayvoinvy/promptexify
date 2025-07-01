@@ -11,6 +11,7 @@ import {
   validateTagSlug,
 } from "@/lib/sanitize";
 import { withCSRFProtection } from "@/lib/security";
+import { revalidateCache, CACHE_TAGS } from "@/lib/cache";
 
 // Define return types for consistent error handling
 interface ActionResult {
@@ -128,6 +129,8 @@ export const createTagAction = withCSRFProtection(
         },
       });
 
+      // Invalidate tags cache so new tag appears immediately
+      revalidateCache(CACHE_TAGS.TAGS);
       revalidatePath("/dashboard/tags");
 
       // Return success before redirect
@@ -268,6 +271,8 @@ export const updateTagAction = withCSRFProtection(
         },
       });
 
+      // Invalidate tags cache so updated tag appears immediately
+      revalidateCache(CACHE_TAGS.TAGS);
       revalidatePath("/dashboard/tags");
       redirect("/dashboard/tags");
     } catch (error) {
@@ -337,6 +342,8 @@ export const deleteTagAction = withCSRFProtection(
         where: { id },
       });
 
+      // Invalidate tags cache so deleted tag is removed immediately
+      revalidateCache(CACHE_TAGS.TAGS);
       revalidatePath("/dashboard/tags");
       return {
         success: true,

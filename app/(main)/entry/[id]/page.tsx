@@ -1,12 +1,9 @@
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
-import { incrementPostView, getRelatedPosts } from "@/lib/content";
+import { incrementPostView, getRelatedPosts, getPostById } from "@/lib/content";
 import { PostModal } from "@/components/post-modal";
-import { PrismaClient } from "@/lib/generated/prisma";
 import { PostStandalonePage } from "@/components/post-standalone-page";
 import { getCurrentUser } from "@/lib/auth";
-
-const prisma = new PrismaClient();
 
 interface PostPageProps {
   params: Promise<{
@@ -17,6 +14,28 @@ interface PostPageProps {
   }>;
 }
 
+// Generate static params for popular posts at build time
+export async function generateStaticParams() {
+  try {
+    // Use the getAllPosts function for build time static generation
+    const { getAllPosts } = await import("@/lib/content");
+    const allPosts = await getAllPosts(false); // Only published posts
+
+    // Filter for popular posts (featured or high view count)
+    const popularPosts = allPosts
+      .filter((post) => post.isFeatured || post.viewCount >= 100)
+      .slice(0, 100); // Generate static pages for top 100 posts
+
+    return popularPosts.map((post) => ({
+      id: post.id,
+    }));
+  } catch (error) {
+    console.error("Error in generateStaticParams:", error);
+    // Return empty array to avoid build failures
+    return [];
+  }
+}
+
 export default async function PostPage({
   params,
   searchParams,
@@ -25,43 +44,8 @@ export default async function PostPage({
   const { id } = await params;
   const { modal } = await searchParams;
 
-  // Find post by ID
-  const post = await prisma.post.findUnique({
-    where: { id },
-    include: {
-      author: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          avatar: true,
-        },
-      },
-      category: {
-        include: {
-          parent: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-            },
-          },
-        },
-      },
-      tags: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-        },
-      },
-      _count: {
-        select: {
-          views: true,
-        },
-      },
-    },
-  });
+  // Use cached function instead of direct Prisma call
+  const post = await getPostById(id);
 
   if (!post || !post.isPublished) {
     notFound();

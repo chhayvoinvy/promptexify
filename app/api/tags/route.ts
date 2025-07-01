@@ -14,6 +14,7 @@ import {
   validateTagSlug,
   SECURITY_HEADERS,
 } from "@/lib/sanitize";
+import { revalidateCache, CACHE_TAGS } from "@/lib/cache";
 
 export async function GET(request: Request) {
   try {
@@ -68,12 +69,18 @@ export async function GET(request: Request) {
     // Fetch tags
     const tags = await getAllTags();
 
-    return NextResponse.json(tags, {
-      headers: {
-        ...SECURITY_HEADERS,
-        ...getRateLimitHeaders(rateLimitResult),
-      },
-    });
+    return NextResponse.json(
+      { tags },
+      {
+        status: 200,
+        headers: {
+          ...SECURITY_HEADERS,
+          ...getRateLimitHeaders(rateLimitResult),
+          // Cache for 5 minutes since tags don't change frequently
+          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+        },
+      }
+    );
   } catch (error) {
     console.error("Tags API error:", error);
     return NextResponse.json(
@@ -255,6 +262,9 @@ export async function POST(request: Request) {
         slug: finalSlug,
       },
     });
+
+    // Invalidate tags cache so new tag appears immediately
+    revalidateCache(CACHE_TAGS.TAGS);
 
     return NextResponse.json(newTag, {
       status: 201,

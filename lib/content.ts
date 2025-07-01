@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import fs from "fs";
 import path from "path";
 import { createCachedFunction, CACHE_TAGS, CACHE_DURATIONS } from "@/lib/cache";
+import { cache } from "react";
 
 export interface PostWithDetails {
   id: string;
@@ -123,47 +124,25 @@ const fullPostSelect = {
   content: true,
 } as const;
 
-// Internal uncached functions
-async function _getAllPosts(
-  includeUnpublished = false
-): Promise<PostWithDetails[]> {
-  const posts = await prisma.post.findMany({
+// React cache for request memoization - deduplicates calls within a single request
+const getPostByIdMemoized = cache(async (id: string) => {
+  return await prisma.post.findUnique({
+    where: { id },
+    select: fullPostSelect,
+  });
+});
+
+const getAllPostsMemoized = cache(async (includeUnpublished = false) => {
+  return await prisma.post.findMany({
     where: includeUnpublished ? {} : { isPublished: true },
     select: fullPostSelect,
     orderBy: {
       createdAt: "desc",
     },
   });
+});
 
-  return posts;
-}
-
-async function _getPostById(id: string): Promise<PostWithDetails | null> {
-  const post = await prisma.post.findUnique({
-    where: { id },
-    select: fullPostSelect,
-  });
-
-  return post;
-}
-
-// Cached versions of the functions
-export const getAllPosts = createCachedFunction(
-  _getAllPosts,
-  "get-all-posts",
-  CACHE_DURATIONS.POSTS_LIST,
-  [CACHE_TAGS.POSTS]
-);
-
-export const getPostById = createCachedFunction(
-  _getPostById,
-  "get-post-by-id",
-  CACHE_DURATIONS.POST_DETAIL,
-  [CACHE_TAGS.POST_BY_ID]
-);
-
-// Internal uncached functions for categories and tags
-async function _getAllCategories() {
+const getAllCategoriesMemoized = cache(async () => {
   return await prisma.category.findMany({
     select: {
       id: true,
@@ -196,9 +175,9 @@ async function _getAllCategories() {
       name: "asc",
     },
   });
-}
+});
 
-async function _getAllTags(): Promise<TagWithCount[]> {
+const getAllTagsMemoized = cache(async () => {
   return await prisma.tag.findMany({
     select: {
       id: true,
@@ -215,6 +194,41 @@ async function _getAllTags(): Promise<TagWithCount[]> {
       name: "asc",
     },
   });
+});
+
+// Internal uncached functions that use memoized versions for request deduplication
+async function _getAllPosts(
+  includeUnpublished = false
+): Promise<PostWithDetails[]> {
+  return await getAllPostsMemoized(includeUnpublished);
+}
+
+async function _getPostById(id: string): Promise<PostWithDetails | null> {
+  return await getPostByIdMemoized(id);
+}
+
+// Cached versions of the functions
+export const getAllPosts = createCachedFunction(
+  _getAllPosts,
+  "get-all-posts",
+  CACHE_DURATIONS.POSTS_LIST,
+  [CACHE_TAGS.POSTS]
+);
+
+export const getPostById = createCachedFunction(
+  _getPostById,
+  "get-post-by-id",
+  CACHE_DURATIONS.POST_DETAIL,
+  [CACHE_TAGS.POST_BY_ID]
+);
+
+// Internal uncached functions for categories and tags that use memoized versions
+async function _getAllCategories() {
+  return await getAllCategoriesMemoized();
+}
+
+async function _getAllTags(): Promise<TagWithCount[]> {
+  return await getAllTagsMemoized();
 }
 
 async function _getTagsPaginated(

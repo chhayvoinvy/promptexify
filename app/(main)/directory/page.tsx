@@ -86,6 +86,9 @@ interface DirectoryPageProps {
   }>;
 }
 
+// Route segment config for better caching
+export const revalidate = 300; // Revalidate every 5 minutes (matches CACHE_DURATIONS.POSTS_LIST)
+
 // Directory page skeleton that matches the full layout
 function DirectoryPageSkeleton() {
   return (

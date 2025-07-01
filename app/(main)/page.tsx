@@ -13,6 +13,9 @@ import { cn } from "@/lib/utils";
 import { CtaSection } from "@/components/cta-section";
 import { Container } from "@/components/ui/container";
 
+// Route segment config for better caching
+export const revalidate = 300; // Revalidate every 5 minutes (matches CACHE_DURATIONS.POSTS_LIST)
+
 interface SearchProps {
   searchParams: Promise<{
     q?: string;
