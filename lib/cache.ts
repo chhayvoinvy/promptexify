@@ -84,49 +84,20 @@ class MemoryCache implements CacheStore {
  */
 class RedisCache implements CacheStore {
   private redis: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
-  private isInitializing = false;
 
   private async getRedis() {
-    if (this.redis) return this.redis;
-
-    // Prevent multiple initialization attempts
-    if (this.isInitializing) {
-      // Wait for the initialization to complete
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      return this.redis;
-    }
-
-    if (typeof window === "undefined") {
-      this.isInitializing = true;
+    if (!this.redis && typeof window === "undefined") {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const { Redis } = require("ioredis");
+        // eslint-disable-next-line import/no-unresolved
+        const { Redis } = await import("ioredis");
+
+        // Redis connection configuration with multiple auth options
         const redisConfig = this.getRedisConfig();
 
-        if (redisConfig) {
-          this.redis = new Redis(redisConfig);
-          console.log("✅ Redis client configured.");
-
-          this.redis.on("error", (err: Error) => {
-            console.error("Redis Client Error", err);
-          });
-
-          this.redis.on("connect", () => {
-            console.log("Redis client connected successfully.");
-          });
-        } else {
-          console.warn(
-            "Redis configuration not found. Falling back to memory cache."
-          );
-        }
-      } catch (error) {
-        console.warn(
-          "Redis not available, falling back to memory cache",
-          error
-        );
-        this.redis = null;
-      } finally {
-        this.isInitializing = false;
+        this.redis = new Redis(redisConfig);
+      } catch {
+        console.warn("Redis not available, falling back to memory cache");
+        return null;
       }
     }
     return this.redis;
@@ -137,12 +108,19 @@ class RedisCache implements CacheStore {
    */
   private getRedisConfig() {
     const redisUrl = process.env.REDIS_URL;
-    console.log(
-      `[Cache] Attempting to configure Redis. REDIS_URL found: ${!!redisUrl}`
-    );
+    const redisPassword = process.env.REDIS_PASSWORD;
+    const redisUsername = process.env.REDIS_USERNAME;
+    const redisHost = process.env.REDIS_HOST;
+    const redisPort = process.env.REDIS_PORT;
+    const redisDb = process.env.REDIS_DB;
 
-    // Option 1: Use REDIS_URL if provided and not empty
-    if (redisUrl && redisUrl.trim() !== "") {
+    // Option 1: Use REDIS_URL if provided (can contain auth info)
+    if (redisUrl) {
+      // REDIS_URL formats:
+      // redis://username:password@host:port/db
+      // redis://:password@host:port/db
+      // redis://host:port/db
+      // rediss://username:password@host:port/db (TLS)
       return {
         url: redisUrl,
         retryDelayOnFailover: 100,
@@ -150,26 +128,16 @@ class RedisCache implements CacheStore {
         lazyConnect: true,
         connectTimeout: 10000,
         commandTimeout: 5000,
+        // Additional options for production reliability
         enableReadyCheck: true,
         maxLoadingTimeout: 2000,
       };
     }
 
     // Option 2: Use individual environment variables
-    const redisHost = process.env.REDIS_HOST;
-    console.log(
-      `[Cache] REDIS_URL not provided or empty. REDIS_HOST found: ${!!redisHost}`
-    );
-
-    if (!redisHost) {
-      console.warn("[Cache] REDIS_HOST not set. Cannot configure Redis.");
-      return null;
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const config: Record<string, any> = {
-      host: redisHost,
-      port: parseInt(process.env.REDIS_PORT || "6379", 10),
+    const config: Record<string, unknown> = {
+      host: redisHost || "localhost",
+      port: parseInt(redisPort || "6379", 10),
       retryDelayOnFailover: 100,
       maxRetriesPerRequest: 3,
       lazyConnect: true,
@@ -179,21 +147,28 @@ class RedisCache implements CacheStore {
       maxLoadingTimeout: 2000,
     };
 
-    if (process.env.REDIS_PASSWORD) {
-      config.password = process.env.REDIS_PASSWORD;
+    // Add authentication if provided
+    if (redisPassword) {
+      config.password = redisPassword;
     }
-    if (process.env.REDIS_USERNAME) {
-      config.username = process.env.REDIS_USERNAME;
+
+    if (redisUsername) {
+      config.username = redisUsername;
     }
-    if (process.env.REDIS_DB) {
-      config.db = parseInt(process.env.REDIS_DB, 10);
+
+    // Add database selection if provided
+    if (redisDb) {
+      config.db = parseInt(redisDb, 10);
     }
+
+    // TLS configuration for secure connections
     if (process.env.REDIS_TLS === "true") {
       config.tls = {
         rejectUnauthorized:
           process.env.REDIS_TLS_REJECT_UNAUTHORIZED !== "false",
       };
     }
+
     return config;
   }
 
@@ -243,23 +218,9 @@ class RedisCache implements CacheStore {
     if (!redis) return;
 
     try {
-      const stream = redis.scanStream({
-        match: pattern,
-        count: 100,
-      });
-
-      const keys: string[] = [];
-      stream.on("data", (resultKeys: string[]) => {
-        keys.push(...resultKeys);
-      });
-
-      await new Promise((resolve, reject) => {
-        stream.on("end", resolve);
-        stream.on("error", reject);
-      });
-
+      const keys = await redis.keys(pattern);
       if (keys.length > 0) {
-        await redis.del(keys);
+        await redis.del(...keys);
       }
     } catch (error) {
       console.warn("Redis clear error:", error);

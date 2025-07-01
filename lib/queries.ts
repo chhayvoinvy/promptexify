@@ -362,7 +362,7 @@ export class PostQueries {
 
       // Transform posts to include interaction status
       const transformedPosts: PostWithInteractions[] = posts.map((post) => {
-        const { bookmarks, favorites, ...rest } = post as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+        const { bookmarks, favorites, ...rest } = post as any;
         return {
           ...rest,
           isBookmarked: userId ? bookmarks?.length > 0 : undefined,
@@ -462,7 +462,7 @@ export class PostQueries {
 
       // Transform posts to include interaction status
       const transformedPosts: PostWithInteractions[] = posts.map((post) => {
-        const { bookmarks, favorites, ...rest } = post as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+        const { bookmarks, favorites, ...rest } = post as any;
         return {
           ...rest,
           isBookmarked: userId ? bookmarks?.length > 0 : undefined,
@@ -576,7 +576,7 @@ export class PostQueries {
     const endTimer = DatabaseMetrics.startQuery();
 
     try {
-      return (await prisma.post.findFirst({
+      return (await prisma.post.findUnique({
         where: { slug },
         select: {
           ...POST_SELECTS.full,
