@@ -2,19 +2,16 @@ import { prisma } from "@/lib/prisma";
 import { CacheMetrics, warmCache } from "@/lib/cache";
 import { DatabaseMetrics } from "@/lib/prisma";
 
-export interface PerformanceMetrics {
-  queryTime: number;
-  cacheHit: boolean;
-  itemCount: number;
-  timestamp: Date;
-  operation: string;
-}
-
 /**
  * Performance monitoring and optimization utilities
  */
 
 interface PerformanceMetrics {
+  queryTime: number;
+  cacheHit: boolean;
+  itemCount: number;
+  timestamp: Date;
+  operation: string;
   cache: {
     hits: number;
     misses: number;
@@ -52,6 +49,22 @@ export async function measurePerformance<T>(
       itemCount: Array.isArray(result) ? result.length : 1,
       timestamp: new Date(),
       operation,
+      cache: {
+        hits: 0,
+        misses: 0,
+        errors: 0,
+        hitRate: 0,
+        total: 0,
+      },
+      database: {
+        averageQueryTime: 0,
+        slowQueries: 0,
+        totalQueries: 0,
+      },
+      system: {
+        memoryUsage: process.memoryUsage(),
+        uptime: process.uptime(),
+      },
     };
 
     // Log slow queries (> 100ms) in development
@@ -161,6 +174,11 @@ export function getPerformanceMetrics(): PerformanceMetrics {
   const cacheStats = CacheMetrics.getStats();
 
   return {
+    queryTime: 0,
+    cacheHit: false,
+    itemCount: 0,
+    timestamp: new Date(),
+    operation: "",
     cache: cacheStats,
     database: {
       averageQueryTime: DatabaseMetrics.getAverageQueryTime(),

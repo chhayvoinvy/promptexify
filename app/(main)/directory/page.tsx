@@ -175,12 +175,7 @@ async function DirectoryContent({
       <InfinitePostGrid
         initialPosts={posts as any} // eslint-disable-line @typescript-eslint/no-explicit-any
         hasNextPage={pagination.hasNextPage}
-        searchParams={{
-          q: searchQuery,
-          category: categoryFilter,
-          subcategory: subcategoryFilter,
-          premium: premiumFilter,
-        }}
+        totalCount={pagination.totalCount}
         userType={userType}
       />
     </Container>
