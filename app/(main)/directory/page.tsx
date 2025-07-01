@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/button";
+import { Search } from "lucide-react";
+import Link from "next/link";
 import { getAllCategories } from "@/lib/content";
 import { getCurrentUser } from "@/lib/auth";
 import { Suspense } from "react";
@@ -5,8 +8,76 @@ import { PostMasonrySkeleton } from "@/components/post-masonry-skeleton";
 import { DirectoryFilters } from "@/components/directory-filters";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InfinitePostGrid } from "@/components/infinite-scroll-grid";
+import { PrismaClient } from "@/lib/generated/prisma";
 import { Container } from "@/components/ui/container";
-import { OptimizedQueries } from "@/lib/queries";
+
+const prisma = new PrismaClient();
+
+interface WhereClause {
+  isPublished: boolean;
+  AND?: Array<{
+    OR?: Array<{
+      title?: { contains: string; mode: "insensitive" };
+      description?: { contains: string; mode: "insensitive" };
+      content?: { contains: string; mode: "insensitive" };
+      tags?: {
+        some: {
+          name: { contains: string; mode: "insensitive" };
+        };
+      };
+      category?: {
+        slug?: string;
+        parent?: { slug: string };
+      };
+    }>;
+  }>;
+  isPremium?: boolean;
+}
+
+interface PostWithBookmarksAndFavorites {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  content: string;
+  featuredImage: string | null;
+  featuredVideo: string | null;
+  isPremium: boolean;
+  isFeatured: boolean;
+  isPublished: boolean;
+  status: string;
+  viewCount: number;
+  authorId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  bookmarks: Array<{ id: string }>;
+  favorites: Array<{ id: string }>;
+  _count: {
+    views: number;
+    favorites: number;
+  };
+  author: {
+    id: string;
+    name: string | null;
+    email: string;
+    avatar: string | null;
+  };
+  category: {
+    id: string;
+    name: string;
+    slug: string;
+    parent: {
+      id: string;
+      name: string;
+      slug: string;
+    } | null;
+  };
+  tags: Array<{
+    id: string;
+    name: string;
+    slug: string;
+  }>;
+}
 
 interface DirectoryPageProps {
   searchParams: Promise<{
@@ -84,100 +155,204 @@ async function DirectoryContent({
   const userId = currentUser?.userData?.id;
   const userType = currentUser?.userData?.type || null;
 
-  // Determine category ID for filtering
-  let categoryId: string | undefined;
-  if (
-    subcategoryFilter &&
-    subcategoryFilter !== "all" &&
-    subcategoryFilter !== "none"
-  ) {
-    categoryId = subcategoryFilter;
-  } else if (categoryFilter && categoryFilter !== "all") {
-    categoryId = categoryFilter;
-  }
+  // Build where clause for filtering (same as API)
+  const whereClause: WhereClause = {
+    isPublished: true,
+    AND: [],
+  };
 
-  // Handle premium filter
-  let isPremium: boolean | undefined;
-  if (premiumFilter === "premium") {
-    isPremium = true;
-  } else if (premiumFilter === "free") {
-    isPremium = false;
-  }
-
-  // Use optimized queries based on search presence
-  let result;
-  if (searchQuery && searchQuery.trim()) {
-    // Use search query
-    result = await OptimizedQueries.posts.search(searchQuery, {
-      page: 1,
-      limit: 24, // Load more for initial view
-      userId,
-      categoryId,
-      isPremium,
-    });
-  } else {
-    // Use paginated query
-    result = await OptimizedQueries.posts.getPaginated({
-      page: 1,
-      limit: 24, // Load more for initial view
-      userId,
-      categoryId,
-      isPremium,
-      sortBy: "latest",
+  // Search filter
+  if (searchQuery) {
+    whereClause.AND!.push({
+      OR: [
+        { title: { contains: searchQuery, mode: "insensitive" } },
+        { description: { contains: searchQuery, mode: "insensitive" } },
+        { content: { contains: searchQuery, mode: "insensitive" } },
+        {
+          tags: {
+            some: {
+              name: { contains: searchQuery, mode: "insensitive" },
+            },
+          },
+        },
+      ],
     });
   }
 
-  const { data: posts, pagination } = result;
+  // Category and subcategory filter
+  if (categoryFilter && categoryFilter !== "all") {
+    const categoryConditions: Array<{
+      category?: {
+        slug?: string;
+        parent?: { slug: string };
+      };
+    }> = [];
+
+    if (subcategoryFilter && subcategoryFilter !== "all") {
+      // Filter by specific subcategory
+      categoryConditions.push({ category: { slug: subcategoryFilter } });
+    } else {
+      // Filter by parent category (includes all its subcategories)
+      categoryConditions.push(
+        { category: { slug: categoryFilter } },
+        { category: { parent: { slug: categoryFilter } } }
+      );
+    }
+
+    whereClause.AND!.push({
+      OR: categoryConditions,
+    });
+  }
+
+  // Premium filter
+  if (premiumFilter) {
+    if (premiumFilter === "free") {
+      whereClause.isPremium = false;
+    } else if (premiumFilter === "premium") {
+      whereClause.isPremium = true;
+    }
+  }
+
+  // Clean up empty AND array to avoid unnecessary nesting
+  if (whereClause.AND && whereClause.AND.length === 0) {
+    delete whereClause.AND;
+  }
+
+  // Get initial posts (first page) and total count
+  const [initialPosts, totalCount] = await Promise.all([
+    prisma.post.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        description: true,
+        content: true,
+        featuredImage: true,
+        featuredVideo: true,
+        isPremium: true,
+        isFeatured: true,
+        isPublished: true,
+        status: true,
+        viewCount: true,
+        authorId: true,
+        createdAt: true,
+        updatedAt: true,
+        author: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar: true,
+          },
+        },
+        category: {
+          include: {
+            parent: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+        },
+        tags: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        bookmarks: userId
+          ? {
+              where: {
+                userId: userId,
+              },
+              select: {
+                id: true,
+              },
+            }
+          : false,
+        favorites: userId
+          ? {
+              where: {
+                userId: userId,
+              },
+              select: {
+                id: true,
+              },
+            }
+          : false,
+        _count: {
+          select: {
+            views: true,
+            favorites: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 12, // Initial page size
+    }),
+    prisma.post.count({
+      where: whereClause,
+    }),
+  ]);
+
+  // Transform posts to include interaction status
+  const transformedPosts = initialPosts.map(
+    (post: PostWithBookmarksAndFavorites) => ({
+      ...post,
+      isBookmarked: userId ? post.bookmarks.length > 0 : false,
+      isFavorited: userId ? post.favorites.length > 0 : false,
+      viewCount: post._count.views,
+      bookmarks: undefined, // Remove from response
+      favorites: undefined, // Remove from response
+    })
+  );
+
+  const hasNextPage = totalCount > 12;
 
   return (
     <Container>
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-4">Prompt Directory</h1>
-        <p className="text-muted-foreground text-lg max-w-2xl">
-          Discover and explore our curated collection of AI prompts. Find the
-          perfect prompt for your creative and professional needs.
+        <h1 className="text-3xl md:text-4xl font-bold mb-4">
+          Prompt Directory
+        </h1>
+        <p className="text-lg text-muted-foreground max-w-2xl">
+          Explore our complete collection of AI prompts. Find the perfect prompt
+          for your creative projects.
         </p>
       </div>
 
-      {/* Filters */}
-      <div className="mb-8">
-        <DirectoryFilters categories={categories} />
-      </div>
-
-      {/* Results Summary */}
-      <div className="mb-6">
-        <p className="text-sm text-muted-foreground">
-          {searchQuery ? (
-            <>
-              Found {pagination.totalCount} result
-              {pagination.totalCount !== 1 ? "s" : ""} for &quot;{searchQuery}
-              &quot;
-            </>
-          ) : (
-            <>
-              Showing {pagination.totalCount} prompt
-              {pagination.totalCount !== 1 ? "s" : ""}
-              {categoryFilter && categoryFilter !== "all" && (
-                <>
-                  {" "}
-                  in{" "}
-                  {categories.find((c) => c.slug === categoryFilter)?.name ||
-                    categoryFilter}
-                </>
-              )}
-            </>
-          )}
-        </p>
-      </div>
+      {/* Search and Filters */}
+      <DirectoryFilters categories={categories} />
 
       {/* Posts Grid with Infinite Scroll */}
-      <InfinitePostGrid
-        initialPosts={posts as any} // eslint-disable-line @typescript-eslint/no-explicit-any
-        hasNextPage={pagination.hasNextPage}
-        totalCount={pagination.totalCount}
-        userType={userType}
-      />
+      {transformedPosts.length > 0 ? (
+        <InfinitePostGrid
+          initialPosts={transformedPosts}
+          totalCount={totalCount}
+          hasNextPage={hasNextPage}
+          userType={userType}
+        />
+      ) : (
+        <div className="text-center py-12">
+          <div className="mb-4">
+            <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-xl font-semibold mb-2">No prompts found</h3>
+            <p className="text-muted-foreground">
+              Try adjusting your search criteria or browse all categories.
+            </p>
+          </div>
+          <Link href="/directory">
+            <Button variant="outline">Clear Filters</Button>
+          </Link>
+        </div>
+      )}
     </Container>
   );
 }
