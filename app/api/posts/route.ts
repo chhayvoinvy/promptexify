@@ -7,6 +7,7 @@ import {
 } from "@/lib/rate-limit";
 import { sanitizeSearchQuery, SECURITY_HEADERS } from "@/lib/sanitize";
 import { OptimizedQueries } from "@/lib/queries";
+import { getAllCategories } from "@/lib/content";
 
 export async function GET(request: NextRequest) {
   try {
@@ -65,23 +66,30 @@ export async function GET(request: NextRequest) {
       ? (rawParams.sortBy as "latest" | "popular" | "trending")
       : "latest";
 
-    // Determine category ID for filtering
+    // Get categories to convert slugs to IDs
+    const categories = await getAllCategories();
+
+    // Determine category ID for filtering (convert slug to ID)
     let categoryId: string | undefined;
     if (
       subcategoryFilter &&
       subcategoryFilter !== "all" &&
       subcategoryFilter !== "none"
     ) {
-      categoryId = subcategoryFilter;
+      // Find the actual category ID from the slug
+      const subcategory = categories.find((c) => c.slug === subcategoryFilter);
+      categoryId = subcategory?.id;
     } else if (categoryFilter && categoryFilter !== "all") {
-      categoryId = categoryFilter;
+      // Find the actual category ID from the slug
+      const category = categories.find((c) => c.slug === categoryFilter);
+      categoryId = category?.id;
     }
 
     // Handle premium filter
     let isPremium: boolean | undefined;
-    if (premiumFilter === "true") {
+    if (premiumFilter === "premium" || premiumFilter === "true") {
       isPremium = true;
-    } else if (premiumFilter === "false") {
+    } else if (premiumFilter === "free" || premiumFilter === "false") {
       isPremium = false;
     }
 
@@ -109,7 +117,13 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return NextResponse.json(result, {
+    // Transform the response to match expected structure (posts instead of data)
+    const responseData = {
+      posts: result.data,
+      pagination: result.pagination,
+    };
+
+    return NextResponse.json(responseData, {
       status: 200,
       headers: {
         ...SECURITY_HEADERS,

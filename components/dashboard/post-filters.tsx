@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { Filter, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
 import {
   Select,
@@ -24,6 +23,7 @@ interface PostFiltersProps {
   totalCount: number;
   filters: {
     category?: string;
+    subcategory?: string;
     status?: string;
     type?: string;
     featured?: string;
@@ -71,6 +71,28 @@ export function PostFilters({
     { value: "title", label: "Title A-Z" },
   ];
 
+  // Separate parent and child categories
+  const parentCategories = categories.filter(
+    (cat) => !cat.label.includes(" > ")
+  );
+  const allChildCategories = categories.filter((cat) =>
+    cat.label.includes(" > ")
+  );
+
+  // Get child categories for selected parent category
+  const selectedParentCategory =
+    filters.category && filters.category !== "all"
+      ? categories.find(
+          (cat) => cat.value === filters.category && !cat.label.includes(" > ")
+        )
+      : null;
+
+  const childCategories = selectedParentCategory
+    ? allChildCategories.filter((cat) =>
+        cat.label.startsWith(selectedParentCategory.label + " > ")
+      )
+    : [];
+
   const generateFilterUrl = (
     newFilters: Record<string, string | undefined>
   ) => {
@@ -112,7 +134,16 @@ export function PostFilters({
   };
 
   const handleFilterChange = (filterType: string, value: string) => {
-    const newUrl = generateFilterUrl({ [filterType]: value });
+    const newFilters: Record<string, string | undefined> = {
+      [filterType]: value,
+    };
+
+    // Reset subcategory when parent category changes
+    if (filterType === "category") {
+      newFilters.subcategory = "all";
+    }
+
+    const newUrl = generateFilterUrl(newFilters);
     router.push(newUrl);
   };
 
@@ -178,13 +209,37 @@ export function PostFilters({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
-            {categories.map((category) => (
+            {parentCategories.map((category) => (
               <SelectItem key={category.value} value={category.value}>
                 {category.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
+
+        {/* Subcategory Filter - Only show when parent category is selected */}
+        {filters.category &&
+          filters.category !== "all" &&
+          childCategories.length > 0 && (
+            <Select
+              value={filters.subcategory || "all"}
+              onValueChange={(value) =>
+                handleFilterChange("subcategory", value)
+              }
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Subcategory" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Subcategories</SelectItem>
+                {childCategories.map((category) => (
+                  <SelectItem key={category.value} value={category.value}>
+                    {category.label.split(" > ")[1]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
         {/* Status Filter */}
         <Select

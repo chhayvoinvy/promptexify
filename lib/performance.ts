@@ -1,9 +1,8 @@
-import { prisma } from "@/lib/prisma";
 import { CacheMetrics, warmCache } from "@/lib/cache";
-import { DatabaseMetrics } from "@/lib/prisma";
 
 /**
  * Performance monitoring and optimization utilities
+ * Enhanced with webpack optimization and bundle analysis
  */
 
 interface PerformanceMetrics {
@@ -31,63 +30,127 @@ interface PerformanceMetrics {
 }
 
 /**
- * Measure the performance of a database operation
+ * Memoized function creator for expensive computations
+ * Prevents re-computation and reduces CPU usage
  */
-export async function measurePerformance<T>(
-  operation: string,
-  queryFn: () => Promise<T>
-): Promise<{ result: T; metrics: PerformanceMetrics }> {
-  const startTime = performance.now();
+export function createMemoized<Args extends readonly unknown[], Return>(
+  fn: (...args: Args) => Return,
+  keyGenerator?: (...args: Args) => string
+): (...args: Args) => Return {
+  const cache = new Map<string, Return>();
 
-  try {
-    const result = await queryFn();
-    const endTime = performance.now();
+  return (...args: Args): Return => {
+    const key = keyGenerator ? keyGenerator(...args) : JSON.stringify(args);
 
-    const metrics: PerformanceMetrics = {
-      queryTime: endTime - startTime,
-      cacheHit: false, // Will be set by cache layer
-      itemCount: Array.isArray(result) ? result.length : 1,
-      timestamp: new Date(),
-      operation,
-      cache: {
-        hits: 0,
-        misses: 0,
-        errors: 0,
-        hitRate: 0,
-        total: 0,
-      },
-      database: {
-        averageQueryTime: 0,
-        slowQueries: 0,
-        totalQueries: 0,
-      },
-      system: {
-        memoryUsage: process.memoryUsage(),
-        uptime: process.uptime(),
-      },
-    };
-
-    // Log slow queries (> 100ms) in development
-    if (process.env.NODE_ENV === "development" && metrics.queryTime > 100) {
-      console.warn(
-        `⚠️ Slow query detected: ${operation} took ${metrics.queryTime.toFixed(
-          2
-        )}ms`
-      );
+    if (cache.has(key)) {
+      return cache.get(key)!;
     }
 
-    return { result, metrics };
+    const result = fn(...args);
+    cache.set(key, result);
+
+    return result;
+  };
+}
+
+/**
+ * Bundle optimization suggestions
+ * Provides recommendations for reducing bundle size
+ */
+export function getBundleOptimizationTips() {
+  return {
+    suggestions: [
+      "Consider lazy loading heavy components",
+      "Use dynamic imports for rarely used features",
+      "Check for duplicate dependencies",
+      "Optimize image formats and sizes",
+      "Use Next.js built-in optimizations",
+      "Minimize client-side JavaScript",
+    ],
+  };
+}
+
+/**
+ * Preload critical resources
+ * Improves perceived performance
+ */
+export function preloadCriticalResources() {
+  if (typeof window === "undefined") return;
+
+  const criticalResources = [
+    // Fonts
+    "/fonts/inter-var.woff2",
+    // Critical images
+    "/static/logo/logo.svg",
+    // Critical scripts - only if actually needed
+  ];
+
+  criticalResources.forEach((resource) => {
+    const link = document.createElement("link");
+    link.rel = "preload";
+    link.href = resource;
+
+    if (resource.includes(".woff2")) {
+      link.as = "font";
+      link.type = "font/woff2";
+      link.crossOrigin = "anonymous";
+    } else if (resource.includes(".svg") || resource.includes(".png")) {
+      link.as = "image";
+    }
+
+    document.head.appendChild(link);
+  });
+}
+
+/**
+ * Web Vitals measurement utilities
+ * Measures performance using built-in Performance API
+ */
+export function measureWebVitals() {
+  if (typeof window === "undefined") return;
+
+  // Use PerformanceObserver for measuring Core Web Vitals
+  try {
+    const observer = new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        console.log(`${entry.name}: ${entry.duration}ms`);
+      }
+    });
+
+    // Observe navigation and paint metrics
+    observer.observe({ entryTypes: ["navigation", "paint"] });
   } catch (error) {
-    const endTime = performance.now();
+    console.warn("Performance observation not supported:", error);
+  }
+}
 
-    console.error(
-      `❌ Query failed: ${operation} after ${(endTime - startTime).toFixed(
-        2
-      )}ms`,
-      error
-    );
+/**
+ * Monitor memory usage and performance
+ */
+export class PerformanceMonitor {
+  private static measurements: Map<string, number> = new Map();
 
-    throw error;
+  static startMeasurement(name: string) {
+    this.measurements.set(name, performance.now());
+  }
+
+  static endMeasurement(name: string): number {
+    const start = this.measurements.get(name);
+    if (!start) return 0;
+
+    const duration = performance.now() - start;
+    this.measurements.delete(name);
+
+    if (process.env.NODE_ENV === "development") {
+      console.log(`⏱️ ${name}: ${duration.toFixed(2)}ms`);
+    }
+
+    return duration;
+  }
+
+  static measureAsync<T>(name: string, fn: () => Promise<T>): Promise<T> {
+    this.startMeasurement(name);
+    return fn().finally(() => this.endMeasurement(name));
   }
 }
 
@@ -110,60 +173,39 @@ export function logCacheEvent(
 }
 
 /**
- * Database health check
+ * Enhanced database performance monitoring
  */
-export async function checkDatabaseHealth(): Promise<{
-  healthy: boolean;
-  responseTime: number;
-  connectionCount?: number;
-}> {
-  const startTime = performance.now();
+export class DatabasePerformanceMonitor {
+  private static slowQueryThreshold = 500; // ms
+  private static queryTimes: number[] = [];
 
-  try {
-    // Simple query to check database connectivity
-    await prisma.$queryRaw`SELECT 1`;
+  static logQuery(operation: string, duration: number, query?: string) {
+    this.queryTimes.push(duration);
 
-    const endTime = performance.now();
-    const responseTime = endTime - startTime;
+    // Keep only last 100 queries
+    if (this.queryTimes.length > 100) {
+      this.queryTimes.shift();
+    }
 
-    return {
-      healthy: true,
-      responseTime,
-    };
-  } catch (error) {
-    const endTime = performance.now();
+    if (duration > this.slowQueryThreshold) {
+      console.warn(
+        `🐌 Slow query detected: ${operation} (${duration.toFixed(2)}ms)`
+      );
 
-    console.error("Database health check failed:", error);
-
-    return {
-      healthy: false,
-      responseTime: endTime - startTime,
-    };
+      if (process.env.NODE_ENV === "development" && query) {
+        console.warn("Query:", query);
+      }
+    }
   }
-}
 
-/**
- * Get query statistics (for admin dashboard)
- */
-export async function getQueryStats() {
-  try {
-    const [postCount, userCount, categoryCount, tagCount] = await Promise.all([
-      prisma.post.count(),
-      prisma.user.count(),
-      prisma.category.count(),
-      prisma.tag.count(),
-    ]);
+  static getAverageQueryTime(): number {
+    if (this.queryTimes.length === 0) return 0;
+    return this.queryTimes.reduce((a, b) => a + b, 0) / this.queryTimes.length;
+  }
 
-    return {
-      posts: postCount,
-      users: userCount,
-      categories: categoryCount,
-      tags: tagCount,
-      timestamp: new Date(),
-    };
-  } catch (error) {
-    console.error("Failed to get query stats:", error);
-    return null;
+  static getSlowQueryCount(): number {
+    return this.queryTimes.filter((time) => time > this.slowQueryThreshold)
+      .length;
   }
 }
 
@@ -181,8 +223,8 @@ export function getPerformanceMetrics(): PerformanceMetrics {
     operation: "",
     cache: cacheStats,
     database: {
-      averageQueryTime: DatabaseMetrics.getAverageQueryTime(),
-      slowQueries: DatabaseMetrics.getSlowQueries(),
+      averageQueryTime: DatabasePerformanceMonitor.getAverageQueryTime(),
+      slowQueries: DatabasePerformanceMonitor.getSlowQueryCount(),
       totalQueries: cacheStats.total, // Proxy for total queries
     },
     system: {
@@ -190,182 +232,6 @@ export function getPerformanceMetrics(): PerformanceMetrics {
       uptime: process.uptime(),
     },
   };
-}
-
-/**
- * Performance monitoring middleware for API routes
- */
-export function withPerformanceMonitoring<T extends unknown[], R>(
-  fn: (...args: T) => Promise<R>,
-  operationName: string
-): (...args: T) => Promise<R> {
-  return async (...args: T): Promise<R> => {
-    const startTime = Date.now();
-
-    try {
-      const result = await fn(...args);
-      const duration = Date.now() - startTime;
-
-      // Log slow operations
-      if (duration > 1000) {
-        console.warn(
-          `Slow operation detected: ${operationName} took ${duration}ms`
-        );
-      }
-
-      // Track performance in development
-      if (process.env.NODE_ENV === "development") {
-        console.log(`${operationName}: ${duration}ms`);
-      }
-
-      return result;
-    } catch (error) {
-      const duration = Date.now() - startTime;
-      console.error(
-        `Operation failed: ${operationName} after ${duration}ms`,
-        error
-      );
-      throw error;
-    }
-  };
-}
-
-/**
- * Cache warming scheduler for production
- */
-export class CacheWarmer {
-  private static intervalId: NodeJS.Timeout | null = null;
-  private static isWarming = false;
-
-  /**
-   * Start automatic cache warming
-   */
-  static start(intervalMinutes = 30) {
-    if (this.intervalId || process.env.NODE_ENV === "development") {
-      return;
-    }
-
-    console.log(
-      `Starting cache warmer with ${intervalMinutes} minute interval`
-    );
-
-    // Initial warming
-    this.warmCaches();
-
-    // Schedule periodic warming
-    this.intervalId = setInterval(() => {
-      this.warmCaches();
-    }, intervalMinutes * 60 * 1000);
-  }
-
-  /**
-   * Stop automatic cache warming
-   */
-  static stop() {
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
-      console.log("Cache warmer stopped");
-    }
-  }
-
-  /**
-   * Manually trigger cache warming
-   */
-  static async warmCaches() {
-    if (this.isWarming) {
-      console.log("Cache warming already in progress, skipping...");
-      return;
-    }
-
-    this.isWarming = true;
-
-    try {
-      console.log("Starting cache warming...");
-      await warmCache();
-      console.log("Cache warming completed successfully");
-    } catch (error) {
-      console.error("Cache warming failed:", error);
-    } finally {
-      this.isWarming = false;
-    }
-  }
-}
-
-/**
- * Database connection health check
- */
-export async function checkSystemHealth(): Promise<{
-  database: boolean;
-  cache: boolean;
-  memory: { used: number; free: number; percentUsed: number };
-  uptime: number;
-}> {
-  // Check database health
-  let databaseHealthy = false;
-  try {
-    const { checkDatabaseHealth } = await import("@/lib/prisma");
-    databaseHealthy = await checkDatabaseHealth();
-  } catch (error) {
-    console.error("Database health check failed:", error);
-  }
-
-  // Check cache health (simple test)
-  let cacheHealthy = false;
-  try {
-    const { createCachedFunction, CACHE_DURATIONS } = await import(
-      "@/lib/cache"
-    );
-    const testFn = createCachedFunction(
-      async () => "test",
-      "health-check",
-      CACHE_DURATIONS.USER_DATA
-    );
-    await testFn();
-    cacheHealthy = true;
-  } catch (error) {
-    console.error("Cache health check failed:", error);
-  }
-
-  // Memory usage
-  const memoryUsage = process.memoryUsage();
-  const totalMemory = memoryUsage.heapTotal;
-  const usedMemory = memoryUsage.heapUsed;
-  const freeMemory = totalMemory - usedMemory;
-
-  return {
-    database: databaseHealthy,
-    cache: cacheHealthy,
-    memory: {
-      used: usedMemory,
-      free: freeMemory,
-      percentUsed: (usedMemory / totalMemory) * 100,
-    },
-    uptime: process.uptime(),
-  };
-}
-
-/**
- * Memory usage monitoring
- */
-export function monitorMemoryUsage() {
-  const usage = process.memoryUsage();
-  const formatBytes = (bytes: number) => {
-    return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
-  };
-
-  console.log("Memory Usage:");
-  console.log(`  RSS: ${formatBytes(usage.rss)}`);
-  console.log(`  Heap Total: ${formatBytes(usage.heapTotal)}`);
-  console.log(`  Heap Used: ${formatBytes(usage.heapUsed)}`);
-  console.log(`  External: ${formatBytes(usage.external)}`);
-  console.log(`  Array Buffers: ${formatBytes(usage.arrayBuffers)}`);
-
-  // Warn if memory usage is high
-  const heapUsedPercent = (usage.heapUsed / usage.heapTotal) * 100;
-  if (heapUsedPercent > 80) {
-    console.warn(`High memory usage detected: ${heapUsedPercent.toFixed(2)}%`);
-  }
 }
 
 /**
@@ -406,6 +272,13 @@ export function getOptimizationRecommendations(): string[] {
     );
   }
 
+  // Bundle size recommendations
+  recommendations.push(
+    "Use dynamic imports for large components",
+    "Optimize images with WebP/AVIF formats",
+    "Consider code splitting for route-level chunks"
+  );
+
   if (recommendations.length === 0) {
     recommendations.push("System performance is optimal!");
   }
@@ -414,33 +287,45 @@ export function getOptimizationRecommendations(): string[] {
 }
 
 /**
- * Initialize performance monitoring in production
+ * Initialize performance monitoring
  */
 export function initializePerformanceMonitoring() {
+  if (typeof window !== "undefined") {
+    // Client-side monitoring
+    preloadCriticalResources();
+    measureWebVitals();
+
+    // Monitor long tasks
+    const observer = new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        if (entry.duration > 50) {
+          console.warn("Long task detected:", entry);
+        }
+      }
+    });
+
+    if ("PerformanceObserver" in window) {
+      try {
+        observer.observe({ entryTypes: ["longtask"] });
+      } catch {
+        // longtask not supported
+      }
+    }
+  }
+
+  // Server-side cache warming
   if (process.env.NODE_ENV === "production") {
-    // Start cache warming
-    CacheWarmer.start(30); // Every 30 minutes
-
-    // Monitor memory usage periodically
-    setInterval(monitorMemoryUsage, 5 * 60 * 1000); // Every 5 minutes
-
-    console.log("Performance monitoring initialized");
+    warmCache().catch(console.error);
   }
 }
 
-/**
- * Graceful shutdown cleanup
- */
-export function shutdownPerformanceMonitoring() {
-  CacheWarmer.stop();
-  console.log("Performance monitoring shutdown complete");
-}
-
-// Auto-initialize in production
-if (process.env.NODE_ENV === "production" && typeof window === "undefined") {
-  initializePerformanceMonitoring();
-
-  // Graceful shutdown
-  process.on("SIGTERM", shutdownPerformanceMonitoring);
-  process.on("SIGINT", shutdownPerformanceMonitoring);
+// Auto-initialize in development
+if (process.env.NODE_ENV === "development") {
+  if (typeof window !== "undefined") {
+    // Client-side
+    setTimeout(initializePerformanceMonitoring, 1000);
+  } else {
+    // Server-side
+    initializePerformanceMonitoring();
+  }
 }

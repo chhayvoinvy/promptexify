@@ -91,9 +91,13 @@ async function DirectoryContent({
     subcategoryFilter !== "all" &&
     subcategoryFilter !== "none"
   ) {
-    categoryId = subcategoryFilter;
+    // Find the actual category ID from the slug
+    const subcategory = categories.find((c) => c.slug === subcategoryFilter);
+    categoryId = subcategory?.id;
   } else if (categoryFilter && categoryFilter !== "all") {
-    categoryId = categoryFilter;
+    // Find the actual category ID from the slug
+    const category = categories.find((c) => c.slug === categoryFilter);
+    categoryId = category?.id;
   }
 
   // Handle premium filter
@@ -141,12 +145,12 @@ async function DirectoryContent({
       </div>
 
       {/* Filters */}
-      <div className="mb-8">
+      <div className="mb-6">
         <DirectoryFilters categories={categories} />
       </div>
 
       {/* Results Summary */}
-      <div className="mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           {searchQuery ? (
             <>
@@ -158,17 +162,35 @@ async function DirectoryContent({
             <>
               Showing {pagination.totalCount} prompt
               {pagination.totalCount !== 1 ? "s" : ""}
-              {categoryFilter && categoryFilter !== "all" && (
+              {((categoryFilter && categoryFilter !== "all") ||
+                (subcategoryFilter && subcategoryFilter !== "all")) && (
                 <>
                   {" "}
-                  in{" "}
-                  {categories.find((c) => c.slug === categoryFilter)?.name ||
-                    categoryFilter}
+                  {subcategoryFilter && subcategoryFilter !== "all" ? (
+                    <>
+                      in{" "}
+                      {categories.find((c) => c.slug === subcategoryFilter)
+                        ?.name || subcategoryFilter}
+                    </>
+                  ) : (
+                    <>
+                      in{" "}
+                      {categories.find((c) => c.slug === categoryFilter)
+                        ?.name || categoryFilter}
+                    </>
+                  )}
                 </>
               )}
             </>
           )}
         </p>
+        {pagination.totalCount > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {pagination.hasNextPage
+              ? `Showing first ${posts.length} of ${pagination.totalCount}`
+              : `All ${pagination.totalCount} results`}
+          </p>
+        )}
       </div>
 
       {/* Posts Grid with Infinite Scroll */}

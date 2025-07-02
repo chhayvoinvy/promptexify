@@ -168,8 +168,8 @@ function PostContentModal({
     if (onClose) {
       onClose();
     } else {
-      // If no onClose handler, navigate to home page (for direct URL access)
-      window.location.href = "/";
+      // If no onClose handler, navigate to directory page (for direct URL access)
+      window.location.href = "/directory";
     }
   };
 

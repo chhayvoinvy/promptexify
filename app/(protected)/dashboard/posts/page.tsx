@@ -59,6 +59,7 @@ interface PostsManagementPageProps {
     page?: string;
     pageSize?: string;
     category?: string;
+    subcategory?: string;
     status?: string;
     type?: string;
     featured?: string;
@@ -144,6 +145,7 @@ async function PostsManagementContent({
     // Parse filter parameters
     const filters = {
       category: params.category,
+      subcategory: params.subcategory,
       status: params.status,
       type: params.type,
       featured: params.featured,
@@ -174,8 +176,14 @@ async function PostsManagementContent({
     // Apply filters to posts
     let filteredPosts = [...allPosts];
 
-    // Category filter
-    if (filters.category && filters.category !== "all") {
+    // Category filter (prioritize subcategory over category)
+    if (filters.subcategory && filters.subcategory !== "all") {
+      // Filter by specific subcategory
+      filteredPosts = filteredPosts.filter(
+        (post) => post.category.slug === filters.subcategory
+      );
+    } else if (filters.category && filters.category !== "all") {
+      // Filter by parent category (includes all its subcategories)
       filteredPosts = filteredPosts.filter(
         (post) =>
           post.category.slug === filters.category ||

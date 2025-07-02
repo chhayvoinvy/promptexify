@@ -8,7 +8,14 @@ import { PostWithInteractions } from "@/lib/content";
 import { PostModal } from "@/components/post-modal";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { FavoriteButton } from "@/components/favorite-button";
-import { LockIcon, UnlockIcon, Play, Pause } from "lucide-react";
+import {
+  LockIcon,
+  UnlockIcon,
+  Play,
+  Pause,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import { PostTextBaseCard } from "@/components/post-text-base-card";
 
 interface PostMasonryGridProps {
@@ -33,6 +40,9 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
   const [columnCount, setColumnCount] = useState(1);
   const [previousPostCount, setPreviousPostCount] = useState(0);
   const [playingVideo, setPlayingVideo] = useState<string | null>(null);
+  const [mutedVideos, setMutedVideos] = useState<Set<string>>(
+    new Set(posts.filter((post) => post.featuredVideo).map((post) => post.id))
+  );
 
   const containerRef = useRef<HTMLDivElement>(null);
   const postRefs = useRef<Record<string, HTMLDivElement>>({});
@@ -42,17 +52,33 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
   >({});
 
   const handleViewPost = (post: PostWithInteractions) => {
-    setSelectedPost(post);
+    console.log("handleViewPost called for post:", post.id);
 
-    // Update URL for shareable links while keeping modal open
-    // DO NOT REMOVE THIS LINE
-    window.history.pushState(null, "", `/entry/${post.id}?modal=true`);
+    // Set selected post to show modal
+    setSelectedPost(post);
+    console.log("selectedPost state set");
+
+    // Update URL to add modal and post info to current page instead of changing path
+    setTimeout(() => {
+      const currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.set("modal", "true");
+      currentUrl.searchParams.set("postId", post.id);
+      const newUrl = currentUrl.toString();
+      console.log("Updating URL to:", newUrl);
+      window.history.replaceState(null, "", newUrl);
+    }, 100); // Slightly longer delay to ensure modal is stable
   };
 
   const handleCloseModal = () => {
     setSelectedPost(null);
-    // DO NOT REMOVE THIS LINE
-    window.history.pushState(null, "", "/");
+
+    // Remove modal and postId parameters from current URL
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.delete("modal");
+    currentUrl.searchParams.delete("postId");
+    const cleanUrl = currentUrl.toString();
+    console.log("Closing modal, returning to:", cleanUrl);
+    window.history.replaceState(null, "", cleanUrl);
   };
 
   // Handle video play/pause
@@ -88,6 +114,29 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
       }
     },
     [playingVideo]
+  );
+
+  // Handle video mute/unmute
+  const handleVideoMute = useCallback(
+    (postId: string, event: React.MouseEvent) => {
+      event.stopPropagation();
+      const video = videoRefs.current[postId];
+      if (!video) return;
+
+      const isMuted = mutedVideos.has(postId);
+      video.muted = !isMuted;
+
+      setMutedVideos((prev) => {
+        const newSet = new Set(prev);
+        if (isMuted) {
+          newSet.delete(postId);
+        } else {
+          newSet.add(postId);
+        }
+        return newSet;
+      });
+    },
+    [mutedVideos]
   );
 
   // Function to handle image/video load and calculate aspect ratio
@@ -225,7 +274,14 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
       // If posts were added, animate them
       const newPosts = posts.slice(previousPostCount);
       if (newPosts.length > 0) {
-        // Immediately add them to visible posts (they'll be positioned correctly but scaled/faded)
+        // Add new videos to muted list by default
+        const newVideoPostIds = newPosts
+          .filter((post) => post.featuredVideo)
+          .map((post) => post.id);
+
+        if (newVideoPostIds.length > 0) {
+          setMutedVideos((prev) => new Set([...prev, ...newVideoPostIds]));
+        }
 
         // Animate them in with stagger
         newPosts.forEach((post, index) => {
@@ -308,30 +364,49 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                           if (el) videoRefs.current[post.id] = el;
                         }}
                         src={post.featuredVideo}
-                        className="w-full h-full object-cover rounded-b-lg absolute"
-                        muted
+                        className="w-full h-full object-cover rounded-b-lg absolute scale-150"
+                        muted={mutedVideos.has(post.id)}
                         loop
                         playsInline
                         onLoadedMetadata={(e) => handleMediaLoad(post.id, e)}
                         onEnded={() => handleVideoEnded(post.id)}
                       />
 
-                      {/* Video play/pause button */}
+                      {/* Video controls */}
                       <div className="absolute inset-0 top-3 left-3 pointer-events-none z-10">
-                        <button
-                          className="bg-background/90 hover:bg-background rounded-full p-1.5 transition-colors pointer-events-auto"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            handleVideoPlay(post.id, e);
-                          }}
-                        >
-                          {playingVideo === post.id ? (
-                            <Pause className="w-5 h-5 text-foreground" />
-                          ) : (
-                            <Play className="w-5 h-5 text-foreground" />
-                          )}
-                        </button>
+                        <div className="flex gap-2">
+                          {/* Play/pause button */}
+                          <button
+                            className="bg-background/90 hover:bg-background rounded-full p-1.5 transition-colors pointer-events-auto"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              handleVideoPlay(post.id, e);
+                            }}
+                          >
+                            {playingVideo === post.id ? (
+                              <Pause className="w-5 h-5 text-foreground" />
+                            ) : (
+                              <Play className="w-5 h-5 text-foreground" />
+                            )}
+                          </button>
+
+                          {/* Mute/unmute button */}
+                          <button
+                            className="bg-background/90 hover:bg-background rounded-full p-1.5 transition-colors pointer-events-auto"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              handleVideoMute(post.id, e);
+                            }}
+                          >
+                            {mutedVideos.has(post.id) ? (
+                              <VolumeX className="w-5 h-5 text-foreground" />
+                            ) : (
+                              <Volume2 className="w-5 h-5 text-foreground" />
+                            )}
+                          </button>
+                        </div>
                       </div>
                     </>
                   ) : (
@@ -419,13 +494,17 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
         })}
       </div>
 
-      {selectedPost && (
-        <PostModal
-          post={selectedPost}
-          userType={userType}
-          onClose={handleCloseModal}
-        />
-      )}
+      {selectedPost &&
+        (() => {
+          console.log("Rendering PostModal for post:", selectedPost.id);
+          return (
+            <PostModal
+              post={selectedPost}
+              userType={userType}
+              onClose={handleCloseModal}
+            />
+          );
+        })()}
     </>
   );
 }
