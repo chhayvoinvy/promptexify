@@ -485,7 +485,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                           .replace(/\n+/g, " ")
                           .substring(0, 100) +
                         (post.content.length > 100 ? "..." : "")
-                      : post.description}
+                      : "Something went wrong"}
                   </span>
                 </div>
               </div>

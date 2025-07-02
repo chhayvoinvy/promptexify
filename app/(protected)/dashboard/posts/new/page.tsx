@@ -397,19 +397,6 @@ export default function NewPostPage() {
                 </div>
 
                 <div className="space-y-2">
-                  {/* Temporarily hide description */}
-                  <div className="hidden">
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea
-                      id="description"
-                      name="description"
-                      placeholder="Brief description of the prompt..."
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor="content">Content *</Label>
                   <Textarea
                     id="content"
@@ -417,6 +404,16 @@ export default function NewPostPage() {
                     placeholder="Enter the prompt content here..."
                     rows={8}
                     required
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    name="description"
+                    placeholder="Brief description or instructions for the prompt..."
                     disabled={isSubmitting}
                   />
                 </div>

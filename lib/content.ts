@@ -74,6 +74,7 @@ const optimizedPostSelect = {
   id: true,
   title: true,
   slug: true,
+  content: true,
   description: true,
   featuredImage: true,
   featuredVideo: true,
