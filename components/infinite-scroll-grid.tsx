@@ -50,10 +50,12 @@ export function InfinitePostGrid({
     const params = new URLSearchParams();
     const q = searchParams.get("q");
     const category = searchParams.get("category");
+    const subcategory = searchParams.get("subcategory");
     const premium = searchParams.get("premium");
 
     if (q) params.set("q", q);
     if (category) params.set("category", category);
+    if (subcategory) params.set("subcategory", subcategory);
     if (premium) params.set("premium", premium);
 
     return params.toString();
@@ -131,10 +133,12 @@ export function InfinitePostGrid({
       // Add current search parameters
       const q = searchParams.get("q");
       const category = searchParams.get("category");
+      const subcategory = searchParams.get("subcategory");
       const premium = searchParams.get("premium");
 
       if (q) params.set("q", q);
       if (category) params.set("category", category);
+      if (subcategory) params.set("subcategory", subcategory);
       if (premium) params.set("premium", premium);
 
       const response = await fetch(`/api/posts?${params.toString()}`);
@@ -145,10 +149,6 @@ export function InfinitePostGrid({
 
       const data: PostsResponse = await response.json();
 
-      console.log(
-        `Received page ${data.pagination.currentPage} with ${data.posts.length} posts`
-      );
-
       // Use functional update to ensure we're working with the latest state
       setPosts((prevPosts) => {
         // Create a Set of existing post IDs to avoid duplicates
@@ -156,12 +156,6 @@ export function InfinitePostGrid({
 
         // Filter out any posts that already exist (safety check)
         const newPosts = data.posts.filter((post) => !existingIds.has(post.id));
-
-        console.log(
-          `Adding ${newPosts.length} new posts (${
-            data.posts.length - newPosts.length
-          } duplicates filtered)`
-        );
 
         // Return the combined array maintaining order
         return [...prevPosts, ...newPosts];
@@ -196,16 +190,8 @@ export function InfinitePostGrid({
       const currentHasNextPage = hasNextPageRef.current;
       const currentIsLoading = isLoadingRequestRef.current;
 
-      console.log("Intersection observer check:", {
-        isIntersecting: target.isIntersecting,
-        hasScrolled: hasUserScrolledRef.current,
-        hasNextPage: currentHasNextPage,
-        isLoading: currentIsLoading,
-      });
-
       // Check if we can load more
       if (currentHasNextPage && !currentIsLoading) {
-        console.log("Intersection observer triggered - loading more posts");
         // Call loadMorePosts directly without debouncing
         loadMorePosts();
       }
@@ -213,7 +199,7 @@ export function InfinitePostGrid({
 
     const observer = new IntersectionObserver(handleIntersection, {
       threshold: 0.1,
-      rootMargin: "0px 0px 700px 0px", // Large bottom margin to trigger at ~80% scroll progress
+      rootMargin: "0px 0px 1000px 0px", // Large bottom margin to trigger at ~80% scroll progress
     });
 
     const currentRef = loadingRef.current;
