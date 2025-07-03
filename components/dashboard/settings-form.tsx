@@ -54,7 +54,6 @@ import {
   Settings2,
   Save,
   RotateCcw,
-  X,
 } from "lucide-react";
 import {
   getSettingsAction,
@@ -387,43 +386,37 @@ export function SettingsForm() {
                       <FormField
                         control={form.control}
                         name="s3SecretKey"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Secret Access Key</FormLabel>
-                            <FormControl>
-                              {field.value ? (
-                                <div className="relative">
-                                  <Input
-                                    value="••••••••••••••••••••••••••••••••"
-                                    readOnly
-                                    className="bg-muted text-muted-foreground"
-                                  />
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                                    onClick={() => field.onChange("")}
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              ) : (
+                        render={({ field }) => {
+                          const hasExistingValue =
+                            field.value && field.value.length > 0;
+                          return (
+                            <FormItem>
+                              <FormLabel>Secret Access Key</FormLabel>
+                              <FormControl>
                                 <Input
                                   type="password"
-                                  placeholder="Enter new secret access key"
+                                  placeholder={
+                                    hasExistingValue
+                                      ? "••••••••••••••••••••••••••••••••"
+                                      : "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+                                  }
                                   {...field}
+                                  onChange={(e) => {
+                                    // Allow clearing or updating the field
+                                    field.onChange(e.target.value);
+                                  }}
                                 />
+                              </FormControl>
+                              {hasExistingValue && (
+                                <p className="text-xs text-muted-foreground">
+                                  Secret key is configured. Enter a new value to
+                                  update.
+                                </p>
                               )}
-                            </FormControl>
-                            <FormDescription>
-                              {field.value
-                                ? "Secret key is saved (hidden for security). Click × to enter a new one."
-                                : "Enter your AWS secret access key"}
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
                       />
                     </div>
 
@@ -506,43 +499,37 @@ export function SettingsForm() {
                       <FormField
                         control={form.control}
                         name="doSecretKey"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Secret Access Key</FormLabel>
-                            <FormControl>
-                              {field.value ? (
-                                <div className="relative">
-                                  <Input
-                                    value="••••••••••••••••••••••••••••••••"
-                                    readOnly
-                                    className="bg-muted text-muted-foreground"
-                                  />
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                                    onClick={() => field.onChange("")}
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              ) : (
+                        render={({ field }) => {
+                          const hasExistingValue =
+                            field.value && field.value.length > 0;
+                          return (
+                            <FormItem>
+                              <FormLabel>Secret Access Key</FormLabel>
+                              <FormControl>
                                 <Input
                                   type="password"
-                                  placeholder="Enter new secret access key"
+                                  placeholder={
+                                    hasExistingValue
+                                      ? "••••••••••••••••••••••••••••••••"
+                                      : "abcdefghijklmnopqrstuvwxyz123456789"
+                                  }
                                   {...field}
+                                  onChange={(e) => {
+                                    // Allow clearing or updating the field
+                                    field.onChange(e.target.value);
+                                  }}
                                 />
+                              </FormControl>
+                              {hasExistingValue && (
+                                <p className="text-xs text-muted-foreground">
+                                  Secret key is configured. Enter a new value to
+                                  update.
+                                </p>
                               )}
-                            </FormControl>
-                            <FormDescription>
-                              {field.value
-                                ? "Secret key is saved (hidden for security). Click × to enter a new one."
-                                : "Enter your DigitalOcean Spaces secret access key"}
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
                       />
                     </div>
 
