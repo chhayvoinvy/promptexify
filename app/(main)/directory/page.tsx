@@ -1,4 +1,4 @@
-import { getAllCategories } from "@/lib/content";
+import { getAllCategories, getPostById } from "@/lib/content";
 import { getCurrentUser } from "@/lib/auth";
 import { Suspense } from "react";
 import { PostMasonrySkeleton } from "@/components/post-masonry-skeleton";
@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { InfinitePostGrid } from "@/components/infinite-scroll-grid";
 import { Container } from "@/components/ui/container";
 import { OptimizedQueries } from "@/lib/queries";
+import { PostModal } from "@/components/post-modal";
 
 interface DirectoryPageProps {
   searchParams: Promise<{
@@ -14,6 +15,8 @@ interface DirectoryPageProps {
     category?: string;
     subcategory?: string;
     premium?: string;
+    entry?: string;
+    modal?: string;
   }>;
 }
 
@@ -79,10 +82,27 @@ async function DirectoryContent({
     category: categoryFilter,
     subcategory: subcategoryFilter,
     premium: premiumFilter,
+    entry,
+    modal,
   } = params;
 
   const userId = currentUser?.userData?.id;
   const userType = currentUser?.userData?.type || null;
+
+  // Fetch the specific post if entry parameter is present
+  let selectedPost = null;
+  if (entry && modal === "true") {
+    try {
+      selectedPost = await getPostById(entry);
+      // Only show modal for published posts
+      if (!selectedPost?.isPublished) {
+        selectedPost = null;
+      }
+    } catch (error) {
+      console.error("Error fetching post for modal:", error);
+      selectedPost = null;
+    }
+  }
 
   // Determine category ID for filtering
   let categoryId: string | undefined;
@@ -200,6 +220,11 @@ async function DirectoryContent({
         totalCount={pagination.totalCount}
         userType={userType}
       />
+
+      {/* Modal overlay when entry parameter is present */}
+      {selectedPost && modal === "true" && (
+        <PostModal post={selectedPost} userType={userType} />
+      )}
     </Container>
   );
 }

@@ -44,6 +44,9 @@ export {
 // Tag management actions
 export { createTagAction, updateTagAction, deleteTagAction } from "./tags";
 
+// Automation actions
+export * from "./automation";
+
 // User profile actions
 export {
   updateUserProfileAction,

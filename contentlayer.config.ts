@@ -136,6 +136,13 @@ export default makeSource({
   contentDirPath: "./content",
   documentTypes: [Post, Page, Help],
   disableImportAliasWarning: true,
+
+  // Build performance optimizations
+  onSuccess: async (importData) => {
+    const { allDocuments } = await importData();
+    console.log(`✅ Generated ${allDocuments.length} documents`);
+  },
+
   mdx: {
     remarkPlugins: [remarkGfm],
     rehypePlugins: [

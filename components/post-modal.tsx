@@ -262,8 +262,10 @@ function PostContentModal({
             {/* Tags */}
             <div className="flex items-center gap-1 flex-wrap">
               <DialogDescription className="text-xs text-muted-foreground pr-30">
-                View and copy this {post.category.name.toLowerCase()} prompt.
-                Add to bookmark for later use. Or share with your friends.
+                Added by {post.author.name}
+                <br />
+                Add this {post.category.name.toLowerCase()} prompt to bookmark
+                for later use.
               </DialogDescription>
             </div>
             {/* Share Buttons */}

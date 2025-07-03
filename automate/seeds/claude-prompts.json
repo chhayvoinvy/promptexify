@@ -1,0 +1,47 @@
+{
+  "category": "claude",
+  "tags": [
+    { "name": "claude", "slug": "claude" },
+    { "name": "anthropic", "slug": "anthropic" },
+    { "name": "claude-3", "slug": "claude-3" },
+    { "name": "ai-assistant", "slug": "ai-assistant" }
+  ],
+  "posts": [
+    {
+      "title": "Claude for Advanced Code Analysis",
+      "slug": "claude-advanced-code-analysis",
+      "description": "Leverage Claude's analytical capabilities for comprehensive code review, optimization, and architectural insights.",
+      "content": "Discover how to use Claude for deep code analysis and review. This guide covers prompts for code quality assessment, security vulnerability detection, performance optimization suggestions, and architectural improvements. Perfect for developers seeking AI-powered code insights.",
+      "isPremium": false,
+      "isPublished": false,
+      "status": "PENDING_APPROVAL",
+      "isFeatured": false,
+      "featuredImage": "",
+      "featuredVideo": ""
+    },
+    {
+      "title": "Claude for Technical Writing Excellence",
+      "slug": "claude-technical-writing-excellence",
+      "description": "Master technical documentation and writing with Claude's help for clear, comprehensive, and user-friendly content.",
+      "content": "Learn to create exceptional technical documentation with Claude's assistance. This comprehensive guide includes prompts for API documentation, user manuals, troubleshooting guides, and technical tutorials. Enhance clarity and accessibility in your technical communications.",
+      "isPremium": false,
+      "isPublished": false,
+      "status": "PENDING_APPROVAL",
+      "isFeatured": false,
+      "featuredImage": "",
+      "featuredVideo": ""
+    },
+    {
+      "title": "Claude for Research and Analysis",
+      "slug": "claude-research-analysis",
+      "description": "Utilize Claude's reasoning capabilities for in-depth research, data analysis, and academic writing support.",
+      "content": "Explore Claude's potential for research and analytical tasks. This guide provides structured prompts for literature reviews, data interpretation, hypothesis testing, and academic writing. Essential for researchers, students, and analysts seeking AI-powered research assistance.",
+      "isPremium": false,
+      "isPublished": false,
+      "status": "PENDING_APPROVAL",
+      "isFeatured": false,
+      "featuredImage": "",
+      "featuredVideo": ""
+    }
+  ]
+}

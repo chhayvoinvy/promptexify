@@ -17,6 +17,7 @@ import {
   VolumeX,
 } from "lucide-react";
 import { PostTextBaseCard } from "@/components/post-text-base-card";
+import { useSearchParams } from "next/navigation";
 
 interface PostMasonryGridProps {
   posts: PostWithInteractions[];
@@ -31,6 +32,7 @@ interface PostPosition {
 }
 
 export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
+  const searchParams = useSearchParams();
   const [selectedPost, setSelectedPost] = useState<PostWithInteractions | null>(
     null
   );
@@ -51,34 +53,78 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
     Record<string, { width: number; height: number }>
   >({});
 
+  // Store the original path when modal opens
+  const originalPathRef = useRef<string | null>(null);
+
+  // Check if there are active filters or search parameters
+  const hasActiveFilters = useCallback(() => {
+    const currentQuery = searchParams.get("q");
+    const currentCategory = searchParams.get("category");
+    const currentSubcategory = searchParams.get("subcategory");
+    const currentPremium = searchParams.get("premium");
+
+    return !!(
+      currentQuery ||
+      (currentCategory && currentCategory !== "all") ||
+      (currentSubcategory && currentSubcategory !== "all") ||
+      (currentPremium && currentPremium !== "all")
+    );
+  }, [searchParams]);
+
+  // Build URL with current filters and additional parameters
+  const buildURLWithFilters = useCallback(
+    (additionalParams: Record<string, string>) => {
+      const params = new URLSearchParams(searchParams.toString());
+
+      // Add the additional parameters
+      Object.entries(additionalParams).forEach(([key, value]) => {
+        if (value) {
+          params.set(key, value);
+        } else {
+          params.delete(key);
+        }
+      });
+
+      return `/directory?${params.toString()}`;
+    },
+    [searchParams]
+  );
+
   const handleViewPost = (post: PostWithInteractions) => {
-    console.log("handleViewPost called for post:", post.id);
-
-    // Set selected post to show modal
     setSelectedPost(post);
-    console.log("selectedPost state set");
 
-    // Update URL to add modal and post info to current page instead of changing path
-    setTimeout(() => {
-      const currentUrl = new URL(window.location.href);
-      currentUrl.searchParams.set("modal", "true");
-      currentUrl.searchParams.set("postId", post.id);
-      const newUrl = currentUrl.toString();
-      console.log("Updating URL to:", newUrl);
-      window.history.replaceState(null, "", newUrl);
-    }, 100); // Slightly longer delay to ensure modal is stable
+    if (hasActiveFilters()) {
+      // Stay on directory page with filters and add entry and modal parameters
+      const newURL = buildURLWithFilters({
+        entry: post.id,
+        modal: "true",
+      });
+      window.history.pushState(null, "", newURL);
+    } else {
+      // Store the current path before opening modal
+      originalPathRef.current =
+        window.location.pathname + window.location.search;
+      // No active filters, redirect to clean entry URL
+      window.history.pushState(null, "", `/entry/${post.id}?modal=true`);
+    }
   };
 
   const handleCloseModal = () => {
     setSelectedPost(null);
 
-    // Remove modal and postId parameters from current URL
-    const currentUrl = new URL(window.location.href);
-    currentUrl.searchParams.delete("modal");
-    currentUrl.searchParams.delete("postId");
-    const cleanUrl = currentUrl.toString();
-    console.log("Closing modal, returning to:", cleanUrl);
-    window.history.replaceState(null, "", cleanUrl);
+    if (hasActiveFilters()) {
+      // Stay on directory page but remove entry and modal parameters
+      const newURL = buildURLWithFilters({
+        entry: "", // This will delete the entry param
+        modal: "", // This will delete the modal param
+      });
+      window.history.pushState(null, "", newURL);
+    } else {
+      // No active filters, restore original path
+      const pathToRestore = originalPathRef.current || "/";
+      window.history.pushState(null, "", pathToRestore);
+      originalPathRef.current = null; // Reset after use
+    }
   };
 
   // Handle video play/pause

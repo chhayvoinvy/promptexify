@@ -14,8 +14,7 @@
     "db:reset": "prisma migrate reset",
     "db:push": "prisma db push",
     "content:sync": "tsx scripts/sync-content.ts",
-    "security:csp": "node scripts/test-csp-environments.js",
-    "test:redis": "node scripts/test-redis.js"
+    "content:generate": "tsx automate/generator.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.832.0",

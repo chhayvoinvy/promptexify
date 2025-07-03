@@ -50,6 +50,8 @@ const nextConfig: NextConfig = {
   experimental: {
     // Optimize webpack cache performance
     webpackBuildWorker: true,
+    // Optimize static page generation
+    optimizePackageImports: ["contentlayer2", "next-contentlayer2"],
   },
   // Security headers are now handled by middleware for better environment control
   // This ensures consistent application across all routes and proper CSP nonce handling
@@ -85,6 +87,20 @@ const nextConfig: NextConfig = {
       compression: "gzip",
       maxMemoryGenerations: 1,
     };
+
+    // Optimize Contentlayer build performance
+    config.module.rules.push({
+      test: /\.mdx$/,
+      use: [
+        {
+          loader: "babel-loader",
+          options: {
+            cacheDirectory: true,
+            cacheCompression: false,
+          },
+        },
+      ],
+    });
 
     return config;
   },

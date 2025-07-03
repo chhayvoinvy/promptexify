@@ -39,6 +39,7 @@
     "node_modules",
     "backup",
     "templates",
+    "automate/content/**/*",
     "**/seed.ts"
   ]
 }

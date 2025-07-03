@@ -11,6 +11,7 @@ import {
   IconCategory,
   IconBookmark,
   IconHeart,
+  IconRobot,
   type Icon,
 } from "@tabler/icons-react";
 import Link from "next/link";
@@ -128,6 +129,12 @@ const navigationData: {
       title: "Tags",
       url: "/dashboard/tags",
       icon: IconTags,
+      adminOnly: true, // Admin only
+    },
+    {
+      title: "Automation",
+      url: "/dashboard/automation",
+      icon: IconRobot,
       adminOnly: true, // Admin only
     },
   ],
