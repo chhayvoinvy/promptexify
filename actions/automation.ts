@@ -98,7 +98,7 @@ async function executeContentGenerationDirect(): Promise<{
 
     statusMessages.push("🌱 Starting secure automated content seed...");
 
-    // Validate author exists and has proper permissions
+    // Validate author exists (no role requirement - AUTOMATION_AUTHOR_ID is just for post authorship)
     const author = await prisma.user.findUnique({
       where: { id: authorId },
       select: { id: true, role: true },
@@ -108,14 +108,7 @@ async function executeContentGenerationDirect(): Promise<{
       throw new Error(`Author with ID ${authorId} not found`);
     }
 
-    if (author.role !== "ADMIN") {
-      await SecurityMonitor.logSecurityEvent(
-        SecurityEventType.UNAUTHORIZED_ACCESS,
-        { authorId, attemptedAction: "content_generation" },
-        "high"
-      );
-      throw new Error("Author must have ADMIN role for content generation");
-    }
+    statusMessages.push(`📝 Using author: ${authorId} for generated content`);
 
     // Import validation functions and config
     const { seedConfig } = await import("../automate/configuration");

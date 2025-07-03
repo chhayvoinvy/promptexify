@@ -28,6 +28,7 @@
       "isPublished": false,
       "status": "PENDING_APPROVAL",
       "isFeatured": false,
+      "featuredVideo": "",
       "featuredImage": ""
     },
     {
@@ -39,6 +40,7 @@
       "isPublished": false,
       "status": "PENDING_APPROVAL",
       "isFeatured": false,
+      "featuredVideo": "",
       "featuredImage": ""
     },
     {
@@ -50,6 +52,7 @@
       "isPublished": false,
       "status": "PENDING_APPROVAL",
       "isFeatured": false,
+      "featuredVideo": "",
       "featuredImage": ""
     },
     {
@@ -61,6 +64,7 @@
       "isPublished": false,
       "status": "PENDING_APPROVAL",
       "isFeatured": true,
+      "featuredVideo": "",
       "featuredImage": ""
     },
     {
@@ -72,6 +76,7 @@
       "isPublished": false,
       "status": "PENDING_APPROVAL",
       "isFeatured": false,
+      "featuredVideo": "",
       "featuredImage": ""
     },
     {
@@ -83,6 +88,7 @@
       "isPublished": false,
       "status": "PENDING_APPROVAL",
       "isFeatured": false,
+      "featuredVideo": "",
       "featuredImage": ""
     },
     {
@@ -94,6 +100,7 @@
       "isPublished": false,
       "status": "PENDING_APPROVAL",
       "isFeatured": false,
+      "featuredVideo": "",
       "featuredImage": ""
     },
     {
@@ -105,6 +112,7 @@
       "isPublished": false,
       "status": "PENDING_APPROVAL",
       "isFeatured": false,
+      "featuredVideo": "",
       "featuredImage": ""
     },
     {
@@ -116,6 +124,7 @@
       "isPublished": false,
       "status": "PENDING_APPROVAL",
       "isFeatured": false,
+      "featuredVideo": "",
       "featuredImage": ""
     },
     {
@@ -127,6 +136,7 @@
       "isPublished": false,
       "status": "PENDING_APPROVAL",
       "isFeatured": false,
+      "featuredVideo": "",
       "featuredImage": ""
     },
     {
@@ -138,6 +148,7 @@
       "isPublished": false,
       "status": "PENDING_APPROVAL",
       "isFeatured": false,
+      "featuredVideo": "",
       "featuredImage": ""
     },
     {
@@ -160,6 +171,7 @@
       "isPublished": false,
       "status": "PENDING_APPROVAL",
       "isFeatured": false,
+      "featuredVideo": "",
       "featuredImage": ""
     }
   ]

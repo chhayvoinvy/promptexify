@@ -1,4 +1,4 @@
-import { PrismaClient, type Prisma } from "../lib/generated/prisma";
+import { PrismaClient } from "../lib/generated/prisma";
 import { readdir, readFile, stat } from "fs/promises";
 import { join } from "path";
 import { seedConfig } from "./configuration";
@@ -49,7 +49,7 @@ async function main() {
   const authorId = seedConfig.authorId;
 
   try {
-    // Validate author exists
+    // Validate author exists (no role requirement - AUTOMATION_AUTHOR_ID is just for post authorship)
     const author = await prisma.user.findUnique({
       where: { id: authorId },
       select: { id: true, role: true },
@@ -59,13 +59,8 @@ async function main() {
       throw new Error(`Author with ID ${authorId} not found`);
     }
 
-    if (author.role !== "ADMIN") {
-      await SecurityMonitor.logSecurityEvent(
-        SecurityEventType.UNAUTHORIZED_ACCESS,
-        { authorId, attemptedAction: "content_generation" },
-        "high"
-      );
-      throw new Error("Author must have ADMIN role for content generation");
+    if (seedConfig.logging.enabled) {
+      console.log(`📝 Using author: ${authorId} for generated content`);
     }
 
     // Read and validate all files first
@@ -346,8 +341,6 @@ async function createPost(
       return;
     }
 
-
-
     // Create the post
     const post = await tx.post.create({
       data: {
@@ -362,7 +355,6 @@ async function createPost(
         status: postData.status,
         isFeatured: postData.isFeatured,
         featuredImage: postData.featuredImage,
-
       },
     });
 

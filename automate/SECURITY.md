@@ -7,8 +7,8 @@
 Add these to your `.env` file:
 
 ```bash
-# Required: Admin user ID for content generation
-AUTOMATION_AUTHOR_ID=your-admin-user-id-here
+# Required: User ID to be used as author for generated content
+AUTOMATION_AUTHOR_ID=your-user-id-here
 
 # Optional: Security limits (defaults shown)
 AUTOMATION_MAX_FILE_SIZE=5242880  # 5MB in bytes
@@ -141,7 +141,7 @@ Ready for integration with:
 
 **"AUTOMATION_AUTHOR_ID environment variable is required"**
 
-- Add your admin user ID to `.env` file
+- Add a valid user ID to `.env` file (this user will be the author of generated posts)
 
 **"Generation rate limit exceeded"**
 

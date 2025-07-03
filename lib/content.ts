@@ -1118,21 +1118,18 @@ export const getPostsContent = unstable_cache(
 
 // Cache revalidation functions
 export async function revalidatePostContent(id?: string) {
+  const { revalidateCache } = await import("@/lib/cache");
+  
   if (id) {
     // Revalidate specific post
-    return fetch(`/api/revalidate?tag=${CACHE_TAGS.POST_BY_ID}&id=${id}`, {
-      method: "POST",
-    });
+    await revalidateCache(CACHE_TAGS.POST_BY_ID);
   } else {
     // Revalidate all posts
-    return fetch(`/api/revalidate?tag=${CACHE_TAGS.POSTS}`, {
-      method: "POST",
-    });
+    await revalidateCache(CACHE_TAGS.POSTS);
   }
 }
 
 export async function revalidateAllPostsContent() {
-  return fetch(`/api/revalidate?tag=${CACHE_TAGS.POSTS}`, {
-    method: "POST",
-  });
+  const { revalidateCache } = await import("@/lib/cache");
+  await revalidateCache(CACHE_TAGS.POSTS);
 }
