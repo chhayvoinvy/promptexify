@@ -51,10 +51,38 @@ export function ImageUpload({
     setPreview(currentImageUrl || null);
   }, [currentImageUrl]);
 
-  // File validation
+  // Storage configuration state
+  const [storageConfig, setStorageConfig] = useState<{
+    maxImageSize: number;
+    storageType: string;
+  } | null>(null);
+
+  // Fetch storage configuration
+  useEffect(() => {
+    fetch("/api/storage-config")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setStorageConfig({
+            maxImageSize: data.config.maxImageSize,
+            storageType: data.config.storageType,
+          });
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to fetch storage config:", error);
+        // Fallback to defaults
+        setStorageConfig({
+          maxImageSize: 2097152, // 2MB
+          storageType: "S3",
+        });
+      });
+  }, []);
+
+  // File validation with dynamic limits
   const validateFile = useCallback(
     (file: File): { isValid: boolean; error?: string } => {
-      const maxSize = 10 * 1024 * 1024; // 10MB
+      const maxSize = storageConfig?.maxImageSize || 2097152; // Default 2MB
       const allowedTypes = [
         "image/jpeg",
         "image/jpg",
@@ -72,15 +100,16 @@ export function ImageUpload({
       }
 
       if (file.size > maxSize) {
+        const maxSizeMB = Math.round(maxSize / (1024 * 1024));
         return {
           isValid: false,
-          error: "File size too large. Maximum size is 10MB.",
+          error: `File size too large. Maximum size is ${maxSizeMB}MB.`,
         };
       }
 
       return { isValid: true };
     },
-    []
+    [storageConfig]
   );
 
   // Handle file upload
@@ -238,8 +267,15 @@ export function ImageUpload({
       <div className="space-y-2">
         <Label htmlFor="image-upload">Featured Image</Label>
         <p className="text-sm text-muted-foreground">
-          Upload an image (JPEG, PNG, WebP, or AVIF, max 10MB). It will be
-          automatically converted to AVIF format.
+          Upload an image (JPEG, PNG, WebP, or AVIF, max{" "}
+          {storageConfig
+            ? Math.round(storageConfig.maxImageSize / (1024 * 1024))
+            : 2}
+          MB).{" "}
+          {storageConfig?.storageType === "S3" &&
+            "It will be automatically converted to AVIF format."}
+          {storageConfig?.storageType === "LOCAL" &&
+            "Files will be stored locally on the server."}
         </p>
       </div>
 
@@ -319,7 +355,11 @@ export function ImageUpload({
                       Drop your image here, or click to browse
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      JPEG, PNG, WebP, or AVIF up to 10MB
+                      JPEG, PNG, WebP, or AVIF up to{" "}
+                      {storageConfig
+                        ? Math.round(storageConfig.maxImageSize / (1024 * 1024))
+                        : 2}
+                      MB
                     </p>
                   </div>
                 </div>

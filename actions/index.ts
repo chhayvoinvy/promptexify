@@ -56,3 +56,11 @@ export {
   getAdminDashboardStatsAction,
   getAllUsersActivityAction,
 } from "./users";
+
+// Settings actions
+export {
+  getSettingsAction,
+  updateSettingsAction,
+  getStorageConfigAction,
+  resetSettingsToDefaultAction,
+} from "./settings";

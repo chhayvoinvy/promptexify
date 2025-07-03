@@ -28,8 +28,8 @@ model User {
   favorites Favorite[]
   posts     Post[]
 
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([email])
   @@index([stripeCustomerId])
@@ -84,16 +84,16 @@ model Post {
   isPublished   Boolean    @default(false)
   status        PostStatus @default(DRAFT)
 
-  authorId      String
-  categoryId    String
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  bookmarks     Bookmark[]
-  favorites     Favorite[]
-  author        User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  category      Category   @relation(fields: [categoryId], references: [id])
-  views         View[]
-  tags          Tag[]      @relation("PostToTag")
+  authorId   String
+  categoryId String
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  bookmarks  Bookmark[]
+  favorites  Favorite[]
+  author     User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  category   Category   @relation(fields: [categoryId], references: [id])
+  views      View[]
+  tags       Tag[]      @relation("PostToTag")
 
   @@index([isPublished, createdAt(sort: Desc)])
   @@index([categoryId, isPublished, createdAt(sort: Desc)])
@@ -104,7 +104,6 @@ model Post {
   @@index([title])
   @@index([isPublished, isPremium, createdAt(sort: Desc)])
   @@index([slug])
-
   @@index([authorId, status])
   @@index([isPublished, createdAt(sort: Desc), isPremium])
   @@map("posts")
@@ -178,6 +177,48 @@ model Log {
   @@map("logs")
 }
 
+model Settings {
+  id String @id @default(uuid())
+
+  // Storage Configuration
+  storageType     StorageType @default(S3)
+  s3BucketName    String?
+  s3Region        String?
+  s3AccessKeyId   String?
+  s3SecretKey     String? // This should be encrypted in production
+  s3CloudfrontUrl String?
+  localBasePath   String?     @default("/uploads")
+  localBaseUrl    String?     @default("/uploads")
+
+  // Upload Limits
+  maxImageSize       Int     @default(2097152) // 2MB in bytes
+  maxVideoSize       Int     @default(10485760) // 10MB in bytes
+  enableCompression  Boolean @default(true)
+  compressionQuality Int     @default(80)
+
+  // Content Management
+  maxTagsPerPost  Int     @default(20)
+  enableCaptcha   Boolean @default(false)
+  requireApproval Boolean @default(true)
+
+  // Security & Rate Limiting
+  maxPostsPerDay     Int     @default(10)
+  maxUploadsPerHour  Int     @default(20)
+  enableAuditLogging Boolean @default(true)
+
+  // Future expandable fields can be added here
+  // emailNotifications Boolean @default(true)
+  // maintenanceMode    Boolean @default(false)
+  // etc.
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  updatedBy String // User ID who last updated settings
+
+  @@map("settings")
+}
+
+// Enums
 enum UserType {
   FREE
   PREMIUM
@@ -198,4 +239,9 @@ enum PostStatus {
   PENDING_APPROVAL
   APPROVED
   REJECTED
+}
+
+enum StorageType {
+  S3
+  LOCAL
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { processAndUploadVideo } from "@/lib/s3";
+import { processAndUploadVideoWithConfig } from "@/lib/storage";
 import { getCurrentUser } from "@/lib/auth";
 
 // Maximum file size: 10MB for videos
@@ -79,7 +79,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Process and upload video with user ID for path organization
-    const videoUrl = await processAndUploadVideo(file, sanitizedTitle, user.id);
+    const videoUrl = await processAndUploadVideoWithConfig(
+      file,
+      sanitizedTitle,
+      user.id
+    );
 
     return NextResponse.json({
       success: true,

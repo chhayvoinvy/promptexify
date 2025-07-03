@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { deleteVideoFromS3 } from "@/lib/s3";
+import { deleteVideo } from "@/lib/storage";
 
 /**
  * Extracts video filename from URL for comparison
@@ -82,8 +82,8 @@ export async function DELETE(request: NextRequest) {
       }
     }
 
-    // Delete from S3
-    const deleted = await deleteVideoFromS3(videoUrl);
+    // Delete from configured storage
+    const deleted = await deleteVideo(videoUrl);
 
     if (deleted) {
       return NextResponse.json({

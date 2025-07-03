@@ -68,11 +68,42 @@ export function MediaUpload({
     setVideoPreview(currentVideoUrl || null);
   }, [currentVideoUrl]);
 
-  // File validation
+  // Storage configuration state
+  const [storageConfig, setStorageConfig] = useState<{
+    maxImageSize: number;
+    maxVideoSize: number;
+    storageType: string;
+  } | null>(null);
+
+  // Fetch storage configuration
+  useEffect(() => {
+    fetch("/api/storage-config")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setStorageConfig({
+            maxImageSize: data.config.maxImageSize,
+            maxVideoSize: data.config.maxVideoSize,
+            storageType: data.config.storageType,
+          });
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to fetch storage config:", error);
+        // Fallback to defaults
+        setStorageConfig({
+          maxImageSize: 2097152, // 2MB
+          maxVideoSize: 10485760, // 10MB
+          storageType: "S3",
+        });
+      });
+  }, []);
+
+  // File validation with dynamic limits
   const validateFile = useCallback(
     (file: File): { isValid: boolean; error?: string; type?: MediaType } => {
-      const maxImageSize = 10 * 1024 * 1024; // 10MB
-      const maxVideoSize = 100 * 1024 * 1024; // 100MB
+      const maxImageSize = storageConfig?.maxImageSize || 2097152; // Default 2MB
+      const maxVideoSize = storageConfig?.maxVideoSize || 10485760; // Default 10MB
 
       const imageTypes = [
         "image/jpeg",
@@ -102,18 +133,18 @@ export function MediaUpload({
 
       const maxSize = isImage ? maxImageSize : maxVideoSize;
       const fileTypeLabel = isImage ? "image" : "video";
-      const maxSizeLabel = isImage ? "10MB" : "100MB";
+      const maxSizeMB = Math.round(maxSize / (1024 * 1024));
 
       if (file.size > maxSize) {
         return {
           isValid: false,
-          error: `File size too large. Maximum size for ${fileTypeLabel}s is ${maxSizeLabel}.`,
+          error: `File size too large. Maximum size for ${fileTypeLabel}s is ${maxSizeMB}MB.`,
         };
       }
 
       return { isValid: true, type: isImage ? "image" : "video" };
     },
-    []
+    [storageConfig]
   );
 
   // Handle file upload
@@ -351,9 +382,25 @@ export function MediaUpload({
                 Drop your image or video here, or click to browse
               </p>
               <p className="text-xs text-muted-foreground">
-                Images: JPEG, PNG, WebP, AVIF (max 10MB)
+                Images: JPEG, PNG, WebP, AVIF (max{" "}
+                {storageConfig
+                  ? Math.round(storageConfig.maxImageSize / (1024 * 1024))
+                  : 2}
+                MB)
                 <br />
-                Videos: MP4, WebM, QuickTime, AVI (max 100MB)
+                Videos: MP4, WebM, QuickTime, AVI (max{" "}
+                {storageConfig
+                  ? Math.round(storageConfig.maxVideoSize / (1024 * 1024))
+                  : 10}
+                MB)
+                {storageConfig?.storageType === "LOCAL" && (
+                  <>
+                    <br />
+                    <span className="text-orange-600">
+                      Files stored locally on server
+                    </span>
+                  </>
+                )}
               </p>
             </div>
           </>
