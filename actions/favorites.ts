@@ -103,6 +103,11 @@ export async function getUserFavoritesAction() {
               },
             },
             tags: true,
+            _count: {
+              select: {
+                views: true,
+              },
+            },
           },
         },
       },
