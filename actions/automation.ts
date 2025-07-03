@@ -326,7 +326,7 @@ async function processContentFile(
               status: "PENDING_APPROVAL",
               authorId: authorId,
               categoryId: category.id,
-              viewCount: Math.floor(Math.random() * 500) + 1,
+
             },
           });
 

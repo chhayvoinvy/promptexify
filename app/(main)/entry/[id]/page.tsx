@@ -23,7 +23,7 @@ export async function generateStaticParams() {
 
     // Filter for popular posts (featured or high view count)
     const popularPosts = allPosts
-      .filter((post) => post.isFeatured || post.viewCount >= 100)
+      .filter((post) => post.isFeatured || (post._count?.views || 0) >= 100)
       .slice(0, 100); // Generate static pages for top 100 posts
 
     return popularPosts.map((post) => ({

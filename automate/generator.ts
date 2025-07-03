@@ -346,14 +346,7 @@ async function createPost(
       return;
     }
 
-    // Generate secure random view count
-    const viewCount =
-      Math.floor(
-        Math.random() *
-          (seedConfig.randomViewCountRange.max -
-            seedConfig.randomViewCountRange.min +
-            1)
-      ) + seedConfig.randomViewCountRange.min;
+
 
     // Create the post
     const post = await tx.post.create({
@@ -369,7 +362,7 @@ async function createPost(
         status: postData.status,
         isFeatured: postData.isFeatured,
         featuredImage: postData.featuredImage,
-        viewCount,
+
       },
     });
 

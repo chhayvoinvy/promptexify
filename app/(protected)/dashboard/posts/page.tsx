@@ -242,7 +242,7 @@ async function PostsManagementContent({
         );
         break;
       case "views":
-        filteredPosts.sort((a, b) => b.viewCount - a.viewCount);
+        filteredPosts.sort((a, b) => (b._count?.views || 0) - (a._count?.views || 0));
         break;
       case "title":
         filteredPosts.sort((a, b) => a.title.localeCompare(b.title));
@@ -331,7 +331,7 @@ async function PostsManagementContent({
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {allPosts.reduce((sum, p) => sum + p.viewCount, 0)}
+                {allPosts.reduce((sum, p) => sum + (p._count?.views || 0), 0)}
               </div>
             </CardContent>
           </Card>
@@ -455,7 +455,7 @@ async function PostsManagementContent({
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell>{post.viewCount}</TableCell>
+                    <TableCell>{post._count?.views || 0}</TableCell>
                     <TableCell>
                       {new Date(post.createdAt).toLocaleDateString()}
                     </TableCell>

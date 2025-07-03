@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireAuth, getCurrentUser } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { handleAuthRedirect } from "./auth";
 import { withCSRFProtection, handleSecureActionError } from "@/lib/security";
@@ -137,6 +138,11 @@ export const updateUserProfileAction = withCSRFProtection(
   }
 );
 
+/**
+ * Get user information
+ * Returns user profile data
+ * /dashboard/account
+ */
 export async function getUserProfileAction() {
   try {
     // Require authentication and get full user data (both Supabase and Prisma)
@@ -388,8 +394,32 @@ export async function getAllUsersActivityAction() {
       orderBy: { createdAt: "desc" },
     });
 
+    // Get Supabase client to fetch auth data
+    const supabase = await createClient();
+
+    // Fetch last sign-in data for all users from Supabase auth
+    const usersWithLastLogin = await Promise.all(
+      users.map(async (user) => {
+        try {
+          // Get user data from Supabase auth using the user ID
+          const { data: authUser } = await supabase.auth.getUser(user.id);
+
+          return {
+            ...user,
+            lastSignInAt: authUser?.user?.last_sign_in_at || null,
+          };
+        } catch (error) {
+          console.warn(`Failed to fetch auth data for user ${user.id}:`, error);
+          return {
+            ...user,
+            lastSignInAt: null,
+          };
+        }
+      })
+    );
+
     // Transform the data to match our schema requirements
-    const usersActivity = users.map((user, index) => ({
+    const usersActivity = usersWithLastLogin.map((user, index) => ({
       id: index + 1, // Use index for table row ID
       userId: user.id, // Keep the actual user ID
       name: user.name || "Unnamed User",
@@ -399,7 +429,7 @@ export async function getAllUsersActivityAction() {
       provider: user.oauth,
       registeredOn: user.createdAt,
       posts: user._count.posts,
-      lastLogin: null, // We'll need to get this from Supabase auth separately if needed
+      lastLogin: user.lastSignInAt ? new Date(user.lastSignInAt) : null,
       bookmarks: user._count.bookmarks,
       favorites: user._count.favorites,
     }));

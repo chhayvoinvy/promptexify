@@ -158,7 +158,10 @@ const userActivityColumns: ColumnDef<z.infer<typeof userActivitySchema>>[] = [
     cell: ({ row }) => (
       <div className="text-sm text-muted-foreground flex items-center gap-1">
         <Calendar className="h-3 w-3" />
-        {new Date(row.original.lastLogin || new Date()).toLocaleString()}
+        {row.original.lastLogin
+          ? new Date(row.original.lastLogin).toLocaleString()
+          : ""
+        }
       </div>
     ),
   },
@@ -357,9 +360,8 @@ export function DataTable() {
               disabled={userActivityLoading}
             >
               <IconRefresh
-                className={`h-4 w-4 ${
-                  userActivityLoading ? "animate-spin" : ""
-                }`}
+                className={`h-4 w-4 ${userActivityLoading ? "animate-spin" : ""
+                  }`}
               />
               <span className="hidden lg:inline">Refresh Data</span>
               <span className="lg:hidden">Refresh</span>
@@ -452,9 +454,9 @@ export function DataTable() {
                           {header.isPlaceholder
                             ? null
                             : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                              )}
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
                         </TableHead>
                       ))}
                     </TableRow>
@@ -511,9 +513,8 @@ export function DataTable() {
                     Rows per page
                   </Label>
                   <Select
-                    value={`${
-                      userActivityTable.getState().pagination.pageSize
-                    }`}
+                    value={`${userActivityTable.getState().pagination.pageSize
+                      }`}
                     onValueChange={(value) => {
                       userActivityTable.setPageSize(Number(value));
                     }}
@@ -646,9 +647,9 @@ export function DataTable() {
                           {header.isPlaceholder
                             ? null
                             : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                              )}
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
                         </TableHead>
                       ))}
                     </TableRow>

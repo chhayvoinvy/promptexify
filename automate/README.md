@@ -75,12 +75,7 @@ export const seedConfig: SeedConfig = {
   // Directory containing JSON content files
   contentDirectory: "automate/content",
   
-  // Random view count range for posts
-  randomViewCountRange: {
-    min: 1,
-    max: 500,
-  },
-  
+
   // Logging configuration
   logging: {
     enabled: true,
@@ -105,7 +100,7 @@ npm run content:generate
 - **Automatic Category Creation**: Categories are created automatically if they don't exist
 - **Tag Management**: Tags are created or reused if they already exist
 - **Duplicate Prevention**: Posts with existing slugs are skipped to prevent duplicates
-- **Configurable View Counts**: Posts are assigned random view counts within configurable ranges
+
 - **Flexible Logging**: Enable/disable logging and verbose output through configuration
 
 ## Examples

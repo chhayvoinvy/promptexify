@@ -28,8 +28,7 @@
       "isPublished": false,
       "status": "PENDING_APPROVAL",
       "isFeatured": false,
-      "featuredImage": "",
-      "featuredVideo": ""
+      "featuredImage": ""
     },
     {
       "title": "ChatGPT Code Generation Best Practices",
@@ -40,8 +39,7 @@
       "isPublished": false,
       "status": "PENDING_APPROVAL",
       "isFeatured": false,
-      "featuredImage": "",
-      "featuredVideo": ""
+      "featuredImage": ""
     },
     {
       "title": "ChatGPT for Business Communication",
@@ -52,8 +50,7 @@
       "isPublished": false,
       "status": "PENDING_APPROVAL",
       "isFeatured": false,
-      "featuredImage": "",
-      "featuredVideo": ""
+      "featuredImage": ""
     },
     {
       "title": "ChatGPT for Academic Research and Writing",
@@ -64,8 +61,7 @@
       "isPublished": false,
       "status": "PENDING_APPROVAL",
       "isFeatured": true,
-      "featuredImage": "",
-      "featuredVideo": ""
+      "featuredImage": ""
     },
     {
       "title": "Unleashing Creativity with ChatGPT: Story and Poem Prompts",
@@ -76,8 +72,7 @@
       "isPublished": false,
       "status": "PENDING_APPROVAL",
       "isFeatured": false,
-      "featuredImage": "",
-      "featuredVideo": ""
+      "featuredImage": ""
     },
     {
       "title": "ChatGPT for Language Learning and Practice",
@@ -88,8 +83,7 @@
       "isPublished": false,
       "status": "PENDING_APPROVAL",
       "isFeatured": false,
-      "featuredImage": "",
-      "featuredVideo": ""
+      "featuredImage": ""
     },
     {
       "title": "Boost Productivity: ChatGPT Prompts for Daily Tasks",
@@ -99,9 +93,8 @@
       "isPremium": false,
       "isPublished": false,
       "status": "PENDING_APPROVAL",
-      "isFeatured": true,
-      "featuredImage": "",
-      "featuredVideo": ""
+      "isFeatured": false,
+      "featuredImage": ""
     },
     {
       "title": "ChatGPT for Advanced Marketing Strategies",
@@ -112,8 +105,7 @@
       "isPublished": false,
       "status": "PENDING_APPROVAL",
       "isFeatured": false,
-      "featuredImage": "",
-      "featuredVideo": ""
+      "featuredImage": ""
     },
     {
       "title": "Enhancing Customer Support with ChatGPT",
@@ -124,20 +116,18 @@
       "isPublished": false,
       "status": "PENDING_APPROVAL",
       "isFeatured": false,
-      "featuredImage": "",
-      "featuredVideo": ""
+      "featuredImage": ""
     },
     {
       "title": "ChatGPT for Data Analysis and Insights",
       "slug": "chatgpt-data-analysis",
       "description": "Leverage ChatGPT prompts to interpret data, generate reports, and extract meaningful insights from complex datasets.",
       "content": "Unlock the power of your data with ChatGPT. This guide provides prompts for summarizing data, identifying trends, generating executive summaries, and explaining complex statistical concepts in simple terms. Ideal for analysts and business professionals.",
-      "isPremium": true,
-      "isPublished": true,
-      "status": "APPROVED",
-      "isFeatured": true,
-      "featuredImage": "",
-      "featuredVideo": ""
+      "isPremium": false,
+      "isPublished": false,
+      "status": "PENDING_APPROVAL",
+      "isFeatured": false,
+      "featuredImage": ""
     },
     {
       "title": "Brainstorming and Idea Generation with ChatGPT",
@@ -148,8 +138,7 @@
       "isPublished": false,
       "status": "PENDING_APPROVAL",
       "isFeatured": false,
-      "featuredImage": "",
-      "featuredVideo": ""
+      "featuredImage": ""
     },
     {
       "title": "ChatGPT for Seamless Travel Planning",
@@ -160,8 +149,7 @@
       "isPublished": false,
       "status": "PENDING_APPROVAL",
       "isFeatured": false,
-      "featuredImage": "",
-      "featuredVideo": ""
+      "featuredImage": ""
     },
     {
       "title": "ChatGPT for Health and Wellness Guidance",
@@ -172,8 +160,7 @@
       "isPublished": false,
       "status": "PENDING_APPROVAL",
       "isFeatured": false,
-      "featuredImage": "",
-      "featuredVideo": ""
+      "featuredImage": ""
     }
   ]
 }

@@ -32,7 +32,7 @@ export const POST_SELECTS = {
     featuredVideo: true,
     isPremium: true,
     isPublished: true,
-    viewCount: true,
+
     createdAt: true,
     author: {
       select: {
@@ -82,7 +82,7 @@ export const POST_SELECTS = {
     isPremium: true,
     isPublished: true,
     status: true,
-    viewCount: true,
+
     authorId: true,
     createdAt: true,
     updatedAt: true,
@@ -135,7 +135,7 @@ export const POST_SELECTS = {
     featuredVideo: true,
     isPremium: true,
     isPublished: true,
-    viewCount: true,
+
     createdAt: true,
     updatedAt: true,
     author: {
@@ -182,7 +182,7 @@ export const POST_SELECTS = {
     isPremium: true,
     isPublished: true,
     status: true,
-    viewCount: true,
+
     authorId: true,
     createdAt: true,
     updatedAt: true,
@@ -329,9 +329,9 @@ export class PostQueries {
       | Prisma.PostOrderByWithRelationInput
       | Prisma.PostOrderByWithRelationInput[] =
       sortBy === "popular"
-        ? { viewCount: "desc" }
+        ? { views: { _count: "desc" } }
         : sortBy === "trending"
-        ? [{ viewCount: "desc" }, { createdAt: "desc" }]
+        ? [{ views: { _count: "desc" } }, { createdAt: "desc" }]
         : { createdAt: "desc" };
 
     const endTimer = DatabaseMetrics.startQuery();
@@ -453,7 +453,7 @@ export class PostQueries {
               },
             }),
           },
-          orderBy: [{ viewCount: "desc" }, { createdAt: "desc" }],
+          orderBy: [{ views: { _count: "desc" } }, { createdAt: "desc" }],
           skip,
           take: limit,
         }),
@@ -527,7 +527,7 @@ export class PostQueries {
             },
           }),
         },
-        orderBy: [{ viewCount: "desc" }, { createdAt: "desc" }],
+        orderBy: [{ views: { _count: "desc" } }, { createdAt: "desc" }],
         take: limit,
       });
 
@@ -624,7 +624,7 @@ export class PostQueries {
             },
           }),
         },
-        orderBy: [{ viewCount: "desc" }, { createdAt: "desc" }],
+        orderBy: [{ views: { _count: "desc" } }, { createdAt: "desc" }],
         take: limit,
       });
 

@@ -3,10 +3,7 @@
 export interface SeedConfig {
   authorId: string;
   contentDirectory: string;
-  randomViewCountRange: {
-    min: number;
-    max: number;
-  };
+
   logging: {
     enabled: boolean;
     verbose: boolean;
@@ -38,11 +35,7 @@ export const seedConfig: SeedConfig = {
   // Directory containing JSON content files
   contentDirectory: "automate/seeds",
 
-  // Random view count range for posts
-  randomViewCountRange: {
-    min: 1,
-    max: 500,
-  },
+
 
   // Logging configuration
   logging: {

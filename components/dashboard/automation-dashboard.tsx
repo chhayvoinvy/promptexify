@@ -638,7 +638,7 @@ export function AutomationDashboard() {
       {/* Edit Dialog */}
       {selectedFile && (
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="max-w-4xl">
+          <DialogContent>
             <DialogHeader>
               <DialogTitle>Edit Content File</DialogTitle>
               <DialogDescription>
@@ -684,7 +684,7 @@ function CreateFileForm({
         isFeatured: false,
         featuredImage: "",
         featuredVideo: "",
-        viewCount: 0,
+
       },
     ],
   };

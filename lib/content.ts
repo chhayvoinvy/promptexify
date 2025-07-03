@@ -16,7 +16,7 @@ export interface PostWithDetails {
   isFeatured: boolean;
   isPublished: boolean;
   status: string;
-  viewCount: number;
+
   authorId: string;
   createdAt: Date;
   updatedAt: Date;
@@ -82,7 +82,7 @@ const optimizedPostSelect = {
   isFeatured: true,
   isPublished: true,
   status: true,
-  viewCount: true,
+
   authorId: true,
   createdAt: true,
   updatedAt: true,
@@ -476,15 +476,7 @@ export async function incrementPostView(
       },
     });
 
-    // Update the post view count
-    await prisma.post.update({
-      where: { id: postId },
-      data: {
-        viewCount: {
-          increment: 1,
-        },
-      },
-    });
+
   }
 }
 
@@ -649,7 +641,7 @@ export async function getUserPosts(userId: string): Promise<PostWithDetails[]> {
       isFeatured: true,
       isPublished: true,
       status: true,
-      viewCount: true,
+
       authorId: true,
       createdAt: true,
       updatedAt: true,
@@ -715,7 +707,7 @@ export async function getUserPostsPaginated(
         isFeatured: true,
         isPublished: true,
         status: true,
-        viewCount: true,
+
         authorId: true,
         createdAt: true,
         updatedAt: true,
@@ -808,7 +800,7 @@ export async function getPostsPaginated(
         isFeatured: true,
         isPublished: true,
         status: true,
-        viewCount: true,
+
         authorId: true,
         createdAt: true,
         updatedAt: true,
@@ -931,7 +923,7 @@ export async function getPostsWithSorting(
       sortBy === "latest"
         ? { createdAt: "desc" }
         : sortBy === "trending"
-        ? { viewCount: "desc" }
+        ? { views: { _count: "desc" } }
         : sortBy === "popular"
         ? { favorites: { _count: "desc" } }
         : { createdAt: "desc" }, // fallback
@@ -1039,7 +1031,7 @@ export async function getRelatedPosts(
     },
     orderBy: [
       // Prioritize posts with more shared tags
-      { viewCount: "desc" },
+      { views: { _count: "desc" } },
       { createdAt: "desc" },
     ],
     take: limit,
