@@ -242,7 +242,9 @@ async function PostsManagementContent({
         );
         break;
       case "views":
-        filteredPosts.sort((a, b) => (b._count?.views || 0) - (a._count?.views || 0));
+        filteredPosts.sort(
+          (a, b) => (b._count?.views || 0) - (a._count?.views || 0)
+        );
         break;
       case "title":
         filteredPosts.sort((a, b) => a.title.localeCompare(b.title));

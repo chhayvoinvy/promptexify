@@ -2,6 +2,7 @@
 
 import React, { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -58,6 +59,7 @@ export function PostActionsDropdown({
   currentUserId,
   currentUserRole,
 }: PostActionsDropdownProps) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
@@ -87,6 +89,9 @@ export function PostActionsDropdown({
         const result = await togglePostPublishAction(post.id);
         if (result.success) {
           toast.success(result.message);
+
+          // Refresh the page to show updated post status
+          router.refresh();
         }
       } catch (error) {
         console.error("Error toggling post publish status:", error);
@@ -111,6 +116,9 @@ export function PostActionsDropdown({
         if (result.success) {
           toast.success(result.message);
           setShowDeleteDialog(false);
+
+          // Refresh the page to show updated posts list
+          router.refresh();
         }
       } catch (error) {
         console.error("Error deleting post:", error);
@@ -132,6 +140,9 @@ export function PostActionsDropdown({
         const result = await approvePostAction(post.id);
         if (result.success) {
           toast.success(result.message);
+
+          // Refresh the page to show updated post status
+          router.refresh();
         }
       } catch (error) {
         console.error("Error approving post:", error);
@@ -153,6 +164,9 @@ export function PostActionsDropdown({
         const result = await rejectPostAction(post.id);
         if (result.success) {
           toast.success(result.message);
+
+          // Refresh the page to show updated post status
+          router.refresh();
         }
       } catch (error) {
         console.error("Error rejecting post:", error);
@@ -174,6 +188,9 @@ export function PostActionsDropdown({
         const result = await togglePostFeaturedAction(post.id);
         if (result.success) {
           toast.success(result.message);
+
+          // Refresh the page to show updated post status
+          router.refresh();
         }
       } catch (error) {
         console.error("Error toggling post featured status:", error);
