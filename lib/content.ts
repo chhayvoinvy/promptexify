@@ -626,7 +626,8 @@ export interface PaginatedResult<T> {
   hasPreviousPage: boolean;
 }
 
-export async function getUserPosts(userId: string): Promise<PostWithDetails[]> {
+// Internal uncached function for getUserPosts
+async function _getUserPosts(userId: string): Promise<PostWithDetails[]> {
   const posts = await prisma.post.findMany({
     where: { authorId: userId },
     select: {
@@ -684,6 +685,14 @@ export async function getUserPosts(userId: string): Promise<PostWithDetails[]> {
 
   return posts;
 }
+
+// Cached version of getUserPosts
+export const getUserPosts = createCachedFunction(
+  _getUserPosts,
+  "get-user-posts",
+  CACHE_DURATIONS.USER_DATA,
+  [CACHE_TAGS.USER_POSTS, CACHE_TAGS.POSTS]
+);
 
 export async function getUserPostsPaginated(
   userId: string,

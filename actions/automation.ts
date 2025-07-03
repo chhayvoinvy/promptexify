@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { handleAuthRedirect } from "./auth";
 import { revalidatePath } from "next/cache";
 import { withCSRFProtection } from "@/lib/security";
+import { revalidateCache, CACHE_TAGS } from "@/lib/cache";
 import { SecurityMonitor, SecurityEventType } from "@/lib/security-monitor";
 import { rateLimits } from "@/lib/rate-limit";
 import { prisma } from "@/lib/prisma";
@@ -326,7 +327,6 @@ async function processContentFile(
               status: "PENDING_APPROVAL",
               authorId: authorId,
               categoryId: category.id,
-
             },
           });
 
@@ -808,7 +808,17 @@ export const runContentGenerationAction = withCSRFProtection(
         };
       }
 
+      // Invalidate post-related caches after content generation
+      await revalidateCache([
+        CACHE_TAGS.POSTS,
+        CACHE_TAGS.USER_POSTS,
+        CACHE_TAGS.CATEGORIES,
+        CACHE_TAGS.TAGS,
+        CACHE_TAGS.SEARCH_RESULTS
+      ]);
+
       revalidatePath("/dashboard/automation");
+      revalidatePath("/dashboard/posts");
 
       return {
         success: true,
