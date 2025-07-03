@@ -28,54 +28,8 @@ const defaultComputedFields: ComputedFields = {
   },
 };
 
-export const Post = defineDocumentType(() => ({
-  name: "Post",
-  filePathPattern: `posts/**/*.mdx`,
-  contentType: "mdx",
-  fields: {
-    title: {
-      type: "string",
-      required: true,
-    },
-    description: {
-      type: "string",
-      required: true,
-    },
-    category: {
-      type: "string",
-      required: true,
-    },
-    parentCategory: {
-      type: "string",
-      required: true,
-    },
-    tags: {
-      type: "list",
-      of: { type: "string" },
-      default: [],
-    },
-    featuredImage: {
-      type: "string",
-    },
-    isPremium: {
-      type: "boolean",
-      default: false,
-    },
-    isPublished: {
-      type: "boolean",
-      default: false,
-    },
-    publishedAt: {
-      type: "date",
-      required: true,
-    },
-    authorId: {
-      type: "string",
-      required: true,
-    },
-  },
-  computedFields: defaultComputedFields,
-}));
+// Post type removed - posts are now purely database-driven
+// This eliminates build performance issues with Contentlayer processing
 
 export const Page = defineDocumentType(() => ({
   name: "Page",
@@ -134,7 +88,7 @@ export const Help = defineDocumentType(() => ({
 
 export default makeSource({
   contentDirPath: "./content",
-  documentTypes: [Post, Page, Help],
+  documentTypes: [Page, Help], // Post removed - now database-driven
   disableImportAliasWarning: true,
 
   // Build performance optimizations

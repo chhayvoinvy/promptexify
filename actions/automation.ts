@@ -814,8 +814,12 @@ export const runContentGenerationAction = withCSRFProtection(
         CACHE_TAGS.USER_POSTS,
         CACHE_TAGS.CATEGORIES,
         CACHE_TAGS.TAGS,
-        CACHE_TAGS.SEARCH_RESULTS
+        CACHE_TAGS.SEARCH_RESULTS,
       ]);
+
+      // Revalidate new post content cache
+      const { revalidateAllPostsContent } = await import("../lib/content");
+      await revalidateAllPostsContent();
 
       revalidatePath("/dashboard/automation");
       revalidatePath("/dashboard/posts");

@@ -39,28 +39,6 @@ export type Page = {
   slug: string
   slugAsParams: string
   readingTime: number
-}
-
-export type Post = {
-  /** File path relative to `contentDirPath` */
-  _id: string
-  _raw: Local.RawDocumentData
-  type: 'Post'
-  title: string
-  description: string
-  category: string
-  parentCategory: string
-  tags: string[]
-  featuredImage?: string | undefined
-  isPremium: boolean
-  isPublished: boolean
-  publishedAt: IsoDateTimeString
-  authorId: string
-  /** MDX file body */
-  body: MDX
-  slug: string
-  slugAsParams: string
-  readingTime: number
 }  
 
 /** Nested types */
@@ -71,15 +49,14 @@ export type Post = {
 export type AllTypes = DocumentTypes | NestedTypes
 export type AllTypeNames = DocumentTypeNames | NestedTypeNames
 
-export type DocumentTypes = Help | Page | Post
-export type DocumentTypeNames = 'Help' | 'Page' | 'Post'
+export type DocumentTypes = Help | Page
+export type DocumentTypeNames = 'Help' | 'Page'
 
 export type NestedTypes = never
 export type NestedTypeNames = never
 
 export type DataExports = {
   allDocuments: DocumentTypes[]
-  allPosts: Post[]
   allPages: Page[]
   allHelp: Help[]
 }
@@ -103,7 +80,6 @@ declare global {
 export type DocumentTypeMap = {
   Help: Help
   Page: Page
-  Post: Post
 }
 
 export type NestedTypeMap = {

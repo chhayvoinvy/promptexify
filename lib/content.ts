@@ -3,6 +3,9 @@ import fs from "fs";
 import path from "path";
 import { createCachedFunction, CACHE_TAGS, CACHE_DURATIONS } from "@/lib/cache";
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
+import { serialize } from "next-mdx-remote/serialize";
+import { MDXRemoteSerializeResult } from "next-mdx-remote";
 
 export interface PostWithDetails {
   id: string;
@@ -67,6 +70,10 @@ export interface TagWithCount {
   _count: {
     posts: number;
   };
+}
+
+export interface ProcessedPostContent extends PostWithDetails {
+  mdxSource: MDXRemoteSerializeResult;
 }
 
 // Optimized base query for posts - only select necessary fields for listings
@@ -475,8 +482,6 @@ export async function incrementPostView(
         userAgent,
       },
     });
-
-
   }
 }
 
@@ -1053,4 +1058,81 @@ export async function getRelatedPosts(
     bookmarks: undefined,
     favorites: undefined,
   })) as PostWithInteractions[];
+}
+
+// Post Content Processing Functions
+export const getPostContent = unstable_cache(
+  async (id: string): Promise<PostWithDetails | null> => {
+    return await prisma.post.findUnique({
+      where: { id },
+      select: fullPostSelect,
+    });
+  },
+  ["post-content"],
+  {
+    tags: [CACHE_TAGS.POST_BY_ID],
+    revalidate: CACHE_DURATIONS.POST_DETAIL,
+  }
+);
+
+export const getProcessedPostContent = unstable_cache(
+  async (id: string): Promise<ProcessedPostContent | null> => {
+    const post = await prisma.post.findUnique({
+      where: { id },
+      select: fullPostSelect,
+    });
+
+    if (!post) return null;
+
+    // Process MDX content
+    const mdxSource = await serialize(post.content || "");
+
+    return {
+      ...post,
+      mdxSource,
+    };
+  },
+  ["processed-post-content"],
+  {
+    tags: [CACHE_TAGS.POST_BY_ID],
+    revalidate: CACHE_DURATIONS.POST_DETAIL,
+  }
+);
+
+export const getPostsContent = unstable_cache(
+  async (includeUnpublished = false): Promise<PostWithDetails[]> => {
+    return await prisma.post.findMany({
+      where: includeUnpublished ? {} : { isPublished: true },
+      select: fullPostSelect,
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+  },
+  ["posts-content"],
+  {
+    tags: [CACHE_TAGS.POSTS],
+    revalidate: CACHE_DURATIONS.POSTS_LIST,
+  }
+);
+
+// Cache revalidation functions
+export async function revalidatePostContent(id?: string) {
+  if (id) {
+    // Revalidate specific post
+    return fetch(`/api/revalidate?tag=${CACHE_TAGS.POST_BY_ID}&id=${id}`, {
+      method: "POST",
+    });
+  } else {
+    // Revalidate all posts
+    return fetch(`/api/revalidate?tag=${CACHE_TAGS.POSTS}`, {
+      method: "POST",
+    });
+  }
+}
+
+export async function revalidateAllPostsContent() {
+  return fetch(`/api/revalidate?tag=${CACHE_TAGS.POSTS}`, {
+    method: "POST",
+  });
 }
