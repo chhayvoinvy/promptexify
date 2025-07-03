@@ -181,14 +181,25 @@ model Settings {
   id String @id @default(uuid())
 
   // Storage Configuration
-  storageType     StorageType @default(S3)
+  storageType StorageType @default(S3)
+
+  // S3 Configuration
   s3BucketName    String?
   s3Region        String?
   s3AccessKeyId   String?
   s3SecretKey     String? // This should be encrypted in production
   s3CloudfrontUrl String?
-  localBasePath   String?     @default("/uploads")
-  localBaseUrl    String?     @default("/uploads")
+
+  // DigitalOcean Spaces Configuration
+  doSpaceName   String?
+  doRegion      String?
+  doAccessKeyId String?
+  doSecretKey   String? // This should be encrypted in production
+  doCdnUrl      String?
+
+  // Local Storage Configuration
+  localBasePath String? @default("/uploads")
+  localBaseUrl  String? @default("/uploads")
 
   // Upload Limits
   maxImageSize       Int     @default(2097152) // 2MB in bytes
@@ -244,4 +255,5 @@ enum PostStatus {
 enum StorageType {
   S3
   LOCAL
+  DOSPACE
 }

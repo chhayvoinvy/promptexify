@@ -6,6 +6,7 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
   ServerSideEncryption,
+  ObjectCannedACL,
 } from "@aws-sdk/client-s3";
 
 // Re-export existing S3 utilities for backward compatibility
@@ -20,12 +21,17 @@ export {
 
 // Storage configuration interface
 export interface StorageConfig {
-  storageType: "S3" | "LOCAL";
+  storageType: "S3" | "LOCAL" | "DOSPACE";
   s3BucketName?: string | null;
   s3Region?: string | null;
   s3AccessKeyId?: string | null;
   s3SecretKey?: string | null;
   s3CloudfrontUrl?: string | null;
+  doSpaceName?: string | null;
+  doRegion?: string | null;
+  doAccessKeyId?: string | null;
+  doSecretKey?: string | null;
+  doCdnUrl?: string | null;
   localBasePath?: string | null;
   localBaseUrl?: string | null;
   maxImageSize: number;
@@ -69,6 +75,11 @@ export async function getStorageConfig(): Promise<StorageConfig> {
     s3AccessKeyId: process.env.AWS_ACCESS_KEY_ID,
     s3SecretKey: process.env.AWS_SECRET_ACCESS_KEY,
     s3CloudfrontUrl: process.env.AWS_CLOUDFRONT_URL,
+    doSpaceName: process.env.DO_SPACE_NAME,
+    doRegion: process.env.DO_REGION,
+    doAccessKeyId: process.env.DO_ACCESS_KEY_ID,
+    doSecretKey: process.env.DO_SECRET_KEY,
+    doCdnUrl: process.env.DO_CDN_URL,
     localBasePath: "/uploads",
     localBaseUrl: "/uploads",
     maxImageSize: 2097152, // 2MB
@@ -257,6 +268,31 @@ async function createS3Client(config: StorageConfig): Promise<S3Client | null> {
   });
 }
 
+// DigitalOcean Spaces functions (S3-compatible)
+async function createDOSpacesClient(
+  config: StorageConfig
+): Promise<S3Client | null> {
+  if (
+    !config.doAccessKeyId ||
+    !config.doSecretKey ||
+    !config.doSpaceName ||
+    !config.doRegion
+  ) {
+    console.error("DigitalOcean Spaces configuration incomplete");
+    return null;
+  }
+
+  return new S3Client({
+    endpoint: `https://${config.doRegion}.digitaloceanspaces.com`,
+    region: config.doRegion,
+    credentials: {
+      accessKeyId: config.doAccessKeyId,
+      secretAccessKey: config.doSecretKey,
+    },
+    forcePathStyle: false, // Use virtual hosted-style requests
+  });
+}
+
 /**
  * Upload image to S3 using configuration
  */
@@ -409,6 +445,158 @@ export async function deleteVideoFromS3WithConfig(
   }
 }
 
+/**
+ * Upload image to DigitalOcean Spaces using configuration
+ */
+export async function uploadImageToDOSpacesWithConfig(
+  imageBuffer: Buffer,
+  filename: string,
+  config: StorageConfig
+): Promise<string> {
+  const doClient = await createDOSpacesClient(config);
+  if (!doClient) {
+    throw new Error("Failed to create DigitalOcean Spaces client");
+  }
+
+  const key = `images/${filename}`;
+  const uploadParams = {
+    Bucket: config.doSpaceName!,
+    Key: key,
+    Body: imageBuffer,
+    ContentType: "image/avif",
+    CacheControl: "public, max-age=31536000",
+    ContentDisposition: "inline",
+    ACL: ObjectCannedACL.public_read, // DigitalOcean Spaces requires explicit ACL
+  };
+
+  try {
+    await doClient.send(new PutObjectCommand(uploadParams));
+
+    // Return CDN URL if available, otherwise Spaces URL
+    const baseUrl =
+      config.doCdnUrl ||
+      `https://${config.doSpaceName}.${config.doRegion}.digitaloceanspaces.com`;
+    return `${baseUrl}/${key}`;
+  } catch (error) {
+    console.error("Error uploading to DigitalOcean Spaces:", error);
+    throw new Error("Failed to upload image to DigitalOcean Spaces");
+  }
+}
+
+/**
+ * Upload video to DigitalOcean Spaces using configuration
+ */
+export async function uploadVideoToDOSpacesWithConfig(
+  videoBuffer: Buffer,
+  filename: string,
+  config: StorageConfig
+): Promise<string> {
+  const doClient = await createDOSpacesClient(config);
+  if (!doClient) {
+    throw new Error("Failed to create DigitalOcean Spaces client");
+  }
+
+  const key = `videos/${filename}`;
+  const uploadParams = {
+    Bucket: config.doSpaceName!,
+    Key: key,
+    Body: videoBuffer,
+    ContentType: "video/mp4",
+    CacheControl: "public, max-age=31536000",
+    ContentDisposition: "inline",
+    ACL: ObjectCannedACL.public_read, // DigitalOcean Spaces requires explicit ACL
+  };
+
+  try {
+    await doClient.send(new PutObjectCommand(uploadParams));
+
+    // Return CDN URL if available, otherwise Spaces URL
+    const baseUrl =
+      config.doCdnUrl ||
+      `https://${config.doSpaceName}.${config.doRegion}.digitaloceanspaces.com`;
+    return `${baseUrl}/${key}`;
+  } catch (error) {
+    console.error("Error uploading video to DigitalOcean Spaces:", error);
+    throw new Error("Failed to upload video to DigitalOcean Spaces");
+  }
+}
+
+/**
+ * Delete image from DigitalOcean Spaces using configuration
+ */
+export async function deleteImageFromDOSpacesWithConfig(
+  imageUrl: string,
+  config: StorageConfig
+): Promise<boolean> {
+  const doClient = await createDOSpacesClient(config);
+  if (!doClient) {
+    return false;
+  }
+
+  try {
+    const url = new URL(imageUrl);
+    const key = url.pathname.startsWith("/")
+      ? url.pathname.slice(1)
+      : url.pathname;
+
+    if (!key.startsWith("images/")) {
+      console.warn("Attempted to delete non-image file:", key);
+      return false;
+    }
+
+    await doClient.send(
+      new DeleteObjectCommand({
+        Bucket: config.doSpaceName!,
+        Key: key,
+      })
+    );
+
+    console.log("Successfully deleted DigitalOcean Spaces image:", key);
+    return true;
+  } catch (error) {
+    console.error("Error deleting image from DigitalOcean Spaces:", error);
+    return false;
+  }
+}
+
+/**
+ * Delete video from DigitalOcean Spaces using configuration
+ */
+export async function deleteVideoFromDOSpacesWithConfig(
+  videoUrl: string,
+  config: StorageConfig
+): Promise<boolean> {
+  const doClient = await createDOSpacesClient(config);
+  if (!doClient) {
+    return false;
+  }
+
+  try {
+    const url = new URL(videoUrl);
+    const key = url.pathname.startsWith("/")
+      ? url.pathname.slice(1)
+      : url.pathname;
+
+    if (!key.startsWith("videos/")) {
+      console.warn("Attempted to delete non-video file:", key);
+      return false;
+    }
+
+    await doClient.send(
+      new DeleteObjectCommand({
+        Bucket: config.doSpaceName!,
+        Key: key,
+      })
+    );
+
+    console.log("Successfully deleted DigitalOcean Spaces video:", key);
+    return true;
+  } catch (error) {
+    console.error("Error deleting video from DigitalOcean Spaces:", error);
+    return false;
+  }
+}
+
 // Unified storage interface
 /**
  * Upload image using configured storage method
@@ -426,6 +614,8 @@ export async function uploadImage(
       filename,
       config.localBasePath || "/uploads"
     );
+  } else if (config.storageType === "DOSPACE") {
+    return uploadImageToDOSpacesWithConfig(imageBuffer, filename, config);
   } else {
     return uploadImageToS3WithConfig(imageBuffer, filename, config);
   }
@@ -447,6 +637,8 @@ export async function uploadVideo(
       filename,
       config.localBasePath || "/uploads"
     );
+  } else if (config.storageType === "DOSPACE") {
+    return uploadVideoToDOSpacesWithConfig(videoBuffer, filename, config);
   } else {
     return uploadVideoToS3WithConfig(videoBuffer, filename, config);
   }
@@ -460,6 +652,8 @@ export async function deleteImage(imageUrl: string): Promise<boolean> {
 
   if (config.storageType === "LOCAL") {
     return deleteImageFromLocal(imageUrl);
+  } else if (config.storageType === "DOSPACE") {
+    return deleteImageFromDOSpacesWithConfig(imageUrl, config);
   } else {
     return deleteImageFromS3WithConfig(imageUrl, config);
   }
@@ -473,6 +667,8 @@ export async function deleteVideo(videoUrl: string): Promise<boolean> {
 
   if (config.storageType === "LOCAL") {
     return deleteVideoFromLocal(videoUrl);
+  } else if (config.storageType === "DOSPACE") {
+    return deleteVideoFromDOSpacesWithConfig(videoUrl, config);
   } else {
     return deleteVideoFromS3WithConfig(videoUrl, config);
   }

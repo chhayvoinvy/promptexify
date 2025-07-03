@@ -401,6 +401,22 @@ export function MediaUpload({
                     </span>
                   </>
                 )}
+                {storageConfig?.storageType === "DOSPACE" && (
+                  <>
+                    <br />
+                    <span className="text-blue-600">
+                      Files stored in DigitalOcean Spaces
+                    </span>
+                  </>
+                )}
+                {storageConfig?.storageType === "S3" && (
+                  <>
+                    <br />
+                    <span className="text-green-600">
+                      Files stored in Amazon S3
+                    </span>
+                  </>
+                )}
               </p>
             </div>
           </>

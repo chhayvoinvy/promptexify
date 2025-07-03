@@ -54,25 +54,28 @@ import {
   Settings2,
   Save,
   RotateCcw,
-  Eye,
-  EyeOff,
+  X,
 } from "lucide-react";
 import {
   getSettingsAction,
   updateSettingsAction,
   resetSettingsToDefaultAction,
-  type SettingsFormData,
 } from "@/actions/settings";
 
 // Form validation schema
 const settingsFormSchema = z.object({
   // Storage Configuration
-  storageType: z.enum(["S3", "LOCAL"]),
+  storageType: z.enum(["S3", "LOCAL", "DOSPACE"]),
   s3BucketName: z.string().optional(),
   s3Region: z.string().optional(),
   s3AccessKeyId: z.string().optional(),
   s3SecretKey: z.string().optional(),
   s3CloudfrontUrl: z.string().url().optional().or(z.literal("")),
+  doSpaceName: z.string().optional(),
+  doRegion: z.string().optional(),
+  doAccessKeyId: z.string().optional(),
+  doSecretKey: z.string().optional(),
+  doCdnUrl: z.string().url().optional().or(z.literal("")),
   localBasePath: z.string().optional(),
   localBaseUrl: z.string().optional(),
 
@@ -105,7 +108,6 @@ export function SettingsForm() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(true);
-  const [showSecretKey, setShowSecretKey] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(settingsFormSchema),
@@ -116,6 +118,11 @@ export function SettingsForm() {
       s3AccessKeyId: "",
       s3SecretKey: "",
       s3CloudfrontUrl: "",
+      doSpaceName: "",
+      doRegion: "",
+      doAccessKeyId: "",
+      doSecretKey: "",
+      doCdnUrl: "",
       localBasePath: "/uploads",
       localBaseUrl: "/uploads",
       maxImageSize: 2097152, // 2MB
@@ -147,6 +154,11 @@ export function SettingsForm() {
             s3AccessKeyId: settings.s3AccessKeyId || "",
             s3SecretKey: settings.s3SecretKey || "",
             s3CloudfrontUrl: settings.s3CloudfrontUrl || "",
+            doSpaceName: settings.doSpaceName || "",
+            doRegion: settings.doRegion || "",
+            doAccessKeyId: settings.doAccessKeyId || "",
+            doSecretKey: settings.doSecretKey || "",
+            doCdnUrl: settings.doCdnUrl || "",
             localBasePath: settings.localBasePath || "/uploads",
             localBaseUrl: settings.localBaseUrl || "/uploads",
             maxImageSize: settings.maxImageSize,
@@ -299,6 +311,12 @@ export function SettingsForm() {
                               Recommended
                             </Badge>
                           </SelectItem>
+                          <SelectItem value="DOSPACE">
+                            DigitalOcean Spaces
+                            <Badge variant="secondary" className="ml-2">
+                              S3-Compatible
+                            </Badge>
+                          </SelectItem>
                           <SelectItem value="LOCAL">
                             Local File Storage
                             <Badge variant="outline" className="ml-2">
@@ -308,8 +326,9 @@ export function SettingsForm() {
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        S3 provides scalable cloud storage with CDN support.
-                        Local storage keeps files on your server.
+                        S3 and DigitalOcean Spaces provide scalable cloud
+                        storage with CDN support. Local storage keeps files on
+                        your server.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -372,29 +391,36 @@ export function SettingsForm() {
                           <FormItem>
                             <FormLabel>Secret Access Key</FormLabel>
                             <FormControl>
-                              <div className="relative">
+                              {field.value ? (
+                                <div className="relative">
+                                  <Input
+                                    value="••••••••••••••••••••••••••••••••"
+                                    readOnly
+                                    className="bg-muted text-muted-foreground"
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                                    onClick={() => field.onChange("")}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ) : (
                                 <Input
-                                  type={showSecretKey ? "text" : "password"}
-                                  placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+                                  type="password"
+                                  placeholder="Enter new secret access key"
                                   {...field}
                                 />
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                                  onClick={() =>
-                                    setShowSecretKey(!showSecretKey)
-                                  }
-                                >
-                                  {showSecretKey ? (
-                                    <EyeOff className="h-4 w-4" />
-                                  ) : (
-                                    <Eye className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </div>
+                              )}
                             </FormControl>
+                            <FormDescription>
+                              {field.value
+                                ? "Secret key is saved (hidden for security). Click × to enter a new one."
+                                : "Enter your AWS secret access key"}
+                            </FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -415,6 +441,125 @@ export function SettingsForm() {
                           </FormControl>
                           <FormDescription>
                             Use CloudFront CDN for faster file delivery
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+
+                {watchStorageType === "DOSPACE" && (
+                  <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                    <h4 className="font-medium text-sm">
+                      DigitalOcean Spaces Configuration
+                    </h4>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name="doSpaceName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Space Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="my-app-uploads" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="doRegion"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Region</FormLabel>
+                            <FormControl>
+                              <Input placeholder="nyc3" {...field} />
+                            </FormControl>
+                            <FormDescription>
+                              e.g., nyc3, sfo3, ams3, sgp1, fra1
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="doAccessKeyId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Access Key ID</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="DO00ABC123DEF456GHI7"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="doSecretKey"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Secret Access Key</FormLabel>
+                            <FormControl>
+                              {field.value ? (
+                                <div className="relative">
+                                  <Input
+                                    value="••••••••••••••••••••••••••••••••"
+                                    readOnly
+                                    className="bg-muted text-muted-foreground"
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                                    onClick={() => field.onChange("")}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <Input
+                                  type="password"
+                                  placeholder="Enter new secret access key"
+                                  {...field}
+                                />
+                              )}
+                            </FormControl>
+                            <FormDescription>
+                              {field.value
+                                ? "Secret key is saved (hidden for security). Click × to enter a new one."
+                                : "Enter your DigitalOcean Spaces secret access key"}
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="doCdnUrl"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>CDN URL (Optional)</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="https://my-space.nyc3.cdn.digitaloceanspaces.com"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Use DigitalOcean CDN for faster file delivery
                           </FormDescription>
                           <FormMessage />
                         </FormItem>

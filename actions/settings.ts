@@ -11,12 +11,23 @@ import { clearStorageConfigCache } from "@/lib/storage";
 // Settings validation schema
 const settingsSchema = z.object({
   // Storage Configuration
-  storageType: z.enum(["S3", "LOCAL"]),
+  storageType: z.enum(["S3", "LOCAL", "DOSPACE"]),
+
+  // S3 Configuration
   s3BucketName: z.string().optional(),
   s3Region: z.string().optional(),
   s3AccessKeyId: z.string().optional(),
   s3SecretKey: z.string().optional(),
   s3CloudfrontUrl: z.string().url().optional().or(z.literal("")),
+
+  // DigitalOcean Spaces Configuration
+  doSpaceName: z.string().optional(),
+  doRegion: z.string().optional(),
+  doAccessKeyId: z.string().optional(),
+  doSecretKey: z.string().optional(),
+  doCdnUrl: z.string().url().optional().or(z.literal("")),
+
+  // Local Storage Configuration
   localBasePath: z.string().optional(),
   localBaseUrl: z.string().optional(),
 
@@ -115,6 +126,7 @@ export async function updateSettingsAction(data: SettingsFormData) {
     // Sanitize string inputs
     const sanitizedData = {
       ...validatedData,
+      // S3 Configuration
       s3BucketName: validatedData.s3BucketName
         ? sanitizeInput(validatedData.s3BucketName)
         : undefined,
@@ -130,6 +142,23 @@ export async function updateSettingsAction(data: SettingsFormData) {
       s3CloudfrontUrl: validatedData.s3CloudfrontUrl
         ? sanitizeInput(validatedData.s3CloudfrontUrl)
         : undefined,
+      // DigitalOcean Spaces Configuration
+      doSpaceName: validatedData.doSpaceName
+        ? sanitizeInput(validatedData.doSpaceName)
+        : undefined,
+      doRegion: validatedData.doRegion
+        ? sanitizeInput(validatedData.doRegion)
+        : undefined,
+      doAccessKeyId: validatedData.doAccessKeyId
+        ? sanitizeInput(validatedData.doAccessKeyId)
+        : undefined,
+      doSecretKey: validatedData.doSecretKey
+        ? sanitizeInput(validatedData.doSecretKey)
+        : undefined,
+      doCdnUrl: validatedData.doCdnUrl
+        ? sanitizeInput(validatedData.doCdnUrl)
+        : undefined,
+      // Local Storage Configuration
       localBasePath: validatedData.localBasePath
         ? sanitizeInput(validatedData.localBasePath)
         : undefined,
@@ -150,6 +179,22 @@ export async function updateSettingsAction(data: SettingsFormData) {
           success: false,
           error:
             "S3 configuration requires bucket name, region, access key ID, and secret key",
+        };
+      }
+    }
+
+    // Additional validation for DigitalOcean Spaces configuration
+    if (sanitizedData.storageType === "DOSPACE") {
+      if (
+        !sanitizedData.doSpaceName ||
+        !sanitizedData.doRegion ||
+        !sanitizedData.doAccessKeyId ||
+        !sanitizedData.doSecretKey
+      ) {
+        return {
+          success: false,
+          error:
+            "DigitalOcean Spaces configuration requires space name, region, access key ID, and secret key",
         };
       }
     }
@@ -225,6 +270,11 @@ export async function getStorageConfigAction() {
         s3AccessKeyId: true,
         s3SecretKey: true,
         s3CloudfrontUrl: true,
+        doSpaceName: true,
+        doRegion: true,
+        doAccessKeyId: true,
+        doSecretKey: true,
+        doCdnUrl: true,
         localBasePath: true,
         localBaseUrl: true,
         maxImageSize: true,
@@ -245,6 +295,11 @@ export async function getStorageConfigAction() {
           s3AccessKeyId: process.env.AWS_ACCESS_KEY_ID || null,
           s3SecretKey: process.env.AWS_SECRET_ACCESS_KEY || null,
           s3CloudfrontUrl: process.env.AWS_CLOUDFRONT_URL || null,
+          doSpaceName: process.env.DO_SPACE_NAME || null,
+          doRegion: process.env.DO_REGION || null,
+          doAccessKeyId: process.env.DO_ACCESS_KEY_ID || null,
+          doSecretKey: process.env.DO_SECRET_KEY || null,
+          doCdnUrl: process.env.DO_CDN_URL || null,
           localBasePath: "/uploads",
           localBaseUrl: "/uploads",
           maxImageSize: 2097152, // 2MB
@@ -294,6 +349,11 @@ export async function resetSettingsToDefaultAction() {
       s3AccessKeyId: null,
       s3SecretKey: null,
       s3CloudfrontUrl: null,
+      doSpaceName: null,
+      doRegion: null,
+      doAccessKeyId: null,
+      doSecretKey: null,
+      doCdnUrl: null,
       localBasePath: "/uploads",
       localBaseUrl: "/uploads",
       maxImageSize: 2097152, // 2MB

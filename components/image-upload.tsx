@@ -272,10 +272,13 @@ export function ImageUpload({
             ? Math.round(storageConfig.maxImageSize / (1024 * 1024))
             : 2}
           MB).{" "}
-          {storageConfig?.storageType === "S3" &&
+          {(storageConfig?.storageType === "S3" ||
+            storageConfig?.storageType === "DOSPACE") &&
             "It will be automatically converted to AVIF format."}
           {storageConfig?.storageType === "LOCAL" &&
             "Files will be stored locally on the server."}
+          {storageConfig?.storageType === "DOSPACE" &&
+            "Files will be stored in DigitalOcean Spaces."}
         </p>
       </div>
 
