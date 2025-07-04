@@ -881,10 +881,10 @@ export async function getPostsWithSorting(
       sortBy === "latest"
         ? { createdAt: "desc" }
         : sortBy === "trending"
-        ? { views: { _count: "desc" } }
-        : sortBy === "popular"
-        ? { favorites: { _count: "desc" } }
-        : { createdAt: "desc" }, // fallback
+          ? { views: { _count: "desc" } }
+          : sortBy === "popular"
+            ? { favorites: { _count: "desc" } }
+            : { createdAt: "desc" }, // fallback
   });
 
   return posts.map((post) => ({
