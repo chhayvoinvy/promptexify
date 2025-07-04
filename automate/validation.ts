@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { seedConfig } from "./configuration";
+import DOMPurify from "isomorphic-dompurify";
 
 // Security-focused validation schemas
 export const TagDataSchema = z.object({
@@ -192,12 +193,7 @@ export function safeJsonParse(jsonString: string): unknown {
 
 // Content sanitization
 export function sanitizeContent(content: string): string {
-  return content
-    .replace(/<script[^>]*>.*?<\/script>/gi, "") // Remove script tags
-    .replace(/javascript:/gi, "") // Remove javascript: protocol
-    .replace(/vbscript:/gi, "") // Remove vbscript: protocol
-    .replace(/on\w+\s*=/gi, "") // Remove event handlers
-    .trim();
+  return DOMPurify.sanitize(content);
 }
 
 export type TagData = z.infer<typeof TagDataSchema>;

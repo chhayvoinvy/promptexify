@@ -242,28 +242,34 @@ class RedisCache implements CacheStore {
     const redis = await this.getRedis();
     if (!redis) return;
 
-    try {
+    return new Promise((resolve, reject) => {
       const stream = redis.scanStream({
         match: pattern,
         count: 100,
       });
-
       const keys: string[] = [];
+
       stream.on("data", (resultKeys: string[]) => {
         keys.push(...resultKeys);
       });
 
-      await new Promise((resolve, reject) => {
-        stream.on("end", resolve);
-        stream.on("error", reject);
+      stream.on("error", (err: Error) => {
+        console.warn("Redis scan stream error:", err);
+        reject(err);
       });
 
-      if (keys.length > 0) {
-        await redis.del(keys);
-      }
-    } catch (error) {
-      console.warn("Redis clear error:", error);
-    }
+      stream.on("end", async () => {
+        try {
+          if (keys.length > 0) {
+            await redis.del(keys);
+          }
+          resolve();
+        } catch (err) {
+          console.warn("Redis delete error during clear:", err);
+          reject(err);
+        }
+      });
+    });
   }
 }
 
@@ -293,38 +299,23 @@ export function createCachedFunction<T extends unknown[], R>(
   tags: string[] = [],
   transform?: (result: R) => R
 ) {
-  return unstable_cache(
-    async (...args: T): Promise<R> => {
-      const cacheKey = `${keyPrefix}-${JSON.stringify(args)}`;
+  return async (...args: T): Promise<R> => {
+    const allTags = [...tags, keyPrefix];
 
-      try {
-        // Try external cache first
-        const cached = await cacheStore.get(cacheKey);
-        if (cached) {
-          const result = JSON.parse(cached) as R;
-          return transform ? transform(result) : result;
-        }
-      } catch (error) {
-        console.warn("Cache retrieval error:", error);
+    const cachedFn = unstable_cache(
+      async () => {
+        const result = await fn(...args);
+        return transform ? transform(result) : result;
+      },
+      [keyPrefix, ...args.map((a) => JSON.stringify(a))],
+      {
+        revalidate,
+        tags: allTags,
       }
+    );
 
-      // Execute function and cache result
-      const result = await fn(...args);
-
-      try {
-        await cacheStore.set(cacheKey, JSON.stringify(result), revalidate);
-      } catch (error) {
-        console.warn("Cache storage error:", error);
-      }
-
-      return transform ? transform(result) : result;
-    },
-    [keyPrefix],
-    {
-      revalidate,
-      tags,
-    }
-  );
+    return cachedFn();
+  };
 }
 
 /**
@@ -409,13 +400,6 @@ export async function revalidateCache(tags: string | string[]) {
   tagArray.forEach((tag) => {
     revalidateTag(tag);
   });
-
-  // External cache invalidation
-  try {
-    await Promise.all(tagArray.map((tag) => cacheStore.clear(`*${tag}*`)));
-  } catch (error) {
-    console.warn("External cache invalidation error:", error);
-  }
 }
 
 /**

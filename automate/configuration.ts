@@ -2,6 +2,7 @@
 
 export interface SeedConfig {
   authorId: string;
+  requiredAuthorRole?: "ADMIN"; // Optional: "ADMIN" or undefined
   contentDirectory: string;
 
   logging: {
@@ -32,10 +33,11 @@ export const seedConfig: SeedConfig = {
       throw new Error("AUTOMATION_AUTHOR_ID environment variable is required");
     })(),
 
+  // Optional: require ADMIN role for the author
+  requiredAuthorRole: "ADMIN",
+
   // Directory containing JSON content files
   contentDirectory: "automate/seeds",
-
-
 
   // Logging configuration
   logging: {
