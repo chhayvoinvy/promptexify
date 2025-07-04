@@ -684,7 +684,6 @@ function CreateFileForm({
         isFeatured: false,
         featuredImage: "",
         featuredVideo: "",
-
       },
     ],
   };
@@ -701,7 +700,7 @@ function CreateFileForm({
     try {
       JSON.parse(value);
       setJsonError(null);
-    } catch (error) {
+    } catch {
       setJsonError("Invalid JSON format");
     }
   };
@@ -711,7 +710,7 @@ function CreateFileForm({
     try {
       const parsedData = JSON.parse(jsonContent);
       onSubmit(parsedData, setIsSubmitting);
-    } catch (error) {
+    } catch {
       setJsonError("Invalid JSON format");
     }
   };
