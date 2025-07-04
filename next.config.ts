@@ -1,6 +1,36 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Fix Supabase realtime-js webpack warnings
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      // Handle node-specific modules that cause webpack warnings
+      config.externals = config.externals || [];
+      config.externals.push({
+        'bufferutil': 'bufferutil',
+        'utf-8-validate': 'utf-8-validate',
+        'supports-color': 'supports-color',
+      });
+    }
+    
+    // Ignore specific warnings from realtime-js
+    config.ignoreWarnings = [
+      { module: /node_modules\/@supabase\/realtime-js/ },
+      { module: /node_modules\/node-gyp-build/ },
+      { module: /node_modules\/bufferutil/ },
+      { module: /node_modules\/utf-8-validate/ },
+    ];
+    
+    return config;
+  },
+  
+  // External packages for server components
+  serverExternalPackages: [
+    '@supabase/realtime-js',
+    'bufferutil',
+    'utf-8-validate',
+  ],
+  
   images: {
     remotePatterns: [
       {

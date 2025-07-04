@@ -186,7 +186,7 @@ export function Footer() {
             <ul className="space-y-2 text-sm">
               <li>
                 <Link
-                  href="/privacy-policy"
+                  href="/privacy"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Privacy Policy
@@ -194,7 +194,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="/terms-of-use"
+                  href="/terms"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Terms of Use
