@@ -1,6 +1,5 @@
 import { Suspense } from "react";
-import { getCurrentUser } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requireAdmin } from "@/lib/auth";
 import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -121,17 +120,9 @@ async function SettingsContent() {
 }
 
 export default async function SettingsPage() {
-  // Get current user and check authentication
-  const user = await getCurrentUser();
-
-  if (!user) {
-    redirect("/signin");
-  }
-
-  // Only ADMIN can access settings
-  if (user.userData?.role !== "ADMIN") {
-    redirect("/dashboard");
-  }
+  // Enforce admin authentication using standardized requireAdmin function
+  // This provides consistent role-based security across admin pages
+  const user = await requireAdmin();
 
   return (
     <SidebarProvider

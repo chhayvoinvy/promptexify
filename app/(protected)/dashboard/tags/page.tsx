@@ -3,9 +3,8 @@ import Link from "next/link";
 import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { Button } from "@/components/ui/button";
-import { getCurrentUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { getTagsPaginated, getAllTags } from "@/lib/content";
-import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Plus, Tag } from "lucide-react";
@@ -361,15 +360,9 @@ async function TagsManagementContent({
 export default async function TagsManagementPage({
   searchParams,
 }: TagsManagementPageProps) {
-  const user = await getCurrentUser();
-
-  if (!user) {
-    redirect("/signin");
-  }
-
-  if (user.userData?.role !== "ADMIN") {
-    redirect("/dashboard");
-  }
+  // Enforce admin authentication using standardized requireAdmin function
+  // This provides consistent role-based security for tag management
+  const user = await requireAdmin();
 
   return (
     <SidebarProvider

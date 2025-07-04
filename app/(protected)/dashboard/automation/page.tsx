@@ -2,8 +2,7 @@ import React, { Suspense } from "react";
 import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { getCurrentUser } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requireAdmin } from "@/lib/auth";
 import { AutomationDashboard } from "@/components/dashboard/automation-dashboard";
 
 // Force dynamic rendering for this page
@@ -62,17 +61,8 @@ function AutomationLoading() {
 }
 
 async function AutomationContent() {
-    const user = await getCurrentUser();
-
-    if (!user) {
-        redirect("/signin");
-    }
-
-    // Only allow admin access
-    if (user.userData?.role !== "ADMIN") {
-        redirect("/dashboard");
-    }
-
+    // Authentication is already handled by the parent component
+    // No need for additional auth checks here
     return (
         <div className="space-y-6">
             <AutomationDashboard />
@@ -81,16 +71,9 @@ async function AutomationContent() {
 }
 
 export default async function AutomationPage() {
-    const user = await getCurrentUser();
-
-    if (!user) {
-        redirect("/signin");
-    }
-
-    // Only allow admin access
-    if (user.userData?.role !== "ADMIN") {
-        redirect("/dashboard");
-    }
+    // Authentication is handled by the protected layout and AutomationContent component
+    // This follows the standardized security pattern with requireAdmin() for role-based access
+    const user = await requireAdmin();
 
     return (
         <SidebarProvider

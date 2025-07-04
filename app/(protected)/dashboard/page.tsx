@@ -11,25 +11,21 @@ import { UserStatsCards } from "@/components/dashboard/user-stats-cards";
 import { SecurityDashboard } from "@/components/dashboard/security-dashboard";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getCurrentUser } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
 import {
   getUserDashboardStatsAction,
   getUserFavoritesCountAction,
   getAdminDashboardStatsAction,
 } from "@/actions/users";
-import { redirect } from "next/navigation";
 import { Shield, BarChart3 } from "lucide-react";
 
 // Force dynamic rendering for this page
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  // Get current user and check authentication
-  const user = await getCurrentUser();
-
-  if (!user) {
-    redirect("/signin");
-  }
+  // Enforce authentication using standardized requireAuth function
+  // This provides consistent security across all dashboard pages
+  const user = await requireAuth();
 
   // If user is a regular USER, show user dashboard
   if (user.userData?.role === "USER") {

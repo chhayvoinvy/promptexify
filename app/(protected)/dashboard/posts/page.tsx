@@ -1,7 +1,5 @@
 import React, { Suspense } from "react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
-
 import { Plus } from "lucide-react";
 import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
@@ -36,7 +34,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 
-import { getCurrentUser } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { PostActionsDropdown } from "@/components/dashboard/(actions)/post-actions-dropdown";
 import { getAllPosts, getUserPosts, getAllCategories } from "@/lib/content";
 import { PostFilters } from "@/components/dashboard/post-filters";
@@ -396,8 +394,8 @@ async function PostsManagementContent({
                     <TableCell>
                       <div className="flex flex-row gap-1">
                         {post.status === "APPROVED" ||
-                        (post.isPublished &&
-                          post.status !== "PENDING_APPROVAL") ? (
+                          (post.isPublished &&
+                            post.status !== "PENDING_APPROVAL") ? (
                           <Badge
                             variant="outline"
                             className="text-xs border-green-500 text-green-700 dark:text-green-400"
@@ -553,17 +551,9 @@ async function PostsManagementContent({
 export default async function PostsManagementPage({
   searchParams,
 }: PostsManagementPageProps) {
-  // Get current user and check role
-  const user = await getCurrentUser();
-
-  if (!user) {
-    redirect("/signin");
-  }
-
-  // Both ADMIN and USER can access posts management
-  if (user.userData?.role !== "ADMIN" && user.userData?.role !== "USER") {
-    redirect("/dashboard");
-  }
+  // Enforce authentication and role-based access using standardized functions
+  // Both ADMIN and USER roles can access posts management
+  const user = await requireRole(["ADMIN", "USER"]);
 
   return (
     <SidebarProvider
