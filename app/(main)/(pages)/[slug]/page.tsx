@@ -2,10 +2,12 @@ import { client } from "@/lib/sanity";
 import { PortableText } from "@portabletext/react";
 import { notFound } from "next/navigation";
 
-interface PageProps {
-  params: {
-    slug: string;
-  };
+export async function generateStaticParams() {
+  const query = `*[_type == "page"]{ "slug": slug.current }`;
+  const pages = await client.fetch(query);
+  return pages.map((page: { slug: string }) => ({
+    slug: page.slug,
+  }));
 }
 
 async function getPage(slug: string) {
@@ -14,8 +16,15 @@ async function getPage(slug: string) {
   return page;
 }
 
+interface PageProps {
+  params: Promise<{
+    slug: string;
+  }>;
+}
+
 export default async function Page({ params }: PageProps) {
-  const page = await getPage((await params).slug);
+  const { slug } = await params;
+  const page = await getPage(slug);
 
   if (!page) {
     notFound();

@@ -74,7 +74,7 @@ model Tag {
 model Post {
   id            String     @id @default(uuid())
   title         String
-  slug          String     @unique
+  slug          String
   description   String?
   content       String
   featuredImage String?

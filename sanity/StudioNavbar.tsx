@@ -1,21 +1,27 @@
 "use client";
 
-import { LogoSymbol } from "@/components/ui/logo";
+import { ArrowLeftIcon } from "@radix-ui/react-icons";
+import Link from "next/link";
 import { type NavbarProps } from "sanity";
+
+import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/ui/logo";
 
 export function StudioNavbar(props: NavbarProps) {
   return (
-    <div
-      style={{
-        background: "var(--card-bg-color)",
-        borderBottom: `1px solid var(--card-border-color)`,
-        padding: "12px",
-      }}
-    >
-      <div className="flex items-center justify-between">
-        <LogoSymbol href="/dashboard" />
-        <>{props.renderDefault(props)}</>
+    <div>
+      <div className="flex items-center justify-between border-b p-2">
+        <Link href="/dashboard">
+          <Button variant="ghost" className="flex items-center gap-2">
+            <ArrowLeftIcon className="h-5 w-5" />
+            Go to Dashboard
+          </Button>
+        </Link>
+        <div className="flex items-center justify-center p-2">
+          <Logo />
+        </div>
       </div>
+      <>{props.renderDefault(props)}</>
     </div>
   );
 }
