@@ -1,11 +1,7 @@
 import { prisma } from "@/lib/prisma";
-import fs from "fs";
-import path from "path";
 import { createCachedFunction, CACHE_TAGS, CACHE_DURATIONS } from "@/lib/cache";
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
-import { serialize } from "next-mdx-remote/serialize";
-import { MDXRemoteSerializeResult } from "next-mdx-remote";
 
 export interface PostWithDetails {
   id: string;
@@ -70,10 +66,6 @@ export interface TagWithCount {
   _count: {
     posts: number;
   };
-}
-
-export interface ProcessedPostContent extends PostWithDetails {
-  mdxSource: MDXRemoteSerializeResult;
 }
 
 // Optimized base query for posts - only select necessary fields for listings
@@ -482,54 +474,6 @@ export async function incrementPostView(
         userAgent,
       },
     });
-  }
-}
-
-export async function createMDXFile(
-  post: PostWithDetails,
-  content: string
-): Promise<void> {
-  const contentDir = path.join(process.cwd(), "content", "posts");
-  const categoryDir = path.join(
-    contentDir,
-    post.category.parent?.slug || post.category.slug
-  );
-
-  // Create directory if it doesn't exist
-  if (!fs.existsSync(categoryDir)) {
-    fs.mkdirSync(categoryDir, { recursive: true });
-  }
-
-  const frontmatter = `---
-title: "${post.title}"
-description: "${post.description}"
-category: "${post.category.slug}"
-parentCategory: "${post.category.parent?.slug || post.category.slug}"
-tags: [${post.tags.map((tag) => `"${tag.name}"`).join(", ")}]
-featuredImage: "${post.featuredImage || ""}"
-featuredVideo: "${post.featuredVideo || ""}"
-isPremium: ${post.isPremium}
-isPublished: ${post.isPublished}
-publishedAt: "${post.createdAt.toISOString()}"
-authorId: "${post.author.id}"
----
-
-${content}`;
-
-  const filePath = path.join(categoryDir, `${post.slug}.mdx`);
-  fs.writeFileSync(filePath, frontmatter);
-}
-
-export async function deleteMDXFile(post: PostWithDetails): Promise<void> {
-  const contentDir = path.join(process.cwd(), "content", "posts");
-  const categoryDir = path.join(
-    contentDir,
-    post.category.parent?.slug || post.category.slug
-  );
-  const filePath = path.join(categoryDir, `${post.slug}.mdx`);
-
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
   }
 }
 
@@ -1075,30 +1019,6 @@ export const getPostContent = unstable_cache(
   }
 );
 
-export const getProcessedPostContent = unstable_cache(
-  async (id: string): Promise<ProcessedPostContent | null> => {
-    const post = await prisma.post.findUnique({
-      where: { id },
-      select: fullPostSelect,
-    });
-
-    if (!post) return null;
-
-    // Process MDX content
-    const mdxSource = await serialize(post.content || "");
-
-    return {
-      ...post,
-      mdxSource,
-    };
-  },
-  ["processed-post-content"],
-  {
-    tags: [CACHE_TAGS.POST_BY_ID],
-    revalidate: CACHE_DURATIONS.POST_DETAIL,
-  }
-);
-
 export const getPostsContent = unstable_cache(
   async (includeUnpublished = false): Promise<PostWithDetails[]> => {
     return await prisma.post.findMany({
@@ -1119,7 +1039,7 @@ export const getPostsContent = unstable_cache(
 // Cache revalidation functions
 export async function revalidatePostContent(id?: string) {
   const { revalidateCache } = await import("@/lib/cache");
-  
+
   if (id) {
     // Revalidate specific post
     await revalidateCache(CACHE_TAGS.POST_BY_ID);

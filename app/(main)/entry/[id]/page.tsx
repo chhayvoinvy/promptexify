@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import {
   incrementPostView,
-  getProcessedPostContent,
+  getPostContent,
   getAllPosts,
   getRelatedPosts,
 } from "@/lib/content";
@@ -53,8 +53,8 @@ export default async function PostPage({
     redirect(`/entry/${id}`);
   }
 
-  // Get processed post content with MDX
-  const processedPost = await getProcessedPostContent(id);
+  // Get post content
+  const processedPost = await getPostContent(id);
 
   if (!processedPost || !processedPost.isPublished) {
     notFound();
@@ -88,7 +88,6 @@ export default async function PostPage({
   return (
     <PostStandalonePage
       post={processedPost}
-      processedPost={processedPost}
       relatedPosts={relatedPosts}
       userType={userType}
     />

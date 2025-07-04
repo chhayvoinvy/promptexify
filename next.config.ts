@@ -1,9 +1,6 @@
 import type { NextConfig } from "next";
-import { withContentlayer } from "next-contentlayer2";
 
 const nextConfig: NextConfig = {
-  // Enable standalone output for Docker production builds
-  output: "standalone",
   images: {
     remotePatterns: [
       {
@@ -66,63 +63,6 @@ const nextConfig: NextConfig = {
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
   },
-  experimental: {
-    // Optimize webpack cache performance
-    webpackBuildWorker: true,
-    // Optimize static page generation
-    optimizePackageImports: ["contentlayer2", "next-contentlayer2"],
-  },
-  // Security headers are now handled by middleware for better environment control
-  // This ensures consistent application across all routes and proper CSP nonce handling
-  webpack: (config, { isServer }) => {
-    // Fix for Supabase realtime warnings
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        net: false,
-        tls: false,
-        crypto: false,
-        stream: false,
-        util: false,
-        buffer: false,
-        events: false,
-      };
-    }
-
-    // Ignore specific warnings from Supabase realtime
-    config.ignoreWarnings = [
-      { module: /node_modules\/@supabase\/realtime-js/ },
-      { file: /node_modules\/@supabase\/realtime-js/ },
-      /Critical dependency: the request of a dependency is an expression/,
-      /Module not found: Can't resolve/,
-      /the request of a dependency is an expression/,
-      /Serializing big strings/,
-    ];
-
-    // Optimize webpack cache performance
-    config.cache = {
-      ...config.cache,
-      compression: "gzip",
-      maxMemoryGenerations: 1,
-    };
-
-    // Optimize Contentlayer build performance
-    config.module.rules.push({
-      test: /\.mdx$/,
-      use: [
-        {
-          loader: "babel-loader",
-          options: {
-            cacheDirectory: true,
-            cacheCompression: false,
-          },
-        },
-      ],
-    });
-
-    return config;
-  },
 };
 
-export default withContentlayer(nextConfig);
+export default nextConfig;

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
-import { MDXRemote } from "next-mdx-remote";
+
 
 import {
   Copy,
@@ -26,70 +26,20 @@ import {
   Clock,
 } from "lucide-react";
 
-import { PostWithInteractions, ProcessedPostContent } from "@/lib/content";
+import { PostWithInteractions } from "@/lib/content";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { FavoriteButton } from "@/components/favorite-button";
 
-// MDX Components for rendering
-const mdxComponents = {
-  h1: ({ children }: { children: React.ReactNode }) => (
-    <h1 className="text-3xl font-bold mb-4 text-foreground">{children}</h1>
-  ),
-  h2: ({ children }: { children: React.ReactNode }) => (
-    <h2 className="text-2xl font-semibold mb-3 text-foreground">{children}</h2>
-  ),
-  h3: ({ children }: { children: React.ReactNode }) => (
-    <h3 className="text-xl font-medium mb-2 text-foreground">{children}</h3>
-  ),
-  p: ({ children }: { children: React.ReactNode }) => (
-    <p className="mb-4 leading-relaxed text-foreground">{children}</p>
-  ),
-  ul: ({ children }: { children: React.ReactNode }) => (
-    <ul className="list-disc list-inside mb-4 space-y-1 text-foreground">
-      {children}
-    </ul>
-  ),
-  ol: ({ children }: { children: React.ReactNode }) => (
-    <ol className="list-decimal list-inside mb-4 space-y-1 text-foreground">
-      {children}
-    </ol>
-  ),
-  li: ({ children }: { children: React.ReactNode }) => (
-    <li className="text-foreground">{children}</li>
-  ),
-  code: ({ children }: { children: React.ReactNode }) => (
-    <code className="bg-muted px-1 py-0.5 rounded text-sm font-mono text-foreground">
-      {children}
-    </code>
-  ),
-  pre: ({ children }: { children: React.ReactNode }) => (
-    <pre className="bg-muted p-4 rounded-lg overflow-x-auto mb-4 text-sm font-mono text-foreground">
-      {children}
-    </pre>
-  ),
-  blockquote: ({ children }: { children: React.ReactNode }) => (
-    <blockquote className="border-l-4 border-primary pl-4 italic mb-4 text-muted-foreground">
-      {children}
-    </blockquote>
-  ),
-  strong: ({ children }: { children: React.ReactNode }) => (
-    <strong className="font-semibold text-foreground">{children}</strong>
-  ),
-  em: ({ children }: { children: React.ReactNode }) => (
-    <em className="italic text-foreground">{children}</em>
-  ),
-};
+
 
 interface PostStandalonePageProps {
   post: PostWithInteractions;
-  processedPost?: ProcessedPostContent;
   relatedPosts?: PostWithInteractions[];
   userType?: "FREE" | "PREMIUM" | null;
 }
 
 export function PostStandalonePage({
   post,
-  processedPost,
   relatedPosts = [],
   userType,
 }: PostStandalonePageProps) {
@@ -405,19 +355,10 @@ export function PostStandalonePage({
                     >
                       <div className="h-full overflow-y-auto">
                         <div className="px-8 pb-6">
-                          {processedPost?.mdxSource ? (
-                            <div className="prose prose-sm max-w-none dark:prose-invert">
-                              <MDXRemote
-                                {...processedPost.mdxSource}
-                                components={mdxComponents}
-                              />
-                            </div>
-                          ) : (
-                            <div className="whitespace-pre-wrap text-sm leading-relaxed break-words bg-card/20">
-                              {post.content ||
-                                "No content available for this prompt."}
-                            </div>
-                          )}
+                          <div className="whitespace-pre-wrap text-sm leading-relaxed break-words bg-card/20">
+                            {post.content ||
+                              "No content available for this prompt."}
+                          </div>
                         </div>
                       </div>
                     </div>

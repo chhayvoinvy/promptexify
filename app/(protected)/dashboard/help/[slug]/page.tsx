@@ -2,68 +2,18 @@ import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getCurrentUser } from "@/lib/auth";
-import { redirect, notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Icons } from "@/components/ui/icons";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import fs from "fs";
-import path from "path";
-import matter from "gray-matter";
-import { MDXRemote } from "next-mdx-remote/rsc";
-import remarkGfm from "remark-gfm";
-import rehypeSlug from "rehype-slug";
-import rehypeAutolinkHeadings from "rehype-autolink-headings";
 
 // Force dynamic rendering for this page
 export const dynamic = "force-dynamic";
-
-interface HelpArticleMeta {
-  title: string;
-  description: string;
-  category: string;
-  icon?: string;
-  order?: number;
-  lastUpdated: string;
-}
 
 interface Props {
   params: Promise<{
     slug: string;
   }>;
-}
-
-async function getHelpArticle(slug: string) {
-  try {
-    const filePath = path.join(process.cwd(), "content", "help", `${slug}.mdx`);
-
-    if (!fs.existsSync(filePath)) {
-      return null;
-    }
-
-    const fileContent = fs.readFileSync(filePath, "utf8");
-    const { data, content } = matter(fileContent);
-
-    return {
-      meta: data as HelpArticleMeta,
-      content,
-      slug,
-    };
-  } catch (error) {
-    console.error("Error reading help article:", error);
-    return null;
-  }
-}
-
-function getIconComponent(iconName?: string) {
-  const iconMap = {
-    crown: Icons.crown,
-    upload: Icons.upload,
-    "help-circle": Icons.helpCircle,
-  };
-
-  return iconMap[iconName as keyof typeof iconMap] || Icons.helpCircle;
 }
 
 export default async function HelpArticlePage({ params }: Props) {
@@ -76,13 +26,6 @@ export default async function HelpArticlePage({ params }: Props) {
 
   // Await params before accessing properties (Next.js 15 requirement)
   const { slug } = await params;
-  const article = await getHelpArticle(slug);
-
-  if (!article) {
-    notFound();
-  }
-
-  const IconComponent = getIconComponent(article.meta.icon);
 
   return (
     <SidebarProvider
@@ -112,64 +55,25 @@ export default async function HelpArticlePage({ params }: Props) {
               <div className="space-y-4">
                 <div className="flex items-start gap-4">
                   <div className="rounded-lg bg-primary/10 p-3">
-                    <IconComponent className="h-8 w-8 text-primary" />
+                    <Icons.helpCircle className="h-8 w-8 text-primary" />
                   </div>
                   <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-xs">
-                        {article.meta.category}
-                      </Badge>
-                      <span className="text-sm text-muted-foreground">
-                        Last updated:{" "}
-                        {new Date(
-                          article.meta.lastUpdated
-                        ).toLocaleDateString()}
-                      </span>
-                    </div>
                     <h1 className="text-3xl font-bold tracking-tight">
-                      {article.meta.title}
+                      Help Article Not Available
                     </h1>
                     <p className="text-lg text-muted-foreground">
-                      {article.meta.description}
+                      The help article "{slug}" is currently not available. Please contact support for assistance.
                     </p>
                   </div>
                 </div>
               </div>
 
-              <Separator />
-
-              {/* Article Content */}
-              <div className="prose prose-neutral dark:prose-invert max-w-none">
-                <MDXRemote
-                  source={article.content}
-                  options={{
-                    mdxOptions: {
-                      remarkPlugins: [remarkGfm],
-                      rehypePlugins: [
-                        rehypeSlug,
-                        [
-                          rehypeAutolinkHeadings,
-                          {
-                            properties: {
-                              className: ["subheading-anchor"],
-                              ariaLabel: "Link to section",
-                            },
-                          },
-                        ],
-                      ],
-                    },
-                  }}
-                />
-              </div>
-
-              <Separator />
-
-              {/* Footer Actions */}
+              {/* Contact Support */}
               <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-muted/30 rounded-lg p-6">
                 <div className="text-center sm:text-left">
-                  <h3 className="font-semibold mb-1">Was this helpful?</h3>
+                  <h3 className="font-semibold mb-1">Need Help?</h3>
                   <p className="text-sm text-muted-foreground">
-                    Let us know how we can improve our documentation.
+                    Contact our support team for assistance with your questions.
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -186,12 +90,12 @@ export default async function HelpArticlePage({ params }: Props) {
                 </div>
               </div>
 
-              {/* Navigation to other articles */}
+              {/* Navigation */}
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="p-4 border rounded-lg">
-                  <h4 className="font-semibold mb-2">Previous Article</h4>
+                  <h4 className="font-semibold mb-2">Help Center</h4>
                   <p className="text-sm text-muted-foreground">
-                    Browse more help articles
+                    Browse available help resources
                   </p>
                   <Button
                     variant="ghost"
@@ -206,9 +110,9 @@ export default async function HelpArticlePage({ params }: Props) {
                   </Button>
                 </div>
                 <div className="p-4 border rounded-lg">
-                  <h4 className="font-semibold mb-2">Need More Help?</h4>
+                  <h4 className="font-semibold mb-2">Dashboard</h4>
                   <p className="text-sm text-muted-foreground">
-                    Contact our support team directly
+                    Return to your dashboard
                   </p>
                   <Button
                     variant="ghost"
@@ -216,8 +120,8 @@ export default async function HelpArticlePage({ params }: Props) {
                     className="mt-2 p-0"
                     asChild
                   >
-                    <Link href="/dashboard/help/contact-support">
-                      Contact Support
+                    <Link href="/dashboard">
+                      Dashboard
                       <Icons.arrowRight className="ml-2 h-4 w-4" />
                     </Link>
                   </Button>
