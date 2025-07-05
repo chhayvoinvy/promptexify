@@ -13,9 +13,9 @@ export const page = defineType({
       type: "string",
       validation: (Rule) =>
         Rule.required()
-          .min(10)
+          .min(5)
           .max(100)
-          .error("Title must be between 10 and 100 characters"),
+          .error("Title must be between 5 and 100 characters"),
     }),
     defineField({
       name: "slug",

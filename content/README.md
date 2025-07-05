@@ -26,10 +26,11 @@ Each JSON file must follow this structure:
       "description": "Brief description of the post",
       "content": "Full content of the post",
       "isPremium": false,
-      "isPublished": true,
-      "status": "APPROVED",
+      "isPublished": false,
+      "status": "PENDING_APPROVAL",
       "isFeatured": false,
-      "featuredImage": "https://example.com/image.jpg"
+      "featuredImage": "",
+      "featuredVideo": ""
     }
   ]
 }
