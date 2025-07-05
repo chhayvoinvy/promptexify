@@ -362,15 +362,15 @@ export class SecurityHeaders {
         "default-src 'self'",
         `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${CSP_HASHES.SCRIPTS.join(
           " "
-        )} https://www.googletagmanager.com https://www.google-analytics.com https://accounts.google.com https://vitals.vercel-insights.com https://va.vercel-scripts.com`,
+        )} https://www.googletagmanager.com https://www.google-analytics.com https://accounts.google.com https://vitals.vercel-insights.com https://va.vercel-scripts.com https://securepubads.g.doubleclick.net https://pagead2.googlesyndication.com`,
         // Updated style-src with hashes for Next.js and library inline styles
         `style-src 'self' 'nonce-${nonce}' 'unsafe-hashes' https://fonts.googleapis.com https://accounts.google.com ${CSP_HASHES.STYLES.join(
           " "
-        )}`,
-        "img-src 'self' blob: data: https: https://*.s3.amazonaws.com https://*.cloudfront.net",
+        )} https://pagead2.googlesyndication.com`,
+        "img-src 'self' blob: data: https: https://*.s3.amazonaws.com https://*.cloudfront.net https://cdn.sanity.io/ https://pagead2.googlesyndication.com",
         "font-src 'self' https://fonts.gstatic.com",
-        `connect-src 'self' https://api.stripe.com https://*.supabase.co wss://*.supabase.co https://*.s3.amazonaws.com https://*.cloudfront.net https://vitals.vercel-analytics.com wss://vitals.vercel-analytics.com https://accounts.google.com`,
-        "frame-src 'self' https://accounts.google.com",
+        `connect-src 'self' https://api.stripe.com https://*.supabase.co wss://*.supabase.co https://*.s3.amazonaws.com https://*.cloudfront.net https://vitals.vercel-analytics.com wss://vitals.vercel-analytics.com https://accounts.google.com https://*.api.sanity.io https://pagead2.googlesyndication.com`,
+        "frame-src 'self' https://accounts.google.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://pagead2.googlesyndication.com",
         "media-src 'self' blob: data: https://*.s3.amazonaws.com https://*.cloudfront.net",
         "object-src 'none'",
         "base-uri 'self'",
