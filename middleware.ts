@@ -13,6 +13,11 @@ export async function middleware(request: NextRequest) {
     // Handle Supabase session
     const response = await updateSession(request);
 
+    // If updateSession returns a redirect, follow it immediately.
+    if (response.headers.has("Location")) {
+      return response;
+    }
+
     // Prepare request headers for modification
     const requestHeaders = new Headers(request.headers);
 
