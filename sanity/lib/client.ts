@@ -1,10 +1,3 @@
-import { createClient } from 'next-sanity'
-
-import { apiVersion, dataset, projectId } from '../env'
-
-export const client = createClient({
-  projectId,
-  dataset,
-  apiVersion,
-  useCdn: true, // Set to false if statically generating pages, using ISR or tag-based revalidation
-})
+// Re-export the main client from consolidated sanity lib
+// This maintains backward compatibility while avoiding duplication
+export { client } from "@/lib/sanity";

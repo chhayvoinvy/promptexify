@@ -16,8 +16,8 @@ import {
   validateFileExtension,
   safeJsonParse,
   type ContentFile,
-} from "@/automate/validation";
-import { seedConfig } from "@/automate/configuration";
+} from "@/lib/automation/validation";
+import { automationConfig } from "@/lib/automation/config";
 
 // Define types for automation actions
 interface ActionResult {
@@ -77,296 +77,7 @@ async function checkAutomationRateLimit(userId: string, action: string) {
   return result;
 }
 
-// Direct content generation function (replaces spawn approach)
-async function executeContentGenerationDirect(): Promise<{
-  output: string;
-  error?: string;
-  duration: number;
-  filesProcessed: number;
-  postsCreated: number;
-  statusMessages: string[];
-}> {
-  const startTime = Date.now();
-  const statusMessages: string[] = [];
-  let output = "";
-
-  try {
-    const authorId = process.env.AUTOMATION_AUTHOR_ID;
-    if (!authorId) {
-      throw new Error("AUTOMATION_AUTHOR_ID environment variable is required");
-    }
-
-    statusMessages.push("🌱 Starting secure automated content seed...");
-
-    // Validate author exists (no role requirement - AUTOMATION_AUTHOR_ID is just for post authorship)
-    const author = await prisma.user.findUnique({
-      where: { id: authorId },
-      select: { id: true, role: true },
-    });
-
-    if (!author) {
-      throw new Error(`Author with ID ${authorId} not found`);
-    }
-
-    statusMessages.push(`📝 Using author: ${authorId} for generated content`);
-
-    // Import validation functions and config
-    const { seedConfig } = await import("../automate/configuration");
-    const {
-      ContentFileSchema,
-      safeJsonParse,
-      validateFileSize,
-      validateFileExtension,
-      sanitizeContent,
-    } = await import("../automate/validation");
-
-    // Process content files
-    const contentDir = path.join(process.cwd(), seedConfig.contentDirectory);
-    await fs.mkdir(contentDir, { recursive: true });
-
-    const files = await fs.readdir(contentDir);
-    const jsonFiles = files.filter((file) => validateFileExtension(file));
-
-    if (jsonFiles.length === 0) {
-      statusMessages.push(
-        "⚠️  No valid JSON files found in automate/seeds directory"
-      );
-      return {
-        output: statusMessages.join("\n"),
-        duration: Math.round((Date.now() - startTime) / 1000),
-        filesProcessed: 0,
-        postsCreated: 0,
-        statusMessages,
-      };
-    }
-
-    statusMessages.push(`📁 Found ${jsonFiles.length} valid content files`);
-
-    let totalPostsCreated = 0;
-    let filesProcessed = 0;
-
-    // Process each file
-    for (const fileName of jsonFiles) {
-      try {
-        statusMessages.push(`📄 Processing ${fileName}...`);
-
-        const filePath = path.join(contentDir, fileName);
-        const fileStats = await fs.stat(filePath);
-
-        // Validate file size
-        if (!validateFileSize(fileStats.size)) {
-          statusMessages.push(
-            `⚠️  File ${fileName} exceeds size limit (${fileStats.size} bytes), skipping...`
-          );
-          continue;
-        }
-
-        // Read and parse file safely
-        const fileContent = await fs.readFile(filePath, "utf-8");
-        const rawData = safeJsonParse(fileContent);
-
-        // Validate against schema
-        const contentData = ContentFileSchema.parse(rawData);
-
-        // Sanitize content
-        contentData.posts = contentData.posts.map((post) => ({
-          ...post,
-          title: sanitizeContent(post.title),
-          description: sanitizeContent(post.description),
-          content: sanitizeContent(post.content),
-        }));
-
-        // Process this file's content
-        const postsCreated = await processContentFile(
-          contentData,
-          authorId,
-          statusMessages
-        );
-
-        totalPostsCreated += postsCreated;
-        filesProcessed++;
-
-        statusMessages.push(`✅ Completed processing ${fileName}`);
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Unknown error";
-        statusMessages.push(`❌ Error processing ${fileName}: ${errorMessage}`);
-
-        await SecurityMonitor.logSecurityEvent(
-          SecurityEventType.MALICIOUS_PAYLOAD,
-          { fileName, error: errorMessage },
-          "medium"
-        );
-      }
-    }
-
-    const duration = Math.round((Date.now() - startTime) / 1000);
-    statusMessages.push(
-      `🎉 Secure automated content seeding completed successfully!`
-    );
-    statusMessages.push(
-      `📊 Statistics: ${filesProcessed} files processed, ${totalPostsCreated} posts created in ${duration}s`
-    );
-
-    output = statusMessages.join("\n");
-
-    return {
-      output,
-      duration,
-      filesProcessed,
-      postsCreated: totalPostsCreated,
-      statusMessages,
-    };
-  } catch (error) {
-    const duration = Math.round((Date.now() - startTime) / 1000);
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-
-    return {
-      output: statusMessages.join("\n"),
-      error: errorMessage,
-      duration,
-      filesProcessed: 0,
-      postsCreated: 0,
-      statusMessages,
-    };
-  }
-}
-
-// Helper function to process individual content file
-async function processContentFile(
-  contentData: {
-    category: string;
-    tags?: Array<{ name: string; slug: string }>;
-    posts: Array<{
-      title: string;
-      slug: string;
-      description: string;
-      content: string;
-      featuredImage?: string;
-      isPremium?: boolean;
-      isPublished?: boolean;
-      isFeatured?: boolean;
-    }>;
-  },
-  authorId: string,
-  statusMessages: string[]
-): Promise<number> {
-  let postsCreated = 0;
-
-  await prisma.$transaction(
-    async (tx) => {
-      // Create or get category
-      let category = await tx.category.findUnique({
-        where: {
-          slug: contentData.category.toLowerCase().replace(/\s+/g, "-"),
-        },
-      });
-
-      if (!category) {
-        category = await tx.category.create({
-          data: {
-            name: contentData.category,
-            slug: contentData.category.toLowerCase().replace(/\s+/g, "-"),
-            description: `Category for ${contentData.category} prompts`,
-          },
-        });
-      }
-
-      // Process tags
-      const processedTags = [];
-      for (const tagData of contentData.tags || []) {
-        let tag = await tx.tag.findUnique({
-          where: { slug: tagData.slug },
-        });
-
-        if (!tag) {
-          tag = await tx.tag.create({
-            data: {
-              name: tagData.name,
-              slug: tagData.slug,
-            },
-          });
-        }
-        processedTags.push(tag);
-      }
-
-      // Process posts
-      for (const postData of contentData.posts) {
-        try {
-          // Check if post already exists
-          const existingPost = await tx.post.findFirst({
-            where: { slug: postData.slug },
-          });
-
-          if (existingPost) {
-            statusMessages.push(
-              `⚠️  Post "${postData.title}" already exists, skipping...`
-            );
-            continue;
-          }
-
-          // Create the post
-          const post = await tx.post.create({
-            data: {
-              title: postData.title,
-              slug: postData.slug,
-              description: postData.description,
-              content: postData.content,
-              featuredImage: postData.featuredImage || null,
-              isPremium: postData.isPremium || false,
-              isPublished: postData.isPublished !== false,
-              isFeatured: postData.isFeatured || false,
-              status: "PENDING_APPROVAL",
-              authorId: authorId,
-              categoryId: category.id,
-            },
-          });
-
-          // Connect tags to post
-          if (processedTags.length > 0) {
-            await tx.post.update({
-              where: { id: post.id },
-              data: {
-                tags: {
-                  connect: processedTags.map((tag) => ({ id: tag.id })),
-                },
-              },
-            });
-          }
-
-          statusMessages.push(`✅ Created post: "${postData.title}"`);
-          postsCreated++;
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : "Unknown error";
-          statusMessages.push(
-            `❌ Error creating post "${postData.title}": ${errorMessage}`
-          );
-        }
-      }
-    },
-    {
-      timeout: 30000, // 30 second timeout
-    }
-  );
-
-  return postsCreated;
-}
-
-// Replace the old executeContentGeneration function
-async function executeContentGeneration(): Promise<{
-  output: string;
-  error?: string;
-  duration: number;
-}> {
-  const result = await executeContentGenerationDirect();
-  return {
-    output: result.output,
-    error: result.error,
-    duration: result.duration,
-  };
-}
+// Old functions removed - now using AutomationService from lib/automation/service.ts
 
 // Save generation log to database with enhanced metadata
 async function saveLog(log: {
@@ -413,7 +124,10 @@ export async function getContentFilesAction(): Promise<ActionResult> {
     await checkAutomationRateLimit(user.id, "get_files");
 
     // Ensure content directory exists
-    const contentDir = path.join(process.cwd(), seedConfig.contentDirectory);
+    const contentDir = path.join(
+      process.cwd(),
+      automationConfig.contentDirectory
+    );
     await fs.mkdir(contentDir, { recursive: true });
 
     const files = await fs.readdir(contentDir);
@@ -501,7 +215,7 @@ export const createContentFileAction = withCSRFProtection(
       try {
         tags = JSON.parse(tagsData);
         posts = JSON.parse(postsData);
-      } catch (_error) {
+      } catch {
         await SecurityMonitor.logSecurityEvent(
           SecurityEventType.MALICIOUS_PAYLOAD,
           { fileName, error: "Invalid JSON in form data" },
@@ -521,7 +235,10 @@ export const createContentFileAction = withCSRFProtection(
         throw new Error("File content too large");
       }
 
-      const contentDir = path.join(process.cwd(), seedConfig.contentDirectory);
+      const contentDir = path.join(
+        process.cwd(),
+        automationConfig.contentDirectory
+      );
       const filePath = path.join(contentDir, fileName);
 
       // Check if file already exists
@@ -597,7 +314,7 @@ export const updateContentFileAction = withCSRFProtection(
       try {
         tags = JSON.parse(tagsData);
         posts = JSON.parse(postsData);
-      } catch (error) {
+      } catch {
         await SecurityMonitor.logSecurityEvent(
           SecurityEventType.MALICIOUS_PAYLOAD,
           { fileName, error: "Invalid JSON in update data" },
@@ -614,7 +331,10 @@ export const updateContentFileAction = withCSRFProtection(
         throw new Error("File content too large");
       }
 
-      const contentDir = path.join(process.cwd(), seedConfig.contentDirectory);
+      const contentDir = path.join(
+        process.cwd(),
+        automationConfig.contentDirectory
+      );
       const filePath = path.join(contentDir, fileName);
 
       // Check if file exists
@@ -676,7 +396,10 @@ export const deleteContentFileAction = withCSRFProtection(
         throw new Error("Invalid file extension");
       }
 
-      const contentDir = path.join(process.cwd(), seedConfig.contentDirectory);
+      const contentDir = path.join(
+        process.cwd(),
+        automationConfig.contentDirectory
+      );
       const filePath = path.join(contentDir, fileName);
 
       // Check if file exists
@@ -716,7 +439,7 @@ export const deleteContentFileAction = withCSRFProtection(
 
 // Run content generation with enhanced security
 export const runContentGenerationAction = withCSRFProtection(
-  async (_formData: FormData): Promise<ActionResult> => {
+  async (): Promise<ActionResult> => {
     try {
       const user = await requireAdminAccess("run_content_generation");
 
@@ -739,32 +462,14 @@ export const runContentGenerationAction = withCSRFProtection(
         );
       }
 
-      // Execute content generation securely
-      const result = await executeContentGeneration();
+      // Execute content generation securely using the new service
+      const { AutomationService } = await import("../lib/automation/service");
+      const result = await AutomationService.executeContentGeneration(user.id);
 
-      // Parse the output to extract useful information
-      const output = result.output;
-      const statusMessages = output
-        .split("\n")
-        .filter(
-          (line) =>
-            line.includes("🌱") ||
-            line.includes("📁") ||
-            line.includes("🎉") ||
-            line.includes("✅") ||
-            line.includes("📄")
-        );
-
-      // Extract metrics from output
-      const filesProcessedMatch = output.match(/(\d+)\s+files?\s+processed/i);
-      const postsCreatedMatch = output.match(/(\d+)\s+posts?\s+created/i);
-
-      const filesProcessed = filesProcessedMatch
-        ? parseInt(filesProcessedMatch[1])
-        : 0;
-      const postsCreated = postsCreatedMatch
-        ? parseInt(postsCreatedMatch[1])
-        : 0;
+      // Extract data from the service result
+      const filesProcessed = result.filesProcessed;
+      const postsCreated = result.postsCreated;
+      const statusMessages = result.statusMessages;
 
       const logData = {
         status: result.error ? ("error" as const) : ("success" as const),
@@ -853,7 +558,7 @@ export const runContentGenerationAction = withCSRFProtection(
 // Get generation logs (unchanged but with better typing)
 export async function getGenerationLogsAction(): Promise<ActionResult> {
   try {
-    const user = await requireAdminAccess("get_generation_logs");
+    await requireAdminAccess("get_generation_logs");
 
     // Fetch automation logs from database
     const dbLogs = await prisma.log.findMany({
@@ -922,7 +627,7 @@ export async function getGenerationLogsAction(): Promise<ActionResult> {
 
 // Clear generation logs with security logging
 export const clearGenerationLogsAction = withCSRFProtection(
-  async (_formData: FormData): Promise<ActionResult> => {
+  async (): Promise<ActionResult> => {
     try {
       const user = await requireAdminAccess("clear_generation_logs");
 

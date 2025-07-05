@@ -2,6 +2,10 @@ import { requireAuth } from "@/lib/auth";
 import { SecurityEvents } from "@/lib/audit";
 import { headers } from "next/headers";
 
+// Force dynamic rendering for authentication-dependent routes
+// This is required because authentication checks use cookies
+export const dynamic = 'force-dynamic';
+
 /**
  * Protected Layout Component
  * 

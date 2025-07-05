@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import fs from "fs/promises";
 import path from "path";
 
-const CONTENT_DIR = path.join(process.cwd(), "automate", "content");
+const CONTENT_DIR = path.join(process.cwd(), "automation", "content");
 
 // GET - List all content files
 export async function GET() {
@@ -18,17 +18,17 @@ export async function GET() {
     }
     // Ensure content directory exists
     await fs.mkdir(CONTENT_DIR, { recursive: true });
-    
+
     const files = await fs.readdir(CONTENT_DIR);
-    const jsonFiles = files.filter(file => file.endsWith('.json'));
-    
+    const jsonFiles = files.filter((file) => file.endsWith(".json"));
+
     const contentFiles = await Promise.all(
       jsonFiles.map(async (fileName) => {
         try {
           const filePath = path.join(CONTENT_DIR, fileName);
-          const content = await fs.readFile(filePath, 'utf-8');
+          const content = await fs.readFile(filePath, "utf-8");
           const data = JSON.parse(content);
-          
+
           return {
             name: fileName,
             ...data,
@@ -41,7 +41,7 @@ export async function GET() {
     );
 
     // Filter out failed reads
-    const validFiles = contentFiles.filter(file => file !== null);
+    const validFiles = contentFiles.filter((file) => file !== null);
 
     return NextResponse.json({ files: validFiles });
   } catch (error) {
@@ -76,9 +76,9 @@ export async function POST(request: NextRequest) {
 
     // Ensure content directory exists
     await fs.mkdir(CONTENT_DIR, { recursive: true });
-    
+
     const filePath = path.join(CONTENT_DIR, fileName);
-    
+
     // Check if file already exists
     try {
       await fs.access(filePath);
@@ -98,9 +98,9 @@ export async function POST(request: NextRequest) {
 
     await fs.writeFile(filePath, JSON.stringify(fileContent, null, 2));
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: "File created successfully",
-      fileName 
+      fileName,
     });
   } catch (error) {
     console.error("Error creating file:", error);

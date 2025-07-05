@@ -1,6 +1,14 @@
+/**
+ * Automation Validation
+ *
+ * Security-focused validation schemas and functions for automation system
+ * following OWASP secure coding guidelines and input validation best practices
+ */
+
 import { z } from "zod";
-import { seedConfig } from "./configuration";
 import DOMPurify from "isomorphic-dompurify";
+import { automationConfig } from "./config";
+import type { TagData, PostData, ContentFile } from "./types";
 
 // Security-focused validation schemas
 export const TagDataSchema = z.object({
@@ -51,8 +59,8 @@ export const PostDataSchema = z.object({
     .string()
     .min(1, "Content is required")
     .max(
-      seedConfig.security.maxContentLength,
-      `Content exceeds ${seedConfig.security.maxContentLength} character limit`
+      automationConfig.security.maxContentLength,
+      `Content exceeds ${automationConfig.security.maxContentLength} character limit`
     )
     .refine(
       (content) => !containsSuspiciousContent(content),
@@ -99,8 +107,8 @@ export const ContentFileSchema = z.object({
     .array(PostDataSchema)
     .min(1, "At least one post is required")
     .max(
-      seedConfig.security.maxPostsPerFile,
-      `Too many posts (max ${seedConfig.security.maxPostsPerFile})`
+      automationConfig.security.maxPostsPerFile,
+      `Too many posts (max ${automationConfig.security.maxPostsPerFile})`
     )
     .refine((posts) => {
       const slugs = posts.map((p) => p.slug);
@@ -108,7 +116,9 @@ export const ContentFileSchema = z.object({
     }, "Duplicate post slugs detected"),
 });
 
-// Security helper functions
+/**
+ * Checks if content contains suspicious patterns that might indicate malicious input
+ */
 function containsSuspiciousContent(content: string): boolean {
   const suspiciousPatterns = [
     /<script[^>]*>/i,
@@ -132,6 +142,9 @@ function containsSuspiciousContent(content: string): boolean {
   return suspiciousPatterns.some((pattern) => pattern.test(content));
 }
 
+/**
+ * Validates if an image URL is from an allowed domain
+ */
 function isAllowedImageUrl(url: string): boolean {
   try {
     const parsedUrl = new URL(url);
@@ -163,20 +176,27 @@ function isAllowedImageUrl(url: string): boolean {
   }
 }
 
-// File validation
+/**
+ * Validates file size against security limits
+ */
 export function validateFileSize(fileSize: number): boolean {
-  return fileSize <= seedConfig.security.maxFileSize;
+  return fileSize <= automationConfig.security.maxFileSize;
 }
 
+/**
+ * Validates file extension against allowed extensions
+ */
 export function validateFileExtension(fileName: string): boolean {
   const extension = fileName.toLowerCase().substring(fileName.lastIndexOf("."));
-  return seedConfig.security.allowedFileExtensions.includes(extension);
+  return automationConfig.security.allowedFileExtensions.includes(extension);
 }
 
-// Safe JSON parsing with size limits
+/**
+ * Safely parses JSON with size limits and error handling
+ */
 export function safeJsonParse(jsonString: string): unknown {
   // Check string length before parsing
-  if (jsonString.length > seedConfig.security.maxFileSize) {
+  if (jsonString.length > automationConfig.security.maxFileSize) {
     throw new Error(`JSON string too large: ${jsonString.length} bytes`);
   }
 
@@ -191,11 +211,12 @@ export function safeJsonParse(jsonString: string): unknown {
   }
 }
 
-// Content sanitization
+/**
+ * Sanitizes content using DOMPurify to prevent XSS attacks
+ */
 export function sanitizeContent(content: string): string {
   return DOMPurify.sanitize(content);
 }
 
-export type TagData = z.infer<typeof TagDataSchema>;
-export type PostData = z.infer<typeof PostDataSchema>;
-export type ContentFile = z.infer<typeof ContentFileSchema>;
+// Export schema inferred types
+export type { TagData, PostData, ContentFile };

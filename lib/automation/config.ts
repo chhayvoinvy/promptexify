@@ -1,31 +1,13 @@
-// Configuration for automated content seeding
+/**
+ * Automation Configuration
+ *
+ * Configuration settings for the automated content generation system
+ * following security best practices and OWASP guidelines
+ */
 
-export interface SeedConfig {
-  authorId: string;
-  requiredAuthorRole?: "ADMIN"; // Optional: "ADMIN" or undefined
-  contentDirectory: string;
+import type { AutomationConfig } from "./types";
 
-  logging: {
-    enabled: boolean;
-    verbose: boolean;
-  };
-  // Security constraints
-  security: {
-    maxFileSize: number; // bytes
-    maxPostsPerFile: number;
-    maxContentLength: number; // characters
-    allowedFileExtensions: string[];
-    rateLimitPerHour: number;
-  };
-  // Performance settings
-  performance: {
-    batchSize: number;
-    maxConcurrentFiles: number;
-    transactionTimeout: number; // ms
-  };
-}
-
-export const seedConfig: SeedConfig = {
+export const automationConfig: AutomationConfig = {
   // Get author ID from environment variable
   authorId:
     process.env.AUTOMATION_AUTHOR_ID ||
@@ -37,7 +19,7 @@ export const seedConfig: SeedConfig = {
   requiredAuthorRole: "ADMIN",
 
   // Directory containing JSON content files
-  contentDirectory: "automate/seeds",
+  contentDirectory: "content",
 
   // Logging configuration
   logging: {

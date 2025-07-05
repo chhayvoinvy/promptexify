@@ -1,11 +1,3 @@
-import createImageUrlBuilder from '@sanity/image-url'
-import { SanityImageSource } from "@sanity/image-url/lib/types/types";
-
-import { dataset, projectId } from '../env'
-
-// https://www.sanity.io/docs/image-url
-const builder = createImageUrlBuilder({ projectId, dataset })
-
-export const urlFor = (source: SanityImageSource) => {
-  return builder.image(source)
-}
+// Re-export image utilities from consolidated sanity lib
+// This maintains backward compatibility while avoiding duplication
+export { urlFor, secureImageUrl } from "@/lib/sanity";

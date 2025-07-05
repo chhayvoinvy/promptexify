@@ -161,9 +161,8 @@ export function AutomationDashboard() {
       setGenerating(true);
       toast.info("Starting automated content seed...");
 
-      // Create FormData with CSRF token for the generation action
-      const formData = createFormDataWithCSRF({});
-      const result = await runContentGenerationAction(formData);
+      // No FormData needed for generation action anymore
+      const result = await runContentGenerationAction();
 
       if (result.success) {
         const data = result.data as GenerationResponse;
@@ -415,7 +414,7 @@ export function AutomationDashboard() {
         <CardHeader>
           <CardTitle>Content Files</CardTitle>
           <CardDescription>
-            JSON files in the automate/seeds directory
+            JSON files in the content/ directory
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -553,9 +552,8 @@ export function AutomationDashboard() {
                   }
 
                   try {
-                    // Create FormData with CSRF token for the clear logs action
-                    const formData = createFormDataWithCSRF({});
-                    const result = await clearGenerationLogsAction(formData);
+                    // No FormData needed for clear logs action anymore
+                    const result = await clearGenerationLogsAction();
                     if (result.success) {
                       toast.success(
                         result.message || "Logs cleared successfully"

@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import fs from "fs/promises";
 import path from "path";
 
-const CONTENT_DIR = path.join(process.cwd(), "automate", "content");
+const CONTENT_DIR = path.join(process.cwd(), "automation", "content");
 
 // PUT - Update content file
 export async function PUT(
@@ -31,15 +31,12 @@ export async function PUT(
     }
 
     const filePath = path.join(CONTENT_DIR, fileName);
-    
+
     // Check if file exists
     try {
       await fs.access(filePath);
     } catch {
-      return NextResponse.json(
-        { error: "File not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "File not found" }, { status: 404 });
     }
 
     const fileContent = {
@@ -50,9 +47,9 @@ export async function PUT(
 
     await fs.writeFile(filePath, JSON.stringify(fileContent, null, 2));
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: "File updated successfully",
-      fileName 
+      fileName,
     });
   } catch (error) {
     console.error("Error updating file:", error);
@@ -79,22 +76,19 @@ export async function DELETE(
     }
     const { fileName } = await params;
     const filePath = path.join(CONTENT_DIR, fileName);
-    
+
     // Check if file exists
     try {
       await fs.access(filePath);
     } catch {
-      return NextResponse.json(
-        { error: "File not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "File not found" }, { status: 404 });
     }
 
     await fs.unlink(filePath);
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: "File deleted successfully",
-      fileName 
+      fileName,
     });
   } catch (error) {
     console.error("Error deleting file:", error);

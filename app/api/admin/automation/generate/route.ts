@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
-import { exec } from "child_process";
-import { promisify } from "util";
 import { prisma } from "@/lib/prisma";
-
-const execAsync = promisify(exec);
 
 // Save generation log to database
 async function saveLog(log: {
@@ -54,50 +50,14 @@ export async function POST() {
         { status: 403 }
       );
     }
-    const startTime = Date.now();
+    // Run the content generation using the automation service directly
+    const { AutomationService } = await import("@/lib/automation/service");
+    const result = await AutomationService.executeContentGeneration(user.id);
 
-    // Run the content generation script
-    const { stdout } = await execAsync("npm run content:generate", {
-      cwd: process.cwd(),
-      timeout: 60000, // 60 second timeout
-    });
-
-    const endTime = Date.now();
-    const duration = Math.round((endTime - startTime) / 1000);
-
-    // Parse output to extract statistics and status messages
-    let filesProcessed = 0;
-    let postsCreated = 0;
-    const statusMessages: string[] = [];
-
-    // Look for patterns in the output to extract stats and status
-    const outputLines = stdout.split("\n");
-    for (const line of outputLines) {
-      // Count files processed
-      if (line.includes("📄 Processing") || line.includes("Processing file:")) {
-        filesProcessed++;
-        statusMessages.push(line.trim());
-      }
-      // Count posts created
-      if (
-        line.includes("✅ Created post:") ||
-        line.includes("✓ Created post")
-      ) {
-        postsCreated++;
-        statusMessages.push(line.trim());
-      }
-      // Capture other important status messages
-      if (
-        line.includes("🌱 Starting") ||
-        line.includes("📁 Found") ||
-        line.includes("🏷️") ||
-        line.includes("📝 Creating") ||
-        line.includes("✅ Completed") ||
-        line.includes("🎉 Automated content seeding completed")
-      ) {
-        statusMessages.push(line.trim());
-      }
-    }
+    const duration = result.duration;
+    const filesProcessed = result.filesProcessed;
+    const postsCreated = result.postsCreated;
+    const statusMessages = result.statusMessages;
 
     // Save success log
     await saveLog({
@@ -115,7 +75,7 @@ export async function POST() {
       filesProcessed,
       postsCreated,
       statusMessages,
-      output: stdout,
+      output: result.output,
     });
   } catch (error: unknown) {
     console.error("Content generation error:", error);
