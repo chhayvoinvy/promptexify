@@ -157,7 +157,7 @@ async function DirectoryContent({
     <Container>
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-4">Prompt Directory</h1>
+        <h1 className="text-2xl font-bold mb-4">Prompt Directory</h1>
         <p className="text-muted-foreground text-lg max-w-2xl">
           Discover and explore our curated collection of AI prompts. Find the
           perfect prompt for your creative and professional needs.

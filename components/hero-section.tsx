@@ -2,6 +2,7 @@
 
 import { useCallback, useRef } from "react";
 import { useMousePosition } from "@/hooks/use-mouse-position";
+import { AnimatedBackground } from "@/components/ui/animated-background";
 import { GridBackground } from "@/components/ui/grid-background";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +40,7 @@ export function HeroSection({ searchQuery, sort }: HeroSectionProps) {
     >
       {/* Grid Background */}
       <GridBackground className="z-0" gridSize={80} />
+      <AnimatedBackground className="z-10" />
 
       <div className="absolute bottom-0 bg-gradient-to-t from-background to-transparent w-full h-20 z-50" />
 

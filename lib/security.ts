@@ -225,6 +225,9 @@ const CSP_HASHES = {
   ],
 };
 
+// NEW: Report URI for collecting CSP violations
+const CSP_REPORT_URI = "/api/security/csp-report";
+
 export class CSPNonce {
   /**
    * Generate a cryptographically secure nonce using Web Crypto API
@@ -359,7 +362,7 @@ export class SecurityHeaders {
         )}`,
         "img-src 'self' blob: data: https: https://*.s3.amazonaws.com https://*.cloudfront.net",
         "font-src 'self' https://fonts.gstatic.com",
-        "connect-src 'self' https://api.stripe.com https://*.supabase.co https://*.s3.amazonaws.com https://*.cloudfront.net https://vitals.vercel-analytics.com https://accounts.google.com",
+        `connect-src 'self' https://api.stripe.com https://*.supabase.co wss://*.supabase.co https://*.s3.amazonaws.com https://*.cloudfront.net https://vitals.vercel-analytics.com wss://vitals.vercel-analytics.com https://accounts.google.com`,
         "frame-src 'self' https://accounts.google.com",
         "media-src 'self' blob: data: https://*.s3.amazonaws.com https://*.cloudfront.net",
         "object-src 'none'",
@@ -367,6 +370,8 @@ export class SecurityHeaders {
         "form-action 'self'",
         "frame-ancestors 'none'",
         "upgrade-insecure-requests",
+        `report-uri ${CSP_REPORT_URI}`,
+        "worker-src 'self' blob:",
       ];
       return csp.join("; ");
     } else {
