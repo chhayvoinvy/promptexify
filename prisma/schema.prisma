@@ -31,6 +31,8 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([id, role])
+  @@index([id, type, stripeCurrentPeriodEnd])
   @@index([email])
   @@index([stripeCustomerId])
   @@index([type, role])
@@ -106,6 +108,9 @@ model Post {
   @@index([slug])
   @@index([authorId, status])
   @@index([isPublished, createdAt(sort: Desc), isPremium])
+  @@index([authorId, isPublished, status])
+  @@index([isFeatured, isPremium, isPublished, createdAt(sort: Desc)])
+  @@index([authorId, status, createdAt(sort: Desc)])
   @@map("posts")
 }
 
@@ -120,7 +125,6 @@ model Bookmark {
   @@unique([userId, postId])
   @@index([userId, createdAt(sort: Desc)])
   @@index([postId])
-  @@index([userId, postId])
   @@map("bookmarks")
 }
 
@@ -136,7 +140,6 @@ model Favorite {
   @@index([userId, createdAt(sort: Desc)])
   @@index([postId])
   @@index([postId, createdAt(sort: Desc)])
-  @@index([userId, postId])
   @@map("favorites")
 }
 
@@ -153,7 +156,6 @@ model View {
   @@index([createdAt(sort: Desc)])
   @@index([postId])
   @@index([ipAddress])
-  @@index([createdAt(sort: Desc), postId])
   @@map("views")
 }
 
@@ -174,6 +176,8 @@ model Log {
   @@index([action, createdAt(sort: Desc)])
   @@index([severity, createdAt(sort: Desc)])
   @@index([entityType, entityId])
+  @@index([severity, action, createdAt(sort: Desc)])
+  @@index([userId, action, createdAt(sort: Desc)])
   @@map("logs")
 }
 
@@ -226,6 +230,10 @@ model Settings {
   updatedAt DateTime @updatedAt
   updatedBy String // User ID who last updated settings
 
+  @@index([storageType])
+  @@index([updatedBy])
+  @@index([createdAt(sort: Desc)])
+  @@index([updatedAt(sort: Desc)])
   @@map("settings")
 }
 
