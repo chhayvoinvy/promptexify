@@ -220,3 +220,312 @@ export function sanitizeContent(content: string): string {
 
 // Export schema inferred types
 export type { TagData, PostData, ContentFile };
+
+/**
+ * Bulk validation result interface
+ */
+export interface BulkValidationResult {
+  success: boolean;
+  validItems: ContentFile[];
+  errors: string[];
+  warnings: string[];
+  totalItems: number;
+  validCount: number;
+}
+
+/**
+ * CSV validation options
+ */
+export interface CsvValidationOptions {
+  maxRows?: number;
+  requireCategory?: boolean;
+  requireTags?: boolean;
+  strictMode?: boolean;
+}
+
+/**
+ * Validates multiple ContentFile objects in bulk
+ */
+export function validateContentFilesBulk(
+  contentFiles: ContentFile[],
+  options: {
+    maxItems?: number;
+    allowPartialSuccess?: boolean;
+  } = {}
+): BulkValidationResult {
+  const { maxItems = 100, allowPartialSuccess = true } = options;
+
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  const validItems: ContentFile[] = [];
+
+  // Check total items limit
+  if (contentFiles.length > maxItems) {
+    warnings.push(
+      `Input contains ${contentFiles.length} items, limiting to ${maxItems}`
+    );
+    contentFiles = contentFiles.slice(0, maxItems);
+  }
+
+  // Validate each content file
+  for (let i = 0; i < contentFiles.length; i++) {
+    try {
+      const validatedFile = ContentFileSchema.parse(contentFiles[i]);
+
+      // Additional security sanitization
+      validatedFile.posts = validatedFile.posts.map((post) => ({
+        ...post,
+        title: sanitizeContent(post.title),
+        description: sanitizeContent(post.description),
+        content: sanitizeContent(post.content),
+      }));
+
+      validItems.push(validatedFile);
+    } catch (error) {
+      const errorMessage =
+        error instanceof z.ZodError
+          ? `Item ${i + 1}: ${error.errors.map((e) => e.message).join(", ")}`
+          : `Item ${i + 1}: ${error instanceof Error ? error.message : "Unknown error"}`;
+
+      errors.push(errorMessage);
+
+      if (!allowPartialSuccess) {
+        break;
+      }
+    }
+  }
+
+  const success = allowPartialSuccess
+    ? validItems.length > 0
+    : errors.length === 0;
+
+  return {
+    success,
+    validItems,
+    errors,
+    warnings,
+    totalItems: contentFiles.length,
+    validCount: validItems.length,
+  };
+}
+
+/**
+ * Validates JSON input for direct execution
+ */
+export function validateJsonInput(
+  jsonData: unknown,
+  options: {
+    maxSize?: number;
+    allowArray?: boolean;
+  } = {}
+): { success: boolean; data?: ContentFile | ContentFile[]; errors: string[] } {
+  const { maxSize = automationConfig.security.maxFileSize, allowArray = true } =
+    options;
+
+  try {
+    // Check data size
+    const jsonString = JSON.stringify(jsonData);
+    if (jsonString.length > maxSize) {
+      return {
+        success: false,
+        errors: [
+          `JSON data too large: ${jsonString.length} bytes (max ${maxSize})`,
+        ],
+      };
+    }
+
+    // Validate structure
+    if (Array.isArray(jsonData)) {
+      if (!allowArray) {
+        return {
+          success: false,
+          errors: ["Array input not allowed"],
+        };
+      }
+
+      // Validate each item in array
+      const bulkResult = validateContentFilesBulk(jsonData as ContentFile[]);
+
+      if (!bulkResult.success) {
+        return {
+          success: false,
+          errors: bulkResult.errors,
+        };
+      }
+
+      return {
+        success: true,
+        data: bulkResult.validItems,
+        errors: bulkResult.warnings,
+      };
+    } else {
+      // Validate single object
+      const validatedData = ContentFileSchema.parse(jsonData);
+
+      // Additional security sanitization
+      validatedData.posts = validatedData.posts.map((post) => ({
+        ...post,
+        title: sanitizeContent(post.title),
+        description: sanitizeContent(post.description),
+        content: sanitizeContent(post.content),
+      }));
+
+      return {
+        success: true,
+        data: validatedData,
+        errors: [],
+      };
+    }
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return {
+        success: false,
+        errors: error.errors.map((e) => `${e.path.join(".")}: ${e.message}`),
+      };
+    }
+
+    return {
+      success: false,
+      errors: [
+        error instanceof Error ? error.message : "Unknown validation error",
+      ],
+    };
+  }
+}
+
+/**
+ * Validates CSV data structure before parsing
+ */
+export function validateCsvStructure(
+  csvContent: string,
+  options: CsvValidationOptions = {}
+): { success: boolean; errors: string[]; warnings: string[] } {
+  const {
+    maxRows = 1000,
+    requireCategory = true,
+    requireTags = false,
+    strictMode = false,
+  } = options;
+
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  // Check content size
+  if (csvContent.length > 10 * 1024 * 1024) {
+    // 10MB limit
+    return {
+      success: false,
+      errors: ["CSV file too large (max 10MB)"],
+      warnings,
+    };
+  }
+
+  // Check for basic CSV structure
+  const lines = csvContent.split("\n").filter((line) => line.trim());
+
+  if (lines.length < 2) {
+    return {
+      success: false,
+      errors: ["CSV must have at least a header row and one data row"],
+      warnings,
+    };
+  }
+
+  if (lines.length > maxRows + 1) {
+    // +1 for header
+    warnings.push(`CSV has ${lines.length - 1} rows, limiting to ${maxRows}`);
+  }
+
+  // Check header structure
+  const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+
+  if (
+    requireCategory &&
+    !headers.some((h) => ["category", "cat", "category_slug"].includes(h))
+  ) {
+    errors.push("CSV must have a category column");
+  }
+
+  if (
+    requireTags &&
+    !headers.some((h) => ["tag", "tags", "tag_name", "tag_names"].includes(h))
+  ) {
+    errors.push("CSV must have a tags column");
+  }
+
+  if (!headers.some((h) => ["title", "post_title", "name"].includes(h))) {
+    errors.push("CSV must have a title column");
+  }
+
+  if (strictMode) {
+    const requiredHeaders = ["title", "content", "description"];
+    const missingHeaders = requiredHeaders.filter(
+      (req) => !headers.some((h) => h.includes(req))
+    );
+
+    if (missingHeaders.length > 0) {
+      errors.push(
+        `Missing required columns in strict mode: ${missingHeaders.join(", ")}`
+      );
+    }
+  }
+
+  // Check for suspicious content in headers
+  const suspiciousHeaders = headers.filter((h) => containsSuspiciousContent(h));
+  if (suspiciousHeaders.length > 0) {
+    return {
+      success: false,
+      errors: [
+        `Suspicious content detected in headers: ${suspiciousHeaders.join(", ")}`,
+      ],
+      warnings,
+    };
+  }
+
+  return {
+    success: errors.length === 0,
+    errors,
+    warnings,
+  };
+}
+
+/**
+ * Validates and sanitizes raw content input
+ */
+export function validateRawContent(
+  content: string,
+  type: "title" | "description" | "content" | "category" | "tag" = "content"
+): { success: boolean; sanitized?: string; errors: string[] } {
+  // Type-specific validation
+  const limits = {
+    title: 200,
+    description: 500,
+    content: automationConfig.security.maxContentLength,
+    category: 50,
+    tag: 50,
+  };
+
+  if (content.length > limits[type]) {
+    return {
+      success: false,
+      errors: [`${type} exceeds ${limits[type]} character limit`],
+    };
+  }
+
+  // Check for suspicious content
+  if (containsSuspiciousContent(content)) {
+    return {
+      success: false,
+      errors: [`${type} contains suspicious content`],
+    };
+  }
+
+  // Sanitize content
+  const sanitized = sanitizeContent(content);
+
+  return {
+    success: true,
+    sanitized,
+    errors: [],
+  };
+}
