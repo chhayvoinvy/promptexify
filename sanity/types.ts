@@ -294,14 +294,4 @@ export interface HelpArticleFormData {
   searchKeywords?: string[];
 }
 
-// Export common types for convenience
-export type {
-  SanityDocument,
-  SanitySlug,
-  SanityImage,
-  ContentBlock,
-  PortableTextBlock,
-  CalloutBlock,
-  CodeBlock,
-  ImageBlock,
-};
+

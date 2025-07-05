@@ -156,6 +156,11 @@ const getAllCategoriesMemoized = cache(async () => {
           id: true,
           name: true,
           slug: true,
+          _count: {
+            select: {
+              posts: true,
+            },
+          },
         },
       },
       children: {
@@ -163,11 +168,20 @@ const getAllCategoriesMemoized = cache(async () => {
           id: true,
           name: true,
           slug: true,
+          _count: {
+            select: {
+              posts: true,
+            },
+          },
         },
       },
       _count: {
         select: {
-          posts: true,
+          posts: {
+            where: {
+              isPublished: true,
+            },
+          },
         },
       },
     },
@@ -196,7 +210,7 @@ const getAllTagsMemoized = cache(async () => {
   });
 });
 
-// Internal uncached functions that use memoized versions for request deduplication
+// Internal uncached functions that use memoized versions for request deduplication.
 async function _getAllPosts(
   includeUnpublished = false
 ): Promise<PostWithDetails[]> {

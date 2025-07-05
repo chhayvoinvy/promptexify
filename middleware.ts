@@ -48,6 +48,8 @@ export async function middleware(request: NextRequest) {
         "/api/upload/",
         "/auth/callback",
         "/api/auth/",
+        // NEW: Allow CSP violation reports (no CSRF token sent by browsers)
+        "/api/security/csp-report",
       ];
 
       const shouldValidateCSRF = !skipCSRF.some((path) =>

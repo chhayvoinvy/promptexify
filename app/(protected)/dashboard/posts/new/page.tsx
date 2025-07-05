@@ -571,8 +571,8 @@ export default function NewPostPage() {
                 {isSubmitting
                   ? "Submitting..."
                   : isReady
-                  ? "Submit Prompt"
-                  : "Initializing..."}
+                    ? "Submit Prompt"
+                    : "Initializing..."}
               </Button>
               <Button
                 type="button"
