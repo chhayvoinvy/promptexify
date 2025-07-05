@@ -3,12 +3,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
-
+import { MediaImage, MediaVideo } from "@/components/ui/media-display";
 
 import {
   Copy,
@@ -29,8 +28,6 @@ import {
 import { PostWithInteractions } from "@/lib/content";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { FavoriteButton } from "@/components/favorite-button";
-
-
 
 interface PostStandalonePageProps {
   post: PostWithInteractions;
@@ -375,21 +372,16 @@ export function PostStandalonePage({
                         <div className="px-8 pb-6">
                           {post.featuredVideo ? (
                             <div className="w-full rounded-lg overflow-hidden">
-                              <video
+                              <MediaVideo
+                                src={post.featuredVideo}
                                 controls
                                 className="w-full h-auto max-h-80 object-contain"
                                 preload="metadata"
-                              >
-                                <source
-                                  src={post.featuredVideo}
-                                  type="video/mp4"
-                                />
-                                Your browser does not support the video tag.
-                              </video>
+                              />
                             </div>
                           ) : post.featuredImage ? (
                             <div className="relative w-full rounded-lg overflow-hidden">
-                              <Image
+                              <MediaImage
                                 src={post.featuredImage}
                                 alt={post.title}
                                 width={800}
@@ -464,13 +456,14 @@ export function PostStandalonePage({
                           <div className="w-12 h-12 rounded overflow-hidden flex-shrink-0 relative">
                             {relatedPost.featuredVideo ? (
                               <>
-                                <video
+                                <MediaVideo
                                   ref={(el) => {
                                     if (el)
                                       videoRefs.current[
                                         `related-${relatedPost.id}`
                                       ] = el;
                                   }}
+                                  src={relatedPost.featuredVideo}
                                   className="w-full h-full object-cover"
                                   preload="metadata"
                                   muted
@@ -478,12 +471,7 @@ export function PostStandalonePage({
                                     handleVideoPlay(`related-${relatedPost.id}`)
                                   }
                                   onPause={handleVideoPause}
-                                >
-                                  <source
-                                    src={relatedPost.featuredVideo}
-                                    type="video/mp4"
-                                  />
-                                </video>
+                                />
                                 <div className="absolute inset-0 top-1 left-1 pointer-events-none z-10">
                                   <button
                                     className="bg-white/90 hover:bg-white rounded-full p-1 transition-colors pointer-events-auto"
@@ -512,7 +500,7 @@ export function PostStandalonePage({
                                 </div>
                               </>
                             ) : (
-                              <Image
+                              <MediaImage
                                 src={relatedPost.featuredImage!}
                                 alt={relatedPost.title}
                                 fill

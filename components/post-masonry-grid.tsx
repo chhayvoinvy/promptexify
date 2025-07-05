@@ -3,11 +3,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import Image from "next/image";
 import { PostWithInteractions } from "@/lib/content";
 import { PostModal } from "@/components/post-modal";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { FavoriteButton } from "@/components/favorite-button";
+import { MediaImage, MediaVideo } from "@/components/ui/media-display";
 import {
   LockIcon,
   UnlockIcon,
@@ -393,7 +393,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                   }
                 >
                   {post.featuredImage ? (
-                    <Image
+                    <MediaImage
                       src={post.featuredImage}
                       alt={post.title}
                       fill
@@ -405,7 +405,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                     />
                   ) : post.featuredVideo ? (
                     <>
-                      <video
+                      <MediaVideo
                         ref={(el) => {
                           if (el) videoRefs.current[post.id] = el;
                         }}

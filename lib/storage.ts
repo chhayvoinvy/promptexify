@@ -600,48 +600,56 @@ export async function deleteVideoFromDOSpacesWithConfig(
 // Unified storage interface
 /**
  * Upload image using configured storage method
+ * UPDATED: Returns relative path instead of full URL for storage independence
  */
 export async function uploadImage(
   imageBuffer: Buffer,
-  filename: string,
-  userId?: string // Kept for API consistency, may be used for future features
+  filename: string
 ): Promise<string> {
   const config = await getStorageConfig();
 
+  // Upload to the configured storage provider
   if (config.storageType === "LOCAL") {
-    return uploadImageToLocal(
+    await uploadImageToLocal(
       imageBuffer,
       filename,
       config.localBasePath || "/uploads"
     );
   } else if (config.storageType === "DOSPACE") {
-    return uploadImageToDOSpacesWithConfig(imageBuffer, filename, config);
+    await uploadImageToDOSpacesWithConfig(imageBuffer, filename, config);
   } else {
-    return uploadImageToS3WithConfig(imageBuffer, filename, config);
+    await uploadImageToS3WithConfig(imageBuffer, filename, config);
   }
+
+  // Return relative path instead of full URL for storage independence
+  return `images/${filename}`;
 }
 
 /**
  * Upload video using configured storage method
+ * UPDATED: Returns relative path instead of full URL for storage independence
  */
 export async function uploadVideo(
   videoBuffer: Buffer,
-  filename: string,
-  userId?: string // Kept for API consistency, may be used for future features
+  filename: string
 ): Promise<string> {
   const config = await getStorageConfig();
 
+  // Upload to the configured storage provider
   if (config.storageType === "LOCAL") {
-    return uploadVideoToLocal(
+    await uploadVideoToLocal(
       videoBuffer,
       filename,
       config.localBasePath || "/uploads"
     );
   } else if (config.storageType === "DOSPACE") {
-    return uploadVideoToDOSpacesWithConfig(videoBuffer, filename, config);
+    await uploadVideoToDOSpacesWithConfig(videoBuffer, filename, config);
   } else {
-    return uploadVideoToS3WithConfig(videoBuffer, filename, config);
+    await uploadVideoToS3WithConfig(videoBuffer, filename, config);
   }
+
+  // Return relative path instead of full URL for storage independence
+  return `videos/${filename}`;
 }
 
 /**
@@ -717,7 +725,7 @@ export async function processAndUploadImageWithConfig(
     const filename = generateImageFilename(title, userId);
 
     // Upload using configured storage
-    return await uploadImage(processedBuffer, filename, userId);
+    return await uploadImage(processedBuffer, filename);
   } catch (error) {
     console.error("Error processing image:", error);
     throw new Error("Failed to process and upload image");
@@ -761,7 +769,7 @@ export async function processAndUploadVideoWithConfig(
     const filename = generateVideoFilename(title, userId);
 
     // Upload using configured storage
-    return await uploadVideo(videoBuffer, filename, userId);
+    return await uploadVideo(videoBuffer, filename);
   } catch (error) {
     console.error("Error processing video:", error);
     throw new Error("Failed to process and upload video");

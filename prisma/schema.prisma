@@ -88,14 +88,15 @@ model Post {
 
   authorId   String
   categoryId String
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
   bookmarks  Bookmark[]
   favorites  Favorite[]
-  author     User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  category   Category   @relation(fields: [categoryId], references: [id])
+  author     User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  category   Category    @relation(fields: [categoryId], references: [id])
   views      View[]
-  tags       Tag[]      @relation("PostToTag")
+  tags       Tag[]       @relation("PostToTag")
+  mediaFiles MediaFile[]
 
   @@index([isPublished, createdAt(sort: Desc)])
   @@index([categoryId, isPublished, createdAt(sort: Desc)])
@@ -264,4 +265,37 @@ enum StorageType {
   S3
   LOCAL
   DOSPACE
+}
+
+// NEW: Media file tracking table (optional, for advanced use cases)
+model MediaFile {
+  id           String @id @default(uuid())
+  filename     String @unique // e.g., "user123-prompt-abc123.avif"
+  relativePath String // e.g., "images/user123-prompt-abc123.avif"
+  originalName String // Original filename before processing
+  mimeType     String // e.g., "image/avif", "video/mp4"
+  fileSize     Int // File size in bytes
+  width        Int? // Image/video width
+  height       Int? // Image/video height
+  duration     Float? // Video duration in seconds
+
+  // Storage tracking
+  storageType StorageType @default(S3)
+  uploadedBy  String // User ID who uploaded
+
+  // Relations
+  postId String?
+  post   Post?   @relation(fields: [postId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([filename])
+  @@index([relativePath])
+  @@index([postId])
+  @@index([uploadedBy])
+  @@index([storageType])
+  @@index([mimeType])
+  @@index([createdAt(sort: Desc)])
+  @@map("media_files")
 }
