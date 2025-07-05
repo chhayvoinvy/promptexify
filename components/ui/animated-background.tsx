@@ -17,7 +17,7 @@ interface Dot {
 
 export function AnimatedBackground({ className }: AnimatedBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationFrameId = useRef<number>();
+  const animationFrameId = useRef<number | null>(null);
 
   const createDot = useCallback((canvas: HTMLCanvasElement): Dot => {
     return {
