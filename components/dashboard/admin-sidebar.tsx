@@ -125,8 +125,7 @@ const navigationData: {
       title: "Pages",
       url: "/dashboard/pages/studio",
       icon: IconFile,
-      // adminOnly: true, // Admin only
-      allowUser: true, // Allow both USER and ADMIN roles (Temporary disabled)
+      adminOnly: true, // Admin only
     },
     {
       title: "Categories",
