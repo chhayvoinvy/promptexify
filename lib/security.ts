@@ -204,6 +204,7 @@ const CSP_HASHES = {
   // Script hashes for known inline scripts
   SCRIPTS: [
     "'sha256-42kZcIwrKnihEZTada4V2Yh9EaONiZ1iuXhdtLJ43N8='", // Next.js or Analytics inline script
+    "'sha256-ID6G40XuH1AK/MCsb3ABJl//kzckVM/gkevy3dZpwFI='", // GA inline script
   ],
   // Style hashes for Next.js and library inline styles
   STYLES: [
@@ -222,6 +223,12 @@ const CSP_HASHES = {
     "'sha256-8VvECQWAC1C2TMUane5XP25qXs61T8zAOUgUJxMUq0M='", // Google Accounts inline style
     "'sha256-nzTgYzXYDNe6BAHiiI7NNlfK8n/auuOAhh2t92YvuXo='", // Another Google inline style
     "'sha256-YIjArHm2rkb5J7hX9lUM1bnQ3Kp61MTfluMGkuyKwDw='", // And another one
+    "'sha256-4IpjyPW3T1vEyCZLF8hGr7A9zNijDZPldrwecZUymac='", // GA inline style
+    "'sha256-4nPxjXDX1GDRouae5/Jv7v3/IA131wwqhdOQm9OdtWw='", // New inline style
+    "'sha256-MtxTLcyxVEJFNLEIqbVTaqR4WWr0+lYSZ78AzGmNsuA='", // New inline style
+    "'sha256-PhrR5O1xWiklTp5YfH8xWeig83Y/rhbrdb5whLn1pSg='", // New inline style
+    "'sha256-1OjyRYLAOH1vhXLUN4bBHal0rWxuwBDBP220NNc0CNU='", // New inline style
+    "'sha256-uHMRMH/uk4ERGIkgk2bUAqw+i1tFFbeiOQTApmnK3t4='", // New inline style
   ],
 };
 
