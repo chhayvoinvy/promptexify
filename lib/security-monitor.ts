@@ -41,15 +41,26 @@ export class SecurityMonitor {
     userId?: string
   ): Promise<void> {
     try {
-      const headersList = await headers();
-      const ip = this.getClientIP(headersList);
-      const userAgent = headersList.get("user-agent");
+      let ip: string | undefined;
+      let userAgent: string | undefined;
+
+      // Check if we're in a Next.js request context
+      try {
+        const headersList = await headers();
+        ip = this.getClientIP(headersList);
+        userAgent = headersList.get("user-agent") || undefined;
+      } catch {
+        // We're not in a request context (e.g., standalone script)
+        // This is normal for automation scripts
+        ip = "standalone-script";
+        userAgent = "automation-script";
+      }
 
       const event: SecurityEvent = {
         type,
         timestamp: new Date().toISOString(),
         ip,
-        userAgent: this.sanitizeUserAgent(userAgent),
+        userAgent: this.sanitizeUserAgent(userAgent || null),
         userId,
         details,
         severity,

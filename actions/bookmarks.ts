@@ -103,6 +103,11 @@ export async function getUserBookmarksAction() {
               },
             },
             tags: true,
+            _count: {
+              select: {
+                views: true,
+              },
+            },
           },
         },
       },

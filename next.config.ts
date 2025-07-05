@@ -1,9 +1,36 @@
 import type { NextConfig } from "next";
-import { withContentlayer } from "next-contentlayer2";
 
 const nextConfig: NextConfig = {
-  // Enable standalone output for Docker production builds
-  output: "standalone",
+  // Fix Supabase realtime-js webpack warnings
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      // Handle node-specific modules that cause webpack warnings
+      config.externals = config.externals || [];
+      config.externals.push({
+        bufferutil: "bufferutil",
+        "utf-8-validate": "utf-8-validate",
+        "supports-color": "supports-color",
+      });
+    }
+
+    // Ignore specific warnings from realtime-js
+    config.ignoreWarnings = [
+      { module: /node_modules\/@supabase\/realtime-js/ },
+      { module: /node_modules\/node-gyp-build/ },
+      { module: /node_modules\/bufferutil/ },
+      { module: /node_modules\/utf-8-validate/ },
+    ];
+
+    return config;
+  },
+
+  // External packages for server components
+  serverExternalPackages: [
+    "@supabase/realtime-js",
+    "bufferutil",
+    "utf-8-validate",
+  ],
+
   images: {
     remotePatterns: [
       {
@@ -29,7 +56,7 @@ const nextConfig: NextConfig = {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
-  // Generate robots.txt and sitemap.xml
+  // Generate robots.txt and sitemap.xml, and handle local uploads
   async rewrites() {
     return [
       {
@@ -42,52 +69,30 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+
+  // Serve static files from uploads directory when using local storage
+  async headers() {
+    return [
+      {
+        source: "/uploads/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+          {
+            key: "Content-Security-Policy",
+            value: "default-src 'none'; img-src 'self'; media-src 'self';",
+          },
+        ],
+      },
+    ];
+  },
   eslint: {
     // Warning: This allows production builds to successfully complete even if
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
   },
-  experimental: {
-    // Optimize webpack cache performance
-    webpackBuildWorker: true,
-  },
-  // Security headers are now handled by middleware for better environment control
-  // This ensures consistent application across all routes and proper CSP nonce handling
-  webpack: (config, { isServer }) => {
-    // Fix for Supabase realtime warnings
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        net: false,
-        tls: false,
-        crypto: false,
-        stream: false,
-        util: false,
-        buffer: false,
-        events: false,
-      };
-    }
-
-    // Ignore specific warnings from Supabase realtime
-    config.ignoreWarnings = [
-      { module: /node_modules\/@supabase\/realtime-js/ },
-      { file: /node_modules\/@supabase\/realtime-js/ },
-      /Critical dependency: the request of a dependency is an expression/,
-      /Module not found: Can't resolve/,
-      /the request of a dependency is an expression/,
-      /Serializing big strings/,
-    ];
-
-    // Optimize webpack cache performance
-    config.cache = {
-      ...config.cache,
-      compression: "gzip",
-      maxMemoryGenerations: 1,
-    };
-
-    return config;
-  },
 };
 
-export default withContentlayer(nextConfig);
+export default nextConfig;

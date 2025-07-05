@@ -26,6 +26,9 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "sanity/structure": [
+        "./node_modules/sanity/structure"
       ]
     }
   },
@@ -39,6 +42,5 @@
     "node_modules",
     "backup",
     "templates",
-    "**/seed.ts"
   ]
 }

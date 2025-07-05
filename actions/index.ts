@@ -44,6 +44,9 @@ export {
 // Tag management actions
 export { createTagAction, updateTagAction, deleteTagAction } from "./tags";
 
+// Automation actions
+export * from "./automation";
+
 // User profile actions
 export {
   updateUserProfileAction,
@@ -53,3 +56,11 @@ export {
   getAdminDashboardStatsAction,
   getAllUsersActivityAction,
 } from "./users";
+
+// Settings actions
+export {
+  getSettingsAction,
+  updateSettingsAction,
+  getStorageConfigAction,
+  resetSettingsToDefaultAction,
+} from "./settings";

@@ -11,9 +11,12 @@ import {
   IconCategory,
   IconBookmark,
   IconHeart,
+  IconRobot,
   type Icon,
+  IconFile,
 } from "@tabler/icons-react";
 import Link from "next/link";
+import { User } from "lucide-react";
 
 import { NavDocuments } from "@/components/dashboard/nav-documents";
 import { NavMain } from "@/components/dashboard/nav-main";
@@ -94,7 +97,7 @@ const navigationData: {
   navSecondary: [
     {
       title: "Get Help",
-      url: "/dashboard/help",
+      url: "/help",
       icon: IconHelp,
     },
     {
@@ -119,6 +122,13 @@ const navigationData: {
       allowUser: true, // Allow both USER and ADMIN roles (Temporary disabled)
     },
     {
+      title: "Pages",
+      url: "/dashboard/pages/studio",
+      icon: IconFile,
+      // adminOnly: true, // Admin only
+      allowUser: true, // Allow both USER and ADMIN roles (Temporary disabled)
+    },
+    {
       title: "Categories",
       url: "/dashboard/categories",
       icon: IconCategory,
@@ -128,6 +138,12 @@ const navigationData: {
       title: "Tags",
       url: "/dashboard/tags",
       icon: IconTags,
+      adminOnly: true, // Admin only
+    },
+    {
+      title: "Automation",
+      url: "/dashboard/automation",
+      icon: IconRobot,
       adminOnly: true, // Admin only
     },
   ],

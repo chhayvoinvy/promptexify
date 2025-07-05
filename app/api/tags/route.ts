@@ -69,18 +69,15 @@ export async function GET(request: Request) {
     // Fetch tags
     const tags = await getAllTags();
 
-    return NextResponse.json(
-      { tags },
-      {
-        status: 200,
-        headers: {
-          ...SECURITY_HEADERS,
-          ...getRateLimitHeaders(rateLimitResult),
-          // Cache for 5 minutes since tags don't change frequently
-          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
-        },
-      }
-    );
+    return NextResponse.json(tags, {
+      status: 200,
+      headers: {
+        ...SECURITY_HEADERS,
+        ...getRateLimitHeaders(rateLimitResult),
+        // Cache for 5 minutes since tags don't change frequently
+        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+      },
+    });
   } catch (error) {
     console.error("Tags API error:", error);
     return NextResponse.json(

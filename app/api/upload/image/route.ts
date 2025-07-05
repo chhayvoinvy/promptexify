@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { processAndUploadImage } from "@/lib/s3";
+import { processAndUploadImageWithConfig } from "@/lib/storage";
 import { getCurrentUser } from "@/lib/auth";
 import { fileUploadSchema } from "@/lib/schemas";
 import {
@@ -256,7 +256,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Process and upload image with user ID for path organization
-    const imageUrl = await processAndUploadImage(
+    const imageUrl = await processAndUploadImageWithConfig(
       file,
       sanitizedTitle,
       user.userData.id

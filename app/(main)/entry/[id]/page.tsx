@@ -1,7 +1,11 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { incrementPostView, getRelatedPosts, getPostById } from "@/lib/content";
-import { PostModal } from "@/components/post-modal";
+import {
+  incrementPostView,
+  getPostContent,
+  getAllPosts,
+  getRelatedPosts,
+} from "@/lib/content";
 import { PostStandalonePage } from "@/components/post-standalone-page";
 import { getCurrentUser } from "@/lib/auth";
 
@@ -14,19 +18,19 @@ interface PostPageProps {
   }>;
 }
 
+// Enable ISR with revalidation every 5 minutes
+export const revalidate = 300;
+
 // Generate static params for popular posts at build time
 export async function generateStaticParams() {
   try {
-    // Use the getAllPosts function for build time static generation
-    const { getAllPosts } = await import("@/lib/content");
-    const allPosts = await getAllPosts(false); // Only published posts
+    // Get featured and popular posts for static generation
+    const posts = await getAllPosts();
 
-    // Filter for popular posts (featured or high view count)
-    const popularPosts = allPosts
-      .filter((post) => post.isFeatured || post.viewCount >= 100)
-      .slice(0, 100); // Generate static pages for top 100 posts
+    // Filter for featured posts and limit to 100
+    const featuredPosts = posts.filter((post) => post.isFeatured).slice(0, 100);
 
-    return popularPosts.map((post) => ({
+    return featuredPosts.map((post) => ({
       id: post.id,
     }));
   } catch (error) {
@@ -44,10 +48,15 @@ export default async function PostPage({
   const { id } = await params;
   const { modal } = await searchParams;
 
-  // Use cached function instead of direct Prisma call
-  const post = await getPostById(id);
+  // If modal parameter is present, redirect to clean URL
+  if (modal === "true") {
+    redirect(`/entry/${id}`);
+  }
 
-  if (!post || !post.isPublished) {
+  // Get post content
+  const processedPost = await getPostContent(id);
+
+  if (!processedPost || !processedPost.isPublished) {
     notFound();
   }
 
@@ -63,23 +72,22 @@ export default async function PostPage({
   // Increment view count
   await incrementPostView(id, clientIp, userAgent || undefined);
 
-  // Get current user for bookmarks/favorites
+  // Get current user for authentication
   const currentUser = await getCurrentUser();
-  const userId = currentUser?.userData?.id;
   const userType = currentUser?.userData?.type || null;
 
-  // If modal parameter is present, show modal (for internal navigation)
-  // Otherwise, show full page (for direct URL access)
-  if (modal === "true") {
-    return <PostModal post={post} userType={userType} />;
-  }
+  // Get related posts
+  const relatedPosts = await getRelatedPosts(
+    id,
+    processedPost,
+    currentUser?.userData?.id,
+    6
+  );
 
-  // Get related posts for standalone page
-  const relatedPosts = await getRelatedPosts(id, post, userId, 3);
-
+  // For standalone page, use the PostStandalonePage component
   return (
     <PostStandalonePage
-      post={post}
+      post={processedPost}
       relatedPosts={relatedPosts}
       userType={userType}
     />

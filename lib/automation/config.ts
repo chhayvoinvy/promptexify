@@ -1,0 +1,45 @@
+/**
+ * Automation Configuration
+ *
+ * Configuration settings for the automated content generation system
+ * following security best practices and OWASP guidelines
+ */
+
+import type { AutomationConfig } from "./types";
+
+export const automationConfig: AutomationConfig = {
+  // Get author ID from environment variable
+  authorId:
+    process.env.AUTOMATION_AUTHOR_ID ||
+    (() => {
+      throw new Error("AUTOMATION_AUTHOR_ID environment variable is required");
+    })(),
+
+  // Optional: require ADMIN role for the author
+  requiredAuthorRole: "ADMIN",
+
+  // Directory containing JSON content files
+  contentDirectory: "content",
+
+  // Logging configuration
+  logging: {
+    enabled: process.env.NODE_ENV !== "test",
+    verbose: process.env.NODE_ENV === "development",
+  },
+
+  // Security constraints
+  security: {
+    maxFileSize: 5 * 1024 * 1024, // 5MB
+    maxPostsPerFile: 50,
+    maxContentLength: 10000, // 10k characters per post
+    allowedFileExtensions: [".json"],
+    rateLimitPerHour: 10, // Max 10 generation runs per hour
+  },
+
+  // Performance settings
+  performance: {
+    batchSize: 10, // Process posts in batches of 10
+    maxConcurrentFiles: 3, // Process max 3 files concurrently
+    transactionTimeout: 30000, // 30 second transaction timeout
+  },
+};

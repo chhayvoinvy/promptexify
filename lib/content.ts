@@ -1,8 +1,7 @@
 import { prisma } from "@/lib/prisma";
-import fs from "fs";
-import path from "path";
 import { createCachedFunction, CACHE_TAGS, CACHE_DURATIONS } from "@/lib/cache";
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 
 export interface PostWithDetails {
   id: string;
@@ -16,7 +15,7 @@ export interface PostWithDetails {
   isFeatured: boolean;
   isPublished: boolean;
   status: string;
-  viewCount: number;
+
   authorId: string;
   createdAt: Date;
   updatedAt: Date;
@@ -74,6 +73,7 @@ const optimizedPostSelect = {
   id: true,
   title: true,
   slug: true,
+  content: true,
   description: true,
   featuredImage: true,
   featuredVideo: true,
@@ -81,7 +81,7 @@ const optimizedPostSelect = {
   isFeatured: true,
   isPublished: true,
   status: true,
-  viewCount: true,
+
   authorId: true,
   createdAt: true,
   updatedAt: true,
@@ -156,6 +156,11 @@ const getAllCategoriesMemoized = cache(async () => {
           id: true,
           name: true,
           slug: true,
+          _count: {
+            select: {
+              posts: true,
+            },
+          },
         },
       },
       children: {
@@ -163,11 +168,20 @@ const getAllCategoriesMemoized = cache(async () => {
           id: true,
           name: true,
           slug: true,
+          _count: {
+            select: {
+              posts: true,
+            },
+          },
         },
       },
       _count: {
         select: {
-          posts: true,
+          posts: {
+            where: {
+              isPublished: true,
+            },
+          },
         },
       },
     },
@@ -196,7 +210,7 @@ const getAllTagsMemoized = cache(async () => {
   });
 });
 
-// Internal uncached functions that use memoized versions for request deduplication
+// Internal uncached functions that use memoized versions for request deduplication.
 async function _getAllPosts(
   includeUnpublished = false
 ): Promise<PostWithDetails[]> {
@@ -474,64 +488,6 @@ export async function incrementPostView(
         userAgent,
       },
     });
-
-    // Update the post view count
-    await prisma.post.update({
-      where: { id: postId },
-      data: {
-        viewCount: {
-          increment: 1,
-        },
-      },
-    });
-  }
-}
-
-export async function createMDXFile(
-  post: PostWithDetails,
-  content: string
-): Promise<void> {
-  const contentDir = path.join(process.cwd(), "content", "posts");
-  const categoryDir = path.join(
-    contentDir,
-    post.category.parent?.slug || post.category.slug
-  );
-
-  // Create directory if it doesn't exist
-  if (!fs.existsSync(categoryDir)) {
-    fs.mkdirSync(categoryDir, { recursive: true });
-  }
-
-  const frontmatter = `---
-title: "${post.title}"
-description: "${post.description}"
-category: "${post.category.slug}"
-parentCategory: "${post.category.parent?.slug || post.category.slug}"
-tags: [${post.tags.map((tag) => `"${tag.name}"`).join(", ")}]
-featuredImage: "${post.featuredImage || ""}"
-featuredVideo: "${post.featuredVideo || ""}"
-isPremium: ${post.isPremium}
-isPublished: ${post.isPublished}
-publishedAt: "${post.createdAt.toISOString()}"
-authorId: "${post.author.id}"
----
-
-${content}`;
-
-  const filePath = path.join(categoryDir, `${post.slug}.mdx`);
-  fs.writeFileSync(filePath, frontmatter);
-}
-
-export async function deleteMDXFile(post: PostWithDetails): Promise<void> {
-  const contentDir = path.join(process.cwd(), "content", "posts");
-  const categoryDir = path.join(
-    contentDir,
-    post.category.parent?.slug || post.category.slug
-  );
-  const filePath = path.join(categoryDir, `${post.slug}.mdx`);
-
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
   }
 }
 
@@ -633,7 +589,8 @@ export interface PaginatedResult<T> {
   hasPreviousPage: boolean;
 }
 
-export async function getUserPosts(userId: string): Promise<PostWithDetails[]> {
+// Internal uncached function for getUserPosts
+async function _getUserPosts(userId: string): Promise<PostWithDetails[]> {
   const posts = await prisma.post.findMany({
     where: { authorId: userId },
     select: {
@@ -648,7 +605,7 @@ export async function getUserPosts(userId: string): Promise<PostWithDetails[]> {
       isFeatured: true,
       isPublished: true,
       status: true,
-      viewCount: true,
+
       authorId: true,
       createdAt: true,
       updatedAt: true,
@@ -692,6 +649,14 @@ export async function getUserPosts(userId: string): Promise<PostWithDetails[]> {
   return posts;
 }
 
+// Cached version of getUserPosts
+export const getUserPosts = createCachedFunction(
+  _getUserPosts,
+  "get-user-posts",
+  CACHE_DURATIONS.USER_DATA,
+  [CACHE_TAGS.USER_POSTS, CACHE_TAGS.POSTS]
+);
+
 export async function getUserPostsPaginated(
   userId: string,
   page: number = 1,
@@ -714,7 +679,7 @@ export async function getUserPostsPaginated(
         isFeatured: true,
         isPublished: true,
         status: true,
-        viewCount: true,
+
         authorId: true,
         createdAt: true,
         updatedAt: true,
@@ -807,7 +772,7 @@ export async function getPostsPaginated(
         isFeatured: true,
         isPublished: true,
         status: true,
-        viewCount: true,
+
         authorId: true,
         createdAt: true,
         updatedAt: true,
@@ -930,10 +895,10 @@ export async function getPostsWithSorting(
       sortBy === "latest"
         ? { createdAt: "desc" }
         : sortBy === "trending"
-        ? { viewCount: "desc" }
-        : sortBy === "popular"
-        ? { favorites: { _count: "desc" } }
-        : { createdAt: "desc" }, // fallback
+          ? { views: { _count: "desc" } }
+          : sortBy === "popular"
+            ? { favorites: { _count: "desc" } }
+            : { createdAt: "desc" }, // fallback
   });
 
   return posts.map((post) => ({
@@ -1038,7 +1003,7 @@ export async function getRelatedPosts(
     },
     orderBy: [
       // Prioritize posts with more shared tags
-      { viewCount: "desc" },
+      { views: { _count: "desc" } },
       { createdAt: "desc" },
     ],
     take: limit,
@@ -1051,4 +1016,54 @@ export async function getRelatedPosts(
     bookmarks: undefined,
     favorites: undefined,
   })) as PostWithInteractions[];
+}
+
+// Post Content Processing Functions
+export const getPostContent = unstable_cache(
+  async (id: string): Promise<PostWithDetails | null> => {
+    return await prisma.post.findUnique({
+      where: { id },
+      select: fullPostSelect,
+    });
+  },
+  ["post-content"],
+  {
+    tags: [CACHE_TAGS.POST_BY_ID],
+    revalidate: CACHE_DURATIONS.POST_DETAIL,
+  }
+);
+
+export const getPostsContent = unstable_cache(
+  async (includeUnpublished = false): Promise<PostWithDetails[]> => {
+    return await prisma.post.findMany({
+      where: includeUnpublished ? {} : { isPublished: true },
+      select: fullPostSelect,
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+  },
+  ["posts-content"],
+  {
+    tags: [CACHE_TAGS.POSTS],
+    revalidate: CACHE_DURATIONS.POSTS_LIST,
+  }
+);
+
+// Cache revalidation functions
+export async function revalidatePostContent(id?: string) {
+  const { revalidateCache } = await import("@/lib/cache");
+
+  if (id) {
+    // Revalidate specific post
+    await revalidateCache(CACHE_TAGS.POST_BY_ID);
+  } else {
+    // Revalidate all posts
+    await revalidateCache(CACHE_TAGS.POSTS);
+  }
+}
+
+export async function revalidateAllPostsContent() {
+  const { revalidateCache } = await import("@/lib/cache");
+  await revalidateCache(CACHE_TAGS.POSTS);
 }

@@ -122,45 +122,7 @@
   }
 }
 
-/* MDX Styles */
-.mdx {
-  @apply text-foreground;
-}
 
-.mdx [data-rehype-pretty-code-fragment] {
-  @apply overflow-hidden rounded-lg border bg-muted;
-}
-
-.mdx [data-rehype-pretty-code-fragment] pre {
-  @apply overflow-x-auto py-4;
-}
-
-.mdx [data-rehype-pretty-code-fragment] pre > code {
-  @apply grid min-w-full break-words rounded-none border-0 bg-transparent p-0 text-sm;
-  counter-reset: line;
-}
-
-.mdx [data-rehype-pretty-code-fragment] .line {
-  @apply border-l-2 border-l-transparent px-4 py-1;
-}
-
-.mdx [data-rehype-pretty-code-fragment] [data-highlighted-line] {
-  @apply border-l-blue-400 bg-blue-500/10;
-}
-
-.mdx [data-rehype-pretty-code-fragment] .line::before {
-  @apply mr-4 inline-block w-4 text-right text-muted-foreground;
-  content: counter(line);
-  counter-increment: line;
-}
-
-.mdx [data-rehype-pretty-code-title] {
-  @apply rounded-t-lg border border-b-0 bg-muted px-4 py-2 text-sm font-medium;
-}
-
-.mdx [data-rehype-pretty-code-title] + [data-rehype-pretty-code-fragment] {
-  @apply mt-0 rounded-t-none;
-}
 
 .line-clamp-1 {
   overflow: hidden;

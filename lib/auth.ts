@@ -247,6 +247,37 @@ export async function getCurrentUser() {
   }
 }
 
+/**
+ * AUTHENTICATION & AUTHORIZATION UTILITIES
+ * 
+ * This module provides standardized authentication and authorization functions
+ * that follow OWASP secure coding guidelines and implement defense-in-depth security.
+ * 
+ * SECURITY PATTERNS:
+ * 
+ * 1. STANDARDIZED AUTHENTICATION FUNCTIONS:
+ *    - requireAuth(): Basic authentication check with automatic redirect
+ *    - requireAdmin(): Admin-only access with role validation
+ *    - requireRole(): Flexible role-based access control
+ *    - getCurrentUser(): User data retrieval without redirect (use sparingly)
+ * 
+ * 2. CONSISTENT USAGE PATTERNS:
+ *    - Layout Level: Use requireAuth() in protected layouts for defense-in-depth
+ *    - Page Level: Use specific role functions (requireAdmin, requireRole)
+ *    - API Routes: Use getCurrentUser() with manual validation for better error handling
+ * 
+ * 3. SECURITY BENEFITS:
+ *    - Centralized authentication logic reduces code duplication
+ *    - Consistent redirect behavior prevents information disclosure
+ *    - Automatic audit logging for security monitoring
+ *    - Role-based access control with secure defaults
+ * 
+ * 4. MIGRATION GUIDE:
+ *    - Replace getCurrentUser() + manual checks with requireAuth()/requireAdmin()
+ *    - Use requireRole(["ADMIN", "USER"]) for multi-role access
+ *    - Implement layout-level authentication for route groups
+ */
+
 // Role-based access control utilities
 export async function requireAuth() {
   const user = await getCurrentUser();

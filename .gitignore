@@ -48,9 +48,13 @@ next-env.d.ts
 /templates
 /docs
 
-#prisma
+# prisma
 prisma/migrations
 prisma/seed.ts
 
-#contentlayer
+# contentlayer
 .contentlayer
+
+# images
+/public/uploads
+/public/images

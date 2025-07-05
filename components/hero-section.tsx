@@ -2,11 +2,13 @@
 
 import { useCallback, useRef } from "react";
 import { useMousePosition } from "@/hooks/use-mouse-position";
+import { AnimatedBackground } from "@/components/ui/animated-background";
 import { GridBackground } from "@/components/ui/grid-background";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Container } from "@/components/ui/container";
 import { Search } from "lucide-react";
+import { motion, Variants } from "framer-motion";
 
 interface HeroSectionProps {
   searchQuery?: string;
@@ -32,6 +34,11 @@ export function HeroSection({ searchQuery, sort }: HeroSectionProps) {
 
   useMousePosition(containerRef, update);
 
+  const FADE_IN_ANIMATION_VARIANTS: Variants = {
+    hidden: { opacity: 0, y: 10 },
+    show: { opacity: 1, y: 0, transition: { type: "spring" } },
+  };
+
   return (
     <section
       ref={containerRef}
@@ -39,6 +46,7 @@ export function HeroSection({ searchQuery, sort }: HeroSectionProps) {
     >
       {/* Grid Background */}
       <GridBackground className="z-0" gridSize={80} />
+      <AnimatedBackground className="z-10" />
 
       <div className="absolute bottom-0 bg-gradient-to-t from-background to-transparent w-full h-20 z-50" />
 
@@ -60,17 +68,40 @@ export function HeroSection({ searchQuery, sort }: HeroSectionProps) {
         <div className="absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l from-background to-transparent z-50 pointer-events-none" />
       </div>
       <Container className="relative z-20 md:py-25">
-        <div className="max-w-3xl mx-auto text-center">
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+        <motion.div
+          initial="hidden"
+          animate="show"
+          viewport={{ once: true }}
+          variants={{
+            hidden: {},
+            show: {
+              transition: {
+                staggerChildren: 0.15,
+              },
+            },
+          }}
+          className="max-w-3xl mx-auto text-center"
+        >
+          <motion.h1
+            variants={FADE_IN_ANIMATION_VARIANTS}
+            className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent"
+          >
             Prompt Directory
-          </h1>
-          <p className="text-sm md:text-xl lg:text-xl xl:text-xl text-muted-foreground mb-6">
+          </motion.h1>
+          <motion.p
+            variants={FADE_IN_ANIMATION_VARIANTS}
+            className="text-sm md:text-xl lg:text-xl xl:text-xl text-muted-foreground mb-6"
+          >
             Discover amazing prompts and rulesets for AI code editor, image
             generation, video creation, and more. Browse our featured collection
             of hand-picked, ready-to-use prompts.
-          </p>
+          </motion.p>
           {/* Search Bar */}
-          <form method="GET" className="relative max-w-xl mx-auto">
+          <motion.form
+            variants={FADE_IN_ANIMATION_VARIANTS}
+            method="GET"
+            className="relative max-w-xl mx-auto"
+          >
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               name="q"
@@ -88,8 +119,8 @@ export function HeroSection({ searchQuery, sort }: HeroSectionProps) {
             >
               Search
             </Button>
-          </form>
-        </div>
+          </motion.form>
+        </motion.div>
       </Container>
     </section>
   );

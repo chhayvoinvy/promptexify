@@ -13,6 +13,11 @@ export async function middleware(request: NextRequest) {
     // Handle Supabase session
     const response = await updateSession(request);
 
+    // If updateSession returns a redirect, follow it immediately.
+    if (response.headers.has("Location")) {
+      return response;
+    }
+
     // Prepare request headers for modification
     const requestHeaders = new Headers(request.headers);
 
@@ -48,6 +53,8 @@ export async function middleware(request: NextRequest) {
         "/api/upload/",
         "/auth/callback",
         "/api/auth/",
+        // NEW: Allow CSP violation reports (no CSRF token sent by browsers)
+        "/api/security/csp-report",
       ];
 
       const shouldValidateCSRF = !skipCSRF.some((path) =>

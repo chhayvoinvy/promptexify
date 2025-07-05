@@ -89,7 +89,8 @@ export async function logAuditEvent(event: AuditEvent) {
 async function storeAuditEvent(event: AuditEvent | SecurityEvent) {
   try {
     // Prepare metadata with security event specific fields
-    const metadata: Record<string, any> = {
+    // Using proper typing to match AuditEvent interface and handle security event extensions
+    const metadata: Record<string, string | number | boolean> = {
       ...event.metadata,
     };
 
@@ -250,6 +251,20 @@ export const SecurityEvents = {
       blocked: !authorized,
       severity: authorized ? "LOW" : "HIGH",
       metadata: { resource },
+    }),
+
+  protectedAreaAccess: (
+    userId: string,
+    ipAddress?: string,
+    area?: string
+  ) =>
+    logAuditEvent({
+      action: "Protected Area Access",
+      userId,
+      entityType: "protected_route",
+      ipAddress,
+      severity: "LOW",
+      metadata: { area: area || "unknown" },
     }),
 };
 

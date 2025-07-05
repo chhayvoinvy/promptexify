@@ -134,22 +134,16 @@ export const createPostAction = withCSRFProtection(
         },
       });
 
-      // Revalidate cache tags for posts and tags (since tags may have been created)
-      revalidateCache([
-        CACHE_TAGS.POSTS,
-        CACHE_TAGS.POST_BY_SLUG,
-        CACHE_TAGS.CATEGORIES,
-        CACHE_TAGS.TAGS, // Important: Invalidate tags cache when new tags are created
-        CACHE_TAGS.SEARCH_RESULTS,
-      ]);
-
-      // Revalidate cache tags for updated post
+      // Revalidate cache tags for new post and tags (since tags may have been created)
       revalidateCache([
         CACHE_TAGS.POSTS,
         CACHE_TAGS.POST_BY_SLUG,
         CACHE_TAGS.POST_BY_ID,
+        CACHE_TAGS.CATEGORIES,
         CACHE_TAGS.TAGS, // Important: Invalidate tags cache when new tags are created
         CACHE_TAGS.SEARCH_RESULTS,
+        CACHE_TAGS.USER_POSTS, // Important: Invalidate user posts cache
+        CACHE_TAGS.ANALYTICS, // Important: Invalidate analytics for dashboard stats
       ]);
 
       revalidatePath("/dashboard/posts");
@@ -309,13 +303,16 @@ export const updatePostAction = withCSRFProtection(
 
       revalidatePath("/dashboard/posts");
       revalidatePath(`/entry/${id}`);
-      // Revalidate cache tags for updated post and tags (since tags may have been created)
+      // Revalidate cache tags for updated post and tags (since tags may have been created during updates)
       revalidateCache([
         CACHE_TAGS.POSTS,
         CACHE_TAGS.POST_BY_SLUG,
         CACHE_TAGS.POST_BY_ID,
         CACHE_TAGS.TAGS, // Important: Invalidate tags cache when new tags are created during updates
+        CACHE_TAGS.CATEGORIES, // Important: Invalidate categories cache when post category changes
         CACHE_TAGS.SEARCH_RESULTS,
+        CACHE_TAGS.USER_POSTS, // Important: Invalidate user posts cache
+        CACHE_TAGS.ANALYTICS, // Important: Invalidate analytics for dashboard stats
       ]);
 
       redirect("/dashboard/posts");
@@ -391,7 +388,10 @@ export async function approvePostAction(postId: string) {
       CACHE_TAGS.POSTS,
       CACHE_TAGS.POST_BY_ID,
       CACHE_TAGS.POST_BY_SLUG,
+      CACHE_TAGS.CATEGORIES, // Important: Invalidate categories cache when post deleted affects counts
       CACHE_TAGS.SEARCH_RESULTS,
+      CACHE_TAGS.USER_POSTS, // Important: Invalidate user posts cache
+      CACHE_TAGS.ANALYTICS, // Important: Invalidate analytics for dashboard stats
     ]);
 
     return {
@@ -456,7 +456,10 @@ export async function rejectPostAction(postId: string) {
       CACHE_TAGS.POSTS,
       CACHE_TAGS.POST_BY_ID,
       CACHE_TAGS.POST_BY_SLUG,
+      CACHE_TAGS.CATEGORIES, // Important: Invalidate categories cache when post deleted affects counts
       CACHE_TAGS.SEARCH_RESULTS,
+      CACHE_TAGS.USER_POSTS, // Important: Invalidate user posts cache
+      CACHE_TAGS.ANALYTICS, // Important: Invalidate analytics for dashboard stats
     ]);
 
     return {
@@ -525,7 +528,10 @@ export async function togglePostPublishAction(postId: string) {
       CACHE_TAGS.POSTS,
       CACHE_TAGS.POST_BY_ID,
       CACHE_TAGS.POST_BY_SLUG,
+      CACHE_TAGS.CATEGORIES, // Important: Invalidate categories cache when post deleted affects counts
       CACHE_TAGS.SEARCH_RESULTS,
+      CACHE_TAGS.USER_POSTS, // Important: Invalidate user posts cache
+      CACHE_TAGS.ANALYTICS, // Important: Invalidate analytics for dashboard stats
     ]);
 
     return {
@@ -592,7 +598,10 @@ export async function togglePostFeaturedAction(postId: string) {
       CACHE_TAGS.POSTS,
       CACHE_TAGS.POST_BY_ID,
       CACHE_TAGS.POST_BY_SLUG,
+      CACHE_TAGS.CATEGORIES, // Important: Invalidate categories cache when post deleted affects counts
       CACHE_TAGS.SEARCH_RESULTS,
+      CACHE_TAGS.USER_POSTS, // Important: Invalidate user posts cache
+      CACHE_TAGS.ANALYTICS, // Important: Invalidate analytics for dashboard stats
     ]);
 
     return {
@@ -687,7 +696,10 @@ export async function deletePostAction(postId: string) {
       CACHE_TAGS.POSTS,
       CACHE_TAGS.POST_BY_ID,
       CACHE_TAGS.POST_BY_SLUG,
+      CACHE_TAGS.CATEGORIES, // Important: Invalidate categories cache when post deleted affects counts
       CACHE_TAGS.SEARCH_RESULTS,
+      CACHE_TAGS.USER_POSTS, // Important: Invalidate user posts cache
+      CACHE_TAGS.ANALYTICS, // Important: Invalidate analytics for dashboard stats
     ]);
 
     return {

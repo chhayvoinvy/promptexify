@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { deleteImageFromS3, extractImageFilename } from "@/lib/s3";
+import { deleteImage, extractImageFilename } from "@/lib/storage";
 
 /**
  * DELETE /api/upload/image/delete
@@ -57,8 +57,8 @@ export async function DELETE(request: NextRequest) {
       }
     }
 
-    // Delete from S3
-    const deleted = await deleteImageFromS3(imageUrl);
+    // Delete from configured storage
+    const deleted = await deleteImage(imageUrl);
 
     if (deleted) {
       return NextResponse.json({
