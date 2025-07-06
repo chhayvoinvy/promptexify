@@ -59,7 +59,7 @@ export function AutomationDashboard() {
   const [jsonExecuting, setJsonExecuting] = useState(false);
   const [csvImporting, setCsvImporting] = useState(false);
 
-  const { isReady } = useCSRFForm();
+  const { isReady, getHeadersWithCSRF, createFormDataWithCSRF } = useCSRFForm();
 
   // Load generation logs
   const loadLogs = async () => {
@@ -103,9 +103,9 @@ export function AutomationDashboard() {
       // Send to API
       const response = await fetch("/api/admin/automation/execute-json", {
         method: "POST",
-        headers: {
+        headers: getHeadersWithCSRF({
           "Content-Type": "application/json",
-        },
+        }),
         body: JSON.stringify(parsedContent),
       });
 
@@ -145,15 +145,13 @@ export function AutomationDashboard() {
       setCsvImporting(true);
       toast.info("Importing CSV file...");
 
-      // Create form data
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("delimiter", options.delimiter);
-      formData.append(
-        "skipEmptyLines",
-        options.skipEmptyLines ? "true" : "false"
-      );
-      formData.append("maxRows", String(options.maxRows));
+      // Create form data with CSRF protection
+      const formData = createFormDataWithCSRF({
+        file: file,
+        delimiter: options.delimiter,
+        skipEmptyLines: options.skipEmptyLines ? "true" : "false",
+        maxRows: String(options.maxRows),
+      });
 
       // Send to API
       const response = await fetch("/api/admin/automation/import-csv", {
@@ -549,7 +547,7 @@ function JsonExecutionForm({
           value={jsonContent}
           onChange={(e) => handleJsonChange(e.target.value)}
           rows={15}
-          className={`font-mono ${!isValidJson ? "border-red-500" : ""}`}
+          className={`font-mono ${!isValidJson ? "border-red-500" : ""} max-h-[60vh] overflow-y-auto`}
           placeholder={`{\n  "category": "example",\n  "tags": [],\n  "posts": []\n}`}
         />
         {!isValidJson && (

@@ -44,14 +44,23 @@ interface Tag {
   slug: string;
 }
 
+interface FeaturedMedia {
+  id: string;
+  url: string;
+}
+
 export default function NewPostPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const { createFormDataWithCSRF, isReady } = useCSRFForm();
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
-  const [featuredImageUrl, setFeaturedImageUrl] = useState("");
-  const [featuredVideoUrl, setFeaturedVideoUrl] = useState("");
+  const [featuredImage, setFeaturedImage] = useState<FeaturedMedia | null>(
+    null
+  );
+  const [featuredVideo, setFeaturedVideo] = useState<FeaturedMedia | null>(
+    null
+  );
   const [postTitle, setPostTitle] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [pendingTags, setPendingTags] = useState<string[]>([]);
@@ -212,11 +221,13 @@ export default function NewPostPage() {
       }
 
       // Add the featured media URLs to form data
-      if (featuredImageUrl) {
-        formData.set("featuredImage", featuredImageUrl);
+      if (featuredImage) {
+        formData.set("featuredImageId", featuredImage.id);
+        formData.set("featuredImage", featuredImage.url);
       }
-      if (featuredVideoUrl) {
-        formData.set("featuredVideo", featuredVideoUrl);
+      if (featuredVideo) {
+        formData.set("featuredVideoId", featuredVideo.id);
+        formData.set("featuredVideo", featuredVideo.url);
       }
 
       // Add the selected tags to form data
@@ -261,13 +272,22 @@ export default function NewPostPage() {
   }
 
   // Handle media upload
-  function handleMediaUploaded(mediaUrl: string, mediaType: "image" | "video") {
-    if (mediaType === "image") {
-      setFeaturedImageUrl(mediaUrl);
-      setFeaturedVideoUrl(""); // Clear video when image is uploaded
+  function handleMediaUploaded(
+    result: { id: string; url: string; mimeType: string } | null
+  ) {
+    if (result) {
+      const isImage = result.mimeType.startsWith("image/");
+      if (isImage) {
+        setFeaturedImage({ id: result.id, url: result.url });
+        setFeaturedVideo(null);
+      } else {
+        setFeaturedVideo({ id: result.id, url: result.url });
+        setFeaturedImage(null);
+      }
     } else {
-      setFeaturedVideoUrl(mediaUrl);
-      setFeaturedImageUrl(""); // Clear image when video is uploaded
+      // Media was removed
+      setFeaturedImage(null);
+      setFeaturedVideo(null);
     }
   }
 
@@ -418,13 +438,15 @@ export default function NewPostPage() {
                   />
                 </div>
 
-                <MediaUpload
-                  onMediaUploaded={handleMediaUploaded}
-                  currentImageUrl={featuredImageUrl}
-                  currentVideoUrl={featuredVideoUrl}
-                  title={postTitle || "untitled"}
-                  disabled={isSubmitting}
-                />
+                <CardContent>
+                  <MediaUpload
+                    onMediaUploaded={handleMediaUploaded}
+                    currentImageUrl={featuredImage?.url}
+                    currentVideoUrl={featuredVideo?.url}
+                    title={postTitle || "untitled"}
+                    disabled={isSubmitting}
+                  />
+                </CardContent>
               </CardContent>
             </Card>
 

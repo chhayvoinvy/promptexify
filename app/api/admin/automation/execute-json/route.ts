@@ -4,6 +4,7 @@ import { AutomationService } from "@/lib/automation/service";
 import { validateJsonInput } from "@/lib/automation/validation";
 import { SecurityMonitor, SecurityEventType } from "@/lib/security-monitor";
 import { ContentFile } from "@/lib/automation/types";
+import { CSRFProtection } from "@/lib/security";
 
 /**
  * POST - Execute JSON content directly
@@ -20,6 +21,25 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json(
         { error: "Admin access required" },
+        { status: 403 }
+      );
+    }
+
+    // Validate CSRF token
+    const csrfToken = CSRFProtection.getTokenFromHeaders(request);
+    const isValidCSRF = await CSRFProtection.validateToken(csrfToken);
+    if (!isValidCSRF) {
+      await SecurityMonitor.logSecurityEvent(
+        SecurityEventType.MALICIOUS_PAYLOAD,
+        {
+          userId: user.id,
+          context: "invalid_csrf_token",
+          endpoint: "execute-json",
+        },
+        "high"
+      );
+      return NextResponse.json(
+        { error: "Invalid CSRF token" },
         { status: 403 }
       );
     }

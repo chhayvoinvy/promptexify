@@ -4,6 +4,7 @@ import { AutomationService } from "@/lib/automation/service";
 import { convertCsvToContentFiles } from "@/lib/automation/csv-parser";
 import { validateCsvStructure } from "@/lib/automation/validation";
 import { SecurityMonitor, SecurityEventType } from "@/lib/security-monitor";
+import { CSRFProtection } from "@/lib/security";
 
 /**
  * POST - Import and execute CSV content
@@ -39,6 +40,33 @@ export async function POST(request: NextRequest) {
       formData = await request.formData();
     } catch {
       return NextResponse.json({ error: "Invalid form data" }, { status: 400 });
+    }
+
+    // Validate CSRF token (check both headers and form data)
+    const csrfTokenFromHeaders = CSRFProtection.getTokenFromHeaders(request);
+    const csrfTokenFromForm = CSRFProtection.getTokenFromFormData(formData);
+    const csrfToken = csrfTokenFromHeaders || csrfTokenFromForm;
+
+    const isValidCSRF = await CSRFProtection.validateToken(csrfToken);
+    if (!isValidCSRF) {
+      await SecurityMonitor.logSecurityEvent(
+        SecurityEventType.MALICIOUS_PAYLOAD,
+        {
+          userId: user.id,
+          context: "invalid_csrf_token",
+          endpoint: "import-csv",
+        },
+        "high"
+      );
+      return NextResponse.json(
+        { error: "Invalid CSRF token" },
+        { status: 403 }
+      );
+    }
+
+    // Remove CSRF token from form data if it exists
+    if (csrfTokenFromForm) {
+      formData.delete("csrf_token");
     }
 
     // Get CSV file from form data

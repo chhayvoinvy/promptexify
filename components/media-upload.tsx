@@ -10,8 +10,22 @@ import { Upload, X, Loader2 } from "lucide-react";
 import { MediaImage, MediaVideo } from "@/components/ui/media-display";
 import { cn } from "@/lib/utils";
 
+// Local type definition for the upload result to avoid direct dependency on backend types
+interface UploadResult {
+  id: string;
+  url: string;
+  filename: string;
+  relativePath: string;
+  originalName: string;
+  mimeType: string;
+  fileSize: number;
+  width?: number;
+  height?: number;
+  storageType: "S3" | "LOCAL" | "DOSPACE";
+}
+
 interface MediaUploadProps {
-  onMediaUploaded: (mediaUrl: string, mediaType: "image" | "video") => void;
+  onMediaUploaded?: (result: UploadResult | null) => void;
   currentImageUrl?: string;
   currentVideoUrl?: string;
   title?: string;
@@ -221,15 +235,16 @@ export function MediaUpload({
         URL.revokeObjectURL(previewUrl);
 
         // Set final media URL
-        const mediaUrl =
-          mediaType === "image" ? result.imageUrl : result.videoUrl;
+        const mediaUrl = result.url;
         if (mediaType === "image") {
           setImagePreview(mediaUrl);
         } else {
           setVideoPreview(mediaUrl);
         }
 
-        onMediaUploaded(mediaUrl, mediaType);
+        if (onMediaUploaded) {
+          onMediaUploaded(result);
+        }
 
         // Clear success message after 3 seconds
         setTimeout(() => {
@@ -250,12 +265,11 @@ export function MediaUpload({
 
   // Handle remove media
   const handleRemoveMedia = (type: MediaType) => () => {
+    if (disabled) return;
     if (type === "image") {
       setImagePreview(null);
-      onMediaUploaded("", "image");
     } else {
       setVideoPreview(null);
-      onMediaUploaded("", "video");
     }
     setUploadState({
       uploading: false,
@@ -263,8 +277,9 @@ export function MediaUpload({
       error: null,
       success: false,
     });
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+    // Let parent know the media was removed by passing null
+    if (onMediaUploaded) {
+      onMediaUploaded(null);
     }
   };
 

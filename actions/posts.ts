@@ -38,6 +38,8 @@ export const createPostAction = withCSRFProtection(
       const rawContent = formData.get("content") as string;
       const featuredImage = formData.get("featuredImage") as string;
       const featuredVideo = formData.get("featuredVideo") as string;
+      const featuredImageId = formData.get("featuredImageId") as string;
+      const featuredVideoId = formData.get("featuredVideoId") as string;
       const category = formData.get("category") as string;
       const subcategory = formData.get("subcategory") as string;
       const tags = formData.get("tags") as string;
@@ -115,7 +117,7 @@ export const createPostAction = withCSRFProtection(
       }
 
       // Create the post
-      await prisma.post.create({
+      const newPost = await prisma.post.create({
         data: {
           title,
           slug,
@@ -133,6 +135,23 @@ export const createPostAction = withCSRFProtection(
           },
         },
       });
+
+      // Link media to the post
+      const mediaIds = [featuredImageId, featuredVideoId].filter(Boolean);
+      if (mediaIds.length > 0) {
+        await prisma.media.updateMany({
+          where: {
+            id: {
+              in: mediaIds,
+            },
+            // Ensure we don't overwrite another post's media
+            postId: null,
+          },
+          data: {
+            postId: newPost.id,
+          },
+        });
+      }
 
       // Revalidate cache tags for new post and tags (since tags may have been created)
       revalidateCache([
@@ -185,6 +204,8 @@ export const updatePostAction = withCSRFProtection(
       const content = formData.get("content") as string;
       const featuredImage = formData.get("featuredImage") as string;
       const featuredVideo = formData.get("featuredVideo") as string;
+      const featuredImageId = formData.get("featuredImageId") as string;
+      const featuredVideoId = formData.get("featuredVideoId") as string;
       const category = formData.get("category") as string;
       const subcategory = formData.get("subcategory") as string;
       const tags = formData.get("tags") as string;
@@ -200,6 +221,7 @@ export const updatePostAction = withCSRFProtection(
         where: { id },
         include: {
           author: true,
+          media: true,
         },
       });
 
@@ -258,16 +280,45 @@ export const updatePostAction = withCSRFProtection(
         throw new Error("Invalid category");
       }
 
-      // Process tags
-      const tagNames = tags
+      // Prepare media updates
+      const newMediaIds = [featuredImageId, featuredVideoId].filter(
+        (id) => id && typeof id === "string"
+      );
+      const oldMediaIds = existingPost.media.map((m) => m.id);
+
+      // IDs of media to be disassociated from the post
+      const mediaToUnlink = oldMediaIds.filter(
+        (id) => !newMediaIds.includes(id)
+      );
+
+      // IDs of media to be newly associated with the post
+      const mediaToLink = newMediaIds.filter((id) => !oldMediaIds.includes(id));
+
+      // Disassociate old media that is no longer used
+      if (mediaToUnlink.length > 0) {
+        await prisma.media.updateMany({
+          where: {
+            id: {
+              in: mediaToUnlink,
+            },
+            postId: existingPost.id,
+          },
+          data: {
+            postId: null,
+          },
+        });
+      }
+
+      // Process and sanitize tags, and disconnect old tags
+      const newTagNames = tags
         ? tags
             .split(",")
             .map((tag) => tag.trim())
             .filter(Boolean)
         : [];
-      const tagConnections = [];
+      const newTagConnections = [];
 
-      for (const tagName of tagNames) {
+      for (const tagName of newTagNames) {
         const tagSlug = tagName.toLowerCase().replace(/\s+/g, "-");
         const tag = await prisma.tag.upsert({
           where: { slug: tagSlug },
@@ -277,11 +328,11 @@ export const updatePostAction = withCSRFProtection(
             slug: tagSlug,
           },
         });
-        tagConnections.push({ id: tag.id });
+        newTagConnections.push({ id: tag.id });
       }
 
       // Update the post
-      await prisma.post.update({
+      const updatedPost = await prisma.post.update({
         where: { id },
         data: {
           title,
@@ -295,11 +346,26 @@ export const updatePostAction = withCSRFProtection(
           status: status,
           categoryId: categoryRecord.id,
           tags: {
-            set: tagConnections,
+            set: newTagConnections,
           },
           updatedAt: new Date(),
         },
       });
+
+      // Associate new media with the post
+      if (mediaToLink.length > 0) {
+        await prisma.media.updateMany({
+          where: {
+            id: {
+              in: mediaToLink,
+            },
+            postId: null, // Only link unassociated media
+          },
+          data: {
+            postId: updatedPost.id,
+          },
+        });
+      }
 
       revalidatePath("/dashboard/posts");
       revalidatePath(`/entry/${id}`);

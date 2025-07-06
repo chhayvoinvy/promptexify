@@ -47,6 +47,11 @@ interface Tag {
   slug: string;
 }
 
+interface FeaturedMedia {
+  id: string;
+  url: string;
+}
+
 interface Post {
   id: string;
   title: string;
@@ -57,6 +62,7 @@ interface Post {
   featuredVideo?: string;
   isPublished: boolean;
   isPremium: boolean;
+  media: { id: string; mimeType: string }[];
   category: {
     id: string;
     name: string;
@@ -81,10 +87,12 @@ export default function EditPostPage() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [pendingTags, setPendingTags] = useState<string[]>([]); // New state for pending tags
   const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const [featuredImageUrl, setFeaturedImageUrl] = useState("");
-  const [featuredVideoUrl, setFeaturedVideoUrl] = useState("");
-  const [originalImageUrl, setOriginalImageUrl] = useState("");
-  const [originalVideoUrl, setOriginalVideoUrl] = useState("");
+  const [featuredImage, setFeaturedImage] = useState<FeaturedMedia | null>(
+    null
+  );
+  const [featuredVideo, setFeaturedVideo] = useState<FeaturedMedia | null>(
+    null
+  );
   const [postTitle, setPostTitle] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -160,10 +168,18 @@ export default function EditPostPage() {
         setCategories(categoriesData);
         setTags(tagsData);
         setSelectedTags(postData.tags.map((tag: Tag) => tag.name));
-        setFeaturedImageUrl(postData.featuredImage || "");
-        setFeaturedVideoUrl(postData.featuredVideo || "");
-        setOriginalImageUrl(postData.featuredImage || "");
-        setOriginalVideoUrl(postData.featuredVideo || "");
+        if (postData.media && postData.media.length > 0) {
+          const image = postData.media.find((m: { mimeType: string }) =>
+            m.mimeType.startsWith("image/")
+          );
+          const video = postData.media.find((m: { mimeType: string }) =>
+            m.mimeType.startsWith("video/")
+          );
+          if (image)
+            setFeaturedImage({ id: image.id, url: postData.featuredImage });
+          if (video)
+            setFeaturedVideo({ id: video.id, url: postData.featuredVideo });
+        }
         setPostTitle(postData.title || "");
         // Set the selected category (parent category if current is child, or current if parent)
         setSelectedCategory(
@@ -276,16 +292,18 @@ export default function EditPostPage() {
         }
       }
 
-      // Add the featured media URLs to form data
-      if (featuredImageUrl) {
-        formData.set("featuredImage", featuredImageUrl);
+      // Add the featured media IDs to form data
+      if (featuredImage) {
+        formData.set("featuredImageId", featuredImage.id);
+        formData.set("featuredImage", featuredImage.url);
       }
-      if (featuredVideoUrl) {
-        formData.set("featuredVideo", featuredVideoUrl);
+      if (featuredVideo) {
+        formData.set("featuredVideoId", featuredVideo.id);
+        formData.set("featuredVideo", featuredVideo.url);
       }
 
       // Add the selected tags to form data
-      formData.set("tags", selectedTags.join(", "));
+      formData.set("tags", selectedTags.join(","));
       formData.set("id", post.id);
 
       // Convert FormData to plain object for CSRF protection
@@ -302,71 +320,6 @@ export default function EditPostPage() {
 
       // Show success message - redirect is handled by server action
       toast.success("Post updated successfully!");
-
-      // Get the current featured media from form data
-      const currentFeaturedImage = formData.get("featuredImage") as string;
-      const currentFeaturedVideo = formData.get("featuredVideo") as string;
-
-      // Clean up old image if it was changed and is one of our uploaded images
-      if (
-        originalImageUrl &&
-        currentFeaturedImage &&
-        originalImageUrl !== currentFeaturedImage &&
-        originalImageUrl.includes("/images/") && // Only delete if it's our uploaded image
-        originalImageUrl.endsWith(".avif")
-      ) {
-        try {
-          const deleteResponse = await fetch("/api/upload/image/delete", {
-            method: "DELETE",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ imageUrl: originalImageUrl }),
-          });
-
-          if (deleteResponse.ok) {
-            console.log("Successfully deleted old image:", originalImageUrl);
-          } else {
-            console.error(
-              "Failed to delete old image:",
-              await deleteResponse.text()
-            );
-          }
-        } catch (deleteError) {
-          // Log error but don't fail the whole operation
-          console.error("Failed to delete old image:", deleteError);
-        }
-      }
-
-      // Clean up old video if it was changed and is one of our uploaded videos
-      if (
-        originalVideoUrl &&
-        currentFeaturedVideo &&
-        originalVideoUrl !== currentFeaturedVideo &&
-        originalVideoUrl.includes("/videos/") // Only delete if it's our uploaded video
-      ) {
-        try {
-          const deleteResponse = await fetch("/api/upload/video/delete", {
-            method: "DELETE",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ videoUrl: originalVideoUrl }),
-          });
-
-          if (deleteResponse.ok) {
-            console.log("Successfully deleted old video:", originalVideoUrl);
-          } else {
-            console.error(
-              "Failed to delete old video:",
-              await deleteResponse.text()
-            );
-          }
-        } catch (deleteError) {
-          // Log error but don't fail the whole operation
-          console.error("Failed to delete old video:", deleteError);
-        }
-      }
 
       // Redirect is handled by server action - no need for client-side redirect
     } catch (error) {
@@ -402,20 +355,28 @@ export default function EditPostPage() {
   }
 
   // Handle media upload
-  function handleMediaUploaded(mediaUrl: string, mediaType: "image" | "video") {
-    if (mediaType === "image") {
-      setFeaturedImageUrl(mediaUrl);
-      setFeaturedVideoUrl(""); // Clear video when image is uploaded
+  function handleMediaUploaded(
+    result: { id: string; url: string; mimeType: string } | null
+  ) {
+    if (result) {
+      const isImage = result.mimeType.startsWith("image/");
+      if (isImage) {
+        setFeaturedImage({ id: result.id, url: result.url });
+        setFeaturedVideo(null);
+      } else {
+        setFeaturedVideo({ id: result.id, url: result.url });
+        setFeaturedImage(null);
+      }
     } else {
-      setFeaturedVideoUrl(mediaUrl);
-      setFeaturedImageUrl(""); // Clear image when video is uploaded
+      // Media was removed
+      setFeaturedImage(null);
+      setFeaturedVideo(null);
     }
   }
 
   // Handle title change for image filename
   function handleTitleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const title = e.target.value;
-    setPostTitle(title);
+    setPostTitle(e.target.value);
   }
 
   function handleCategoryChange(categorySlug: string) {
@@ -583,14 +544,15 @@ export default function EditPostPage() {
                   />
                 </div>
 
-                {/* Replace the old URL input with the new MediaUpload component */}
-                <MediaUpload
-                  onMediaUploaded={handleMediaUploaded}
-                  currentImageUrl={featuredImageUrl}
-                  currentVideoUrl={featuredVideoUrl}
-                  title={postTitle || post.title}
-                  disabled={isSubmitting}
-                />
+                <CardContent>
+                  <MediaUpload
+                    onMediaUploaded={handleMediaUploaded}
+                    currentImageUrl={featuredImage?.url}
+                    currentVideoUrl={featuredVideo?.url}
+                    title={postTitle || "untitled"}
+                    disabled={isSubmitting}
+                  />
+                </CardContent>
               </CardContent>
             </Card>
 
@@ -771,8 +733,8 @@ export default function EditPostPage() {
                 {isSubmitting
                   ? "Updating..."
                   : isReady
-                  ? "Update Post"
-                  : "Initializing..."}
+                    ? "Update Post"
+                    : "Initializing..."}
               </Button>
               <Button
                 type="button"

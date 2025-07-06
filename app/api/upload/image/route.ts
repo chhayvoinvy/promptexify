@@ -14,7 +14,8 @@ import {
   getFileUploadConfig,
   ENHANCED_SECURITY_HEADERS,
 } from "@/lib/sanitize";
-import { SecurityEvents, getClientIP, sanitizeUserAgent } from "@/lib/audit";
+import { SecurityEvents, getClientIP } from "@/lib/audit";
+import { prisma } from "@/lib/prisma";
 
 // Get environment-aware upload configurations
 const uploadConfig = getFileUploadConfig();
@@ -255,26 +256,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Process and upload image with user ID for path organization
-    const imageUrl = await processAndUploadImageWithConfig(
+    // Process and upload the image with the new config-aware function
+    const uploadResult = await processAndUploadImageWithConfig(
       file,
       sanitizedTitle,
-      user.userData.id
+      user.userData?.id
     );
 
+    // Create a Media record in the database
+    const newMedia = await prisma.media.create({
+      data: {
+        filename: uploadResult.filename,
+        relativePath: uploadResult.relativePath,
+        originalName: uploadResult.originalName,
+        mimeType: uploadResult.mimeType,
+        fileSize: uploadResult.fileSize,
+        width: uploadResult.width,
+        height: uploadResult.height,
+        storageType: uploadResult.storageType,
+        uploadedBy: user.userData!.id,
+      },
+    });
+
+    // Return the upload result along with the new media ID
     return NextResponse.json(
       {
-        success: true,
-        imageUrl,
-        message: "Image uploaded successfully",
-        fileInfo: {
-          originalName: file.name,
-          size: file.size,
-          type: file.type,
-          sanitizedTitle: sanitizedTitle,
-        },
+        ...uploadResult,
+        id: newMedia.id,
       },
       {
+        status: 200,
         headers: {
           ...SECURITY_HEADERS,
           ...getRateLimitHeaders(rateLimitResult),

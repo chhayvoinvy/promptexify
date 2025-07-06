@@ -8,6 +8,15 @@ import {
   ServerSideEncryption,
   ObjectCannedACL,
 } from "@aws-sdk/client-s3";
+import { StorageType } from "@/lib/generated/prisma";
+import {
+  generateImageFilename,
+  generateVideoFilename,
+  convertToAvif,
+  validateImageFile,
+  validateVideoFile,
+  extractImageFilename,
+} from "./s3";
 
 // Re-export existing S3 utilities for backward compatibility
 export {
@@ -17,7 +26,7 @@ export {
   validateImageFile,
   validateVideoFile,
   extractImageFilename,
-} from "./s3";
+};
 
 // Storage configuration interface
 export interface StorageConfig {
@@ -38,6 +47,20 @@ export interface StorageConfig {
   maxVideoSize: number;
   enableCompression: boolean;
   compressionQuality: number;
+}
+
+// NEW: Result type for uploads
+export interface UploadResult {
+  url: string;
+  filename: string;
+  relativePath: string;
+  originalName: string;
+  mimeType: string;
+  fileSize: number;
+  width?: number;
+  height?: number;
+  duration?: number;
+  storageType: StorageType;
 }
 
 // Cache for storage config to avoid repeated database calls
@@ -689,47 +712,74 @@ export async function processAndUploadImageWithConfig(
   file: File,
   title: string,
   userId?: string
-): Promise<string> {
+): Promise<UploadResult> {
+  // Get storage configuration
   const config = await getStorageConfig();
+  const { storageType } = config;
 
   // Import functions dynamically to avoid circular dependencies
-  const { validateImageFile, convertToAvif, generateImageFilename } =
-    await import("./s3");
+  const { convertToAvif, generateImageFilename } = await import("./s3");
 
-  // Validate input
-  const validation = validateImageFile(file);
-  if (!validation.isValid) {
-    throw new Error(validation.error);
+  // Generate filename
+  const filename = generateImageFilename(title, userId);
+  const relativePath = `images/${filename}`;
+
+  // Process the image
+  const sharp = (await import("sharp")).default;
+  const buffer = Buffer.from(new Uint8Array(await file.arrayBuffer()));
+  let imageBuffer = buffer;
+  let finalMimeType = file.type;
+
+  const image = sharp(buffer);
+  const metadata = await image.metadata();
+  const { width, height } = metadata;
+
+  // Convert to AVIF if enabled and not already AVIF
+  if (config.enableCompression && file.type !== "image/avif") {
+    imageBuffer = await convertToAvif(buffer);
+    finalMimeType = "image/avif";
   }
 
-  // Check file size against configuration
-  if (file.size > config.maxImageSize) {
-    throw new Error(
-      `File size too large. Maximum size is ${Math.round(
-        config.maxImageSize / (1024 * 1024)
-      )}MB`
-    );
+  let publicUrl: string;
+
+  // Upload based on storage type
+  switch (storageType) {
+    case "S3":
+      publicUrl = await uploadImageToS3WithConfig(
+        imageBuffer,
+        filename,
+        config
+      );
+      break;
+    case "DOSPACE":
+      publicUrl = await uploadImageToDOSpacesWithConfig(
+        imageBuffer,
+        filename,
+        config
+      );
+      break;
+    case "LOCAL":
+      publicUrl = await uploadImageToLocal(
+        imageBuffer,
+        filename,
+        config.localBasePath || "/uploads"
+      );
+      break;
+    default:
+      throw new Error(`Unsupported storage type: ${storageType}`);
   }
 
-  try {
-    // Convert file to buffer
-    const arrayBuffer = await file.arrayBuffer();
-    const imageBuffer = Buffer.from(arrayBuffer);
-
-    // Convert to AVIF format if compression is enabled
-    const processedBuffer = config.enableCompression
-      ? await convertToAvif(imageBuffer)
-      : imageBuffer;
-
-    // Generate secure filename
-    const filename = generateImageFilename(title, userId);
-
-    // Upload using configured storage
-    return await uploadImage(processedBuffer, filename);
-  } catch (error) {
-    console.error("Error processing image:", error);
-    throw new Error("Failed to process and upload image");
-  }
+  return {
+    url: publicUrl,
+    filename,
+    relativePath,
+    originalName: file.name,
+    mimeType: finalMimeType,
+    fileSize: imageBuffer.length,
+    width,
+    height,
+    storageType: storageType as StorageType,
+  };
 }
 
 /**
@@ -739,39 +789,56 @@ export async function processAndUploadVideoWithConfig(
   file: File,
   title: string,
   userId?: string
-): Promise<string> {
+): Promise<UploadResult> {
+  // Get storage configuration
   const config = await getStorageConfig();
+  const { storageType } = config;
 
   // Import functions dynamically to avoid circular dependencies
-  const { validateVideoFile, generateVideoFilename } = await import("./s3");
+  const { generateVideoFilename } = await import("./s3");
 
-  // Validate input
-  const validation = validateVideoFile(file);
-  if (!validation.isValid) {
-    throw new Error(validation.error);
+  // Generate filename
+  const filename = generateVideoFilename(title, userId);
+  const relativePath = `videos/${filename}`;
+  const videoBuffer = Buffer.from(new Uint8Array(await file.arrayBuffer()));
+
+  let publicUrl: string;
+
+  // Upload based on storage type
+  switch (storageType) {
+    case "S3":
+      publicUrl = await uploadVideoToS3WithConfig(
+        videoBuffer,
+        filename,
+        config
+      );
+      break;
+    case "DOSPACE":
+      publicUrl = await uploadVideoToDOSpacesWithConfig(
+        videoBuffer,
+        filename,
+        config
+      );
+      break;
+    case "LOCAL":
+      publicUrl = await uploadVideoToLocal(
+        videoBuffer,
+        filename,
+        config.localBasePath || "/uploads"
+      );
+      break;
+    default:
+      throw new Error(`Unsupported storage type: ${storageType}`);
   }
 
-  // Check file size against configuration
-  if (file.size > config.maxVideoSize) {
-    throw new Error(
-      `File size too large. Maximum size is ${Math.round(
-        config.maxVideoSize / (1024 * 1024)
-      )}MB`
-    );
-  }
-
-  try {
-    // Convert file to buffer
-    const arrayBuffer = await file.arrayBuffer();
-    const videoBuffer = Buffer.from(arrayBuffer);
-
-    // Generate secure filename
-    const filename = generateVideoFilename(title, userId);
-
-    // Upload using configured storage
-    return await uploadVideo(videoBuffer, filename);
-  } catch (error) {
-    console.error("Error processing video:", error);
-    throw new Error("Failed to process and upload video");
-  }
+  return {
+    url: publicUrl,
+    filename,
+    relativePath,
+    originalName: file.name,
+    mimeType: file.type,
+    fileSize: file.size,
+    // Note: width, height, and duration are not extracted for videos in this implementation
+    storageType: storageType as StorageType,
+  };
 }
