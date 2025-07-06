@@ -17,7 +17,24 @@ import type { ContentFile, PostData } from "@/lib/automation/types";
 
 console.log("🌱 Starting Content Automation Worker...");
 
-const connection = new IORedis(process.env.REDIS_URL!, {
+// Determine Redis connection URL. In development we fall back to a local
+// instance so developers are not required to set a REDIS_URL environment
+// variable.
+const redisUrl =
+  process.env.REDIS_URL ||
+  (process.env.NODE_ENV === "development"
+    ? "redis://localhost:6379"
+    : undefined);
+
+// In a production‐like environment a REDIS_URL _must_ be provided. Throwing
+// early prevents silent fallbacks that could break background jobs.
+if (!redisUrl) {
+  throw new Error(
+    "REDIS_URL must be provided in production runtime. Set REDIS_URL or run in development mode with a local Redis instance."
+  );
+}
+
+const connection = new IORedis(redisUrl, {
   maxRetriesPerRequest: null, // Important for long-running workers
 });
 

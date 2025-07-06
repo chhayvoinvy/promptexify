@@ -6,6 +6,28 @@ import { CacheMetrics, cacheStore } from "@/lib/cache";
  * GET /api/admin/redis-status
  */
 export async function GET() {
+  // During the build process, NODE_ENV is 'production', but a Redis URL may not be available.
+  // We return a mocked response to allow the build to succeed. At runtime we will attempt to
+  // connect using either the provided REDIS_URL or a local instance in development.
+  const redisUrl =
+    process.env.REDIS_URL ||
+    (process.env.NODE_ENV === "development"
+      ? "redis://localhost:6379"
+      : undefined);
+
+  if (process.env.NODE_ENV === "production" && !redisUrl) {
+    return NextResponse.json({
+      message:
+        "Redis status check is disabled during build. This endpoint is available in a running environment.",
+      timestamp: new Date().toISOString(),
+      redis: { connected: false, error: "Build-time mock", info: null },
+      cache: { metrics: null, test: null, recommendation: null },
+      environment: {
+        nodeEnv: "production (build-time)",
+        redisConfigured: false,
+      },
+    });
+  }
   try {
     // Get cache metrics
     const cacheStats = CacheMetrics.getStats();
@@ -23,9 +45,9 @@ export async function GET() {
 
     try {
       // Dynamic import to handle optional ioredis dependency
-      if (process.env.REDIS_URL) {
+      if (redisUrl) {
         const { Redis } = await import("ioredis");
-        const redis = new Redis(process.env.REDIS_URL, {
+        const redis = new Redis(redisUrl, {
           connectTimeout: 5000,
           commandTimeout: 3000,
           maxRetriesPerRequest: 1,
@@ -52,13 +74,16 @@ export async function GET() {
           error: null,
           info: {
             ping: pong,
-            memory: memoryLines.reduce((acc, line) => {
-              const [key, value] = line.split(":");
-              if (key && value) acc[key] = value;
-              return acc;
-            }, {} as Record<string, string>),
+            memory: memoryLines.reduce(
+              (acc, line) => {
+                const [key, value] = line.split(":");
+                if (key && value) acc[key] = value;
+                return acc;
+              },
+              {} as Record<string, string>
+            ),
             url:
-              process.env.REDIS_URL?.replace(/:([^@]+)@/, ":****@") ||
+              (redisUrl && redisUrl.replace(/:([^@]+)@/, ":****@")) ||
               "Not configured",
           },
         };
@@ -67,7 +92,7 @@ export async function GET() {
       } else {
         redisStatus = {
           connected: false,
-          error: "REDIS_URL not configured - using memory cache",
+          error: "Redis URL not configured - using memory cache",
           info: null,
         };
       }
@@ -92,8 +117,8 @@ export async function GET() {
       },
       environment: {
         nodeEnv: process.env.NODE_ENV,
-        redisConfigured: !!process.env.REDIS_URL,
-        fallback: !process.env.REDIS_URL ? "Memory cache" : "Redis cache",
+        redisConfigured: !!redisUrl,
+        fallback: !redisUrl ? "Memory cache" : "Redis cache",
       },
     });
   } catch (error) {

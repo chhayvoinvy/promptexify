@@ -367,6 +367,21 @@ export const updatePostAction = withCSRFProtection(
         });
       }
 
+      // Associate new media with the post
+      if (mediaToLink.length > 0) {
+        await prisma.media.updateMany({
+          where: {
+            id: {
+              in: mediaToLink,
+            },
+            postId: null, // Only link unassociated media
+          },
+          data: {
+            postId: updatedPost.id,
+          },
+        });
+      }
+
       revalidatePath("/dashboard/posts");
       revalidatePath(`/entry/${id}`);
       // Revalidate cache tags for updated post and tags (since tags may have been created during updates)

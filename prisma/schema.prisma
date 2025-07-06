@@ -182,7 +182,6 @@ model Log {
   @@map("logs")
 }
 
-// NEW: Media file tracking table (optional, for advanced use cases)
 model Media {
   id           String @id @default(uuid())
   filename     String @unique // e.g., "user123-prompt-abc123.avif"

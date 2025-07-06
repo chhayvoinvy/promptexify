@@ -302,6 +302,16 @@ export default function EditPostPage() {
         formData.set("featuredVideo", featuredVideo.url);
       }
 
+      // Add the featured media IDs to form data
+      if (featuredImage) {
+        formData.set("featuredImageId", featuredImage.id);
+        formData.set("featuredImage", featuredImage.url);
+      }
+      if (featuredVideo) {
+        formData.set("featuredVideoId", featuredVideo.id);
+        formData.set("featuredVideo", featuredVideo.url);
+      }
+
       // Add the selected tags to form data
       formData.set("tags", selectedTags.join(","));
       formData.set("id", post.id);
@@ -545,6 +555,7 @@ export default function EditPostPage() {
                 </div>
 
                 <CardContent>
+                  <CardContent>
                   <MediaUpload
                     onMediaUploaded={handleMediaUploaded}
                     currentImageUrl={featuredImage?.url}
@@ -552,6 +563,7 @@ export default function EditPostPage() {
                     title={postTitle || "untitled"}
                     disabled={isSubmitting}
                   />
+                </CardContent>
                 </CardContent>
               </CardContent>
             </Card>

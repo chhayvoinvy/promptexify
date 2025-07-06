@@ -136,65 +136,37 @@ class RedisCache implements CacheStore {
    * Get Redis configuration with proper authentication handling
    */
   private getRedisConfig() {
-    const redisUrl = process.env.REDIS_URL;
+    // For local development, default to a standard local Redis instance
+    // if REDIS_URL is not explicitly provided.
+    const redisUrl =
+      process.env.REDIS_URL ||
+      (process.env.NODE_ENV === "development"
+        ? "redis://localhost:6379"
+        : undefined);
+
     console.log(
-      `[Cache] Attempting to configure Redis. REDIS_URL found: ${!!redisUrl}`
+      `[Cache] Attempting to configure Redis. Final URL used: ${
+        redisUrl ? new URL(redisUrl).host : "N/A"
+      }`
     );
 
-    // Option 1: Use REDIS_URL if provided and not empty
-    if (redisUrl && redisUrl.trim() !== "") {
+    if (redisUrl) {
+      console.log("🔄 Cache: Using Redis for caching");
       return {
         url: redisUrl,
-        retryDelayOnFailover: 100,
+        // Recommended options for robustness
+        retryStrategy: (times: number) => Math.min(times * 50, 2000),
         maxRetriesPerRequest: 3,
-        lazyConnect: true,
+        lazyConnect: true, // Important: delays connection until first command
         connectTimeout: 10000,
-        commandTimeout: 5000,
-        enableReadyCheck: true,
-        maxLoadingTimeout: 2000,
+        enableReadyCheck: false, // Avoids waiting for full readiness
       };
     }
 
-    // Option 2: Use individual environment variables
-    const redisHost = process.env.REDIS_HOST;
-    console.log(
-      `[Cache] REDIS_URL not provided or empty. REDIS_HOST found: ${!!redisHost}`
-    );
-
-    if (!redisHost) {
-      console.warn("[Cache] REDIS_HOST not set. Cannot configure Redis.");
-      return null;
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const config: Record<string, any> = {
-      host: redisHost,
-      port: parseInt(process.env.REDIS_PORT || "6379", 10),
-      retryDelayOnFailover: 100,
-      maxRetriesPerRequest: 3,
-      lazyConnect: true,
-      connectTimeout: 10000,
-      commandTimeout: 5000,
-      enableReadyCheck: true,
-      maxLoadingTimeout: 2000,
-    };
-
-    if (process.env.REDIS_PASSWORD) {
-      config.password = process.env.REDIS_PASSWORD;
-    }
-    if (process.env.REDIS_USERNAME) {
-      config.username = process.env.REDIS_USERNAME;
-    }
-    if (process.env.REDIS_DB) {
-      config.db = parseInt(process.env.REDIS_DB, 10);
-    }
-    if (process.env.REDIS_TLS === "true") {
-      config.tls = {
-        rejectUnauthorized:
-          process.env.REDIS_TLS_REJECT_UNAUTHORIZED !== "false",
-      };
-    }
-    return config;
+    // If no Redis URL is available (e.g., during build or in a test environment),
+    // return null to signal a fallback to memory cache.
+    console.log("🔄 Cache: Using in-memory cache (development)");
+    return null;
   }
 
   async get(key: string): Promise<string | null> {
@@ -273,17 +245,24 @@ class RedisCache implements CacheStore {
   }
 }
 
-// Cache store singleton
+// Decide whether to use Redis or in-memory cache.
+// We will use Redis when:
+//   1. A REDIS_URL is explicitly provided (e.g., production or staging), OR
+//   2. We are running in development mode – in that case we implicitly fall
+//      back to a local Redis instance running on the default port.
+// Otherwise we fall back to the in-memory cache implementation.
 const cacheStore: CacheStore =
-  process.env.NODE_ENV === "production" && process.env.REDIS_URL
+  process.env.REDIS_URL || process.env.NODE_ENV === "development"
     ? new RedisCache()
     : new MemoryCache();
 
-// Log cache configuration
+// Log cache strategy for observability
 if (process.env.REDIS_URL) {
-  console.log("🔄 Cache: Using Redis for caching");
+  console.log("🔄 Cache: Using Redis for caching (remote instance)");
+} else if (process.env.NODE_ENV === "development") {
+  console.log("🔄 Cache: Using Redis for caching (local instance)");
 } else {
-  console.log("🔄 Cache: Using in-memory cache (development)");
+  console.log("🔄 Cache: Using in-memory cache (fallback)");
 }
 
 // Export cache store for testing

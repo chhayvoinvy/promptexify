@@ -122,12 +122,6 @@ const navigationData: {
       allowUser: true, // Allow both USER and ADMIN roles (Temporary disabled)
     },
     {
-      title: "Pages",
-      url: "/dashboard/pages/studio",
-      icon: IconFile,
-      adminOnly: true, // Admin only
-    },
-    {
       title: "Categories",
       url: "/dashboard/categories",
       icon: IconCategory,
@@ -143,6 +137,12 @@ const navigationData: {
       title: "Automation",
       url: "/dashboard/automation",
       icon: IconRobot,
+      adminOnly: true, // Admin only
+    },
+    {
+      title: "Pages",
+      url: "/dashboard/pages/studio",
+      icon: IconFile,
       adminOnly: true, // Admin only
     },
   ],

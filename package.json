@@ -4,10 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma migrate deploy && prisma db push && next build",
+    "build": "prisma generate --no-hints && prisma migrate deploy && prisma db push --accept-data-loss && next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "prisma generate",
+    "postinstall": "prisma generate --no-hints",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
@@ -16,7 +16,7 @@
     "content:generate": "tsx -e \"import('./lib/automation/service.ts').then(m => m.AutomationService.executeContentGeneration()).catch(console.error)\"",
     "lint:fix": "eslint . --fix",
     "lint:format": "prettier --write .",
-    "worker": "node -r ts-node/register scripts/worker.ts"
+    "worker": "node -r dotenv/config -r ts-node/register scripts/worker.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.832.0",
@@ -64,6 +64,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
+    "dotenv": "^17.0.1",
     "embla-carousel-react": "^8.6.0",
     "fast-csv": "^5.0.2",
     "framer-motion": "^12.23.0",

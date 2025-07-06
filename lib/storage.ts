@@ -726,8 +726,8 @@ export async function processAndUploadImageWithConfig(
 
   // Process the image
   const sharp = (await import("sharp")).default;
-  const buffer = Buffer.from(new Uint8Array(await file.arrayBuffer()));
-  let imageBuffer = buffer;
+  const buffer: Buffer = Buffer.from(new Uint8Array(await file.arrayBuffer()));
+  let imageBuffer: Buffer = buffer;
   let finalMimeType = file.type;
 
   const image = sharp(buffer);
