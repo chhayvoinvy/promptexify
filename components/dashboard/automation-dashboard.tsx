@@ -27,6 +27,12 @@ import { toast } from "sonner";
 import { useCSRFForm } from "@/hooks/use-csrf";
 import { getGenerationLogsAction, clearGenerationLogsAction } from "@/actions";
 
+// New type for presigned URL response
+interface PresignedUrlResponse {
+  url: string;
+  fileUrl: string; // The URL of the file after upload
+}
+
 interface GenerationLog {
   id: string;
   timestamp: string;
@@ -59,7 +65,7 @@ export function AutomationDashboard() {
   const [jsonExecuting, setJsonExecuting] = useState(false);
   const [csvImporting, setCsvImporting] = useState(false);
 
-  const { isReady, getHeadersWithCSRF, createFormDataWithCSRF } = useCSRFForm();
+  const { isReady, getHeadersWithCSRF } = useCSRFForm();
 
   // Load generation logs
   const loadLogs = async () => {
@@ -134,58 +140,87 @@ export function AutomationDashboard() {
     }
   };
 
-  // Import CSV file
-  const importCsvFile = async (file: File, options: CsvImportOptions) => {
+  // New function to handle large file uploads
+  const importLargeCsvFile = async (file: File, options: CsvImportOptions) => {
     if (!isReady) {
       toast.error("Security verification in progress. Please wait.");
       return;
     }
 
+    setCsvImporting(true);
+    const toastId = toast.loading(
+      `Starting upload for ${file.name}. Please keep this browser tab open.`
+    );
+
     try {
-      setCsvImporting(true);
-      toast.info("Importing CSV file...");
-
-      // Create form data with CSRF protection
-      const formData = createFormDataWithCSRF({
-        file: file,
-        delimiter: options.delimiter,
-        skipEmptyLines: options.skipEmptyLines ? "true" : "false",
-        maxRows: String(options.maxRows),
-      });
-
-      // Send to API
-      const response = await fetch("/api/admin/automation/import-csv", {
+      // 1. Get a pre-signed URL from our server
+      toast.info("Requesting secure upload URL...");
+      const presignedUrlResponse = await fetch("/api/uploads/presigned-url", {
         method: "POST",
-        body: formData,
+        headers: getHeadersWithCSRF({
+          "Content-Type": "application/json",
+        }),
+        body: JSON.stringify({
+          fileName: file.name,
+          fileType: file.type,
+        }),
       });
 
-      const result = await response.json();
+      const { url: presignedUrl, fileUrl } =
+        (await presignedUrlResponse.json()) as PresignedUrlResponse;
 
-      if (!response.ok) {
-        throw new Error(
-          result.details?.join(", ") || result.error || "Import failed"
-        );
+      if (!presignedUrlResponse.ok) {
+        throw new Error("Could not get a secure upload URL.");
       }
 
-      // Show warnings if any
-      if (result.parseWarnings && result.parseWarnings.length > 0) {
-        result.parseWarnings.forEach((warning: string) => {
-          toast.warning(warning);
-        });
+      // 2. Upload the file directly to S3 using the pre-signed URL
+      toast.info(`Uploading ${file.name}...`);
+      const uploadResponse = await fetch(presignedUrl, {
+        method: "PUT",
+        body: file,
+        headers: {
+          "Content-Type": file.type,
+        },
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Failed to upload file to storage.`);
+      }
+
+      // 3. Notify the server to start processing the file
+      toast.success("Upload complete! Starting processing...");
+      const processResponse = await fetch("/api/automation/start-processing", {
+        method: "POST",
+        headers: getHeadersWithCSRF({
+          "Content-Type": "application/json",
+        }),
+        body: JSON.stringify({
+          fileUrl,
+          fileName: file.name,
+          ...options,
+        }),
+      });
+
+      const result = await processResponse.json();
+
+      if (!processResponse.ok) {
+        throw new Error(result.error || "Failed to start processing.");
       }
 
       toast.success(
-        `CSV import completed! ${result.filesProcessed || 0} items processed, ` +
-          `${result.postsCreated || 0} posts created in ${result.duration || 0}s`
+        `Job ${result.jobId} started successfully for ${file.name}. You can monitor its progress here.`
       );
 
       setIsCsvDialogOpen(false);
-      await loadLogs();
+      await loadLogs(); // To show the new job in the logs
     } catch (error) {
-      console.error("Error importing CSV:", error);
-      toast.error(error instanceof Error ? error.message : "CSV import failed");
+      console.error("Error importing large CSV:", error);
+      toast.error(
+        error instanceof Error ? error.message : "CSV import failed."
+      );
     } finally {
       setCsvImporting(false);
+      toast.dismiss(toastId);
     }
   };
 
@@ -245,7 +280,7 @@ export function AutomationDashboard() {
                 </DialogDescription>
               </DialogHeader>
               <CsvImportForm
-                onSubmit={importCsvFile}
+                onSubmit={importLargeCsvFile}
                 isImporting={csvImporting}
               />
             </DialogContent>

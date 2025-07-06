@@ -25,6 +25,7 @@ export enum SecurityEventType {
   FILE_UPLOAD_ABUSE = "file_upload_abuse",
   SEARCH_ABUSE = "search_abuse",
   SUSPICIOUS_SEARCH_PATTERN = "suspicious_search_pattern",
+  INTERNAL_SERVER_ERROR = "internal_server_error",
 }
 
 export class SecurityMonitor {
