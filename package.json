@@ -13,7 +13,10 @@
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset",
     "db:push": "prisma db push",
-    "content:generate": "tsx -e \"import('./lib/automation/service.ts').then(m => m.AutomationService.executeContentGeneration()).catch(console.error)\""
+    "content:generate": "tsx -e \"import('./lib/automation/service.ts').then(m => m.AutomationService.executeContentGeneration()).catch(console.error)\"",
+    "lint:fix": "eslint . --fix",
+    "lint:format": "prettier --write .",
+    "worker": "node -r ts-node/register scripts/worker.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.832.0",
@@ -67,6 +70,7 @@
     "date-fns": "^4.1.0",
     "dotenv": "^17.0.1",
     "embla-carousel-react": "^8.6.0",
+    "fast-csv": "^5.0.2",
     "geist": "^1.4.2",
     "input-otp": "^1.4.2",
     "ioredis": "^5.6.1",
