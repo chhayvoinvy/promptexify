@@ -42,7 +42,7 @@ function stopCleanup() {
 startCleanup();
 
 // Graceful shutdown
-if (typeof process !== "undefined") {
+if (typeof process !== "undefined" && typeof process.on === "function") {
   process.on("beforeExit", stopCleanup);
   process.on("SIGINT", stopCleanup);
   process.on("SIGTERM", stopCleanup);
@@ -65,9 +65,11 @@ async function getRedisClient(): Promise<Redis | null> {
   const close = () => {
     redisClient?.quit().catch(() => {});
   };
-  process.on("beforeExit", close);
-  process.on("SIGINT", close);
-  process.on("SIGTERM", close);
+  if (typeof process.on === "function") {
+    process.on("beforeExit", close);
+    process.on("SIGINT", close);
+    process.on("SIGTERM", close);
+  }
   redisClient.on("error", (err: Error) => {
     console.error("Redis RateLimit error:", err);
   });
