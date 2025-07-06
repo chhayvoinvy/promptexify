@@ -16,6 +16,10 @@ export function register() {
     replaysOnErrorSampleRate: 0.5,
     replaysSessionSampleRate: 0.01,
   });
+
+  if (process.env.NEXT_RUNTIME !== "edge") {
+    import("@/lib/monitor").then((m) => m.verifyRedisEvictionPolicy());
+  }
 }
 
 export { captureRequestError as onRequestError } from "@sentry/nextjs";

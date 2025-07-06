@@ -674,6 +674,6 @@ export async function POST(req: NextRequest) {
 
     return new Response(`Webhook Error: ${errorMessage}`, { status: 400 });
   } finally {
-    await prisma.$disconnect();
+    // intentionally not disconnecting the global Prisma client here
   }
 }

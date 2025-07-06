@@ -1,6 +1,5 @@
 import { type RateLimitData } from "@/lib/schemas";
 import { getRateLimitConfig } from "@/lib/sanitize";
-import type { Redis } from "ioredis";
 
 interface RateLimitStore {
   [key: string]: {
@@ -31,49 +30,18 @@ function startCleanup() {
   }, CLEANUP_INTERVAL);
 }
 
-function stopCleanup() {
-  if (cleanupTimer) {
-    clearInterval(cleanupTimer);
-    cleanupTimer = null;
-  }
-}
-
 // Start cleanup on module load
 startCleanup();
 
-// Graceful shutdown
-if (typeof process !== "undefined" && typeof process.on === "function") {
-  process.on("beforeExit", stopCleanup);
-  process.on("SIGINT", stopCleanup);
-  process.on("SIGTERM", stopCleanup);
-}
-
-// Redis client for distributed rate limiting
-let redisClient: Redis | null = null;
-async function getRedisClient(): Promise<Redis | null> {
-  if (typeof window !== "undefined") return null; // Never run in the browser
-  if (redisClient) return redisClient;
-  const redisUrl = process.env.REDIS_URL;
-  if (!redisUrl) return null;
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { default: Redis } = require("ioredis") as typeof import("ioredis");
-  redisClient = new Redis(redisUrl, {
-    retryStrategy: (times: number) => Math.min(times * 50, 2000),
-    maxRetriesPerRequest: 3,
-  });
-  // Graceful shutdown to prevent memory leaks
-  const close = () => {
-    redisClient?.quit().catch(() => {});
-  };
-  if (typeof process.on === "function") {
-    process.on("beforeExit", close);
-    process.on("SIGINT", close);
-    process.on("SIGTERM", close);
-  }
-  redisClient.on("error", (err: Error) => {
-    console.error("Redis RateLimit error:", err);
-  });
-  return redisClient;
+/**
+ * Redis support has been disabled for compatibility with the Edge Runtime. The
+ * function below is a stub that always returns `null`, ensuring the library
+ * gracefully falls back to the in-memory rate-limit store across all
+ * environments.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getRedisClient(): Promise<any> {
+  return null;
 }
 
 interface RateLimitResult {

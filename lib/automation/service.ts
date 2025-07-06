@@ -181,7 +181,7 @@ export class AutomationService {
       console.error("❌ Error during content generation:", error);
       throw error;
     } finally {
-      await prisma.$disconnect();
+      // intentionally not disconnecting the global Prisma client here
     }
   }
 

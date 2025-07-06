@@ -5,13 +5,11 @@ import { SiteHeader } from "@/components/dashboard/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { SettingsForm } from "@/components/dashboard/settings-form";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Settings, Database, Upload, Shield, Zap } from "lucide-react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Settings } from "lucide-react";
 
-// Force dynamic rendering for this page
 export const dynamic = "force-dynamic";
 
-// Loading component
 function SettingsLoading() {
   return (
     <div className="space-y-6">
@@ -40,11 +38,9 @@ function SettingsLoading() {
   );
 }
 
-// Settings content component
 async function SettingsContent() {
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Settings className="h-6 w-6" />
@@ -56,72 +52,12 @@ async function SettingsContent() {
         </p>
       </div>
 
-      {/* Settings Categories Overview */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Storage Config
-            </CardTitle>
-            <Database className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">S3 / Local</div>
-            <p className="text-xs text-muted-foreground">
-              Configure where files are stored
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Upload Limits</CardTitle>
-            <Upload className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">2MB / 10MB</div>
-            <p className="text-xs text-muted-foreground">
-              Image and video size limits
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Security</CardTitle>
-            <Shield className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">Enhanced</div>
-            <p className="text-xs text-muted-foreground">
-              CAPTCHA, audit logging, rate limits
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Performance</CardTitle>
-            <Zap className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">Optimized</div>
-            <p className="text-xs text-muted-foreground">
-              Compression, caching enabled
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Settings Form */}
       <SettingsForm />
     </div>
   );
 }
 
 export default async function SettingsPage() {
-  // Enforce admin authentication using standardized requireAdmin function
-  // This provides consistent role-based security across admin pages
   const user = await requireAdmin();
 
   return (

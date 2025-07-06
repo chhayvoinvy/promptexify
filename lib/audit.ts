@@ -27,6 +27,24 @@ export interface SecurityEvent extends AuditEvent {
   blocked: boolean;
 }
 
+// Simplified SeverityLevel type to avoid external type dependency
+type LocalSeverityLevel =
+  | "fatal"
+  | "error"
+  | "warning"
+  | "log"
+  | "info"
+  | "debug"
+  | "critical";
+
+// Map internal severity levels to Sentry's expected SeverityLevel values
+const severityLevelMap: Record<AuditEvent["severity"], LocalSeverityLevel> = {
+  LOW: "info",
+  MEDIUM: "warning",
+  HIGH: "error",
+  CRITICAL: "fatal",
+};
+
 /**
  * Log security events to database and console
  */
@@ -124,8 +142,10 @@ async function sendToSecurityMonitoring(event: SecurityEvent) {
     try {
       const Sentry = await import("@sentry/nextjs");
       Sentry.captureMessage(`Security event: ${event.action}`, {
-        level: event.severity === "LOW" ? "info" : event.severity.toLowerCase(),
-        extra: event,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        level: severityLevelMap[event.severity] as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        extra: event as any,
       });
     } catch (error) {
       console.error("Failed to send security event to Sentry:", error);

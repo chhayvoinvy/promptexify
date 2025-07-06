@@ -281,61 +281,68 @@ async function PostsManagementContent({
 
     return (
       <>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Posts</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{allPosts.length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Published</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {allPosts.filter((p) => p.isPublished).length}
-              </div>
-            </CardContent>
-          </Card>
-          {isAdmin ? (
+        {/* Stats cards */}
+        {!isAdmin && (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Featured Posts
+                  Total Posts
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{allPosts.length}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Published</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {allPosts.filter((p) => p.isPublished).length}
+                </div>
+              </CardContent>
+            </Card>
+            {isAdmin ? (
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Featured Posts
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {allPosts.filter((p) => p.isFeatured).length}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Premium</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {allPosts.filter((p) => p.isPremium).length}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Total Views
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {allPosts.filter((p) => p.isFeatured).length}
+                  {allPosts.reduce((sum, p) => sum + (p._count?.views || 0), 0)}
                 </div>
               </CardContent>
             </Card>
-          ) : (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Premium</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {allPosts.filter((p) => p.isPremium).length}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Views</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {allPosts.reduce((sum, p) => sum + (p._count?.views || 0), 0)}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+          </div>
+        )}
 
         <Card>
           <CardHeader>
@@ -394,8 +401,8 @@ async function PostsManagementContent({
                     <TableCell>
                       <div className="flex flex-row gap-1">
                         {post.status === "APPROVED" ||
-                          (post.isPublished &&
-                            post.status !== "PENDING_APPROVAL") ? (
+                        (post.isPublished &&
+                          post.status !== "PENDING_APPROVAL") ? (
                           <Badge
                             variant="outline"
                             className="text-xs border-green-500 text-green-700 dark:text-green-400"

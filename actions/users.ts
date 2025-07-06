@@ -132,8 +132,6 @@ export const updateUserProfileAction = withCSRFProtection(
         success: false,
         error: errorResult.error,
       };
-    } finally {
-      await prisma.$disconnect();
     }
   }
 );
@@ -194,8 +192,6 @@ export async function getUserProfileAction() {
       success: false,
       error: "Failed to load profile. Please try again.",
     };
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -293,8 +289,6 @@ export async function getUserDashboardStatsAction() {
       success: false,
       error: "Failed to fetch user dashboard statistics",
     };
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -337,8 +331,6 @@ export async function getUserFavoritesCountAction() {
       success: false,
       error: "Failed to fetch favorites count",
     };
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -444,8 +436,6 @@ export async function getAllUsersActivityAction() {
       success: false,
       error: "Failed to load user activity data. Please try again.",
     };
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -669,7 +659,5 @@ export async function getAdminDashboardStatsAction() {
       success: false,
       error: "Failed to load dashboard statistics. Please try again.",
     };
-  } finally {
-    await prisma.$disconnect();
   }
 }

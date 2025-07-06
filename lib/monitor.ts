@@ -1,5 +1,24 @@
 import { headers } from "next/headers";
 
+// Sentry severity level union (avoids importing @sentry/types)
+type LocalSeverityLevel =
+  | "fatal"
+  | "error"
+  | "warning"
+  | "log"
+  | "info"
+  | "debug"
+  | "critical";
+
+// Map internal severity strings to Sentry severity levels
+const severityLevelMap: Record<SecurityEvent["severity"], LocalSeverityLevel> =
+  {
+    low: "info",
+    medium: "warning",
+    high: "error",
+    critical: "fatal",
+  };
+
 export interface SecurityEvent {
   type: SecurityEventType;
   timestamp: string;
@@ -78,8 +97,10 @@ export class SecurityMonitor {
         try {
           const Sentry = await import("@sentry/nextjs");
           Sentry.captureMessage(`Security event: ${event.type}`, {
-            level: event.severity === "low" ? "info" : event.severity,
-            extra: event,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            level: severityLevelMap[event.severity] as any,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            extra: event as any,
           });
         } catch (err) {
           console.error("Failed to send security event to Sentry", err);
@@ -406,3 +427,68 @@ export const SecurityAlert = {
     );
   },
 };
+
+/**
+ * Verify that Redis is configured with the expected eviction policy at runtime.
+ * Logs a console warning and sends a Sentry message if the policy differs.
+ *
+ * NOTE: This function dynamically imports `ioredis`, so it should only run in
+ * server (Node.js) contexts. It is safe to call unconditionally because it
+ * no-ops on the Edge Runtime or when `REDIS_URL` is not defined.
+ */
+export async function verifyRedisEvictionPolicy(expectedPolicy = "noeviction") {
+  // Skip in Edge Runtime or when process is unavailable
+  if (typeof process === "undefined" || process.env.NEXT_RUNTIME === "edge") {
+    return;
+  }
+
+  const redisUrl = process.env.REDIS_URL;
+  if (!redisUrl) return;
+
+  try {
+    // Dynamically import to avoid bundling in edge code
+    const { default: Redis } = (await import(
+      "ioredis"
+    )) as typeof import("ioredis");
+
+    const redis = new Redis(redisUrl, {
+      connectTimeout: 3000,
+      lazyConnect: false,
+      maxRetriesPerRequest: 1,
+    });
+
+    // Add a no-op error listener to prevent unhandled connection errors from
+    // polluting the console. The surrounding try/catch will handle the failure.
+    redis.on("error", () => {});
+
+    const result = (await redis.config("GET", "maxmemory-policy")) as string[];
+    const policy = Array.isArray(result) ? result[1] : undefined;
+
+    if (policy && policy.toLowerCase() !== expectedPolicy.toLowerCase()) {
+      const message = `Redis eviction policy is \"${policy}\" (expected \"${expectedPolicy}\").`;
+      console.warn(`[REDIS-MONITOR] ${message}`);
+
+      if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+        try {
+          const Sentry = await import("@sentry/nextjs");
+          Sentry.captureMessage(message, {
+            level: "warning",
+            extra: { policy, expectedPolicy },
+          });
+        } catch (error) {
+          console.error(
+            "Failed to send Redis eviction policy warning to Sentry",
+            error
+          );
+        }
+      }
+    }
+
+    redis.disconnect();
+  } catch (error) {
+    console.error(
+      "[REDIS-MONITOR] Failed to verify Redis eviction policy:",
+      error
+    );
+  }
+}
