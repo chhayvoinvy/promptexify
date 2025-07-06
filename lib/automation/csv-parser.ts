@@ -7,7 +7,7 @@
 
 import { ContentFile, TagData, PostData } from "./types";
 import { sanitizeContent } from "./validation";
-import { SecurityMonitor, SecurityEventType } from "@/lib/security-monitor";
+import { SecurityMonitor, SecurityEventType } from "@/lib/monitor";
 
 /**
  * CSV format interfaces

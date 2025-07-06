@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { StorageType } from "@/lib/generated/prisma";
+import { StorageType } from "@/app/generated/prisma";
 import { z } from "zod";
 import { sanitizeInput } from "@/lib/sanitize";
 import { clearStorageConfigCache } from "@/lib/storage";

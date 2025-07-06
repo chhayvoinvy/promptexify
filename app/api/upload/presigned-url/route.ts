@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { requireAdmin } from "@/lib/auth";
-import { CSRFProtection } from "@/lib/security";
-import { SecurityMonitor, SecurityEventType } from "@/lib/security-monitor";
+import { CSRFProtection } from "@/lib/csp";
+import { SecurityMonitor, SecurityEventType } from "@/lib/monitor";
+import { z } from "zod";
 
 // Initialize S3 client from lib/s3.ts conventions
 const s3Client = new S3Client({
@@ -59,17 +60,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { fileName, fileType } = (await request.json()) as {
-      fileName: string;
-      fileType: string;
-    };
+    const bodySchema = z.object({
+      fileName: z
+        .string()
+        .min(1, "fileName is required")
+        .max(100, "fileName too long"),
+      fileType: z.string().min(1, "fileType is required"),
+    });
 
-    if (!fileName || !fileType) {
+    const parsed = bodySchema.safeParse(await request.json());
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "fileName and fileType are required" },
+        {
+          error: "Invalid request body",
+          details: parsed.error.errors.map((e) => ({
+            field: e.path.join("."),
+            message: e.message,
+          })),
+        },
         { status: 400 }
       );
     }
+
+    const { fileName, fileType } = parsed.data;
 
     // Sanitize filename for security
     const sanitizedFilename = sanitizeFilename(fileName);

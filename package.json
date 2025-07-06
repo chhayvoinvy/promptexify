@@ -54,6 +54,7 @@
     "@sanity/client": "^7.6.0",
     "@sanity/image-url": "^1.1.0",
     "@sanity/vision": "^3.97.1",
+    "@sentry/nextjs": "^8.55.0",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.50.0",
     "@tabler/icons-react": "^3.34.0",

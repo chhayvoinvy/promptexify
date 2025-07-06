@@ -116,6 +116,7 @@ export async function uploadImageToS3(
     Body: imageBuffer,
     ContentType: "image/avif",
     // Security headers
+    ACL: "private" as const,
     ServerSideEncryption: ServerSideEncryption.AES256,
     CacheControl: "public, max-age=31536000", // Cache for 1 year
     // Prevent hotlinking and ensure proper content handling
@@ -125,7 +126,16 @@ export async function uploadImageToS3(
   try {
     await s3Client.send(new PutObjectCommand(uploadParams));
 
-    // Return CDN URL if available, otherwise S3 URL
+    if (!CDN_URL) {
+      console.error(
+        "CDN_URL environment variable not set – secure access would fail due to private ACL."
+      );
+      throw new Error(
+        "Image uploaded with private ACL but CDN_URL is missing. Configure CloudFront (or similar) and set AWS_CLOUDFRONT_URL env var."
+      );
+    }
+
+    // Return CloudFront URL (bucket objects are private)
     return `${CDN_URL}/${key}`;
   } catch (error) {
     console.error("Error uploading to S3:", error);
@@ -149,6 +159,7 @@ export async function generatePresignedUploadUrl(
     Bucket: BUCKET_NAME,
     Key: key,
     ContentType: contentType,
+    ACL: "private" as const,
     ServerSideEncryption: ServerSideEncryption.AES256,
   });
 
@@ -334,6 +345,7 @@ export async function uploadVideoToS3(
     Body: videoBuffer,
     ContentType: "video/mp4",
     // Security headers
+    ACL: "private" as const,
     ServerSideEncryption: ServerSideEncryption.AES256,
     CacheControl: "public, max-age=31536000", // Cache for 1 year
     // Prevent hotlinking and ensure proper content handling
@@ -343,7 +355,15 @@ export async function uploadVideoToS3(
   try {
     await s3Client.send(new PutObjectCommand(uploadParams));
 
-    // Return CDN URL if available, otherwise S3 URL
+    if (!CDN_URL) {
+      console.error(
+        "CDN_URL environment variable not set – secure access would fail due to private ACL."
+      );
+      throw new Error(
+        "Video uploaded with private ACL but CDN_URL is missing. Configure CloudFront (or similar) and set AWS_CLOUDFRONT_URL env var."
+      );
+    }
+
     return `${CDN_URL}/${key}`;
   } catch (error) {
     console.error("Error uploading video to S3:", error);

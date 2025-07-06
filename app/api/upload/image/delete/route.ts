@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { deleteImage, extractImageFilename } from "@/lib/storage";
+import { z } from "zod";
 
 /**
  * DELETE /api/upload/image/delete
@@ -25,17 +26,26 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Parse request body
-    const body = await request.json();
-    const { imageUrl } = body;
+    // Parse & validate request body w/ Zod
+    const bodySchema = z.object({
+      imageUrl: z.string().url("Invalid image URL"),
+    });
 
-    // Input validation
-    if (!imageUrl || typeof imageUrl !== "string") {
+    const parsed = bodySchema.safeParse(await request.json());
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Image URL is required" },
+        {
+          error: "Invalid request body",
+          details: parsed.error.errors.map((e) => ({
+            field: e.path.join("."),
+            message: e.message,
+          })),
+        },
         { status: 400 }
       );
     }
+
+    const { imageUrl } = parsed.data;
 
     // Validate that this is one of our uploaded images
     const filename = extractImageFilename(imageUrl);

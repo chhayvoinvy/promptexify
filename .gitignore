@@ -40,20 +40,12 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-/lib/generated/prisma
-.contentlayer
+/prisma/generated/prisma
 
 # local files
 /backup
-/templates/themes
+/templates
 /docs
-
-# prisma
-prisma/migrations
-prisma/seed.ts
-
-# contentlayer
-.contentlayer
 
 # images
 /public/uploads

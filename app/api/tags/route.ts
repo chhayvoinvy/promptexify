@@ -7,7 +7,7 @@ import {
   rateLimits,
   getClientIdentifier,
   getRateLimitHeaders,
-} from "@/lib/rate-limit";
+} from "@/lib/limits";
 import {
   sanitizeTagName,
   sanitizeTagSlug,
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
 
     // Rate limiting
     const clientId = getClientIdentifier(request, user.userData?.id);
-    const rateLimitResult = rateLimits.api(clientId);
+    const rateLimitResult = await rateLimits.api(clientId);
 
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
 
     // Rate limiting for tag creation
     const clientId = getClientIdentifier(request, user.userData?.id);
-    const rateLimitResult = rateLimits.createTag(clientId);
+    const rateLimitResult = await rateLimits.createTag(clientId);
 
     if (!rateLimitResult.allowed) {
       return NextResponse.json(

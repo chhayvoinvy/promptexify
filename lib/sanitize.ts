@@ -386,7 +386,7 @@ export function sanitizeSearchQuery(
       // Log suspicious pattern if enabled
       if (logSuspicious) {
         // Dynamically import to avoid circular dependencies
-        import("@/lib/security-monitor").then(({ SecurityAlert }) => {
+        import("@/lib/monitor").then(({ SecurityAlert }) => {
           SecurityAlert.suspiciousSearchPattern(query, name, userId, ip).catch(
             console.error
           );

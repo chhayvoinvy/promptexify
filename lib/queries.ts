@@ -5,7 +5,7 @@ import {
   CACHE_DURATIONS,
   memoize,
 } from "@/lib/cache";
-import { Prisma } from "@/lib/generated/prisma";
+import { Prisma } from "@/app/generated/prisma";
 
 /**
  * Optimized Query Utilities for Better Performance
@@ -331,8 +331,8 @@ export class PostQueries {
       sortBy === "popular"
         ? { views: { _count: "desc" } }
         : sortBy === "trending"
-        ? [{ views: { _count: "desc" } }, { createdAt: "desc" }]
-        : { createdAt: "desc" };
+          ? [{ views: { _count: "desc" } }, { createdAt: "desc" }]
+          : { createdAt: "desc" };
 
     const endTimer = DatabaseMetrics.startQuery();
 

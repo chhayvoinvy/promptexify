@@ -113,6 +113,14 @@ class RedisCache implements CacheStore {
 
           this.redis.on("connect", () => {
             console.log("Redis client connected successfully.");
+
+            // Graceful shutdown to avoid memory leaks
+            const close = () => {
+              this.redis?.quit().catch(() => {});
+            };
+            process.on("beforeExit", close);
+            process.on("SIGINT", close);
+            process.on("SIGTERM", close);
           });
         } else {
           console.warn(

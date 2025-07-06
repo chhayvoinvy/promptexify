@@ -6,7 +6,7 @@ import {
   rateLimits,
   getClientIdentifier,
   getRateLimitHeaders,
-} from "@/lib/rate-limit";
+} from "@/lib/limits";
 import {
   sanitizeFilename,
   validateFileExtension,
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
 
     // Rate limiting for file uploads
     const clientId = getClientIdentifier(request, user.userData?.id);
-    const rateLimitResult = rateLimits.upload(clientId);
+    const rateLimitResult = await rateLimits.upload(clientId);
 
     if (!rateLimitResult.allowed) {
       return NextResponse.json(

@@ -5,7 +5,7 @@ import { requireAuth, getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { handleAuthRedirect } from "./auth";
-import { withCSRFProtection, handleSecureActionError } from "@/lib/security";
+import { withCSRFProtection, handleSecureActionError } from "@/lib/csp";
 import { updateUserProfileSchema } from "@/lib/schemas";
 import { sanitizeInput } from "@/lib/sanitize";
 
@@ -74,7 +74,7 @@ export const updateUserProfileAction = withCSRFProtection(
           );
 
           // Log suspicious activity
-          import("@/lib/security-monitor").then(({ SecurityAlert }) => {
+          import("@/lib/monitor").then(({ SecurityAlert }) => {
             SecurityAlert.suspiciousRequest(
               "Suspicious name pattern in profile update",
               { name, pattern: pattern.toString() },

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { deleteVideo } from "@/lib/storage";
+import { z } from "zod";
 
 /**
  * Extracts video filename from URL for comparison
@@ -50,17 +51,26 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Parse request body
-    const body = await request.json();
-    const { videoUrl } = body;
+    // Parse & validate request body via Zod
+    const bodySchema = z.object({
+      videoUrl: z.string().url("Invalid video URL"),
+    });
 
-    // Input validation
-    if (!videoUrl || typeof videoUrl !== "string") {
+    const parsed = bodySchema.safeParse(await request.json());
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Video URL is required" },
+        {
+          error: "Invalid request body",
+          details: parsed.error.errors.map((e) => ({
+            field: e.path.join("."),
+            message: e.message,
+          })),
+        },
         { status: 400 }
       );
     }
+
+    const { videoUrl } = parsed.data;
 
     // Validate that this is one of our uploaded videos
     const filename = extractVideoFilename(videoUrl);

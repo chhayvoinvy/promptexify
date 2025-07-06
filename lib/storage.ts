@@ -8,7 +8,7 @@ import {
   ServerSideEncryption,
   ObjectCannedACL,
 } from "@aws-sdk/client-s3";
-import { StorageType } from "@/lib/generated/prisma";
+import { StorageType } from "@/app/generated/prisma";
 import {
   generateImageFilename,
   generateVideoFilename,

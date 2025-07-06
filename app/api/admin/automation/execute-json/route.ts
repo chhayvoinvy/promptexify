@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { AutomationService } from "@/lib/automation/service";
 import { validateJsonInput } from "@/lib/automation/validation";
-import { SecurityMonitor, SecurityEventType } from "@/lib/security-monitor";
+import { SecurityMonitor, SecurityEventType } from "@/lib/monitor";
 import { ContentFile } from "@/lib/automation/types";
-import { CSRFProtection } from "@/lib/security";
+import { CSRFProtection } from "@/lib/csp";
 
 /**
  * POST - Execute JSON content directly

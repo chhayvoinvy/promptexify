@@ -7,7 +7,7 @@ import { ThemeProvider } from "@/components/ui/theme";
 import { Toaster } from "@/components/ui/sonner";
 import { GoogleOneTap } from "@/components/google-one-tap";
 import { getBaseUrl } from "@/lib/utils";
-import { CSPNonce } from "@/lib/security";
+import { CSPNonce } from "@/lib/csp";
 
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseUrl()),

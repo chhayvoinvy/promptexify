@@ -6,7 +6,7 @@ import {
   rateLimits,
   getClientIdentifier,
   getRateLimitHeaders,
-} from "@/lib/rate-limit";
+} from "@/lib/limits";
 import {
   sanitizeFilename,
   validateFileExtension,
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
     // Rate limiting
     const clientId = getClientIdentifier(request, user.userData?.id);
-    const rateLimitResult = rateLimits.upload(clientId);
+    const rateLimitResult = await rateLimits.upload(clientId);
 
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
@@ -117,42 +117,76 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Sanitize title
-    const sanitizedTitle = sanitizeFilename(validationResult.data.title);
+    // Perform server-side MIME sniffing to ensure file content matches declared type
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const videoBuffer = Buffer.from(arrayBuffer);
 
-    // Process and upload video
-    const uploadResult = await processAndUploadVideoWithConfig(
-      file,
-      sanitizedTitle,
-      user.userData.id
-    );
+      // @ts-expect-error - 'file-type' may not have type declarations in some setups
+      const { fileTypeFromBuffer } = await import("file-type");
+      const detectedType = await fileTypeFromBuffer(videoBuffer);
 
-    // Create Media record
-    const newMedia = await prisma.media.create({
-      data: {
-        filename: uploadResult.filename,
-        relativePath: uploadResult.relativePath,
-        originalName: uploadResult.originalName,
-        mimeType: uploadResult.mimeType,
-        fileSize: uploadResult.fileSize,
-        storageType: uploadResult.storageType,
-        uploadedBy: user.userData.id,
-      },
-    });
-
-    return NextResponse.json(
-      {
-        ...uploadResult,
-        id: newMedia.id,
-      },
-      {
-        status: 200,
-        headers: {
-          ...SECURITY_HEADERS,
-          ...getRateLimitHeaders(rateLimitResult),
-        },
+      if (!detectedType) {
+        return NextResponse.json(
+          { error: "Unable to determine file type" },
+          { status: 400, headers: SECURITY_HEADERS }
+        );
       }
-    );
+
+      // Validate detected MIME against allowed list and browser-provided type
+      if (
+        !uploadConfig.allowedVideoTypes.includes(detectedType.mime) ||
+        detectedType.mime !== file.type
+      ) {
+        return NextResponse.json(
+          { error: "File signature does not match declared video type" },
+          { status: 400, headers: SECURITY_HEADERS }
+        );
+      }
+
+      // Sanitize title
+      const sanitizedTitle = sanitizeFilename(validationResult.data.title);
+
+      // Process and upload video using original File object
+      const uploadResult = await processAndUploadVideoWithConfig(
+        file,
+        sanitizedTitle,
+        user.userData.id
+      );
+
+      // Create Media record
+      const newMedia = await prisma.media.create({
+        data: {
+          filename: uploadResult.filename,
+          relativePath: uploadResult.relativePath,
+          originalName: uploadResult.originalName,
+          mimeType: uploadResult.mimeType,
+          fileSize: uploadResult.fileSize,
+          storageType: uploadResult.storageType,
+          uploadedBy: user.userData.id,
+        },
+      });
+
+      return NextResponse.json(
+        {
+          ...uploadResult,
+          id: newMedia.id,
+        },
+        {
+          status: 200,
+          headers: {
+            ...SECURITY_HEADERS,
+            ...getRateLimitHeaders(rateLimitResult),
+          },
+        }
+      );
+    } catch (err) {
+      console.error("Video MIME validation error:", err);
+      return NextResponse.json(
+        { error: "Failed to validate video file" },
+        { status: 400, headers: SECURITY_HEADERS }
+      );
+    }
   } catch (error) {
     console.error("Video upload error:", error);
     const errorMessage =

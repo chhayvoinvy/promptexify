@@ -1,17 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveMediaUrl, resolveMediaUrls } from "@/lib/path";
+import { z } from "zod";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { paths } = body;
+    const bodySchema = z.object({
+      paths: z.array(z.string().min(1)).nonempty("paths array required"),
+    });
 
-    if (!paths || !Array.isArray(paths)) {
+    const parsed = bodySchema.safeParse(await request.json());
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Invalid request. Expected 'paths' array." },
+        {
+          error: "Invalid request body",
+          details: parsed.error.errors.map((e) => ({
+            field: e.path.join("."),
+            message: e.message,
+          })),
+        },
         { status: 400 }
       );
     }
+
+    const { paths } = parsed.data;
 
     // Handle single path
     if (paths.length === 1) {

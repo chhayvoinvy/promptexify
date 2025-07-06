@@ -52,9 +52,7 @@ export async function logSecurityEvent(event: SecurityEvent) {
     }
 
     // Store in database for audit trail
-    if (process.env.ENABLE_AUDIT_LOGGING === "true") {
-      await storeAuditEvent(event);
-    }
+    await storeAuditEvent(event);
   } catch (error) {
     console.error("Failed to log security event:", error);
     // Don't throw - logging failures shouldn't break the main flow
@@ -75,9 +73,7 @@ export async function logAuditEvent(event: AuditEvent) {
       console.log(`[AUDIT] ${event.action}`, event);
     }
 
-    if (process.env.ENABLE_AUDIT_LOGGING === "true") {
-      await storeAuditEvent(event);
-    }
+    await storeAuditEvent(event);
   } catch (error) {
     console.error("Failed to log audit event:", error);
   }
@@ -123,28 +119,16 @@ async function storeAuditEvent(event: AuditEvent | SecurityEvent) {
  * Send security events to external monitoring
  */
 async function sendToSecurityMonitoring(event: SecurityEvent) {
-  // TODO: Integrate with your security monitoring service
-  // Examples: Sentry, DataDog, CloudWatch, etc.
-
-  if (process.env.SECURITY_MONITORING_WEBHOOK) {
+  // Forward to Sentry only (webhook removed)
+  if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
     try {
-      await fetch(process.env.SECURITY_MONITORING_WEBHOOK, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          alert_type: "security_event",
-          severity: event.severity,
-          threat_type: event.threatType,
-          action: event.action,
-          user_id: event.userId,
-          ip_address: event.ipAddress,
-          blocked: event.blocked,
-          timestamp: new Date().toISOString(),
-          metadata: event.metadata,
-        }),
+      const Sentry = await import("@sentry/nextjs");
+      Sentry.captureMessage(`Security event: ${event.action}`, {
+        level: event.severity === "LOW" ? "info" : event.severity.toLowerCase(),
+        extra: event,
       });
     } catch (error) {
-      console.error("Failed to send to security monitoring:", error);
+      console.error("Failed to send security event to Sentry:", error);
     }
   }
 }
@@ -253,11 +237,7 @@ export const SecurityEvents = {
       metadata: { resource },
     }),
 
-  protectedAreaAccess: (
-    userId: string,
-    ipAddress?: string,
-    area?: string
-  ) =>
+  protectedAreaAccess: (userId: string, ipAddress?: string, area?: string) =>
     logAuditEvent({
       action: "Protected Area Access",
       userId,
@@ -326,10 +306,13 @@ export async function getSecurityStats(hours = 24) {
       },
     });
 
-    return stats.reduce((acc, stat) => {
-      acc[stat.severity] = stat._count.id;
-      return acc;
-    }, {} as Record<string, number>);
+    return stats.reduce(
+      (acc, stat) => {
+        acc[stat.severity] = stat._count.id;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
   } catch (error) {
     console.error("Failed to fetch security stats:", error);
     return {};

@@ -1,16 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
-import { CSRFProtection } from "@/lib/security";
-import { SecurityMonitor, SecurityEventType } from "@/lib/security-monitor";
+import { CSRFProtection } from "@/lib/csp";
+import { SecurityMonitor, SecurityEventType } from "@/lib/monitor";
 import { contentAutomationQueue } from "@/lib/queue";
-
-interface StartProcessingPayload {
-  fileUrl: string;
-  fileName: string;
-  delimiter: string;
-  skipEmptyLines: boolean;
-  maxRows: number;
-}
+import { z } from "zod";
 
 /**
  * POST - Start a background job to process an uploaded file
@@ -47,14 +40,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const payload = (await request.json()) as StartProcessingPayload;
+    const payloadSchema = z.object({
+      fileUrl: z.string().url(),
+      fileName: z.string().min(1).max(255),
+      delimiter: z.string().min(1).max(5).default(","),
+      skipEmptyLines: z.boolean().default(true),
+      maxRows: z.number().int().positive().max(10000).default(5000),
+    });
 
-    if (!payload.fileUrl || !payload.fileName) {
+    const parsed = payloadSchema.safeParse(await request.json());
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "fileUrl and fileName are required" },
+        {
+          error: "Invalid request body",
+          details: parsed.error.errors.map((e) => ({
+            field: e.path.join("."),
+            message: e.message,
+          })),
+        },
         { status: 400 }
       );
     }
+
+    const payload = parsed.data;
 
     // Add job to the queue
     const job = await contentAutomationQueue.add("process-csv", {

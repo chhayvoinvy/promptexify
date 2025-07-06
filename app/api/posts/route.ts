@@ -4,7 +4,7 @@ import {
   rateLimits,
   getClientIdentifier,
   getRateLimitHeaders,
-} from "@/lib/rate-limit";
+} from "@/lib/limits";
 import { sanitizeSearchQuery, SECURITY_HEADERS } from "@/lib/sanitize";
 import { OptimizedQueries } from "@/lib/queries";
 import { getAllCategories } from "@/lib/content";
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     // Rate limiting
     const clientId = getClientIdentifier(request, userId);
-    const rateLimitResult = rateLimits.search(clientId);
+    const rateLimitResult = await rateLimits.search(clientId);
 
     if (!rateLimitResult.allowed) {
       return NextResponse.json(

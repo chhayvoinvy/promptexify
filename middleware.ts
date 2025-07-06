@@ -1,7 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "./lib/supabase/middleware";
 import { getClientIP, sanitizeUserAgent } from "./lib/audit";
-import { CSPNonce, SecurityHeaders, CSRFProtection } from "./lib/security";
+import { CSPNonce, SecurityHeaders, CSRFProtection } from "./lib/csp";
+import {
+  rateLimits,
+  getClientIdentifier,
+  getRateLimitHeaders,
+} from "@/lib/limits";
+import { SecurityEvents } from "@/lib/audit";
 
 export async function middleware(request: NextRequest) {
   try {
@@ -90,6 +96,46 @@ export async function middleware(request: NextRequest) {
           )} - User-Agent: ${sanitizeUserAgent(
             request.headers.get("user-agent")
           )}`
+        );
+      }
+    }
+
+    // ------------------
+    // GLOBAL API RATE LIMIT
+    // ------------------
+    if (request.nextUrl.pathname.startsWith("/api/")) {
+      const clientId = getClientIdentifier(request as unknown as Request);
+      const rateLimitResult = await rateLimits.api(clientId);
+      // Attach rate-limit headers so clients can introspect remaining quota
+      Object.entries(getRateLimitHeaders(rateLimitResult)).forEach(
+        ([key, value]) => response.headers.set(key, value)
+      );
+
+      if (!rateLimitResult.allowed) {
+        // Audit log
+        SecurityEvents.rateLimitExceeded(
+          clientId,
+          request.nextUrl.pathname,
+          getClientIP(request as unknown as Request)
+        );
+
+        return NextResponse.json(
+          {
+            error: "Too many requests. Please slow down.",
+            retryAfter: Math.ceil(
+              (rateLimitResult.resetTime - Date.now()) / 1000
+            ),
+          },
+          {
+            status: 429,
+            headers: {
+              ...securityHeaders,
+              ...getRateLimitHeaders(rateLimitResult),
+              "Retry-After": String(
+                Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)
+              ),
+            },
+          }
         );
       }
     }

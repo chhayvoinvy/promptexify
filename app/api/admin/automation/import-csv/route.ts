@@ -3,8 +3,8 @@ import { requireAdmin } from "@/lib/auth";
 import { AutomationService } from "@/lib/automation/service";
 import { convertCsvToContentFiles } from "@/lib/automation/csv-parser";
 import { validateCsvStructure } from "@/lib/automation/validation";
-import { SecurityMonitor, SecurityEventType } from "@/lib/security-monitor";
-import { CSRFProtection } from "@/lib/security";
+import { SecurityMonitor, SecurityEventType } from "@/lib/monitor";
+import { CSRFProtection } from "@/lib/csp";
 
 /**
  * POST - Import and execute CSV content

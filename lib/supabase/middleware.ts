@@ -18,12 +18,18 @@ export async function updateSession(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
-          supabaseResponse = NextResponse.next({
-            request,
+
+          // Recreate response to ensure new cookies propagate
+          supabaseResponse = NextResponse.next({ request });
+
+          cookiesToSet.forEach(({ name, value, options }) => {
+            // Enforce additional security: SameSite=Strict & Secure
+            supabaseResponse.cookies.set(name, value, {
+              ...options,
+              sameSite: "strict",
+              secure: true,
+            });
           });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
         },
       },
     }
@@ -36,6 +42,22 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  // Proactively refresh session if access token is about to expire (<30s)
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (session && session.expires_at) {
+      const expiresInMs = session.expires_at * 1000 - Date.now();
+      if (expiresInMs < 30_000) {
+        await supabase.auth.refreshSession();
+      }
+    }
+  } catch (error) {
+    console.error("Supabase session refresh error:", error);
+  }
 
   // Security headers for all responses
   supabaseResponse.headers.set("X-Content-Type-Options", "nosniff");
