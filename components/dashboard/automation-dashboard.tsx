@@ -230,6 +230,32 @@ export function AutomationDashboard() {
     }
   };
 
+  // Helper function to generate compact JSON example
+  const getCompactJsonExample = () => {
+    const example = {
+      category: "ai-prompts",
+      tags: [
+        { name: "AI", slug: "ai" },
+        { name: "Writing", slug: "writing" },
+      ],
+      posts: [
+        {
+          title: "Creative Writing Prompt",
+          slug: "creative-writing-prompt",
+          description: "A prompt for creative writing",
+          content: "Write a story about...",
+          isPremium: false,
+          isPublished: false,
+          status: "PENDING_APPROVAL",
+          isFeatured: false,
+          featuredImage: "",
+        },
+      ],
+    };
+
+    return JSON.stringify(example, null, 2);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -446,26 +472,7 @@ export function AutomationDashboard() {
                 <div>
                   <h4 className="font-medium mb-2">Format Example:</h4>
                   <pre className="text-xs bg-muted p-2 rounded overflow-x-auto">
-                    {`{
-  "category": "ai-prompts",
-  "tags": [
-    {"name": "AI", "slug": "ai"},
-    {"name": "Writing", "slug": "writing"}
-  ],
-  "posts": [
-    {
-      "title": "Creative Writing Prompt",
-      "slug": "creative-writing-prompt",
-      "description": "A prompt for creative writing",
-      "content": "Write a story about...",
-      "isPremium": false,
-      "isPublished": false,
-      "status": "PENDING_APPROVAL",
-      "isFeatured": false,
-      "featuredImage": ""
-    }
-  ]
-}`}
+                    {getCompactJsonExample()}
                   </pre>
                 </div>
                 <div>

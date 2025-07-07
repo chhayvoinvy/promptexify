@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { CacheMetrics, cacheStore } from "@/lib/cache";
 
+// Explicit runtime configuration to ensure Node.js runtime
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 /**
  * Redis Status and Cache Performance API
  * GET /api/admin/redis-status

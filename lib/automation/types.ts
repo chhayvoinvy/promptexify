@@ -68,6 +68,7 @@ export interface AutomationConfig {
     verbose: boolean;
   };
   security: {
+    maxFiles: number;
     maxFileSize: number;
     maxPostsPerFile: number;
     maxContentLength: number;

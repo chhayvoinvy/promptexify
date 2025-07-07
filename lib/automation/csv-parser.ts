@@ -63,8 +63,12 @@ export class CsvParser {
     const warnings: string[] = [];
 
     try {
+      // Use Buffer to avoid webpack serialization warnings for large CSV content
+      const csvBuffer = Buffer.from(csvContent);
+      const csvSize = csvBuffer.length;
+
       // Security check: validate CSV size
-      if (csvContent.length > 10 * 1024 * 1024) {
+      if (csvSize > 10 * 1024 * 1024) {
         // 10MB limit
         return {
           success: false,
@@ -73,13 +77,19 @@ export class CsvParser {
         };
       }
 
+      // Process CSV content from buffer
+      const processedCsvContent = csvBuffer.toString();
+
       // Optimize for webpack by avoiding large string serialization
       // Process CSV in chunks to reduce memory usage
-      const processedResult = await this.processCSVInChunks(csvContent, {
-        delimiter,
-        skipEmptyLines,
-        maxRows,
-      });
+      const processedResult = await this.processCSVInChunks(
+        processedCsvContent,
+        {
+          delimiter,
+          skipEmptyLines,
+          maxRows,
+        }
+      );
 
       if (!processedResult.success) {
         return {
@@ -385,79 +395,58 @@ export class CsvParser {
     rows: CsvRow[],
     columnMapping: Record<string, string>
   ): Promise<ContentFile | null> {
-    if (rows.length === 0) return null;
-
-    // Extract unique tags from all rows
-    const tagSet = new Set<string>();
-    const tagSlugs = new Set<string>();
-
-    for (const row of rows) {
-      const tagNames =
-        row[columnMapping.tag_name]?.split(",").map((t) => t.trim()) || [];
-      const tagSlugList =
-        row[columnMapping.tag_slug]?.split(",").map((t) => t.trim()) || [];
-
-      tagNames.forEach((tag) => {
-        if (tag) tagSet.add(tag);
-      });
-
-      tagSlugList.forEach((slug) => {
-        if (slug) tagSlugs.add(slug);
-      });
+    if (rows.length === 0) {
+      return null;
     }
 
-    // Create tags array
-    const tags: TagData[] = [];
-    const tagNames = Array.from(tagSet);
-    const tagSlugArray = Array.from(tagSlugs);
+    // Extract unique tags from all rows in the category
+    const uniqueTags = new Map<string, TagData>();
+    rows.forEach((row) => {
+      const tagNames = row[columnMapping.tag_name]?.split(",") || [];
+      const tagSlugs = row[columnMapping.tag_slug]?.split(",") || [];
 
-    for (let i = 0; i < Math.max(tagNames.length, tagSlugArray.length); i++) {
-      const name = tagNames[i] || `Tag ${i + 1}`;
-      const slug = tagSlugArray[i] || this.generateSlug(name);
-
-      tags.push({
-        name: sanitizeContent(name),
-        slug: sanitizeContent(slug),
+      tagNames.forEach((name, index) => {
+        const slug = tagSlugs[index] || this.generateSlug(name);
+        if (name && slug && !uniqueTags.has(slug)) {
+          uniqueTags.set(slug, {
+            name: name.trim(),
+            slug: slug.trim(),
+          });
+        }
       });
-    }
+    });
 
-    // If no tags found, create a default one
-    if (tags.length === 0) {
-      tags.push({
-        name: "General",
-        slug: "general",
-      });
-    }
+    const tags = await Promise.all(
+      Array.from(uniqueTags.values()).map(async (tag) => ({
+        name: await sanitizeContent(tag.name),
+        slug: await sanitizeContent(tag.slug),
+      }))
+    );
 
-    // Create posts from rows
-    const posts: PostData[] = [];
-
-    for (const row of rows) {
-      const title = row[columnMapping.title]?.trim();
-
-      if (!title) continue; // Skip rows without title
-
-      const post: PostData = {
-        title: sanitizeContent(title),
-        slug: row[columnMapping.slug]?.trim() || this.generateSlug(title),
-        description: sanitizeContent(
-          row[columnMapping.description]?.trim() || ""
-        ),
-        content: sanitizeContent(row[columnMapping.content]?.trim() || ""),
-        isPremium: this.parseBoolean(row[columnMapping.is_premium]),
-        isPublished: this.parseBoolean(row[columnMapping.is_published]),
-        status: this.parseStatus(row[columnMapping.status]),
-        isFeatured: this.parseBoolean(row[columnMapping.is_featured]),
-        featuredImage: row[columnMapping.featured_image]?.trim() || "",
-      };
-
-      posts.push(post);
-    }
-
-    if (posts.length === 0) return null;
+    // Create posts
+    const posts = await Promise.all(
+      rows.map(async (row): Promise<PostData> => {
+        const title = row[columnMapping.title]?.trim() || "";
+        return {
+          title: await sanitizeContent(title),
+          slug: row[columnMapping.slug]?.trim() || this.generateSlug(title),
+          description: await sanitizeContent(
+            row[columnMapping.description]?.trim() || ""
+          ),
+          content: await sanitizeContent(
+            row[columnMapping.content]?.trim() || ""
+          ),
+          isPremium: this.parseBoolean(row[columnMapping.is_premium]),
+          isPublished: this.parseBoolean(row[columnMapping.is_published]),
+          status: this.parseStatus(row[columnMapping.status]),
+          isFeatured: this.parseBoolean(row[columnMapping.is_featured]),
+          featuredImage: row[columnMapping.featured_image]?.trim(),
+        };
+      })
+    );
 
     return {
-      category: sanitizeContent(category),
+      category: await sanitizeContent(category),
       tags,
       posts,
     };

@@ -6,6 +6,10 @@ import { SecurityMonitor, SecurityEventType } from "@/lib/monitor";
 import { ContentFile } from "@/lib/automation/types";
 import { CSRFProtection } from "@/lib/csp";
 
+// Explicit runtime configuration to ensure Node.js runtime
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 /**
  * POST - Execute JSON content directly
  *
@@ -65,7 +69,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate JSON input
-    const validationResult = validateJsonInput(jsonData, {
+    const validationResult = await validateJsonInput(jsonData, {
       maxSize: 10 * 1024 * 1024, // 10MB limit
       allowArray: true,
     });
@@ -161,83 +165,8 @@ export async function GET() {
       );
     }
 
-    const documentation = {
-      title: "JSON Content Execution API",
-      description:
-        "Execute content generation directly from JSON input without file storage",
-      method: "POST",
-      endpoint: "/api/admin/automation/execute-json",
-      contentType: "application/json",
-      authentication: "Admin role required",
-      limits: {
-        maxSize: "10MB",
-        maxPostsPerFile: 50,
-        maxContentLength: 10000,
-      },
-      format: {
-        single: {
-          category: "string (slug format)",
-          tags: [
-            {
-              name: "string",
-              slug: "string",
-            },
-          ],
-          posts: [
-            {
-              title: "string",
-              slug: "string",
-              description: "string",
-              content: "string",
-              isPremium: "boolean",
-              isPublished: "boolean",
-              status: "APPROVED | PENDING_APPROVAL | REJECTED",
-              isFeatured: "boolean",
-              featuredImage: "string (optional URL)",
-            },
-          ],
-        },
-        array: "Array of the above format",
-      },
-      response: {
-        success: "boolean",
-        message: "string",
-        duration: "number (seconds)",
-        filesProcessed: "number",
-        postsCreated: "number",
-        statusMessages: "string[]",
-        output: "string",
-      },
-      examples: {
-        single: {
-          category: "ai-prompts",
-          tags: [
-            {
-              name: "AI",
-              slug: "ai",
-            },
-            {
-              name: "Prompts",
-              slug: "prompts",
-            },
-          ],
-          posts: [
-            {
-              title: "Creative Writing Prompt",
-              slug: "creative-writing-prompt",
-              description: "A prompt for creative writing",
-              content: "Write a story about...",
-              isPremium: false,
-              isPublished: false,
-              status: "PENDING_APPROVAL",
-              isFeatured: false,
-              featuredImage: "",
-            },
-          ],
-        },
-      },
-    };
-
+    // Return documentation directly
+    const documentation = getJsonDocumentationObject();
     return NextResponse.json(documentation);
   } catch (error) {
     console.error("Documentation error:", error);
@@ -246,4 +175,75 @@ export async function GET() {
       { status: 500 }
     );
   }
+}
+
+/**
+ * Get JSON documentation object - separated to avoid large string serialization
+ */
+function getJsonDocumentationObject() {
+  return {
+    title: "JSON Content Execution API",
+    description:
+      "Execute content generation directly from JSON input without file storage",
+    method: "POST",
+    endpoint: "/api/admin/automation/execute-json",
+    contentType: "application/json",
+    authentication: "Admin role required",
+    limits: {
+      maxSize: "10MB",
+      maxPostsPerFile: 50,
+      maxContentLength: 10000,
+    },
+    format: {
+      single: {
+        category: "string (slug format)",
+        tags: [{ name: "string", slug: "string" }],
+        posts: [
+          {
+            title: "string",
+            slug: "string",
+            description: "string",
+            content: "string",
+            isPremium: "boolean",
+            isPublished: "boolean",
+            status: "APPROVED | PENDING_APPROVAL | REJECTED",
+            isFeatured: "boolean",
+            featuredImage: "string (optional URL)",
+          },
+        ],
+      },
+      array: "Array of the above format",
+    },
+    response: {
+      success: "boolean",
+      message: "string",
+      duration: "number (seconds)",
+      filesProcessed: "number",
+      postsCreated: "number",
+      statusMessages: "string[]",
+      output: "string",
+    },
+    examples: {
+      single: {
+        category: "ai-prompts",
+        tags: [
+          { name: "AI", slug: "ai" },
+          { name: "Prompts", slug: "prompts" },
+        ],
+        posts: [
+          {
+            title: "Creative Writing Prompt",
+            slug: "creative-writing-prompt",
+            description: "A prompt for creative writing",
+            content: "Write a story about...",
+            isPremium: false,
+            isPublished: false,
+            status: "PENDING_APPROVAL",
+            isFeatured: false,
+            featuredImage: "",
+          },
+        ],
+      },
+    },
+  };
 }

@@ -17,9 +17,8 @@ export function register() {
     replaysSessionSampleRate: 0.01,
   });
 
-  if (process.env.NEXT_RUNTIME !== "edge") {
-    import("@/lib/monitor").then((m) => m.verifyRedisEvictionPolicy());
-  }
+  // Remove Redis verification from instrumentation to prevent build-time issues
+  // Redis verification will be handled by individual API routes if needed
 }
 
 export { captureRequestError as onRequestError } from "@sentry/nextjs";

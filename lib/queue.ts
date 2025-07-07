@@ -1,10 +1,8 @@
-import { Queue } from "bullmq";
-import IORedis from "ioredis";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let queue: any;
 
-// Store queue instance to avoid re-creating it
-let queue: Queue;
-
-function getQueue(): Queue {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getQueue(): Promise<any> {
   if (!queue) {
     // For development, default to local Redis if REDIS_URL is not provided.
     const redisUrl =
@@ -28,29 +26,47 @@ function getQueue(): Queue {
           );
           return { id: `mock-job-${Math.random()}` };
         },
-      } as unknown as Queue;
+      };
     }
 
-    const connection = new IORedis(redisUrl, {
-      maxRetriesPerRequest: null, // Important for long-running workers
-    });
+    try {
+      // Dynamic imports to prevent Edge Runtime issues
+      const { Queue } = await import("bullmq");
+      const { default: IORedis } = await import("ioredis");
 
-    queue = new Queue("ContentAutomation", {
-      connection,
-      defaultJobOptions: {
-        attempts: 3,
-        backoff: {
-          type: "exponential",
-          delay: 1000,
+      const connection = new IORedis(redisUrl, {
+        maxRetriesPerRequest: null, // Important for long-running workers
+      });
+
+      queue = new Queue("ContentAutomation", {
+        connection,
+        defaultJobOptions: {
+          attempts: 3,
+          backoff: {
+            type: "exponential",
+            delay: 1000,
+          },
         },
-      },
-    });
+      });
+    } catch (error) {
+      console.error("Failed to initialize Redis queue:", error);
+      // Return mock queue on error
+      return {
+        add: async (name: string, data: Record<string, unknown>) => {
+          console.log(
+            `Mock Queue (Error): Job '${name}' would be added with data:`,
+            data
+          );
+          return { id: `mock-job-${Math.random()}` };
+        },
+      };
+    }
   }
   return queue;
 }
 
 // Export the function to get the queue instance
-export const contentAutomationQueue = getQueue();
+export const getContentAutomationQueue = getQueue;
 
 // We will define the worker logic in a separate file (e.g., worker.ts)
 // For now, this file just sets up the queue.

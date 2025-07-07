@@ -6,7 +6,7 @@ import {
   getRateLimitHeaders,
 } from "@/lib/limits";
 import { sanitizeSearchQuery, SECURITY_HEADERS } from "@/lib/sanitize";
-import { OptimizedQueries } from "@/lib/queries";
+import { OptimizedQueries } from "@/lib/query";
 import { getAllCategories } from "@/lib/content";
 
 export async function GET(request: NextRequest) {

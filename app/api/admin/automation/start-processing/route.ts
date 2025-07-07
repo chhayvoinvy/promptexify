@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { CSRFProtection } from "@/lib/csp";
 import { SecurityMonitor, SecurityEventType } from "@/lib/monitor";
-import { contentAutomationQueue } from "@/lib/queue";
+import { getContentAutomationQueue } from "@/lib/queue";
 import { z } from "zod";
+
+// Explicit runtime configuration to ensure Node.js runtime
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 /**
  * POST - Start a background job to process an uploaded file
@@ -64,8 +68,9 @@ export async function POST(request: NextRequest) {
 
     const payload = parsed.data;
 
-    // Add job to the queue
-    const job = await contentAutomationQueue.add("process-csv", {
+    // Get the queue instance and add job
+    const queue = await getContentAutomationQueue();
+    const job = await queue.add("process-csv", {
       ...payload,
       userId: user.id,
     });

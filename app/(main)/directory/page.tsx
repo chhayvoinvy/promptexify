@@ -6,7 +6,7 @@ import { DirectoryFilters } from "@/components/directory-filters";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InfinitePostGrid } from "@/components/infinite-scroll-grid";
 import { Container } from "@/components/ui/container";
-import { OptimizedQueries } from "@/lib/queries";
+import { OptimizedQueries } from "@/lib/query";
 import { PostModal } from "@/components/post-modal";
 
 interface DirectoryPageProps {

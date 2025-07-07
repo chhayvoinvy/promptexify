@@ -96,11 +96,19 @@ class RedisCache implements CacheStore {
       return this.redis;
     }
 
+    // Skip Redis initialization in Edge Runtime
+    if (typeof process !== "undefined" && process.env.NEXT_RUNTIME === "edge") {
+      console.log(
+        "🔄 Cache: Skipping Redis in Edge Runtime, using memory cache"
+      );
+      return null;
+    }
+
     if (typeof window === "undefined") {
       this.isInitializing = true;
       try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const { Redis } = require("ioredis");
+        // Dynamic import to prevent bundling in Edge Runtime
+        const { Redis } = await import("ioredis");
         const redisConfig = this.getRedisConfig();
 
         if (redisConfig) {
@@ -200,7 +208,7 @@ class RedisCache implements CacheStore {
     try {
       await redis.setex(key, ttl, value);
       if (process.env.NODE_ENV === "development") {
-        console.log(`🔄 Redis SET: ${key} (TTL: ${ttl}s) ✅`);
+        console.log(`🔄 Redis SET: ${key} (TTL: ${ttl}s)`);
       }
     } catch (error) {
       console.warn("Redis set error:", error);
@@ -359,9 +367,7 @@ export async function warmCache() {
     console.log("Starting cache warming...");
 
     // Import functions dynamically to avoid circular dependencies
-    const { getCachedCategories, getCachedTags } = await import(
-      "@/lib/queries"
-    );
+    const { getCachedCategories, getCachedTags } = await import("@/lib/query");
     const { getAllPosts } = await import("@/lib/content");
 
     // Warm critical caches

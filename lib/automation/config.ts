@@ -29,6 +29,7 @@ export const automationConfig: AutomationConfig = {
 
   // Security constraints with webpack optimization
   security: {
+    maxFiles: 100, // Max number of content files to process at once
     maxFileSize: 2 * 1024 * 1024, // Reduced from 5MB to 2MB to prevent large serialization
     maxPostsPerFile: 25, // Reduced from 50 to 25 to limit data size
     maxContentLength: 5000, // Reduced from 10k to 5k characters per post

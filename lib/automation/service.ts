@@ -198,31 +198,39 @@ export class AutomationService {
     for (let i = 0; i < contentArray.length; i++) {
       try {
         const contentData = contentArray[i];
-        const jsonString = JSON.stringify(contentData);
+
+        // Use Buffer to avoid webpack serialization warnings for large strings
+        const jsonBuffer = Buffer.from(JSON.stringify(contentData));
+        const jsonSize = jsonBuffer.length;
 
         // Validate data size
-        if (jsonString.length > automationConfig.security.maxFileSize) {
-          const message = `⚠️  Content item ${i + 1} exceeds size limit (${jsonString.length} bytes), skipping...`;
+        if (jsonSize > automationConfig.security.maxFileSize) {
+          const message = `⚠️  Content item ${i + 1} exceeds size limit (${jsonSize} bytes), skipping...`;
           console.warn(message);
           statusMessages.push(message);
           continue;
         }
 
+        // Parse from buffer to ensure data integrity
+        const parsedData = JSON.parse(jsonBuffer.toString());
+
         // Validate against schema
-        const validatedData = ContentFileSchema.parse(contentData);
+        const validatedData = ContentFileSchema.parse(parsedData);
 
         // Additional security sanitization
-        validatedData.posts = validatedData.posts.map((post) => ({
-          ...post,
-          title: sanitizeContent(post.title),
-          description: sanitizeContent(post.description),
-          content: sanitizeContent(post.content),
-        }));
+        validatedData.posts = await Promise.all(
+          validatedData.posts.map(async (post) => ({
+            ...post,
+            title: await sanitizeContent(post.title),
+            description: await sanitizeContent(post.description),
+            content: await sanitizeContent(post.content),
+          }))
+        );
 
         validatedContent.push({
           source: `${source}-${i + 1}`,
           contentData: validatedData,
-          dataSize: jsonString.length,
+          dataSize: jsonSize,
         });
 
         if (automationConfig.logging.verbose) {
