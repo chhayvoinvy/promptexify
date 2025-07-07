@@ -115,10 +115,11 @@ export function AutomationDashboard() {
       // Send to API
       const response = await fetch("/api/admin/automation/execute-json", {
         method: "POST",
-        headers: getHeadersWithCSRF({
+        headers: await getHeadersWithCSRF({
           "Content-Type": "application/json",
         }),
         body: JSON.stringify(parsedContent),
+        credentials: "same-origin",
       });
 
       const result = await response.json();
@@ -161,15 +162,16 @@ export function AutomationDashboard() {
     try {
       // 1. Get a pre-signed URL from our server
       toast.info("Requesting secure upload URL...");
-      const presignedUrlResponse = await fetch("/api/uploads/presigned-url", {
+      const presignedUrlResponse = await fetch("/api/upload/presigned-url", {
         method: "POST",
-        headers: getHeadersWithCSRF({
+        headers: await getHeadersWithCSRF({
           "Content-Type": "application/json",
         }),
         body: JSON.stringify({
           fileName: file.name,
           fileType: file.type,
         }),
+        credentials: "same-origin",
       });
 
       const { url: presignedUrl, fileUrl } =
@@ -195,17 +197,21 @@ export function AutomationDashboard() {
 
       // 3. Notify the server to start processing the file
       toast.success("Upload complete! Starting processing...");
-      const processResponse = await fetch("/api/automation/start-processing", {
-        method: "POST",
-        headers: getHeadersWithCSRF({
-          "Content-Type": "application/json",
-        }),
-        body: JSON.stringify({
-          fileUrl,
-          fileName: file.name,
-          ...options,
-        }),
-      });
+      const processResponse = await fetch(
+        "/api/admin/automation/start-processing",
+        {
+          method: "POST",
+          headers: await getHeadersWithCSRF({
+            "Content-Type": "application/json",
+          }),
+          body: JSON.stringify({
+            fileUrl,
+            fileName: file.name,
+            ...options,
+          }),
+          credentials: "same-origin",
+        }
+      );
 
       const result = await processResponse.json();
 

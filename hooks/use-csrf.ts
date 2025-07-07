@@ -150,9 +150,14 @@ export function useCSRFForm() {
   );
 
   const getHeadersWithCSRF = useCallback(
-    (baseHeaders: HeadersInit = {}) => {
-      if (!token) return baseHeaders;
-      return addCSRFToHeaders(baseHeaders, token);
+    async (baseHeaders: HeadersInit = {}) => {
+      // Ensure we have a token before proceeding
+      const currentToken = token || (await obtainToken());
+      if (!currentToken) {
+        console.error("Failed to obtain CSRF token for headers");
+        return baseHeaders; // Or throw an error
+      }
+      return addCSRFToHeaders(baseHeaders, currentToken);
     },
     [token]
   );
