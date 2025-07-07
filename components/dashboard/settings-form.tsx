@@ -54,7 +54,7 @@ import {
   Settings2,
   Save,
   RotateCcw,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import {
   getSettingsAction,
   updateSettingsAction,

@@ -6,7 +6,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { SettingsForm } from "@/components/dashboard/settings-form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Settings } from "lucide-react";
+import { Settings } from "@/components/ui/icons";
 
 export const dynamic = "force-dynamic";
 

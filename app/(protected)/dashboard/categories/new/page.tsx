@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2 } from "@/components/ui/icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -241,8 +241,8 @@ export default function NewCategoryPage() {
                   {isSubmitting
                     ? "Creating..."
                     : isReady
-                    ? "Create Category"
-                    : "Initializing..."}
+                      ? "Create Category"
+                      : "Initializing..."}
                 </Button>
                 <Button type="button" variant="outline" asChild>
                   <Link href="/dashboard/categories">Cancel</Link>

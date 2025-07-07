@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Filter, X } from "lucide-react";
+import { Search, Filter, X } from "@/components/ui/icons";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   useState,

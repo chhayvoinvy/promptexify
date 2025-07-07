@@ -7,7 +7,7 @@ import { requireAdmin } from "@/lib/auth";
 import { getTagsPaginated, getAllTags } from "@/lib/content";
 import { Badge } from "@/components/ui/badge";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { Plus, Tag } from "lucide-react";
+import { Plus, Tag } from "@/components/ui/icons";
 import { TagActionsDropdown } from "@/components/dashboard/(actions)/tag-actions-dropdown";
 import { TagFilters } from "@/components/dashboard/tag-filters";
 import { Skeleton } from "@/components/ui/skeleton";

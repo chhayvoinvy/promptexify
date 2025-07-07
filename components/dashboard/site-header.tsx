@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { IconExternalLink } from "@tabler/icons-react";
+import { IconExternalLink } from "@/components/ui/icons";
 import { usePageTitle } from "@/hooks/use-page-title";
 
 export function SiteHeader() {

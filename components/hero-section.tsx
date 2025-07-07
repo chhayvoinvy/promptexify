@@ -7,7 +7,7 @@ import { GridBackground } from "@/components/ui/grid-background";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Container } from "@/components/ui/container";
-import { Search } from "lucide-react";
+import { Search } from "@/components/ui/icons";
 import { motion, Variants } from "framer-motion";
 
 interface HeroSectionProps {

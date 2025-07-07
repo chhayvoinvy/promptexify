@@ -11,7 +11,7 @@ import {
   Tag,
   Globe,
   Lock,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 // https://www.sanity.io/docs/structure-builder-cheat-sheet
 export const structure: StructureResolver = (S) =>

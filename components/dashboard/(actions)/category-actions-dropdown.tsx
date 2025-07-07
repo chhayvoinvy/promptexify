@@ -20,7 +20,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Edit, Trash2, Loader2 } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, Loader2 } from "@/components/ui/icons";
 import { deleteCategoryAction } from "@/actions";
 import { useCSRFForm } from "@/hooks/use-csrf";
 

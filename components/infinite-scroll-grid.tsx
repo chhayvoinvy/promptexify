@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { PostMasonryGrid } from "@/components/post-masonry-grid";
 import { PostWithInteractions } from "@/lib/content";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2 } from "@/components/ui/icons";
 
 interface InfinitePostGridProps {
   initialPosts: PostWithInteractions[];

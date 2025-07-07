@@ -8,7 +8,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { RefreshCwIcon, HomeIcon, AlertTriangleIcon } from "lucide-react";
+import {
+  RefreshCwIcon,
+  HomeIcon,
+  AlertTriangleIcon,
+} from "@/components/ui/icons";
 import { useEffect } from "react";
 import Link from "next/link";
 import * as Sentry from "@sentry/nextjs";

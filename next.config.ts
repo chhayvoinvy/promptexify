@@ -22,6 +22,35 @@ const nextConfig: NextConfig = {
       { module: /node_modules\/utf-8-validate/ },
     ];
 
+    // Optimize for large string handling with chunk splitting
+    config.optimization = {
+      ...config.optimization,
+      // Split chunks to avoid large serialization
+      splitChunks: {
+        ...config.optimization?.splitChunks,
+        cacheGroups: {
+          ...config.optimization?.splitChunks?.cacheGroups,
+          // Create separate chunk for large data/utilities
+          largeData: {
+            test: /[\\/](lib|components)[\\/](automation|analytics)[\\/]/,
+            name: "large-data",
+            chunks: "all",
+            priority: 10,
+            enforce: true,
+          },
+        },
+      },
+    };
+
+    // Add rule to handle large JSON/CSV data
+    config.module.rules.push({
+      test: /\.(json|csv)$/,
+      type: "asset/resource",
+      generator: {
+        filename: "static/data/[hash][ext]",
+      },
+    });
+
     return config;
   },
 
@@ -121,6 +150,9 @@ const nextConfig: NextConfig = {
     // Warning: This allows production builds to successfully complete even if
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
+  },
+  experimental: {
+    // ... existing experimental config ...
   },
 };
 

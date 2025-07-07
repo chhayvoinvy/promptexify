@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckCircle, Mail } from "lucide-react";
+import { CheckCircle, Mail } from "@/components/ui/icons";
 import {
   Card,
   CardContent,

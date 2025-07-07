@@ -17,7 +17,7 @@ import {
   getUserFavoritesCountAction,
   getAdminDashboardStatsAction,
 } from "@/actions/users";
-import { Shield, BarChart3 } from "lucide-react";
+import { Shield, BarChart3 } from "@/components/ui/icons";
 
 // Force dynamic rendering for this page
 export const dynamic = "force-dynamic";

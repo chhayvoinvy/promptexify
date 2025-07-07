@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { Bookmark, BookmarkCheck } from "lucide-react";
+import { Bookmark, BookmarkCheck } from "@/components/ui/icons";
 import { toggleBookmarkAction } from "@/actions";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";

@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { TrendingUp, Clock, Heart } from "lucide-react";
+import { TrendingUp, Clock, Heart } from "@/components/ui/icons";
 import Link from "next/link";
 import { getPostsWithSorting, type SortOption } from "@/lib/content";
 import { getCurrentUser } from "@/lib/auth";

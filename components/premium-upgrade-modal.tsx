@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Lock, Crown, Star, Zap, Loader2 } from "lucide-react";
+import { Lock, Crown, Star, Zap, Loader2 } from "@/components/ui/icons";
 import { PostWithInteractions } from "@/lib/content";
 import { redirectToStripeCheckout } from "@/actions/stripe";
 import { toast } from "sonner";

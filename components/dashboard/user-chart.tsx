@@ -32,7 +32,7 @@ import {
   IconTrendingUp,
   IconTrendingDown,
   IconRefresh,
-} from "@tabler/icons-react";
+} from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 
 export const description =

@@ -11,7 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, AlertTriangle, Eye, Activity } from "lucide-react";
+import { Shield, AlertTriangle, Eye, Activity } from "@/components/ui/icons";
 
 interface SecurityEvent {
   id: string;

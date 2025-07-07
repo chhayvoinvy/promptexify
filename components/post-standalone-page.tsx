@@ -23,7 +23,7 @@ import {
   Eye,
   FileText,
   Clock,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 import { PostWithInteractions } from "@/lib/content";
 import { BookmarkButton } from "@/components/bookmark-button";

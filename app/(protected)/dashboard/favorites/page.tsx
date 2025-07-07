@@ -5,8 +5,8 @@ import {
   UnlockIcon,
   Calendar,
   ExternalLink,
-} from "lucide-react";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+} from "@/components/ui/icons";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -81,9 +81,11 @@ async function FavoritesList({
 
   if (!favoritesResult.success) {
     return (
-      <div className="text-center py-8">
-        <p className="text-muted-foreground">Failed to load favorites</p>
-      </div>
+      <Card className="col-span-full">
+        <CardContent className="flex flex-col items-center justify-center py-8">
+          <p className="text-muted-foreground">Failed to load favorites</p>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -99,13 +101,15 @@ async function FavoritesList({
 
   if (favorites.length === 0) {
     return (
-      <div className="text-center py-8 space-y-3">
-        <Heart className="h-16 w-16 text-muted-foreground mx-auto" />
-        <h3 className="text-lg font-medium">No favorites yet</h3>
-        <p className="text-muted-foreground">
-          Start favoriting posts to see them here
-        </p>
-      </div>
+      <Card className="col-span-full">
+        <CardContent className="flex flex-col items-center justify-center py-8">
+          <Heart className="h-16 w-16 text-muted-foreground mx-auto" />
+          <h3 className="text-lg font-medium">No favorites yet</h3>
+          <p className="text-muted-foreground">
+            Start favoriting posts to see them here
+          </p>
+        </CardContent>
+      </Card>
     );
   }
 

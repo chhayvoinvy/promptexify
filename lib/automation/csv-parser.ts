@@ -73,26 +73,26 @@ export class CsvParser {
         };
       }
 
-      // Parse CSV content
-      const rows = this.parseCSV(csvContent, delimiter, skipEmptyLines);
+      // Optimize for webpack by avoiding large string serialization
+      // Process CSV in chunks to reduce memory usage
+      const processedResult = await this.processCSVInChunks(csvContent, {
+        delimiter,
+        skipEmptyLines,
+        maxRows,
+      });
 
-      if (rows.length === 0) {
+      if (!processedResult.success) {
         return {
           success: false,
-          errors: ["No data found in CSV"],
-          warnings,
+          errors: processedResult.errors,
+          warnings: processedResult.warnings,
         };
       }
 
-      if (rows.length > maxRows) {
-        warnings.push(
-          `CSV contains ${rows.length} rows, limiting to ${maxRows}`
-        );
-        rows.splice(maxRows);
-      }
+      const rows = processedResult.rows;
 
       // Extract headers and validate
-      const headers = Object.keys(rows[0]);
+      const headers = Object.keys(rows[0] || {});
       const columnMapping = this.mapColumns(headers);
 
       if (!columnMapping.category || !columnMapping.title) {
@@ -168,6 +168,100 @@ export class CsvParser {
         warnings,
       };
     }
+  }
+
+  /**
+   * Process CSV in chunks to reduce memory usage and avoid webpack serialization issues
+   */
+  private static async processCSVInChunks(
+    csvContent: string,
+    options: {
+      delimiter: string;
+      skipEmptyLines: boolean;
+      maxRows: number;
+    }
+  ): Promise<{
+    success: boolean;
+    rows: CsvRow[];
+    errors: string[];
+    warnings: string[];
+  }> {
+    const { delimiter, skipEmptyLines, maxRows } = options;
+    const lines = csvContent.split("\n");
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    if (lines.length === 0) {
+      return {
+        success: false,
+        rows: [],
+        errors: ["No data found in CSV"],
+        warnings,
+      };
+    }
+
+    // Process headers
+    const headers = lines[0]
+      .split(delimiter)
+      .map((h) => h.trim().replace(/"/g, ""));
+
+    if (headers.length === 0) {
+      return {
+        success: false,
+        rows: [],
+        errors: ["Invalid CSV headers"],
+        warnings,
+      };
+    }
+
+    // Process data rows in chunks to avoid large memory usage
+    const chunkSize = 100; // Process 100 rows at a time
+    const rows: CsvRow[] = [];
+    let processedCount = 0;
+
+    for (
+      let i = 1;
+      i < lines.length && processedCount < maxRows;
+      i += chunkSize
+    ) {
+      const chunk = lines.slice(i, Math.min(i + chunkSize, lines.length));
+
+      for (const line of chunk) {
+        if (processedCount >= maxRows) break;
+
+        const trimmedLine = line.trim();
+        if (skipEmptyLines && !trimmedLine) continue;
+
+        const values = this.parseCSVLine(trimmedLine, delimiter);
+        if (values.length !== headers.length) {
+          warnings.push(
+            `Row ${i + 1} has ${values.length} columns, expected ${headers.length}`
+          );
+          continue;
+        }
+
+        const row: CsvRow = {};
+        headers.forEach((header, index) => {
+          row[header] = values[index] || "";
+        });
+
+        rows.push(row);
+        processedCount++;
+      }
+    }
+
+    if (processedCount === maxRows && lines.length > maxRows + 1) {
+      warnings.push(
+        `CSV contains ${lines.length - 1} rows, limited to ${maxRows}`
+      );
+    }
+
+    return {
+      success: true,
+      rows,
+      errors,
+      warnings,
+    };
   }
 
   /**

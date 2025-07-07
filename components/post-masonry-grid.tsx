@@ -15,7 +15,7 @@ import {
   Pause,
   Volume2,
   VolumeX,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { PostTextBaseCard } from "@/components/post-text-base-card";
 import { useSearchParams } from "next/navigation";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Filter, X } from "lucide-react";
+import { Filter, X } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 
 import {

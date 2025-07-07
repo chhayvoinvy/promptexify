@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { Menu, ChevronDown, ChevronRight } from "lucide-react";
+import { Menu, ChevronDown, ChevronRight } from "@/components/ui/icons";
 import { Navbar } from "@/components/ui/navbar";
 import { UserProfileDropdown } from "@/components/user-profile-dropdown";
 import { useAuth } from "@/hooks/use-auth";

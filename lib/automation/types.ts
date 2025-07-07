@@ -73,11 +73,15 @@ export interface AutomationConfig {
     maxContentLength: number;
     allowedFileExtensions: string[];
     rateLimitPerHour: number;
+    maxSerializationSize: number;
+    maxBatchSize: number;
   };
   performance: {
     batchSize: number;
     maxConcurrentFiles: number;
     transactionTimeout: number;
+    chunkSize: number;
+    memoryLimit: number;
   };
 }
 

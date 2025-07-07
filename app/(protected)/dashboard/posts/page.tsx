@@ -1,6 +1,6 @@
 import React, { Suspense } from "react";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus } from "@/components/ui/icons";
 import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { Button } from "@/components/ui/button";
@@ -44,7 +44,7 @@ import {
   IconCrown,
   IconLoader,
   IconX,
-} from "@tabler/icons-react";
+} from "@/components/ui/icons";
 
 // Force dynamic rendering for this page
 export const dynamic = "force-dynamic";

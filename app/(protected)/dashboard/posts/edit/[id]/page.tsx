@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { ArrowLeft, Check, Info, Loader2 } from "lucide-react";
+import { ArrowLeft, Check, Info, Loader2 } from "@/components/ui/icons";
 import Link from "next/link";
 import { TagSelector } from "@/components/tag-selector";
 import { MediaUpload } from "@/components/media-upload";
@@ -556,14 +556,14 @@ export default function EditPostPage() {
 
                 <CardContent>
                   <CardContent>
-                  <MediaUpload
-                    onMediaUploaded={handleMediaUploaded}
-                    currentImageUrl={featuredImage?.url}
-                    currentVideoUrl={featuredVideo?.url}
-                    title={postTitle || "untitled"}
-                    disabled={isSubmitting}
-                  />
-                </CardContent>
+                    <MediaUpload
+                      onMediaUploaded={handleMediaUploaded}
+                      currentImageUrl={featuredImage?.url}
+                      currentVideoUrl={featuredVideo?.url}
+                      title={postTitle || "untitled"}
+                      disabled={isSubmitting}
+                    />
+                  </CardContent>
                 </CardContent>
               </CardContent>
             </Card>

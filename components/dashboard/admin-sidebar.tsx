@@ -14,9 +14,9 @@ import {
   IconRobot,
   type Icon,
   IconFile,
-} from "@tabler/icons-react";
+} from "@/components/ui/icons";
 import Link from "next/link";
-import { User } from "lucide-react";
+import { User } from "@/components/ui/icons";
 
 import { NavDocuments } from "@/components/dashboard/nav-documents";
 import { NavMain } from "@/components/dashboard/nav-main";

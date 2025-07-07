@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { requireAuth } from "@/lib/auth";
 import { getUserProfileAction } from "@/actions";
 import { Card, CardContent } from "@/components/ui/card";
-import { User } from "lucide-react";
+import { User } from "@/components/ui/icons";
 import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";

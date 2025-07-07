@@ -22,7 +22,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Play, Trash2, RefreshCw, Code, FileSpreadsheet } from "lucide-react";
+import {
+  Play,
+  Trash2,
+  RefreshCw,
+  Code,
+  FileSpreadsheet,
+} from "@/components/ui/icons";
 import { toast } from "sonner";
 import { useCSRFForm } from "@/hooks/use-csrf";
 import { getGenerationLogsAction, clearGenerationLogsAction } from "@/actions";

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Upload, X, Loader2 } from "lucide-react";
+import { Upload, X, Loader2 } from "@/components/ui/icons";
 import { MediaImage, MediaVideo } from "@/components/ui/media-display";
 import { cn } from "@/lib/utils";
 

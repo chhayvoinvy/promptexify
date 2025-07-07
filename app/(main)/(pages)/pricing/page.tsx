@@ -17,7 +17,14 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Crown, Zap, Loader2, Check, Shield, Users } from "lucide-react";
+import {
+  Crown,
+  Zap,
+  Loader2,
+  Check,
+  Shield,
+  Users,
+} from "@/components/ui/icons";
 import { redirectToStripeCheckout } from "@/actions/stripe";
 import { toast } from "sonner";
 import { subscriptionPlans } from "@/config/subscription-plans";
