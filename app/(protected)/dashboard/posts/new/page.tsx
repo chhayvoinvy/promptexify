@@ -431,6 +431,7 @@ export default function NewPostPage() {
                 <div className="space-y-2">
                   <Label htmlFor="content">Content *</Label>
                   <Textarea
+                    className="max-h-[500px] min-h-[200px] overflow-y-auto"
                     id="content"
                     name="content"
                     placeholder="Enter the prompt content here..."
@@ -467,7 +468,7 @@ export default function NewPostPage() {
                 <CardTitle>Categorization</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="category">Category *</Label>
                     <Select
@@ -595,10 +596,10 @@ export default function NewPostPage() {
               </CardContent>
             </Card>
 
-            <div className="flex gap-4">
+            <div className="flex justify-end gap-4">
               <Button
                 type="submit"
-                className="flex-1"
+                className="px-8 w-full md:w-auto"
                 disabled={isSubmitting || !isReady}
               >
                 {isSubmitting

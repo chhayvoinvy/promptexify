@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, X, Plus, Clock } from "@/components/ui/icons";
+import { Search, X, Plus } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 
 interface Tag {
@@ -380,7 +380,7 @@ export function TagSelector({
                 }
               }}
               disabled={disabled}
-              className="h-auto p-1 text-xs text-muted-foreground hover:text-foreground"
+              className="text-xs text-muted-foreground hover:text-foreground"
             >
               Clear all
             </Button>
@@ -538,7 +538,7 @@ export function TagSelector({
         </div>
 
         {displayTags.length > 0 ? (
-          <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-background max-h-48 overflow-y-auto">
+          <div className="flex flex-wrap gap-2 p-3 border rounded-lg max-h-[120px] overflow-y-auto">
             {displayTags.map((tag) => {
               const isSelected = selectedTags.includes(tag.name);
               const canAdd = !isSelected && selectedTags.length < maxTags;

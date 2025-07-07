@@ -10,7 +10,7 @@ import { structureTool } from "sanity/structure";
 import { config } from "./sanity/env";
 import { StudioNavbar } from "./sanity/StudioNavbar";
 import { schema } from "./sanity/schemaTypes";
-import { structure } from "./sanity/structure";
+import { structure } from "./sanity/desk-structure";
 
 export default defineConfig({
   name: "default",

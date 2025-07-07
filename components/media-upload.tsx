@@ -402,19 +402,19 @@ export function MediaUpload({
     toast.success("Media removed from the post.");
 
     // If there was an uploaded file, delete it from storage in the background (disabled for now)
-    // if (urlToDelete && idToDelete) {
-    //   const deletionSuccess = await handleDeleteFile(
-    //     pendingDeletionType,
-    //     urlToDelete
-    //   );
-    //   if (deletionSuccess) {
-    //     toast.success("File successfully deleted from storage.");
-    //   } else {
-    //     toast.error(
-    //       "Background deletion failed. The file may still exist in storage."
-    //     );
-    //   }
-    // }
+    if (urlToDelete && idToDelete) {
+      const deletionSuccess = await handleDeleteFile(
+        pendingDeletionType,
+        urlToDelete
+      );
+      if (deletionSuccess) {
+        // toast.success("File successfully deleted from storage.");
+      } else {
+        // toast.error(
+        //   "Background deletion failed. The file may still exist in storage."
+        // );
+      }
+    }
   };
 
   const handleCancelDeletion = () => {
@@ -551,7 +551,7 @@ export function MediaUpload({
                     drag and drop
                   </p>
                   {storageConfig && (
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-xs text-muted-foreground mt-5">
                       Max size:{" "}
                       {Math.round(storageConfig.maxImageSize / (1024 * 1024))}
                       MB (image),{" "}
@@ -560,8 +560,8 @@ export function MediaUpload({
                     </p>
                   )}
 
-                  <p className="text-xs text-muted-foreground">
-                    Allowed: Image (AVIF, PNG, JPG) or Video (MP4)
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Supported: .avif, .png, .jpg, and .mp4.
                   </p>
                 </div>
                 <Input

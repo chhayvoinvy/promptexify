@@ -26,9 +26,6 @@
     "paths": {
       "@/*": [
         "./*"
-      ],
-      "sanity/structure": [
-        "./node_modules/sanity/structure"
       ]
     }
   },
