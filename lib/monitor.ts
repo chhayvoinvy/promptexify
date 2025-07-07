@@ -19,6 +19,17 @@ const severityLevelMap: Record<SecurityEvent["severity"], LocalSeverityLevel> =
     critical: "fatal",
   };
 
+/**
+ * Check if we're running in Edge Runtime
+ */
+function isEdgeRuntime(): boolean {
+  return (
+    typeof process === "undefined" ||
+    process.env.NEXT_RUNTIME === "edge" ||
+    "EdgeRuntime" in globalThis
+  );
+}
+
 export interface SecurityEvent {
   type: SecurityEventType;
   timestamp: string;
@@ -53,6 +64,7 @@ export class SecurityMonitor {
 
   /**
    * Log a security event with comprehensive details
+   * Edge Runtime compatible version
    */
   static async logSecurityEvent(
     type: SecurityEventType,
@@ -92,25 +104,28 @@ export class SecurityMonitor {
       // Log to console with structured format
       this.logToConsole(event);
 
-      // Forward to Sentry if DSN configured
-      if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
-        try {
-          const Sentry = await import("@sentry/nextjs");
-          Sentry.captureMessage(`Security event: ${event.type}`, {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            level: severityLevelMap[event.severity] as any,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            extra: event as any,
-          });
-        } catch (err) {
-          console.error("Failed to send security event to Sentry", err);
+      // Skip Sentry and monitoring service in Edge Runtime
+      if (!isEdgeRuntime()) {
+        // Forward to Sentry if DSN configured
+        if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+          try {
+            const Sentry = await import("@sentry/nextjs");
+            Sentry.captureMessage(`Security event: ${event.type}`, {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              level: severityLevelMap[event.severity] as any,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              extra: event as any,
+            });
+          } catch (err) {
+            console.error("Failed to send security event to Sentry", err);
+          }
         }
-      }
 
-      // In production, this would integrate with your monitoring service
-      // Examples: Sentry, DataDog, New Relic, etc.
-      if (process.env.NODE_ENV === "production") {
-        await this.sendToMonitoringService(event);
+        // In production, this would integrate with your monitoring service
+        // Examples: Sentry, DataDog, New Relic, etc.
+        if (process.env.NODE_ENV === "production") {
+          await this.sendToMonitoringService(event);
+        }
       }
     } catch (error) {
       console.error("Failed to log security event:", error);
@@ -437,8 +452,8 @@ export const SecurityAlert = {
  * no-ops on the Edge Runtime or when `REDIS_URL` is not defined.
  */
 export async function verifyRedisEvictionPolicy(expectedPolicy = "noeviction") {
-  // Skip in Edge Runtime or when process is unavailable
-  if (typeof process === "undefined" || process.env.NEXT_RUNTIME === "edge") {
+  // Skip in Edge Runtime
+  if (isEdgeRuntime()) {
     return;
   }
 

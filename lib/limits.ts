@@ -34,14 +34,49 @@ function startCleanup() {
 startCleanup();
 
 /**
- * Redis support has been disabled for compatibility with the Edge Runtime. The
- * function below is a stub that always returns `null`, ensuring the library
- * gracefully falls back to the in-memory rate-limit store across all
- * environments.
+ * Check if we're running in Edge Runtime
+ */
+function isEdgeRuntime(): boolean {
+  return (
+    typeof process === "undefined" ||
+    process.env.NEXT_RUNTIME === "edge" ||
+    "EdgeRuntime" in globalThis
+  );
+}
+
+/**
+ * Get Redis client with runtime detection
+ * Returns null in Edge Runtime to avoid Node.js API usage
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getRedisClient(): Promise<any> {
-  return null;
+  // Skip Redis in Edge Runtime
+  if (isEdgeRuntime()) {
+    return null;
+  }
+
+  const redisUrl = process.env.REDIS_URL;
+  if (!redisUrl) {
+    return null;
+  }
+
+  try {
+    // Dynamically import to avoid bundling in edge code
+    const { default: Redis } = (await import(
+      "ioredis"
+    )) as typeof import("ioredis");
+
+    const redis = new Redis(redisUrl, {
+      connectTimeout: 3000,
+      lazyConnect: false,
+      maxRetriesPerRequest: 1,
+    });
+
+    return redis;
+  } catch (error) {
+    console.error("Failed to create Redis client:", error);
+    return null;
+  }
 }
 
 interface RateLimitResult {

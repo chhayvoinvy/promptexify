@@ -1,13 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "./lib/supabase/middleware";
-import { getClientIP, sanitizeUserAgent } from "./lib/audit";
 import { CSPNonce, SecurityHeaders, CSRFProtection } from "./lib/csp";
 import {
   rateLimits,
   getClientIdentifier,
   getRateLimitHeaders,
-} from "@/lib/limits";
-import { SecurityEvents } from "@/lib/audit";
+  SecurityEvents,
+  getClientIP,
+  sanitizeUserAgent,
+} from "@/lib/edge";
 
 export async function middleware(request: NextRequest) {
   try {

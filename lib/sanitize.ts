@@ -383,14 +383,28 @@ export function sanitizeSearchQuery(
         `[SECURITY] Suspicious search pattern blocked: ${name} - ${sanitized}`
       );
 
-      // Log suspicious pattern if enabled
-      if (logSuspicious) {
+      // Log suspicious pattern if enabled (skip in Edge Runtime)
+      if (
+        logSuspicious &&
+        typeof process !== "undefined" &&
+        process.env.NEXT_RUNTIME !== "edge"
+      ) {
         // Dynamically import to avoid circular dependencies
-        import("@/lib/monitor").then(({ SecurityAlert }) => {
-          SecurityAlert.suspiciousSearchPattern(query, name, userId, ip).catch(
-            console.error
-          );
-        });
+        import("@/lib/monitor")
+          .then(({ SecurityAlert }) => {
+            SecurityAlert.suspiciousSearchPattern(
+              query,
+              name,
+              userId,
+              ip
+            ).catch(console.error);
+          })
+          .catch(() => {
+            // Fallback to console logging if monitor is unavailable
+            console.warn(
+              `[SECURITY] Suspicious search pattern: ${name} - User: ${userId} - IP: ${ip}`
+            );
+          });
       }
 
       return "";
