@@ -393,6 +393,9 @@ export async function revalidateCache(tags: string | string[]) {
   tagArray.forEach((tag) => {
     revalidateTag(tag);
   });
+
+  // Also clear in-memory memoized caches so subsequent requests hit DB/cache correctly.
+  clearMemoizedCaches();
 }
 
 /**
@@ -446,6 +449,17 @@ export class CacheMetrics {
   }
 }
 
+// -----------------------------
+// Memoization cache management
+// -----------------------------
+
+// Global registry for all memoize() caches so we can clear them on demand
+const _memoizeCaches: Map<string, Promise<unknown>>[] = [];
+
+export function clearMemoizedCaches() {
+  _memoizeCaches.forEach((cache) => cache.clear());
+}
+
 /**
  * Memoization wrapper for request-scoped caching
  */
@@ -454,6 +468,9 @@ export function memoize<T extends unknown[], R>(
   getKey?: (...args: T) => string
 ): (...args: T) => Promise<R> {
   const cache = new Map<string, Promise<R>>();
+
+  // Register this cache for global invalidation
+  _memoizeCaches.push(cache);
 
   return (...args: T): Promise<R> => {
     const key = getKey ? getKey(...args) : JSON.stringify(args);

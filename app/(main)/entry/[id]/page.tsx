@@ -1,11 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
-import {
-  incrementPostView,
-  getPostContent,
-  getAllPosts,
-  getRelatedPosts,
-} from "@/lib/content";
+import { incrementPostView, getAllPosts, getRelatedPosts } from "@/lib/content";
+import { OptimizedQueries } from "@/lib/query";
+import type { PostWithInteractions } from "@/lib/content";
 import { PostStandalonePage } from "@/components/post-standalone-page";
 import { getCurrentUser } from "@/lib/auth";
 
@@ -53,8 +50,14 @@ export default async function PostPage({
     redirect(`/entry/${id}`);
   }
 
-  // Get post content
-  const processedPost = await getPostContent(id);
+  // Get post content with user interactions
+  const currentUser = await getCurrentUser();
+  const userId = currentUser?.userData?.id;
+
+  const processedPost = (await OptimizedQueries.posts.getById(
+    id,
+    userId
+  )) as PostWithInteractions | null;
 
   if (!processedPost || !processedPost.isPublished) {
     notFound();
@@ -72,17 +75,11 @@ export default async function PostPage({
   // Increment view count
   await incrementPostView(id, clientIp, userAgent || undefined);
 
-  // Get current user for authentication
-  const currentUser = await getCurrentUser();
+  // userType derived from earlier currentUser fetch
   const userType = currentUser?.userData?.type || null;
 
   // Get related posts
-  const relatedPosts = await getRelatedPosts(
-    id,
-    processedPost,
-    currentUser?.userData?.id,
-    6
-  );
+  const relatedPosts = await getRelatedPosts(id, processedPost, userId, 6);
 
   // For standalone page, use the PostStandalonePage component
   return (

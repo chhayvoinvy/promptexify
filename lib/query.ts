@@ -558,7 +558,7 @@ export class PostQueries {
     const endTimer = DatabaseMetrics.startQuery();
 
     try {
-      return (await prisma.post.findUnique({
+      const post = await prisma.post.findUnique({
         where: { id },
         select: {
           ...POST_SELECTS.full,
@@ -573,7 +573,21 @@ export class PostQueries {
             },
           }),
         },
-      })) as PostFullResult | null;
+      });
+
+      if (!post) return null;
+
+      // Destructure interaction arrays when present and map to boolean flags
+      const { bookmarks, favorites, ...rest } = post as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+      return {
+        ...rest,
+        isBookmarked: userId ? (bookmarks?.length ?? 0) > 0 : undefined,
+        isFavorited: userId ? (favorites?.length ?? 0) > 0 : undefined,
+      } as PostFullResult & {
+        isBookmarked?: boolean;
+        isFavorited?: boolean;
+      };
     } finally {
       endTimer();
     }
@@ -589,7 +603,7 @@ export class PostQueries {
     const endTimer = DatabaseMetrics.startQuery();
 
     try {
-      return (await prisma.post.findFirst({
+      const post = await prisma.post.findFirst({
         where: { slug },
         select: {
           ...POST_SELECTS.full,
@@ -604,7 +618,21 @@ export class PostQueries {
             },
           }),
         },
-      })) as PostFullResult | null;
+      });
+
+      if (!post) return null;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { bookmarks, favorites, ...rest } = post as any;
+
+      return {
+        ...rest,
+        isBookmarked: userId ? (bookmarks?.length ?? 0) > 0 : undefined,
+        isFavorited: userId ? (favorites?.length ?? 0) > 0 : undefined,
+      } as PostFullResult & {
+        isBookmarked?: boolean;
+        isFavorited?: boolean;
+      };
     } finally {
       endTimer();
     }
@@ -804,7 +832,7 @@ export const getCachedPostSearch = createCachedFunction(
   memoizedSearch,
   "posts-search",
   CACHE_DURATIONS.SEARCH,
-  [CACHE_TAGS.SEARCH_RESULTS]
+  [CACHE_TAGS.SEARCH_RESULTS, CACHE_TAGS.POSTS]
 );
 
 export const getCachedRelatedPosts = createCachedFunction(

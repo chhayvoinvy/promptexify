@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { handleAuthRedirect } from "./auth";
+import { revalidateCache, CACHE_TAGS } from "@/lib/cache";
 
 // Favorite actions
 export async function toggleFavoriteAction(data: FavoriteData) {
@@ -40,7 +41,20 @@ export async function toggleFavoriteAction(data: FavoriteData) {
         },
       });
 
+      await revalidateCache([
+        CACHE_TAGS.POST_BY_ID,
+        CACHE_TAGS.POSTS,
+        CACHE_TAGS.SEARCH_RESULTS,
+        CACHE_TAGS.RELATED_POSTS,
+        CACHE_TAGS.USER_FAVORITES,
+        CACHE_TAGS.POPULAR_POSTS,
+        CACHE_TAGS.USER_POSTS,
+        CACHE_TAGS.USER_BOOKMARKS,
+        CACHE_TAGS.USER_FAVORITES,
+      ]);
       revalidatePath("/");
+      revalidatePath("/directory");
+      revalidatePath(`/entry/${validatedData.postId}`);
       return { success: true, favorited: false };
     } else {
       // Add favorite
@@ -51,7 +65,19 @@ export async function toggleFavoriteAction(data: FavoriteData) {
         },
       });
 
+      await revalidateCache([
+        CACHE_TAGS.POST_BY_ID,
+        CACHE_TAGS.POSTS,
+        CACHE_TAGS.SEARCH_RESULTS,
+        CACHE_TAGS.RELATED_POSTS,
+        CACHE_TAGS.USER_POSTS,
+        CACHE_TAGS.USER_BOOKMARKS,
+        CACHE_TAGS.USER_FAVORITES,
+        CACHE_TAGS.POPULAR_POSTS,
+      ]);
       revalidatePath("/");
+      revalidatePath("/directory");
+      revalidatePath(`/entry/${validatedData.postId}`);
       return { success: true, favorited: true };
     }
   } catch (error) {

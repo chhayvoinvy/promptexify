@@ -1,4 +1,5 @@
-import { getAllCategories, getPostById } from "@/lib/content";
+import { getAllCategories } from "@/lib/content";
+import type { PostWithInteractions } from "@/lib/content";
 import { getCurrentUser } from "@/lib/auth";
 import { Suspense } from "react";
 import { PostMasonrySkeleton } from "@/components/post-masonry-skeleton";
@@ -21,8 +22,6 @@ interface DirectoryPageProps {
   }>;
 }
 
-// This page needs to read authentication cookies (via getCurrentUser),
-// so it must be rendered dynamically to avoid build-time errors.
 export const dynamic = "force-dynamic";
 
 // Directory page skeleton that matches the full layout
@@ -98,10 +97,13 @@ async function DirectoryContent({
   const userType = currentUser?.userData?.type || null;
 
   // Fetch the specific post if entry parameter is present
-  let selectedPost = null;
+  let selectedPost: PostWithInteractions | null = null;
   if (entry && modal === "true") {
     try {
-      selectedPost = await getPostById(entry);
+      selectedPost = (await OptimizedQueries.posts.getById(
+        entry,
+        userId
+      )) as PostWithInteractions | null;
       // Only show modal for published posts
       if (!selectedPost?.isPublished) {
         selectedPost = null;
