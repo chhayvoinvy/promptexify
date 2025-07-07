@@ -8,6 +8,7 @@ import { InfinitePostGrid } from "@/components/infinite-scroll-grid";
 import { Container } from "@/components/ui/container";
 import { OptimizedQueries } from "@/lib/query";
 import { PostModal } from "@/components/post-modal";
+import { getSettingsAction } from "@/actions/settings";
 
 interface DirectoryPageProps {
   searchParams: Promise<{
@@ -71,11 +72,17 @@ async function DirectoryContent({
 }: {
   searchParams: DirectoryPageProps["searchParams"];
 }) {
-  const [categories, params, currentUser] = await Promise.all([
+  const [categories, params, currentUser, settingsResult] = await Promise.all([
     getAllCategories(),
     searchParams,
     getCurrentUser(),
+    getSettingsAction(),
   ]);
+
+  const postsPageSize =
+    settingsResult?.success && settingsResult.data?.postsPageSize
+      ? settingsResult.data.postsPageSize
+      : 12;
 
   const {
     q: searchQuery,
@@ -134,7 +141,7 @@ async function DirectoryContent({
     // Use search query
     result = await OptimizedQueries.posts.search(searchQuery, {
       page: 1,
-      limit: 24, // Load more for initial view
+      limit: postsPageSize, // Use setting
       userId,
       categoryId,
       isPremium,
@@ -143,7 +150,7 @@ async function DirectoryContent({
     // Use paginated query
     result = await OptimizedQueries.posts.getPaginated({
       page: 1,
-      limit: 24, // Load more for initial view
+      limit: postsPageSize, // Use setting
       userId,
       categoryId,
       isPremium,
@@ -215,10 +222,11 @@ async function DirectoryContent({
 
       {/* Posts Grid with Infinite Scroll */}
       <InfinitePostGrid
-        initialPosts={posts as any} // eslint-disable-line @typescript-eslint/no-explicit-any
+        initialPosts={posts}
         hasNextPage={pagination.hasNextPage}
         totalCount={pagination.totalCount}
         userType={userType}
+        pageSize={postsPageSize}
       />
 
       {/* Modal overlay when entry parameter is present */}

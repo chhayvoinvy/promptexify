@@ -516,7 +516,6 @@ export function MediaUpload({
   return (
     <>
       <div className={cn("space-y-4", className)}>
-        <Label htmlFor="media-upload">Featured Media</Label>
         <div
           ref={dropZoneRef}
           className={cn(

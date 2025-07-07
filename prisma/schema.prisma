@@ -254,6 +254,9 @@ model Settings {
   maxUploadsPerHour  Int     @default(20)
   enableAuditLogging Boolean @default(true)
 
+  // Infinite Scroll/Page Size
+  postsPageSize Int @default(12)
+
   // Future expandable fields can be added here
   // emailNotifications Boolean @default(true)
   // maintenanceMode    Boolean @default(false)

@@ -52,6 +52,9 @@ const settingsSchema = z.object({
   maxPostsPerDay: z.number().min(1).max(1000),
   maxUploadsPerHour: z.number().min(1).max(1000),
   enableAuditLogging: z.boolean(),
+
+  // Add postsPageSize for infinite scroll/page size
+  postsPageSize: z.number().min(6).max(100),
 });
 
 export type SettingsFormData = z.infer<typeof settingsSchema>;

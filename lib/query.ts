@@ -6,6 +6,7 @@ import {
   memoize,
 } from "@/lib/cache";
 import { Prisma } from "@/app/generated/prisma";
+import type { PostWithInteractions } from "@/lib/content";
 
 /**
  * Optimized Query Utilities for Better Performance
@@ -32,13 +33,24 @@ export const POST_SELECTS = {
     featuredVideo: true,
     isPremium: true,
     isPublished: true,
-
+    isFeatured: true,
+    status: true,
+    media: {
+      select: {
+        id: true,
+        mimeType: true,
+        relativePath: true,
+      },
+    },
+    authorId: true,
     createdAt: true,
+    updatedAt: true,
     author: {
       select: {
         id: true,
         name: true,
         avatar: true,
+        email: true,
       },
     },
     category: {
@@ -261,13 +273,6 @@ type PostListResult = Prisma.PostGetPayload<{
 type PostFullResult = Prisma.PostGetPayload<{
   select: typeof POST_SELECTS.full;
 }>;
-
-type PostWithInteractions = Omit<PostListResult, "bookmarks" | "favorites"> & {
-  isBookmarked?: boolean;
-  isFavorited?: boolean;
-  bookmarks?: undefined;
-  favorites?: undefined;
-};
 
 type PostGetPaginatedParams = PaginationParams & {
   includeUnpublished?: boolean;

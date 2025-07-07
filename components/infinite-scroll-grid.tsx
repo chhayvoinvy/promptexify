@@ -12,6 +12,7 @@ interface InfinitePostGridProps {
   totalCount: number;
   hasNextPage: boolean;
   userType?: "FREE" | "PREMIUM" | null;
+  pageSize: number;
 }
 
 interface PostsResponse {
@@ -30,6 +31,7 @@ export function InfinitePostGrid({
   totalCount,
   hasNextPage: initialHasNextPage,
   userType,
+  pageSize,
 }: InfinitePostGridProps) {
   const [posts, setPosts] = useState<PostWithInteractions[]>(initialPosts);
   const [currentPage, setCurrentPage] = useState(1);
@@ -128,7 +130,7 @@ export function InfinitePostGrid({
     try {
       const params = new URLSearchParams();
       params.set("page", nextPage.toString());
-      params.set("limit", "12");
+      params.set("limit", pageSize.toString());
 
       // Add current search parameters
       const q = searchParams.get("q");
@@ -172,7 +174,7 @@ export function InfinitePostGrid({
       setIsLoading(false);
       isLoadingRequestRef.current = false;
     }
-  }, [searchParams]); // No state dependencies - all values accessed via refs
+  }, [searchParams, pageSize]);
 
   // Stable intersection observer with direct loading (no debouncing)
   useEffect(() => {
