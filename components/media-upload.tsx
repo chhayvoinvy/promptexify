@@ -38,6 +38,7 @@ interface UploadResult {
 
 interface MediaUploadProps {
   onMediaUploaded?: (result: UploadResult | null) => void;
+  onUploadStateChange?: (uploading: boolean) => void;
   currentImageUrl?: string;
   currentVideoUrl?: string;
   currentImageId?: string;
@@ -64,6 +65,7 @@ type MediaType = "image" | "video";
 
 export function MediaUpload({
   onMediaUploaded,
+  onUploadStateChange,
   currentImageUrl,
   currentVideoUrl,
   currentImageId,
@@ -94,6 +96,11 @@ export function MediaUpload({
   const { token, getHeadersWithCSRF } = useCSRFForm();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
+
+  // Inform parent component about upload state changes
+  useEffect(() => {
+    onUploadStateChange?.(uploadState.uploading);
+  }, [uploadState.uploading, onUploadStateChange]);
 
   // Sync previews with props
   useEffect(() => {

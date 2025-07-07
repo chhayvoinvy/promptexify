@@ -67,6 +67,7 @@ export default function NewPostPage() {
   const [pendingTags, setPendingTags] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
 
   // Redirect if not authenticated or not authorized
   useEffect(() => {
@@ -142,6 +143,11 @@ export default function NewPostPage() {
 
     if (!isReady) {
       toast.error("Security verification in progress. Please wait.");
+      return;
+    }
+
+    if (isUploadingMedia) {
+      toast.error("Please wait for the media to finish uploading.");
       return;
     }
 
@@ -293,14 +299,23 @@ export default function NewPostPage() {
           url: result.url,
           relativePath: result.relativePath,
         });
+        setFeaturedVideo(null); // Clear video when image is uploaded
       } else if (result.mimeType.startsWith("video/")) {
         setFeaturedVideo({
           id: result.id,
           url: result.url,
           relativePath: result.relativePath,
         });
+        setFeaturedImage(null); // Clear image when video is uploaded
       }
+    } else {
+      setFeaturedImage(null);
+      setFeaturedVideo(null);
     }
+  }
+
+  function handleUploadStateChange(uploading: boolean) {
+    setIsUploadingMedia(uploading);
   }
 
   // Handle tag changes
@@ -451,15 +466,17 @@ export default function NewPostPage() {
                   />
                 </div>
 
-                <MediaUpload
-                  onMediaUploaded={handleMediaUploaded}
-                  currentImageUrl={featuredImage?.url}
-                  currentVideoUrl={featuredVideo?.url}
-                  currentImageId={featuredImage?.id}
-                  currentVideoId={featuredVideo?.id}
-                  title={postTitle || "untitled"}
-                  disabled={isSubmitting}
-                />
+                <div className="space-y-2">
+                  <Label htmlFor="featured-media">Featured Media</Label>
+                  <MediaUpload
+                    onMediaUploaded={handleMediaUploaded}
+                    onUploadStateChange={handleUploadStateChange}
+                    title={postTitle || "untitled-post"}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Upload an image or video to be featured with your post.
+                  </p>
+                </div>
               </CardContent>
             </Card>
 
@@ -600,13 +617,16 @@ export default function NewPostPage() {
               <Button
                 type="submit"
                 className="px-8 w-full md:w-auto"
-                disabled={isSubmitting || !isReady}
+                disabled={isSubmitting || isUploadingMedia}
               >
+                {isSubmitting || isUploadingMedia ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
                 {isSubmitting
-                  ? "Submitting..."
-                  : isReady
-                    ? "Submit Prompt"
-                    : "Initializing..."}
+                  ? "Creating Post..."
+                  : isUploadingMedia
+                    ? "Uploading..."
+                    : "Create Post"}
               </Button>
               <Button
                 type="button"

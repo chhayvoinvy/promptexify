@@ -98,6 +98,7 @@ export default function EditPostPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
 
   const postId = params?.id as string;
 
@@ -241,6 +242,11 @@ export default function EditPostPage() {
 
     if (!isReady) {
       toast.error("Security verification in progress. Please wait.");
+      return;
+    }
+
+    if (isUploadingMedia) {
+      toast.error("Please wait for the media to finish uploading.");
       return;
     }
 
@@ -402,14 +408,23 @@ export default function EditPostPage() {
           url: result.url,
           relativePath: result.relativePath,
         });
+        setFeaturedVideo(null); // Clear video when image is uploaded
       } else if (result.mimeType.startsWith("video/")) {
         setFeaturedVideo({
           id: result.id,
           url: result.url,
           relativePath: result.relativePath,
         });
+        setFeaturedImage(null); // Clear image when video is uploaded
       }
+    } else {
+      setFeaturedImage(null);
+      setFeaturedVideo(null);
     }
+  }
+
+  function handleUploadStateChange(uploading: boolean) {
+    setIsUploadingMedia(uploading);
   }
 
   // Handle title change for image filename
@@ -582,15 +597,21 @@ export default function EditPostPage() {
                   />
                 </div>
 
-                <MediaUpload
-                  onMediaUploaded={handleMediaUploaded}
-                  currentImageUrl={featuredImage?.url}
-                  currentVideoUrl={featuredVideo?.url}
-                  currentImageId={featuredImage?.id}
-                  currentVideoId={featuredVideo?.id}
-                  title={postTitle || "untitled"}
-                  disabled={isSubmitting}
-                />
+                <div className="space-y-2">
+                  <Label htmlFor="featured-media">Featured Media</Label>
+                  <MediaUpload
+                    onMediaUploaded={handleMediaUploaded}
+                    onUploadStateChange={handleUploadStateChange}
+                    currentImageUrl={featuredImage?.url}
+                    currentVideoUrl={featuredVideo?.url}
+                    currentImageId={featuredImage?.id}
+                    currentVideoId={featuredVideo?.id}
+                    title={postTitle || "untitled-post"}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Upload an image or video for this post.
+                  </p>
+                </div>
               </CardContent>
             </Card>
 
@@ -766,13 +787,16 @@ export default function EditPostPage() {
               <Button
                 type="submit"
                 className="px-8 w-full md:w-auto"
-                disabled={isSubmitting || !isReady}
+                disabled={isSubmitting || isUploadingMedia}
               >
+                {isSubmitting || isUploadingMedia ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
                 {isSubmitting
-                  ? "Updating..."
-                  : isReady
-                    ? "Update Post"
-                    : "Initializing..."}
+                  ? "Updating Post..."
+                  : isUploadingMedia
+                    ? "Uploading..."
+                    : "Update Post"}
               </Button>
               <Button
                 type="button"
