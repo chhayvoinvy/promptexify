@@ -19,7 +19,7 @@ interface PostPageProps {
 }
 
 // Enable ISR with revalidation every 5 minutes
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 // Generate static params for popular posts at build time
 export async function generateStaticParams() {

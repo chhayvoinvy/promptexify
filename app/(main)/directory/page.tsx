@@ -21,8 +21,9 @@ interface DirectoryPageProps {
   }>;
 }
 
-// Route segment config for better caching
-export const revalidate = 300; // Revalidate every 5 minutes (matches CACHE_DURATIONS.POSTS_LIST)
+// This page needs to read authentication cookies (via getCurrentUser),
+// so it must be rendered dynamically to avoid build-time errors.
+export const dynamic = "force-dynamic";
 
 // Directory page skeleton that matches the full layout
 function DirectoryPageSkeleton() {

@@ -1,12 +1,12 @@
 "use server";
 
-import { PostStatus } from "@/app/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { handleAuthRedirect } from "./auth";
 import { revalidateCache, CACHE_TAGS } from "@/lib/cache";
+import { PostStatus } from "@/app/generated/prisma";
 import { withCSRFProtection } from "@/lib/csp";
 
 import {
@@ -195,6 +195,7 @@ export const createPostAction = withCSRFProtection(
   }
 );
 
+// Update post action
 export const updatePostAction = withCSRFProtection(
   async (formData: FormData) => {
     try {
@@ -436,6 +437,7 @@ export const updatePostAction = withCSRFProtection(
   }
 );
 
+// Approve post action
 export async function approvePostAction(postId: string) {
   try {
     // Get the current user
@@ -505,28 +507,303 @@ export async function approvePostAction(postId: string) {
   }
 }
 
-/**
- * The following actions are currently unchanged. To keep the build working
- * we re-export simplified versions that delegate to existing logic or throw a
- * clear error that the feature is temporarily unavailable. They can be
- * replaced with full implementations later or restored from git history.
- */
-export async function rejectPostAction() {
-  throw new Error("rejectPostAction temporarily unavailable after refactor");
+// Reject post action
+export async function rejectPostAction(postId: string) {
+  try {
+    // Ensure we have an authenticated user
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.userData) {
+      handleAuthRedirect();
+    }
+
+    // Only admins can reject posts
+    if (currentUser.userData.role !== "ADMIN") {
+      throw new Error("Unauthorized: Admin access required");
+    }
+
+    if (!postId || typeof postId !== "string") {
+      throw new Error("Invalid post ID");
+    }
+
+    // Fetch current status
+    const existingPost = await prisma.post.findUnique({
+      where: { id: postId },
+      select: { id: true, status: true, title: true },
+    });
+
+    if (!existingPost) {
+      throw new Error("Post not found");
+    }
+
+    if (existingPost.status !== "PENDING_APPROVAL") {
+      throw new Error("Only posts pending approval can be rejected");
+    }
+
+    await prisma.post.update({
+      where: { id: postId },
+      data: {
+        isPublished: false,
+        status: PostStatus.REJECTED,
+        updatedAt: new Date(),
+      },
+    });
+
+    // Revalidate relevant caches
+    revalidatePath("/dashboard/posts");
+    revalidatePath(`/entry/${postId}`);
+    revalidatePath(`/dashboard/posts/edit/${postId}`);
+    revalidateCache([
+      CACHE_TAGS.POSTS,
+      CACHE_TAGS.POST_BY_ID,
+      CACHE_TAGS.POST_BY_SLUG,
+      CACHE_TAGS.CATEGORIES,
+      CACHE_TAGS.TAGS,
+      CACHE_TAGS.SEARCH_RESULTS,
+      CACHE_TAGS.USER_POSTS,
+      CACHE_TAGS.ANALYTICS,
+    ]);
+
+    return {
+      success: true,
+      message: `Post "${existingPost.title}" rejected successfully`,
+    } as const;
+  } catch (error) {
+    console.error("Error rejecting post:", error);
+    throw new Error(
+      error instanceof Error ? error.message : "Failed to reject post"
+    );
+  }
 }
 
-export async function togglePostPublishAction() {
-  throw new Error(
-    "togglePostPublishAction temporarily unavailable after refactor"
-  );
+// Delete post action
+export async function deletePostAction(postId: string) {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.userData) {
+      handleAuthRedirect();
+    }
+
+    const user = currentUser.userData;
+
+    if (!postId || typeof postId !== "string") {
+      throw new Error("Invalid post ID");
+    }
+
+    // Fetch post to verify permissions
+    const existingPost = await prisma.post.findUnique({
+      where: { id: postId },
+      select: {
+        id: true,
+        title: true,
+        authorId: true,
+        isPublished: true,
+        status: true,
+        _count: {
+          select: {
+            bookmarks: true,
+            favorites: true,
+            views: true,
+          },
+        },
+      },
+    });
+
+    if (!existingPost) {
+      throw new Error("Post not found");
+    }
+
+    // Check user permissions
+    if (user.role === "ADMIN") {
+      // Admin can delete any post
+    } else if (user.role === "USER") {
+      // Users can only delete their own posts that haven't been approved yet
+      if (existingPost.authorId !== user.id) {
+        throw new Error("Unauthorized: You can only delete your own posts");
+      }
+      // Disable deletion once post has been approved or rejected by admin
+      if (existingPost.status === "APPROVED") {
+        throw new Error(
+          "Cannot delete approved posts. Once your content has been approved by an admin, it cannot be deleted."
+        );
+      }
+      if (existingPost.status === "REJECTED") {
+        throw new Error(
+          "Cannot delete rejected posts. Once your content has been rejected by an admin, it cannot be deleted."
+        );
+      }
+    } else {
+      throw new Error("Unauthorized: Invalid user role");
+    }
+
+    // Delete post and all related data (cascading delete should handle this)
+    // The database schema should handle the cascade deletion of related records
+    await prisma.post.delete({
+      where: { id: postId },
+    });
+
+    revalidatePath("/dashboard/posts");
+    revalidatePath("/");
+    revalidatePath("/directory");
+    revalidatePath(`/entry/${postId}`);
+    revalidateCache([
+      CACHE_TAGS.POSTS,
+      CACHE_TAGS.POST_BY_ID,
+      CACHE_TAGS.POST_BY_SLUG,
+      CACHE_TAGS.CATEGORIES,
+      CACHE_TAGS.TAGS,
+      CACHE_TAGS.SEARCH_RESULTS,
+      CACHE_TAGS.USER_POSTS,
+      CACHE_TAGS.ANALYTICS,
+    ]);
+
+    return {
+      success: true,
+      message: `Post "${existingPost.title}" deleted successfully`,
+    };
+  } catch (error) {
+    console.error("Error deleting post:", error);
+    throw new Error(
+      error instanceof Error ? error.message : "Failed to delete post"
+    );
+  }
 }
 
-export async function togglePostFeaturedAction() {
-  throw new Error(
-    "togglePostFeaturedAction temporarily unavailable after refactor"
-  );
+// Toggle post publish action
+export async function togglePostPublishAction(postId: string) {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.userData) {
+      handleAuthRedirect();
+    }
+
+    // Only admins can publish/unpublish posts
+    if (currentUser.userData.role !== "ADMIN") {
+      throw new Error("Unauthorized: Admin access required");
+    }
+
+    if (!postId || typeof postId !== "string") {
+      throw new Error("Invalid post ID");
+    }
+
+    // Fetch the post to toggle
+    const existingPost = await prisma.post.findUnique({
+      where: { id: postId },
+      select: { id: true, isPublished: true, title: true },
+    });
+
+    if (!existingPost) {
+      throw new Error("Post not found");
+    }
+
+    // Toggle the published status and update status accordingly
+    const newPublishedState = !existingPost.isPublished;
+    const newStatus = newPublishedState
+      ? PostStatus.APPROVED
+      : PostStatus.DRAFT;
+
+    await prisma.post.update({
+      where: { id: postId },
+      data: {
+        isPublished: newPublishedState,
+        status: newStatus,
+        updatedAt: new Date(),
+      },
+    });
+
+    // Revalidate relevant paths and caches
+    revalidatePath("/dashboard/posts");
+    revalidatePath(`/entry/${postId}`);
+    revalidatePath(`/dashboard/posts/edit/${postId}`); // Important: Revalidate edit page
+    revalidatePath("/"); // Home page might show published posts
+
+    // Invalidate cache for this specific post so edit page shows updated status
+    revalidateCache([
+      CACHE_TAGS.POSTS,
+      CACHE_TAGS.POST_BY_ID,
+      CACHE_TAGS.POST_BY_SLUG,
+      CACHE_TAGS.CATEGORIES,
+      CACHE_TAGS.TAGS,
+      CACHE_TAGS.SEARCH_RESULTS,
+      CACHE_TAGS.USER_POSTS,
+      CACHE_TAGS.ANALYTICS,
+    ]);
+
+    return {
+      success: true,
+      message: `Post ${
+        existingPost.isPublished ? "unpublished" : "published"
+      } successfully`,
+    };
+  } catch (error) {
+    console.error("Error toggling post publish status:", error);
+    throw new Error(
+      error instanceof Error ? error.message : "Failed to update post status"
+    );
+  }
 }
 
-export async function deletePostAction() {
-  throw new Error("deletePostAction temporarily unavailable after refactor");
+// Toggle post featured action
+export async function togglePostFeaturedAction(postId: string) {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.userData) {
+      handleAuthRedirect();
+    }
+
+    if (currentUser.userData.role !== "ADMIN") {
+      throw new Error("Unauthorized: Admin access required");
+    }
+
+    if (!postId || typeof postId !== "string") {
+      throw new Error("Invalid post ID");
+    }
+
+    const existingPost = await prisma.post.findUnique({
+      where: { id: postId },
+      select: { id: true, isFeatured: true, title: true },
+    });
+
+    if (!existingPost) {
+      throw new Error("Post not found");
+    }
+
+    const newFeaturedState = !existingPost.isFeatured;
+
+    await prisma.post.update({
+      where: { id: postId },
+      data: {
+        isFeatured: newFeaturedState,
+        updatedAt: new Date(),
+      },
+    });
+
+    revalidatePath("/dashboard/posts");
+    revalidatePath(`/entry/${postId}`);
+    revalidatePath(`/dashboard/posts/edit/${postId}`); // Important: Revalidate edit page
+    revalidatePath("/");
+    revalidateCache([
+      CACHE_TAGS.POSTS,
+      CACHE_TAGS.POST_BY_ID,
+      CACHE_TAGS.POST_BY_SLUG,
+      CACHE_TAGS.CATEGORIES,
+      CACHE_TAGS.TAGS,
+      CACHE_TAGS.SEARCH_RESULTS,
+      CACHE_TAGS.USER_POSTS,
+      CACHE_TAGS.ANALYTICS,
+    ]);
+
+    return {
+      success: true,
+      message: `Post ${
+        existingPost.isFeatured ? "unfeatured" : "featured"
+      } successfully`,
+    };
+  } catch (error) {
+    console.error("Error toggling post featured status:", error);
+    throw new Error(
+      error instanceof Error
+        ? error.message
+        : "Failed to update post featured status"
+    );
+  }
 }

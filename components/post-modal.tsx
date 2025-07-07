@@ -274,7 +274,7 @@ function PostContentModal({
                 {isLinkCopied ? (
                   <>
                     <Check className="h-3 w-3" />
-                    Copied
+                    Link copied
                   </>
                 ) : (
                   <>
