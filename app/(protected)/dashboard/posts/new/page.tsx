@@ -140,7 +140,7 @@ export default function NewPostPage() {
   useEffect(() => {
     async function fetchContentConfig() {
       try {
-        const res = await fetch("/api/content-config", {
+        const res = await fetch("/api/settings/content-config", {
           credentials: "same-origin",
         });
         if (res.ok) {

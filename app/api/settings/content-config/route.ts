@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 /**
- * Lightweight public endpoint returning non-sensitive content configuration
- * that client components might need (currently only maxTagsPerPost).
+ * GET /api/settings/content-config
+ * Returns frontend-safe content configuration values.
  */
 export async function GET() {
   try {

@@ -3,7 +3,6 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Upload, X, Loader2, Trash } from "@/components/ui/icons";
@@ -120,7 +119,7 @@ export function MediaUpload({
 
   // Fetch storage configuration
   useEffect(() => {
-    fetch("/api/storage-config")
+    fetch("/api/settings/storage-config")
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {

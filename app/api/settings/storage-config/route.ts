@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { getStorageConfigAction } from "@/actions/settings";
 
 /**
- * GET /api/storage-config
- * Returns the current storage configuration for client components
+ * GET /api/settings/storage-config
+ * Returns storage configuration for client components.
  */
 export async function GET() {
   try {
@@ -22,27 +22,26 @@ export async function GET() {
       });
     }
 
-    // Return defaults if no settings found
+    // Defaults if no settings
     return NextResponse.json({
       success: true,
       config: {
         storageType: "S3",
-        maxImageSize: 2097152, // 2MB
-        maxVideoSize: 10485760, // 10MB
+        maxImageSize: 2097152,
+        maxVideoSize: 10485760,
         enableCompression: true,
         compressionQuality: 80,
       },
     });
   } catch (error) {
     console.error("Error fetching storage config:", error);
-
     return NextResponse.json({
       success: false,
       error: "Failed to fetch storage configuration",
       config: {
         storageType: "S3",
-        maxImageSize: 2097152, // 2MB
-        maxVideoSize: 10485760, // 10MB
+        maxImageSize: 2097152,
+        maxVideoSize: 10485760,
         enableCompression: true,
         compressionQuality: 80,
       },
@@ -50,7 +49,7 @@ export async function GET() {
   }
 }
 
-// Only allow GET method
+// Only allow GET
 export async function POST() {
   return NextResponse.json({ error: "Method not allowed" }, { status: 405 });
 }
