@@ -210,76 +210,100 @@ export function MediaUpload({
         success: false,
       });
 
-      try {
-        // Create preview
-        const previewUrl = URL.createObjectURL(file);
-        if (mediaType === "image") {
-          setImagePreview(previewUrl);
-          setVideoPreview(null); // Clear video when uploading image
-        } else {
-          setVideoPreview(previewUrl);
-          setImagePreview(null); // Clear image when uploading video
-        }
+      // Create preview
+      const previewUrl = URL.createObjectURL(file);
+      if (mediaType === "image") {
+        setImagePreview(previewUrl);
+        setVideoPreview(null); // Clear video when uploading image
+      } else {
+        setVideoPreview(previewUrl);
+        setImagePreview(null); // Clear image when uploading video
+      }
 
-        // Prepare form data
-        const formData = new FormData();
-        formData.append(mediaType, file);
-        formData.append("title", title);
-        formData.append("csrf_token", token || "");
+      // Prepare form data
+      const formData = new FormData();
+      formData.append(mediaType, file);
+      formData.append("title", title);
+      formData.append("csrf_token", token || "");
 
-        // Upload file
-        const endpoint = `/api/upload/${mediaType}`;
-        const response = await fetch(endpoint, {
-          method: "POST",
-          body: formData,
-          credentials: "same-origin",
-        });
+      const xhr = new XMLHttpRequest();
+      const endpoint = `/api/upload/${mediaType}`;
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({
-            error: "Upload failed",
+      xhr.open("POST", endpoint, true);
+      xhr.withCredentials = true;
+
+      // Progress listener
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = (event.loaded / event.total) * 100;
+          setUploadState((prev) => ({
+            ...prev,
+            progress: percentComplete,
           }));
-          throw new Error(errorData.error || "Upload failed");
         }
+      };
 
-        const result = await response.json();
+      // Handle completion
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const result = JSON.parse(xhr.responseText);
 
-        setUploadState({
-          uploading: false,
-          progress: 100,
-          error: null,
-          success: true,
-        });
+          setUploadState({
+            uploading: false,
+            progress: 100,
+            error: null,
+            success: true,
+          });
 
-        // Notify parent component
-        if (onMediaUploaded) {
-          onMediaUploaded(result);
-        }
+          if (onMediaUploaded) {
+            onMediaUploaded(result);
+          }
 
-        // Clean up preview URL
-        URL.revokeObjectURL(previewUrl);
+          URL.revokeObjectURL(previewUrl);
 
-        // Set final media URL
-        const mediaUrl = result.url;
-        if (mediaType === "image") {
-          setImagePreview(mediaUrl);
+          const mediaUrl = result.url;
+          if (mediaType === "image") {
+            setImagePreview(mediaUrl);
+          } else {
+            setVideoPreview(mediaUrl);
+          }
+
+          setTimeout(() => {
+            setUploadState((prev) => ({ ...prev, success: false }));
+          }, 3000);
         } else {
-          setVideoPreview(mediaUrl);
+          try {
+            const errorData = JSON.parse(xhr.responseText);
+            setUploadState({
+              uploading: false,
+              progress: 0,
+              error:
+                errorData.error || `Upload failed with status: ${xhr.status}`,
+              success: false,
+            });
+          } catch {
+            setUploadState({
+              uploading: false,
+              progress: 0,
+              error: `Upload failed with status: ${xhr.status}`,
+              success: false,
+            });
+          }
         }
+      };
 
-        // Clear success message after 3 seconds
-        setTimeout(() => {
-          setUploadState((prev) => ({ ...prev, success: false }));
-        }, 3000);
-      } catch (error) {
-        console.error("Upload error:", error);
+      // Handle errors
+      xhr.onerror = () => {
         setUploadState({
           uploading: false,
           progress: 0,
-          error: error instanceof Error ? error.message : "Upload failed",
+          error: "An error occurred during the upload. Please try again.",
           success: false,
         });
-      }
+        URL.revokeObjectURL(previewUrl);
+      };
+
+      xhr.send(formData);
     },
     [disabled, validateFile, title, onMediaUploaded, token]
   );
@@ -312,7 +336,6 @@ export function MediaUpload({
 
       const result = await response.json();
       if (result.success) {
-        toast.success(result.message || "File deleted successfully");
         return true;
       } else {
         throw new Error(result.error || "Failed to delete file");
@@ -344,50 +367,54 @@ export function MediaUpload({
     const { pendingDeletionType } = deletionState;
     if (!pendingDeletionType) return;
 
+    // Immediately hide the dialog
     setDeletionState((prev) => ({
       ...prev,
       showConfirmDialog: false,
       pendingDeletionType: null,
     }));
 
-    // Get the current URL for the media type
-    const currentUrl =
+    // Get the details for deletion before clearing the state
+    const urlToDelete =
       pendingDeletionType === "image" ? imagePreview : videoPreview;
+    const idToDelete =
+      pendingDeletionType === "image" ? currentImageId : currentVideoId;
 
-    // If there's a current URL, attempt to delete it from storage
-    let deletionSuccess = true;
-    if (currentUrl && (currentImageId || currentVideoId)) {
-      deletionSuccess = await handleDeleteFile(pendingDeletionType, currentUrl);
-    }
-
-    // Always clear the preview locally (even if deletion fails, we don't want to show it)
+    // Immediately remove from UI
     if (pendingDeletionType === "image") {
       setImagePreview(null);
     } else {
       setVideoPreview(null);
     }
 
-    // Reset upload state
+    // Reset upload state and notify parent
     setUploadState({
       uploading: false,
       progress: 0,
       error: null,
       success: false,
     });
-
-    // Notify parent component
     if (onMediaUploaded) {
       onMediaUploaded(null);
     }
 
-    // Show appropriate message
-    if (!currentUrl) {
-      toast.success("Media removed successfully");
-    } else if (!deletionSuccess) {
-      toast.error(
-        "Media removed from preview, but deletion from storage failed"
-      );
-    }
+    // Give immediate feedback
+    toast.success("Media removed from the post.");
+
+    // If there was an uploaded file, delete it from storage in the background (disabled for now)
+    // if (urlToDelete && idToDelete) {
+    //   const deletionSuccess = await handleDeleteFile(
+    //     pendingDeletionType,
+    //     urlToDelete
+    //   );
+    //   if (deletionSuccess) {
+    //     toast.success("File successfully deleted from storage.");
+    //   } else {
+    //     toast.error(
+    //       "Background deletion failed. The file may still exist in storage."
+    //     );
+    //   }
+    // }
   };
 
   const handleCancelDeletion = () => {
@@ -567,8 +594,7 @@ export function MediaUpload({
             <AlertDialogTitle>Delete Media File</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete this{" "}
-              {deletionState.pendingDeletionType}? This action cannot be undone
-              and will permanently remove the file from storage.
+              {deletionState.pendingDeletionType}? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
