@@ -168,18 +168,40 @@ export default function EditPostPage() {
         setCategories(categoriesData);
         setTags(tagsData);
         setSelectedTags(postData.tags.map((tag: Tag) => tag.name));
+
         if (postData.media && postData.media.length > 0) {
-          const image = postData.media.find((m: { mimeType: string }) =>
-            m.mimeType.startsWith("image/")
+          const image = postData.media.find(
+            (m: { mimeType: string; url?: string }) =>
+              m.mimeType.startsWith("image/")
           );
-          const video = postData.media.find((m: { mimeType: string }) =>
-            m.mimeType.startsWith("video/")
+          const video = postData.media.find(
+            (m: { mimeType: string; url?: string }) =>
+              m.mimeType.startsWith("video/")
           );
-          if (image)
-            setFeaturedImage({ id: image.id, url: postData.featuredImage });
-          if (video)
-            setFeaturedVideo({ id: video.id, url: postData.featuredVideo });
+
+          // Use the media item's URL if available, otherwise fall back to postData fields
+          if (image) {
+            const imageUrl = image.url || postData.featuredImage;
+            if (imageUrl) {
+              setFeaturedImage({ id: image.id, url: imageUrl });
+            }
+          }
+          if (video) {
+            const videoUrl = video.url || postData.featuredVideo;
+            if (videoUrl) {
+              setFeaturedVideo({ id: video.id, url: videoUrl });
+            }
+          }
+        } else {
+          // Fallback: if no media array, use the direct fields
+          if (postData.featuredImage) {
+            setFeaturedImage({ id: "legacy", url: postData.featuredImage });
+          }
+          if (postData.featuredVideo) {
+            setFeaturedVideo({ id: "legacy", url: postData.featuredVideo });
+          }
         }
+
         setPostTitle(postData.title || "");
         // Set the selected category (parent category if current is child, or current if parent)
         setSelectedCategory(
@@ -290,16 +312,6 @@ export default function EditPostPage() {
             `Some tags could not be created: ${failedTags.join(", ")}`
           );
         }
-      }
-
-      // Add the featured media IDs to form data
-      if (featuredImage) {
-        formData.set("featuredImageId", featuredImage.id);
-        formData.set("featuredImage", featuredImage.url);
-      }
-      if (featuredVideo) {
-        formData.set("featuredVideoId", featuredVideo.id);
-        formData.set("featuredVideo", featuredVideo.url);
       }
 
       // Add the featured media IDs to form data

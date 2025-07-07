@@ -504,7 +504,6 @@ export default function NewPostPage() {
                   </div>
                 </div>
 
-                {/* Replace the old tags input with the new TagSelector */}
                 <TagSelector
                   availableTags={tags}
                   selectedTags={selectedTags}
