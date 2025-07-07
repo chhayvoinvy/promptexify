@@ -450,15 +450,15 @@ export default function NewPostPage() {
                   />
                 </div>
 
-                <CardContent>
-                  <MediaUpload
-                    onMediaUploaded={handleMediaUploaded}
-                    currentImageUrl={featuredImage?.url}
-                    currentVideoUrl={featuredVideo?.url}
-                    title={postTitle || "untitled"}
-                    disabled={isSubmitting}
-                  />
-                </CardContent>
+                <MediaUpload
+                  onMediaUploaded={handleMediaUploaded}
+                  currentImageUrl={featuredImage?.url}
+                  currentVideoUrl={featuredVideo?.url}
+                  currentImageId={featuredImage?.id}
+                  currentVideoId={featuredVideo?.id}
+                  title={postTitle || "untitled"}
+                  disabled={isSubmitting}
+                />
               </CardContent>
             </Card>
 

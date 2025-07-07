@@ -582,17 +582,15 @@ export default function EditPostPage() {
                   />
                 </div>
 
-                <CardContent>
-                  <CardContent>
-                    <MediaUpload
-                      onMediaUploaded={handleMediaUploaded}
-                      currentImageUrl={featuredImage?.url}
-                      currentVideoUrl={featuredVideo?.url}
-                      title={postTitle || "untitled"}
-                      disabled={isSubmitting}
-                    />
-                  </CardContent>
-                </CardContent>
+                <MediaUpload
+                  onMediaUploaded={handleMediaUploaded}
+                  currentImageUrl={featuredImage?.url}
+                  currentVideoUrl={featuredVideo?.url}
+                  currentImageId={featuredImage?.id}
+                  currentVideoId={featuredVideo?.id}
+                  title={postTitle || "untitled"}
+                  disabled={isSubmitting}
+                />
               </CardContent>
             </Card>
 
