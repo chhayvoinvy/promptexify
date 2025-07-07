@@ -2,10 +2,6 @@ import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  turbopack: {
-    // ...
-  },
-
   // Fix Supabase realtime-js webpack warnings
   webpack: (config, { isServer }) => {
     if (isServer) {

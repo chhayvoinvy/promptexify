@@ -10,9 +10,9 @@ import type { AutomationConfig } from "./types";
 export const automationConfig: AutomationConfig = {
   // Get author ID from environment variable
   authorId:
-    process.env.AUTOMATION_AUTHOR_ID ||
+    process.env.ASSIGNED_AUTHOR_ID ||
     (() => {
-      throw new Error("AUTOMATION_AUTHOR_ID environment variable is required");
+      throw new Error("ASSIGNED_AUTHOR_ID environment variable is required");
     })(),
 
   // Optional: require ADMIN role for the author

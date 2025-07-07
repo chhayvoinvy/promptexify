@@ -10,7 +10,7 @@ import { Worker } from "bullmq";
 import IORedis from "ioredis";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { Readable } from "stream";
-import * as csv from "fast-csv";
+import csv from "csv-parser";
 
 import { AutomationService } from "@/lib/automation/service";
 import type { ContentFile, PostData } from "@/lib/automation/types";
@@ -85,52 +85,33 @@ const worker = new Worker(
       }
 
       const stream = response.Body;
-      let records: ContentFile[] = [];
-      let batch: CsvRow[] = [];
-      const batchSize = 50; // Process 50 rows at a time
+      const rows: CsvRow[] = [];
 
       return new Promise((resolve, reject) => {
-        const parser = csv
-          .parseStream(stream, { headers: true })
+        stream
+          .pipe(csv())
           .on("error", (error: Error) => {
             console.error(`CSV parsing error for job ${job.id}:`, error);
             reject(error);
           })
           .on("data", (row: CsvRow) => {
-            batch.push(row);
-            if (batch.length >= batchSize) {
-              parser.pause(); // Pause stream to process batch
-              const contentFiles = transformBatchToContentFiles(batch);
-              records = records.concat(contentFiles);
-
-              console.log(
-                `Job ${job.id}: Processed batch of ${batch.length} rows.`
-              );
-
-              // Clear batch and resume stream
-              batch = [];
-              parser.resume();
-            }
+            rows.push(row);
           })
-          .on("end", async (rowCount: number) => {
+          .on("end", async () => {
             console.log(
-              `✅ CSV parsing finished for job ${job.id}. Total rows: ${rowCount}`
+              `✅ CSV parsing finished for job ${job.id}. Total rows: ${rows.length}`
             );
             await job.updateProgress(50);
 
-            // Process any remaining rows in the last batch
-            if (batch.length > 0) {
-              const contentFiles = transformBatchToContentFiles(batch);
-              records = records.concat(contentFiles);
-            }
+            const contentFiles = transformCsvRowsToContentFiles(rows);
 
             console.log(
-              `Invoking AutomationService for ${records.length} content files...`
+              `Invoking AutomationService for ${contentFiles.length} content files...`
             );
 
             // Use the existing automation service to process the data
             const result = await AutomationService.executeFromJsonInput(
-              records,
+              contentFiles,
               userId,
               `csv-worker-import-${fileName}`
             );
@@ -147,10 +128,10 @@ const worker = new Worker(
   { connection }
 );
 
-function transformBatchToContentFiles(batch: CsvRow[]): ContentFile[] {
+function transformCsvRowsToContentFiles(rows: CsvRow[]): ContentFile[] {
   // Group rows by category
   const categoryMap = new Map<string, CsvRow[]>();
-  for (const row of batch) {
+  for (const row of rows) {
     if (!categoryMap.has(row.category)) {
       categoryMap.set(row.category, []);
     }
@@ -158,8 +139,8 @@ function transformBatchToContentFiles(batch: CsvRow[]): ContentFile[] {
   }
 
   const contentFiles: ContentFile[] = [];
-  for (const [category, rows] of categoryMap.entries()) {
-    const posts: PostData[] = rows.map((row) => ({
+  for (const [category, categoryRows] of categoryMap.entries()) {
+    const posts: PostData[] = categoryRows.map((row) => ({
       title: row.title,
       slug: row.slug,
       description: row.description,
@@ -173,7 +154,7 @@ function transformBatchToContentFiles(batch: CsvRow[]): ContentFile[] {
     // For simplicity, we'll use the tags from the first row for the whole category batch.
     // A more advanced implementation might aggregate tags.
     const tags =
-      rows[0]?.tags.split(",").map((tag) => ({
+      categoryRows[0]?.tags.split(",").map((tag) => ({
         name: tag.trim(),
         slug: tag.trim().toLowerCase().replace(/\s+/g, "-"),
       })) || [];

@@ -26,7 +26,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCSRFForm } from "@/hooks/use-csrf";
 import { updatePostAction } from "@/actions";
 import { toast } from "sonner";
-import { getPublicUrl } from "@/lib/storage";
 
 // Force dynamic rendering for this page
 export const dynamic = "force-dynamic";
@@ -64,7 +63,7 @@ interface Post {
   featuredVideo?: string;
   isPublished: boolean;
   isPremium: boolean;
-  media: { id: string; mimeType: string; relativePath: string }[];
+  media: { id: string; mimeType: string; relativePath: string; url: string }[];
   category: {
     id: string;
     name: string;
@@ -181,35 +180,34 @@ export default function EditPostPage() {
               m.mimeType.startsWith("video/")
           );
 
-          // Use the media item's URL if available, otherwise fall back to postData fields
           if (image) {
             setFeaturedImage({
               id: image.id,
-              url: await getPublicUrl(postData.featuredImage),
-              relativePath: postData.featuredImage,
+              url: image.url,
+              relativePath: image.relativePath,
             });
           }
           if (video) {
             setFeaturedVideo({
               id: video.id,
-              url: await getPublicUrl(postData.featuredVideo),
-              relativePath: postData.featuredVideo,
+              url: video.url,
+              relativePath: video.relativePath,
             });
           }
         } else {
-          // Fallback: if no media array, use the direct fields
+          // Fallback: if no media array, use the direct fields from postData
           if (postData.featuredImage) {
             setFeaturedImage({
-              id: "legacy",
-              url: await getPublicUrl(postData.featuredImage),
-              relativePath: postData.featuredImage,
+              id: "legacy-image",
+              url: postData.featuredImage,
+              relativePath: postData.featuredImage, // This might not be accurate but it's a fallback
             });
           }
           if (postData.featuredVideo) {
             setFeaturedVideo({
-              id: "legacy",
-              url: await getPublicUrl(postData.featuredVideo),
-              relativePath: postData.featuredVideo,
+              id: "legacy-video",
+              url: postData.featuredVideo,
+              relativePath: postData.featuredVideo, // This might not be accurate but it's a fallback
             });
           }
         }

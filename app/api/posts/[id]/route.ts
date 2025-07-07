@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPostById } from "@/lib/content";
+import { getPublicUrl } from "@/lib/storage";
 
 interface RouteParams {
   params: Promise<{
@@ -57,7 +58,23 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    return NextResponse.json(post);
+    const postWithPublicUrls = {
+      ...post,
+      featuredImage: post.featuredImage
+        ? await getPublicUrl(post.featuredImage)
+        : null,
+      featuredVideo: post.featuredVideo
+        ? await getPublicUrl(post.featuredVideo)
+        : null,
+      media: await Promise.all(
+        (post.media || []).map(async (mediaItem) => ({
+          ...mediaItem,
+          url: await getPublicUrl(mediaItem.relativePath),
+        }))
+      ),
+    };
+
+    return NextResponse.json(postWithPublicUrls);
   } catch (error) {
     console.error("Post API error:", error);
     return NextResponse.json(

@@ -15,6 +15,11 @@ export interface PostWithDetails {
   isFeatured: boolean;
   isPublished: boolean;
   status: string;
+  media: {
+    id: string;
+    mimeType: string;
+    relativePath: string;
+  }[];
 
   authorId: string;
   createdAt: Date;
@@ -81,6 +86,13 @@ const optimizedPostSelect = {
   isFeatured: true,
   isPublished: true,
   status: true,
+  media: {
+    select: {
+      id: true,
+      mimeType: true,
+      relativePath: true,
+    },
+  },
 
   authorId: true,
   createdAt: true,
@@ -509,8 +521,17 @@ export async function getPostsWithInteractions(
   includeUnpublished = false
 ): Promise<PostWithInteractions[]> {
   const posts = await prisma.post.findMany({
-    where: includeUnpublished ? {} : { isPublished: true },
+    where: {
+      ...(includeUnpublished ? {} : { isPublished: true }),
+    },
     include: {
+      media: {
+        select: {
+          id: true,
+          mimeType: true,
+          relativePath: true,
+        },
+      },
       author: {
         select: {
           id: true,
@@ -594,58 +615,12 @@ async function _getUserPosts(userId: string): Promise<PostWithDetails[]> {
   const posts = await prisma.post.findMany({
     where: { authorId: userId },
     select: {
-      id: true,
-      title: true,
-      slug: true,
-      description: true,
-      content: true,
-      featuredImage: true,
-      featuredVideo: true,
-      isPremium: true,
-      isFeatured: true,
-      isPublished: true,
-      status: true,
-
-      authorId: true,
-      createdAt: true,
-      updatedAt: true,
-      author: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          avatar: true,
-        },
-      },
-      category: {
-        include: {
-          parent: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-            },
-          },
-        },
-      },
-      tags: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-        },
-      },
-      _count: {
-        select: {
-          views: true,
-        },
-      },
+      ...optimizedPostSelect,
     },
     orderBy: {
       createdAt: "desc",
     },
   });
-
   return posts;
 }
 
@@ -662,73 +637,22 @@ export async function getUserPostsPaginated(
   page: number = 1,
   pageSize: number = 10
 ): Promise<PaginatedResult<PostWithDetails>> {
-  const skip = (page - 1) * pageSize;
-
   const [posts, totalCount] = await Promise.all([
     prisma.post.findMany({
       where: { authorId: userId },
       select: {
-        id: true,
-        title: true,
-        slug: true,
-        description: true,
-        content: true,
-        featuredImage: true,
-        featuredVideo: true,
-        isPremium: true,
-        isFeatured: true,
-        isPublished: true,
-        status: true,
-
-        authorId: true,
-        createdAt: true,
-        updatedAt: true,
-        author: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            avatar: true,
-          },
-        },
-        category: {
-          include: {
-            parent: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-              },
-            },
-          },
-        },
-        tags: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-          },
-        },
-        _count: {
-          select: {
-            views: true,
-          },
-        },
+        ...optimizedPostSelect,
       },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
       orderBy: {
         createdAt: "desc",
       },
-      skip,
-      take: pageSize,
     }),
-    prisma.post.count({
-      where: { authorId: userId },
-    }),
+    prisma.post.count({ where: { authorId: userId } }),
   ]);
 
   const totalPages = Math.ceil(totalCount / pageSize);
-  const hasNextPage = page < totalPages;
-  const hasPreviousPage = page > 1;
 
   return {
     data: posts,
@@ -736,8 +660,8 @@ export async function getUserPostsPaginated(
     totalPages,
     currentPage: page,
     pageSize,
-    hasNextPage,
-    hasPreviousPage,
+    hasNextPage: page < totalPages,
+    hasPreviousPage: page > 1,
   };
 }
 
@@ -746,87 +670,33 @@ export async function getPostsPaginated(
   pageSize: number = 10,
   includeUnpublished = false
 ): Promise<PaginatedResult<PostWithDetails>> {
-  // Ensure valid page and pageSize values
-  const validPage = Math.max(1, page);
-  const validPageSize = Math.max(1, Math.min(100, pageSize)); // Max 100 items per page
-  const skip = (validPage - 1) * validPageSize;
+  const whereClause = includeUnpublished ? {} : { isPublished: true };
 
-  // Use Promise.all for parallel execution to improve performance
-  const [totalCount, posts] = await Promise.all([
-    // Get total count for pagination metadata
-    prisma.post.count({
-      where: includeUnpublished ? {} : { isPublished: true },
-    }),
-    // Get paginated posts
+  const [posts, totalCount] = await Promise.all([
     prisma.post.findMany({
-      where: includeUnpublished ? {} : { isPublished: true },
+      where: whereClause,
       select: {
-        id: true,
-        title: true,
-        slug: true,
-        description: true,
-        content: true,
-        featuredImage: true,
-        featuredVideo: true,
-        isPremium: true,
-        isFeatured: true,
-        isPublished: true,
-        status: true,
-
-        authorId: true,
-        createdAt: true,
-        updatedAt: true,
-        author: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            avatar: true,
-          },
-        },
-        category: {
-          include: {
-            parent: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-              },
-            },
-          },
-        },
-        tags: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-          },
-        },
-        _count: {
-          select: {
-            views: true,
-          },
-        },
+        ...optimizedPostSelect,
       },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
       orderBy: {
         createdAt: "desc",
       },
-      skip,
-      take: validPageSize,
     }),
+    prisma.post.count({ where: whereClause }),
   ]);
 
-  // Calculate total pages
-  const totalPages = Math.ceil(totalCount / validPageSize);
+  const totalPages = Math.ceil(totalCount / pageSize);
 
   return {
     data: posts,
     totalCount,
     totalPages,
-    currentPage: validPage,
-    pageSize: validPageSize,
-    hasNextPage: validPage < totalPages,
-    hasPreviousPage: validPage > 1,
+    currentPage: page,
+    pageSize,
+    hasNextPage: page < totalPages,
+    hasPreviousPage: page > 1,
   };
 }
 
@@ -836,8 +706,17 @@ export async function getPostsWithSorting(
   includeUnpublished = false
 ): Promise<PostWithInteractions[]> {
   const posts = await prisma.post.findMany({
-    where: includeUnpublished ? {} : { isPublished: true },
+    where: {
+      ...(includeUnpublished ? {} : { isPublished: true }),
+    },
     include: {
+      media: {
+        select: {
+          id: true,
+          mimeType: true,
+          relativePath: true,
+        },
+      },
       author: {
         select: {
           id: true,
@@ -949,6 +828,13 @@ export async function getRelatedPosts(
       ],
     },
     include: {
+      media: {
+        select: {
+          id: true,
+          mimeType: true,
+          relativePath: true,
+        },
+      },
       author: {
         select: {
           id: true,

@@ -89,6 +89,13 @@ export async function getUserBookmarksAction() {
       include: {
         post: {
           include: {
+            media: {
+              select: {
+                id: true,
+                mimeType: true,
+                relativePath: true,
+              },
+            },
             author: {
               select: {
                 id: true,

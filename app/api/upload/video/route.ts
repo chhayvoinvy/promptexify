@@ -135,7 +135,6 @@ export async function POST(request: NextRequest) {
       const arrayBuffer = await file.arrayBuffer();
       const videoBuffer = Buffer.from(arrayBuffer);
 
-      // @ts-expect-error - 'file-type' may not have type declarations in some setups
       const { fileTypeFromBuffer } = await import("file-type");
       const detectedType = await fileTypeFromBuffer(videoBuffer);
 
