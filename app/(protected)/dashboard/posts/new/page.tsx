@@ -68,6 +68,7 @@ export default function NewPostPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [maxTagsPerPost, setMaxTagsPerPost] = useState<number>(15);
 
   // Redirect if not authenticated or not authorized
   useEffect(() => {
@@ -134,6 +135,27 @@ export default function NewPostPage() {
       fetchData();
     }
   }, [user]);
+
+  // Fetch content configuration (max tags per post)
+  useEffect(() => {
+    async function fetchContentConfig() {
+      try {
+        const res = await fetch("/api/content-config", {
+          credentials: "same-origin",
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (typeof data.maxTagsPerPost === "number") {
+            setMaxTagsPerPost(data.maxTagsPerPost);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch content config", err);
+      }
+    }
+
+    fetchContentConfig();
+  }, []);
 
   // Handle form submission
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -535,7 +557,7 @@ export default function NewPostPage() {
                   onTagsChange={handleTagsChange}
                   onPendingTagsChange={handlePendingTagsChange}
                   pendingTags={pendingTags}
-                  maxTags={15}
+                  maxTags={maxTagsPerPost}
                   disabled={isSubmitting}
                 />
               </CardContent>
