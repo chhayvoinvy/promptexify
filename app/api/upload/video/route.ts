@@ -14,6 +14,7 @@ import {
   getFileUploadConfig,
 } from "@/lib/sanitize";
 import { prisma } from "@/lib/prisma";
+import { CSRFProtection } from "@/lib/csp";
 
 const uploadConfig = getFileUploadConfig();
 
@@ -61,6 +62,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Invalid form data" },
         { status: 400, headers: SECURITY_HEADERS }
+      );
+    }
+
+    const csrfToken = CSRFProtection.getTokenFromFormData(formData);
+    const isValidCSRF = await CSRFProtection.validateToken(csrfToken);
+    if (!isValidCSRF) {
+      return NextResponse.json(
+        { error: "Invalid CSRF token" },
+        {
+          status: 403,
+          headers: SECURITY_HEADERS,
+        }
       );
     }
 

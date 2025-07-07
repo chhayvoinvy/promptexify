@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { deleteImage, extractImageFilename } from "@/lib/storage";
 import { z } from "zod";
+import { CSRFProtection } from "@/lib/csp";
 
 /**
  * DELETE /api/upload/image/delete
@@ -15,6 +16,15 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }
+      );
+    }
+
+    const csrfToken = CSRFProtection.getTokenFromHeaders(request);
+    const isValidCSRF = await CSRFProtection.validateToken(csrfToken);
+    if (!isValidCSRF) {
+      return NextResponse.json(
+        { error: "Invalid CSRF token" },
+        { status: 403 }
       );
     }
 

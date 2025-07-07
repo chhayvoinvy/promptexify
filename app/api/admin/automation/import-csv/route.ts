@@ -59,11 +59,19 @@ export async function POST(request: NextRequest) {
           userId: user.id,
           context: "invalid_csrf_token",
           endpoint: "import-csv",
+          hasToken: !!csrfToken,
+          tokenLength: csrfToken?.length || 0,
         },
         "high"
       );
       return NextResponse.json(
-        { error: "Invalid CSRF token" },
+        {
+          error: "Invalid CSRF token",
+          code: "CSRF_TOKEN_INVALID",
+          message:
+            "Your security token has expired or is invalid. Please refresh the page and try again.",
+          requiresRefresh: true,
+        },
         { status: 403 }
       );
     }

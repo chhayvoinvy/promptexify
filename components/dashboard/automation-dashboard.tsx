@@ -125,8 +125,23 @@ export function AutomationDashboard() {
       const result = await response.json();
 
       if (!response.ok) {
+        // Handle CSRF token refresh requirement
+        if (result.code === "CSRF_TOKEN_INVALID" && result.requiresRefresh) {
+          toast.error(
+            "Security token expired. Please refresh the page and try again."
+          );
+          // Optionally trigger a page refresh after a delay
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+          return;
+        }
+
         throw new Error(
-          result.details?.join(", ") || result.error || "Execution failed"
+          result.message ||
+            result.details?.join(", ") ||
+            result.error ||
+            "Execution failed"
         );
       }
 
@@ -216,7 +231,20 @@ export function AutomationDashboard() {
       const result = await processResponse.json();
 
       if (!processResponse.ok) {
-        throw new Error(result.error || "Failed to start processing.");
+        // Handle CSRF token refresh requirement for CSV processing
+        if (result.code === "CSRF_TOKEN_INVALID" && result.requiresRefresh) {
+          toast.error(
+            "Security token expired. Please refresh the page and try again."
+          );
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+          return;
+        }
+
+        throw new Error(
+          result.message || result.error || "Failed to start processing."
+        );
       }
 
       toast.success(

@@ -19,11 +19,26 @@ interface CSRFHookReturn {
 // ----------------------------------------------
 
 let globalToken: string | null = null;
+// Track when the token was last fetched so we can refresh it proactively
+let globalTokenFetchedAt: number | null = null;
 let inflightRequest: Promise<string> | null = null;
+
+// Tokens last 24 h. Refresh after 23 h so the next mutation never fails.
+const TOKEN_REFRESH_INTERVAL = 23 * 60 * 60 * 1000; // 23 hours in ms
 
 async function obtainToken(): Promise<string> {
   // Return cached token when present
-  if (globalToken) return globalToken;
+  if (globalToken) {
+    // If token is older than threshold, force refresh
+    if (
+      globalTokenFetchedAt &&
+      Date.now() - globalTokenFetchedAt < TOKEN_REFRESH_INTERVAL
+    ) {
+      return globalToken;
+    }
+    // Stale – clear and fetch a new one
+    globalToken = null;
+  }
 
   // If another component already started the request, wait for it
   if (inflightRequest) return inflightRequest;
@@ -48,6 +63,7 @@ async function obtainToken(): Promise<string> {
     }
 
     globalToken = data.token;
+    globalTokenFetchedAt = Date.now();
     return globalToken;
   })().finally(() => {
     // Clear inflight reference so future refreshes work
@@ -151,13 +167,32 @@ export function useCSRFForm() {
 
   const getHeadersWithCSRF = useCallback(
     async (baseHeaders: HeadersInit = {}) => {
-      // Ensure we have a token before proceeding
-      const currentToken = token || (await obtainToken());
-      if (!currentToken) {
-        console.error("Failed to obtain CSRF token for headers");
-        return baseHeaders; // Or throw an error
+      try {
+        // Try to use existing token first
+        let currentToken = token;
+
+        // If no token or token is stale, fetch a fresh one
+        if (
+          !currentToken ||
+          (globalTokenFetchedAt &&
+            Date.now() - globalTokenFetchedAt > TOKEN_REFRESH_INTERVAL)
+        ) {
+          console.log("[CSRF] Refreshing token for request");
+          currentToken = await obtainToken();
+        }
+
+        if (!currentToken) {
+          console.error("Failed to obtain CSRF token for headers");
+          throw new Error("CSRF token unavailable");
+        }
+
+        return addCSRFToHeaders(baseHeaders, currentToken);
+      } catch (error) {
+        console.error("Error getting CSRF headers:", error);
+        // Return base headers as fallback, but this will likely cause CSRF validation to fail
+        // which should trigger the error handling in the calling code
+        return baseHeaders;
       }
-      return addCSRFToHeaders(baseHeaders, currentToken);
     },
     [token]
   );

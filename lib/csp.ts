@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 export class CSRFProtection {
   private static readonly CSRF_TOKEN_LENGTH = 32;
   private static readonly CSRF_COOKIE_NAME =
-    process.env.NODE_ENV === "production" ? "__Host-csrf-token" : "csrf-token";
+    process.env.NODE_ENV === "production" ? "csrf-token-secure" : "csrf-token";
   private static readonly CSRF_HEADER_NAME = "x-csrf-token";
 
   /**
@@ -29,56 +29,102 @@ export class CSRFProtection {
   }
 
   /**
-   * Set CSRF token in secure cookie
+   * Set CSRF token in secure cookie with improved reliability
    */
   static async setToken(token: string): Promise<void> {
-    const { cookies } = await import("next/headers");
-    const cookieStore = await cookies();
-    const isProduction = process.env.NODE_ENV === "production";
+    try {
+      const { cookies } = await import("next/headers");
+      const cookieStore = await cookies();
+      const isProduction = process.env.NODE_ENV === "production";
 
-    // Try multiple cookie strategies for better compatibility
-    const cookieOptions = {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: "lax" as const,
-      path: "/",
-      maxAge: 60 * 60 * 24, // 24 hours
-    };
+      // Use more reliable cookie options
+      const cookieOptions = {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: "strict" as const,
+        path: "/",
+        maxAge: 60 * 60 * 24, // 24 hours
+      };
 
-    cookieStore.set(this.CSRF_COOKIE_NAME, token, cookieOptions);
+      // Set primary cookie
+      cookieStore.set(this.CSRF_COOKIE_NAME, token, cookieOptions);
 
-    // In development, also try setting without httpOnly for debugging
-    if (!isProduction) {
-      cookieStore.set(`${this.CSRF_COOKIE_NAME}-debug`, token, {
-        ...cookieOptions,
-        httpOnly: false,
-      });
+      // Set backup cookie for reliability (with different name)
+      const backupCookieName = `${this.CSRF_COOKIE_NAME}-backup`;
+      cookieStore.set(backupCookieName, token, cookieOptions);
+
+      // In development, also set a debug cookie without httpOnly for debugging
+      if (!isProduction) {
+        cookieStore.set(`${this.CSRF_COOKIE_NAME}-debug`, token, {
+          ...cookieOptions,
+          httpOnly: false,
+        });
+      }
+
+      console.log(
+        `[CSRF] Token set successfully with cookie name: ${this.CSRF_COOKIE_NAME}`
+      );
+    } catch (error) {
+      console.error("[CSRF] Failed to set token:", error);
+      throw error;
     }
   }
 
   /**
-   * Get CSRF token from cookie
+   * Get CSRF token from cookie with improved reliability and fallbacks
    */
   static async getTokenFromCookie(): Promise<string | null> {
-    const { cookies } = await import("next/headers");
-    const cookieStore = await cookies();
-    const isProduction = process.env.NODE_ENV === "production";
+    try {
+      const { cookies } = await import("next/headers");
+      const cookieStore = await cookies();
+      const isProduction = process.env.NODE_ENV === "production";
 
-    let token = cookieStore.get(this.CSRF_COOKIE_NAME)?.value || null;
+      // Try primary cookie first
+      let token = cookieStore.get(this.CSRF_COOKIE_NAME)?.value || null;
 
-    // In development, try fallback to debug cookie if main cookie not found
-    if (!token && !isProduction) {
-      token = cookieStore.get(`${this.CSRF_COOKIE_NAME}-debug`)?.value || null;
+      // Try backup cookie if primary not found
+      if (!token) {
+        const backupCookieName = `${this.CSRF_COOKIE_NAME}-backup`;
+        token = cookieStore.get(backupCookieName)?.value || null;
+      }
+
+      // In development, try debug cookie as final fallback
+      if (!token && !isProduction) {
+        token =
+          cookieStore.get(`${this.CSRF_COOKIE_NAME}-debug`)?.value || null;
+      }
+
+      if (!token) {
+        console.warn(
+          `[CSRF] No token found in cookies. Checked: ${this.CSRF_COOKIE_NAME}, ${this.CSRF_COOKIE_NAME}-backup`
+        );
+        if (!isProduction) {
+          console.warn(
+            `[CSRF] Also checked debug cookie: ${this.CSRF_COOKIE_NAME}-debug`
+          );
+        }
+      } else {
+        console.log(`[CSRF] Token retrieved successfully from cookie`);
+      }
+
+      return token;
+    } catch (error) {
+      console.error("[CSRF] Failed to get token from cookie:", error);
+      return null;
     }
-
-    return token;
   }
 
   /**
    * Get CSRF token from request headers
    */
   static getTokenFromHeaders(request: NextRequest): string | null {
-    return request.headers.get(this.CSRF_HEADER_NAME);
+    const token = request.headers.get(this.CSRF_HEADER_NAME);
+    if (token) {
+      console.log("[CSRF] Token found in request headers");
+    } else {
+      console.warn("[CSRF] No token found in request headers");
+    }
+    return token;
   }
 
   /**
@@ -131,18 +177,38 @@ export class CSRFProtection {
   }
 
   /**
-   * Validate CSRF token
+   * Validate CSRF token with improved error handling and recovery
    */
   static async validateToken(submittedToken: string | null): Promise<boolean> {
     if (!submittedToken) {
-      console.warn("[SECURITY] CSRF token missing");
+      console.warn("[SECURITY] CSRF token missing from request");
       return false;
     }
 
     const cookieToken = await this.getTokenFromCookie();
+
+    // If no cookie token found, try to generate a new one for recovery
     if (!cookieToken) {
-      console.warn("[SECURITY] CSRF validation failed: missing stored token");
-      return false;
+      console.warn(
+        "[SECURITY] CSRF validation failed: missing stored token, attempting recovery"
+      );
+
+      try {
+        // Try to generate a new token and set it
+        const newToken = this.generateToken();
+        await this.setToken(newToken);
+        console.log("[SECURITY] Generated new CSRF token for session recovery");
+
+        // Since we just generated a new token, the submitted token won't match
+        // Return false but with a more helpful message
+        console.warn(
+          "[SECURITY] CSRF validation failed: token regenerated, client needs to refresh token"
+        );
+        return false;
+      } catch (error) {
+        console.error("[SECURITY] Failed to recover CSRF token:", error);
+        return false;
+      }
     }
 
     try {
@@ -152,6 +218,11 @@ export class CSRFProtection {
 
       if (!isValid) {
         console.warn("[SECURITY] CSRF validation failed: token mismatch");
+        console.log(
+          `[SECURITY] Submitted token length: ${submittedToken.length}, Cookie token length: ${cookieToken.length}`
+        );
+      } else {
+        console.log("[SECURITY] CSRF validation successful");
       }
 
       return isValid;
@@ -165,17 +236,111 @@ export class CSRFProtection {
   }
 
   /**
-   * Get or create CSRF token for the current session
+   * Get or create CSRF token for the current session with retry logic
    */
   static async getOrCreateToken(): Promise<string> {
-    let token = await this.getTokenFromCookie();
+    try {
+      let token = await this.getTokenFromCookie();
 
-    if (!token) {
-      token = this.generateToken();
-      await this.setToken(token);
+      if (!token) {
+        console.log("[CSRF] No existing token found, generating new one");
+        token = this.generateToken();
+        await this.setToken(token);
+
+        // Verify the token was set successfully
+        const verifyToken = await this.getTokenFromCookie();
+        if (!verifyToken) {
+          console.warn(
+            "[CSRF] Token verification failed after setting, but continuing with generated token"
+          );
+        } else {
+          console.log("[CSRF] Token set and verified successfully");
+        }
+      } else {
+        console.log("[CSRF] Retrieved existing token from cookie");
+      }
+
+      return token;
+    } catch (error) {
+      console.error("[CSRF] Error in getOrCreateToken:", error);
+      // Fallback: return a generated token even if cookie operations fail
+      const fallbackToken = this.generateToken();
+      console.warn("[CSRF] Using fallback token due to cookie error");
+      return fallbackToken;
     }
+  }
 
-    return token;
+  /**
+   * Health check for CSRF token system
+   * Returns information about token status and potential issues
+   */
+  static async healthCheck(): Promise<{
+    hasToken: boolean;
+    tokenAge?: number;
+    cookieIssues: string[];
+    recommendations: string[];
+  }> {
+    const issues: string[] = [];
+    const recommendations: string[] = [];
+
+    try {
+      const token = await this.getTokenFromCookie();
+      const hasToken = !!token;
+
+      if (!hasToken) {
+        issues.push("No CSRF token found in cookies");
+        recommendations.push("Try refreshing the page");
+        recommendations.push("Check if cookies are enabled");
+      }
+
+      // Check cookie settings
+      const isProduction = process.env.NODE_ENV === "production";
+      if (isProduction && !process.env.HTTPS) {
+        issues.push("HTTPS not detected in production");
+        recommendations.push("Ensure HTTPS is properly configured");
+      }
+
+      return {
+        hasToken,
+        cookieIssues: issues,
+        recommendations,
+      };
+    } catch (error) {
+      issues.push(
+        `Cookie access error: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
+      recommendations.push("Check browser console for detailed errors");
+
+      return {
+        hasToken: false,
+        cookieIssues: issues,
+        recommendations,
+      };
+    }
+  }
+
+  /**
+   * Clear all CSRF tokens (for debugging/recovery)
+   */
+  static async clearTokens(): Promise<void> {
+    try {
+      const { cookies } = await import("next/headers");
+      const cookieStore = await cookies();
+      const isProduction = process.env.NODE_ENV === "production";
+
+      // Clear primary cookies
+      cookieStore.delete(this.CSRF_COOKIE_NAME);
+      cookieStore.delete(`${this.CSRF_COOKIE_NAME}-backup`);
+
+      if (!isProduction) {
+        cookieStore.delete(`${this.CSRF_COOKIE_NAME}-debug`);
+      }
+
+      console.log("[CSRF] All tokens cleared successfully");
+    } catch (error) {
+      console.error("[CSRF] Failed to clear tokens:", error);
+      throw error;
+    }
   }
 }
 

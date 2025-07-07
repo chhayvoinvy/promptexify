@@ -29,21 +29,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate CSRF token
+    // Validate CSRF token with improved error handling
     const csrfToken = CSRFProtection.getTokenFromHeaders(request);
     const isValidCSRF = await CSRFProtection.validateToken(csrfToken);
     if (!isValidCSRF) {
+      // Log security event with more context
       await SecurityMonitor.logSecurityEvent(
         SecurityEventType.MALICIOUS_PAYLOAD,
         {
           userId: user.id,
           context: "invalid_csrf_token",
           endpoint: "execute-json",
+          hasToken: !!csrfToken,
+          tokenLength: csrfToken?.length || 0,
         },
         "high"
       );
+
       return NextResponse.json(
-        { error: "Invalid CSRF token" },
+        {
+          error: "Invalid CSRF token",
+          code: "CSRF_TOKEN_INVALID",
+          message:
+            "Your security token has expired or is invalid. Please refresh the page and try again.",
+          requiresRefresh: true,
+        },
         { status: 403 }
       );
     }

@@ -14,6 +14,7 @@ import {
   getFileUploadConfig,
   ENHANCED_SECURITY_HEADERS,
 } from "@/lib/sanitize";
+import { CSRFProtection } from "@/lib/csp";
 import { SecurityEvents, getClientIP } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 
@@ -117,6 +118,18 @@ export async function POST(request: NextRequest) {
         { error: "Invalid form data" },
         {
           status: 400,
+          headers: SECURITY_HEADERS,
+        }
+      );
+    }
+
+    const csrfToken = CSRFProtection.getTokenFromFormData(formData);
+    const isValidCSRF = await CSRFProtection.validateToken(csrfToken);
+    if (!isValidCSRF) {
+      return NextResponse.json(
+        { error: "Invalid CSRF token" },
+        {
+          status: 403,
           headers: SECURITY_HEADERS,
         }
       );

@@ -52,7 +52,7 @@ interface FeaturedMedia {
 export default function NewPostPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const { createFormDataWithCSRF, isReady } = useCSRFForm();
+  const { createFormDataWithCSRF, getHeadersWithCSRF, isReady } = useCSRFForm();
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [featuredImage, setFeaturedImage] = useState<FeaturedMedia | null>(
@@ -86,7 +86,9 @@ export default function NewPostPage() {
     async function fetchData() {
       try {
         // Fetch categories
-        const categoriesRes = await fetch("/api/categories");
+        const categoriesRes = await fetch("/api/categories", {
+          credentials: "same-origin",
+        });
         if (categoriesRes.ok) {
           const categoriesData = await categoriesRes.json();
           // Ensure categoriesData is an array
@@ -102,7 +104,9 @@ export default function NewPostPage() {
         }
 
         // Fetch tags
-        const tagsRes = await fetch("/api/tags");
+        const tagsRes = await fetch("/api/tags", {
+          credentials: "same-origin",
+        });
         if (tagsRes.ok) {
           const tagsData = await tagsRes.json();
           // Ensure tagsData is an array
@@ -156,9 +160,9 @@ export default function NewPostPage() {
           try {
             const response = await fetch("/api/tags", {
               method: "POST",
-              headers: {
+              headers: await getHeadersWithCSRF({
                 "Content-Type": "application/json",
-              },
+              }),
               body: JSON.stringify({
                 name: tagName,
                 slug: tagName
@@ -166,6 +170,7 @@ export default function NewPostPage() {
                   .replace(/\s+/g, "-")
                   .replace(/[^a-z0-9-]/g, ""),
               }),
+              credentials: "same-origin",
             });
 
             if (response.ok) {

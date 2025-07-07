@@ -67,21 +67,22 @@ export async function middleware(request: NextRequest) {
         pathname.startsWith(path)
       );
 
-      if (shouldValidateCSRF) {
-        // Check for CSRF token in headers or form data
-        const csrfTokenFromHeader = CSRFProtection.getTokenFromHeaders(request);
+      if (shouldValidateCSRF && pathname.startsWith("/api/")) {
+        // Always expect token in header for API routes
+        const csrfToken = CSRFProtection.getTokenFromHeaders(request);
 
-        // For API routes, expect CSRF token in headers
-        if (pathname.startsWith("/api/") && !csrfTokenFromHeader) {
+        if (!csrfToken) {
           return NextResponse.json(
-            {
-              error: "CSRF token required",
-              code: "CSRF_TOKEN_MISSING",
-            },
-            {
-              status: 403,
-              headers: securityHeaders,
-            }
+            { error: "CSRF token required", code: "CSRF_TOKEN_MISSING" },
+            { status: 403, headers: securityHeaders }
+          );
+        }
+
+        const isValid = await CSRFProtection.validateToken(csrfToken);
+        if (!isValid) {
+          return NextResponse.json(
+            { error: "Invalid CSRF token", code: "CSRF_TOKEN_INVALID" },
+            { status: 403, headers: securityHeaders }
           );
         }
       }

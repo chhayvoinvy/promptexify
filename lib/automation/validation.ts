@@ -6,6 +6,8 @@
  */
 
 import { z } from "zod";
+import createDOMPurify from "dompurify";
+import { JSDOM } from "jsdom";
 import { automationConfig } from "./config";
 import type { TagData, PostData, ContentFile } from "./types";
 
@@ -214,7 +216,8 @@ export function safeJsonParse(jsonString: string): unknown {
  * Sanitizes content using DOMPurify to prevent XSS attacks
  */
 export async function sanitizeContent(content: string): Promise<string> {
-  const DOMPurify = (await import("isomorphic-dompurify")).default;
+  const window = new JSDOM("").window;
+  const DOMPurify = createDOMPurify(window as any);
   return DOMPurify.sanitize(content);
 }
 

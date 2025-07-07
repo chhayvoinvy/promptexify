@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Upload, X, Loader2 } from "@/components/ui/icons";
 import { MediaImage, MediaVideo } from "@/components/ui/media-display";
 import { cn } from "@/lib/utils";
+import { useCSRFForm } from "@/hooks/use-csrf";
 
 // Local type definition for the upload result to avoid direct dependency on backend types
 interface UploadResult {
@@ -64,6 +65,7 @@ export function MediaUpload({
     success: false,
   });
 
+  const { token } = useCSRFForm();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
 
@@ -197,6 +199,9 @@ export function MediaUpload({
         const formData = new FormData();
         formData.append(mediaType, file);
         formData.append("title", title);
+        if (token) {
+          formData.append("csrf_token", token);
+        }
 
         // Upload with progress simulation
         const progressInterval = setInterval(() => {
@@ -212,6 +217,7 @@ export function MediaUpload({
         const response = await fetch(endpoint, {
           method: "POST",
           body: formData,
+          credentials: "same-origin",
         });
 
         clearInterval(progressInterval);
@@ -260,7 +266,7 @@ export function MediaUpload({
         });
       }
     },
-    [disabled, validateFile, title, onMediaUploaded]
+    [disabled, validateFile, title, onMediaUploaded, token]
   );
 
   // Handle remove media
