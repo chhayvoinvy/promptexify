@@ -1,6 +1,11 @@
 "use client";
 
-import { IconDotsVertical, IconUserCircle } from "@/components/ui/icons";
+import {
+  IconCreditCard,
+  IconDotsVertical,
+  IconNotification,
+  IconUserCircle,
+} from "@/components/ui/icons";
 import Link from "next/link";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -128,14 +133,22 @@ export function NavUser({ user }: { user: User }) {
                   Account
                 </Link>
               </DropdownMenuItem>
-              {/* <DropdownMenuItem>
-                <IconCreditCard />
-                Billing
-              </DropdownMenuItem> */}
-              {/* <DropdownMenuItem>
-                <IconNotification />
-                Notifications
-              </DropdownMenuItem> */}
+              {userRole === "ADMIN" && (
+                <>
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/billing">
+                      <IconCreditCard />
+                      Billing
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/notifications">
+                      <IconNotification />
+                      Notifications
+                    </Link>
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <div className="p-2">
