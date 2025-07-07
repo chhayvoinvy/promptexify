@@ -227,7 +227,7 @@ export function MediaUpload({
           throw new Error(errorData.error || "Upload failed");
         }
 
-        const result = await response.json();
+        const result: UploadResult = await response.json();
 
         // Complete progress
         setUploadState({
@@ -236,6 +236,11 @@ export function MediaUpload({
           error: null,
           success: true,
         });
+
+        // Propagate result to parent
+        if (onMediaUploaded) {
+          onMediaUploaded(result);
+        }
 
         // Clean up preview URL
         URL.revokeObjectURL(previewUrl);
@@ -246,10 +251,6 @@ export function MediaUpload({
           setImagePreview(mediaUrl);
         } else {
           setVideoPreview(mediaUrl);
-        }
-
-        if (onMediaUploaded) {
-          onMediaUploaded(result);
         }
 
         // Clear success message after 3 seconds

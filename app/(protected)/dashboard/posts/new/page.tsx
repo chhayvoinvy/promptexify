@@ -47,6 +47,7 @@ interface Tag {
 interface FeaturedMedia {
   id: string;
   url: string;
+  relativePath: string;
 }
 
 export default function NewPostPage() {
@@ -228,11 +229,11 @@ export default function NewPostPage() {
       // Add the featured media URLs to form data
       if (featuredImage) {
         formData.set("featuredImageId", featuredImage.id);
-        formData.set("featuredImage", featuredImage.url);
+        formData.set("featuredImageRelativePath", featuredImage.relativePath);
       }
       if (featuredVideo) {
         formData.set("featuredVideoId", featuredVideo.id);
-        formData.set("featuredVideo", featuredVideo.url);
+        formData.set("featuredVideoRelativePath", featuredVideo.relativePath);
       }
 
       // Add the selected tags to form data
@@ -276,23 +277,29 @@ export default function NewPostPage() {
     }
   }
 
-  // Handle media upload
+  // Handle successful media upload
   function handleMediaUploaded(
-    result: { id: string; url: string; mimeType: string } | null
+    result: {
+      id: string;
+      url: string;
+      relativePath: string;
+      mimeType: string;
+    } | null
   ) {
     if (result) {
-      const isImage = result.mimeType.startsWith("image/");
-      if (isImage) {
-        setFeaturedImage({ id: result.id, url: result.url });
-        setFeaturedVideo(null);
-      } else {
-        setFeaturedVideo({ id: result.id, url: result.url });
-        setFeaturedImage(null);
+      if (result.mimeType.startsWith("image/")) {
+        setFeaturedImage({
+          id: result.id,
+          url: result.url,
+          relativePath: result.relativePath,
+        });
+      } else if (result.mimeType.startsWith("video/")) {
+        setFeaturedVideo({
+          id: result.id,
+          url: result.url,
+          relativePath: result.relativePath,
+        });
       }
-    } else {
-      // Media was removed
-      setFeaturedImage(null);
-      setFeaturedVideo(null);
     }
   }
 

@@ -26,6 +26,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCSRFForm } from "@/hooks/use-csrf";
 import { updatePostAction } from "@/actions";
 import { toast } from "sonner";
+import { getPublicUrl } from "@/lib/storage";
 
 // Force dynamic rendering for this page
 export const dynamic = "force-dynamic";
@@ -50,6 +51,7 @@ interface Tag {
 interface FeaturedMedia {
   id: string;
   url: string;
+  relativePath: string;
 }
 
 interface Post {
@@ -62,7 +64,7 @@ interface Post {
   featuredVideo?: string;
   isPublished: boolean;
   isPremium: boolean;
-  media: { id: string; mimeType: string }[];
+  media: { id: string; mimeType: string; relativePath: string }[];
   category: {
     id: string;
     name: string;
@@ -181,24 +183,34 @@ export default function EditPostPage() {
 
           // Use the media item's URL if available, otherwise fall back to postData fields
           if (image) {
-            const imageUrl = image.url || postData.featuredImage;
-            if (imageUrl) {
-              setFeaturedImage({ id: image.id, url: imageUrl });
-            }
+            setFeaturedImage({
+              id: image.id,
+              url: await getPublicUrl(postData.featuredImage),
+              relativePath: postData.featuredImage,
+            });
           }
           if (video) {
-            const videoUrl = video.url || postData.featuredVideo;
-            if (videoUrl) {
-              setFeaturedVideo({ id: video.id, url: videoUrl });
-            }
+            setFeaturedVideo({
+              id: video.id,
+              url: await getPublicUrl(postData.featuredVideo),
+              relativePath: postData.featuredVideo,
+            });
           }
         } else {
           // Fallback: if no media array, use the direct fields
           if (postData.featuredImage) {
-            setFeaturedImage({ id: "legacy", url: postData.featuredImage });
+            setFeaturedImage({
+              id: "legacy",
+              url: await getPublicUrl(postData.featuredImage),
+              relativePath: postData.featuredImage,
+            });
           }
           if (postData.featuredVideo) {
-            setFeaturedVideo({ id: "legacy", url: postData.featuredVideo });
+            setFeaturedVideo({
+              id: "legacy",
+              url: await getPublicUrl(postData.featuredVideo),
+              relativePath: postData.featuredVideo,
+            });
           }
         }
 
@@ -314,14 +326,14 @@ export default function EditPostPage() {
         }
       }
 
-      // Add the featured media IDs to form data
+      // Add the featured media URLs to form data
       if (featuredImage) {
         formData.set("featuredImageId", featuredImage.id);
-        formData.set("featuredImage", featuredImage.url);
+        formData.set("featuredImageRelativePath", featuredImage.relativePath);
       }
       if (featuredVideo) {
         formData.set("featuredVideoId", featuredVideo.id);
-        formData.set("featuredVideo", featuredVideo.url);
+        formData.set("featuredVideoRelativePath", featuredVideo.relativePath);
       }
 
       // Add the selected tags to form data
@@ -378,21 +390,27 @@ export default function EditPostPage() {
 
   // Handle media upload
   function handleMediaUploaded(
-    result: { id: string; url: string; mimeType: string } | null
+    result: {
+      id: string;
+      url: string;
+      relativePath: string;
+      mimeType: string;
+    } | null
   ) {
     if (result) {
-      const isImage = result.mimeType.startsWith("image/");
-      if (isImage) {
-        setFeaturedImage({ id: result.id, url: result.url });
-        setFeaturedVideo(null);
-      } else {
-        setFeaturedVideo({ id: result.id, url: result.url });
-        setFeaturedImage(null);
+      if (result.mimeType.startsWith("image/")) {
+        setFeaturedImage({
+          id: result.id,
+          url: result.url,
+          relativePath: result.relativePath,
+        });
+      } else if (result.mimeType.startsWith("video/")) {
+        setFeaturedVideo({
+          id: result.id,
+          url: result.url,
+          relativePath: result.relativePath,
+        });
       }
-    } else {
-      // Media was removed
-      setFeaturedImage(null);
-      setFeaturedVideo(null);
     }
   }
 

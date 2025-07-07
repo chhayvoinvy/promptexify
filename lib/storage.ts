@@ -124,6 +124,59 @@ export function clearStorageConfigCache(): void {
   configCacheExpiry = 0;
 }
 
+/**
+ * NEW: Get public URL from a relative path
+ * This function constructs the full public URL for a media file
+ * based on the current storage configuration.
+ * @param relativePath - The relative path of the file (e.g., "images/file.jpg")
+ * @returns The full public URL
+ */
+export async function getPublicUrl(
+  relativePath: string | null | undefined
+): Promise<string> {
+  if (!relativePath) {
+    return "";
+  }
+
+  // If the path is already a full URL, return it directly
+  if (relativePath.startsWith("http")) {
+    return relativePath;
+  }
+
+  const config = await getStorageConfig();
+
+  switch (config.storageType) {
+    case "S3":
+      if (config.s3CloudfrontUrl) {
+        return `${config.s3CloudfrontUrl.replace(/\/$/, "")}/${relativePath.replace(
+          /^\//,
+          ""
+        )}`;
+      }
+      // Fallback to direct S3 URL if CloudFront is not configured
+      return `https://${config.s3BucketName}.s3.${config.s3Region}.amazonaws.com/${relativePath}`;
+
+    case "DOSPACE":
+      if (config.doCdnUrl) {
+        return `${config.doCdnUrl.replace(/\/$/, "")}/${relativePath.replace(
+          /^\//,
+          ""
+        )}`;
+      }
+      // Fallback to direct DO Spaces URL
+      return `https://${config.doSpaceName}.${config.doRegion}.digitaloceanspaces.com/${relativePath}`;
+
+    case "LOCAL":
+      return `${(config.localBaseUrl || "/uploads").replace(
+        /\/$/,
+        ""
+      )}/${relativePath.replace(/^\//, "")}`;
+
+    default:
+      return "";
+  }
+}
+
 // Local storage functions
 /**
  * Ensure upload directory exists

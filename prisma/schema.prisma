@@ -79,8 +79,8 @@ model Post {
   slug          String
   description   String?
   content       String
-  featuredImage String?
-  featuredVideo String?
+  featuredImage String? // Relative path to the featured image
+  featuredVideo String? // Relative path to the featured video
   isPremium     Boolean    @default(false)
   isFeatured    Boolean    @default(false)
   isPublished   Boolean    @default(false)
