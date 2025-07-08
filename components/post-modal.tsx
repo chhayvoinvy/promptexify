@@ -222,9 +222,12 @@ function PostContentModal({
       <DialogContent className="fixed top-[50%] left-[50%] z-50 w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] h-[80vh] flex flex-col p-0 gap-0 rounded-xl shadow-2xl sm:max-w-lg lg:max-w-2xl md:max-h-[90vh] lg:max-h-[95vh]">
         <DialogHeader className="px-4 pt-4">
           <DialogTitle className="text-lg line-clamp-1 font-bold text-left text-zinc-700 dark:text-zinc-300 mb-2 pr-15">
-            <span className="text-zinc-700 dark:text-zinc-300">
+            <a
+              href={`/entry/${post.id}`}
+              className="text-zinc-700 dark:text-zinc-300 hover:underline cursor-pointer hover:text-zinc-900 dark:hover:text-zinc-100"
+            >
               {post.title}
-            </span>
+            </a>
           </DialogTitle>
           {/* Tags Row - Expandable tags */}
           {post.tags.length > 0 && (

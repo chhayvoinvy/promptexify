@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { incrementPostView, getAllPosts, getRelatedPosts } from "@/lib/content";
 import { OptimizedQueries } from "@/lib/query";
@@ -9,6 +9,9 @@ import { getCurrentUser } from "@/lib/auth";
 interface PostPageProps {
   params: Promise<{
     id: string;
+  }>;
+  searchParams: Promise<{
+    modal?: string;
   }>;
 }
 
@@ -27,12 +30,15 @@ export async function generateStaticParams() {
   }
 }
 
-export default async function PostPage({ params }: PostPageProps) {
+export default async function PostPage({
+  params,
+  searchParams,
+}: PostPageProps) {
   const { id } = await params;
-  // Modal parameter is now handled by client-side routing in PostMasonryGrid
-
-  // Removed redirect that was breaking modal functionality
-  // The modal parameter should be handled by client-side routing
+  const { modal } = await searchParams;
+  if (modal === "true") {
+    redirect(`/entry/${id}`);
+  }
 
   const currentUser = await getCurrentUser();
   const userId = currentUser?.userData?.id;
