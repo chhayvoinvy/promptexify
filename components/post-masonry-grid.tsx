@@ -301,7 +301,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                 top: position?.y || 0,
               }}
             >
-              <Link href={`/entry/${post.id}`}>
+              <Link href={`/entry/${post.id}`} scroll={false}>
                 <Card className="overflow-hidden hover:shadow-lg cursor-zoom-in py-0 shadow-lg">
                   <div
                     className="relative"

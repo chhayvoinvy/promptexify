@@ -160,36 +160,33 @@ function PostContentModal({
     }
   };
 
-  // Removed old bookmark handler - using BookmarkButton component instead
-
-  // Add blur effect to body when modal is open
+  // Prevent body scroll and indicate modal state without DOM manipulation
   useEffect(() => {
-    // Create a wrapper div for the body content to blur everything except the modal
-    const bodyChildren = Array.from(document.body.children);
-    const wrapperDiv = document.createElement("div");
-    wrapperDiv.id = "blur-wrapper";
-    wrapperDiv.style.filter = "blur(10px)";
-    wrapperDiv.style.transition = "filter 0.5s ease-in-out";
+    // Calculate scrollbar width to prevent layout shift
+    const getScrollbarWidth = () => {
+      const scrollDiv = document.createElement("div");
+      scrollDiv.style.cssText =
+        "width: 100px; height: 100px; overflow: scroll; position: absolute; top: -9999px;";
+      document.body.appendChild(scrollDiv);
+      const scrollbarWidth = scrollDiv.offsetWidth - scrollDiv.clientWidth;
+      document.body.removeChild(scrollDiv);
+      return scrollbarWidth;
+    };
 
-    // Move all body children to the wrapper except for the portal div
-    bodyChildren.forEach((child) => {
-      if (!child.hasAttribute("data-radix-portal-container")) {
-        wrapperDiv.appendChild(child);
-      }
-    });
+    // Set scrollbar width CSS variable
+    const scrollbarWidth = getScrollbarWidth();
+    document.documentElement.style.setProperty(
+      "--scrollbar-width",
+      `${scrollbarWidth}px`
+    );
 
-    document.body.appendChild(wrapperDiv);
+    // Add body class to prevent scrolling and indicate modal state
+    document.body.classList.add("modal-open");
 
     return () => {
-      // Move children back to body and remove wrapper
-      const wrapper = document.getElementById("blur-wrapper");
-      if (wrapper) {
-        const wrapperChildren = Array.from(wrapper.children);
-        wrapperChildren.forEach((child) => {
-          document.body.appendChild(child);
-        });
-        wrapper.remove();
-      }
+      // Clean up body class and CSS variable
+      document.body.classList.remove("modal-open");
+      document.documentElement.style.removeProperty("--scrollbar-width");
     };
   }, []);
 
@@ -221,7 +218,7 @@ function PostContentModal({
 
   return (
     <Dialog open={true} onOpenChange={handleClose}>
-      <DialogContent className="fixed top-[50%] left-[50%] z-50 w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] h-[80vh] flex flex-col p-0 gap-0 rounded-xl shadow-2xl sm:max-w-lg lg:max-w-2xl md:max-h-[90vh] lg:max-h-[95vh]">
+      <DialogContent className="w-full max-w-[calc(100%-2rem)] h-[80vh] flex flex-col p-0 gap-0 rounded-xl shadow-2xl sm:max-w-lg lg:max-w-2xl md:max-h-[90vh] lg:max-h-[95vh]">
         <DialogHeader className="px-4 pt-4">
           <DialogTitle className="text-lg line-clamp-1 font-bold text-left text-zinc-700 dark:text-zinc-300 mb-2 pr-15">
             <a
@@ -325,7 +322,7 @@ function PostContentModal({
                 {isLinkCopied ? (
                   <>
                     <Check className="h-3 w-3" />
-                    Copied
+                    Link copied
                   </>
                 ) : (
                   <>
