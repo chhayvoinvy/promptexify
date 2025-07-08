@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ function PostContentModal({
   post: PostWithInteractions;
   onClose?: () => void;
 }) {
+  const router = useRouter();
   const [isCopied, setIsCopied] = useState(false);
   const [isLinkCopied, setIsLinkCopied] = useState(false);
   const [showAllTags, setShowAllTags] = useState(false);
@@ -212,8 +214,8 @@ function PostContentModal({
     if (onClose) {
       onClose();
     } else {
-      // If no onClose handler, navigate to directory page (for direct URL access)
-      window.location.href = "/directory";
+      // Use router.back() for clean navigation history
+      router.back();
     }
   };
 

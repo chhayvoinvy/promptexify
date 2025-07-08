@@ -48,6 +48,7 @@ export function InfinitePostGrid({
   const currentPageRef = useRef(1);
 
   // Create a stable key for the search params to detect changes
+  // Only include actual filtering parameters, ignore modal/entry params
   const searchParamsKey = useMemo(() => {
     const params = new URLSearchParams();
     const q = searchParams.get("q");
@@ -253,10 +254,8 @@ export function InfinitePostGrid({
 
   return (
     <div className="space-y-6">
-      {/* Posts Grid with stable key */}
-      <div key={`posts-${searchParamsKey}`}>
-        <PostMasonryGrid posts={memoizedPosts} userType={userType} />
-      </div>
+      {/* Posts Grid - remove dynamic key to prevent unmounting during modal navigation */}
+      <PostMasonryGrid posts={memoizedPosts} userType={userType} />
 
       {/* Loading indicator and load more button */}
       <div ref={loadingRef} className="flex flex-col items-center space-y-4">

@@ -347,17 +347,19 @@ export class PostQueries {
 
     const skip = (page - 1) * limit;
 
-    // Build where clause
+    // Build where clause with optimized category filtering
     const where: Prisma.PostWhereInput = {
       isPublished: includeUnpublished ? undefined : true,
-      ...(categoryId && {
-        OR: [{ categoryId }, { category: { parentId: categoryId } }],
-      }),
       ...(authorId && { authorId }),
       ...(isPremium !== undefined && { isPremium }),
     };
 
-    // Build order by clause
+    // Optimize category filtering - use direct categoryId first, then parent lookup
+    if (categoryId) {
+      where.OR = [{ categoryId }, { category: { parentId: categoryId } }];
+    }
+
+    // Build order by clause - keep existing structure but optimize query separation
     const orderBy:
       | Prisma.PostOrderByWithRelationInput
       | Prisma.PostOrderByWithRelationInput[] =
@@ -370,22 +372,11 @@ export class PostQueries {
     const endTimer = DatabaseMetrics.startQuery();
 
     try {
+      // Fetch posts without user interactions first for better performance
       const [posts, totalCount] = await Promise.all([
         prisma.post.findMany({
           where,
-          select: {
-            ...POST_SELECTS.list,
-            ...(userId && {
-              bookmarks: {
-                where: { userId },
-                select: { id: true },
-              },
-              favorites: {
-                where: { userId },
-                select: { id: true },
-              },
-            }),
-          },
+          select: POST_SELECTS.list,
           orderBy,
           skip,
           take: limit,
@@ -393,17 +384,50 @@ export class PostQueries {
         prisma.post.count({ where }),
       ]);
 
-      const totalPages = Math.ceil(totalCount / limit);
+      let transformedPosts: PostWithInteractions[];
 
-      // Transform posts to include interaction status
-      const transformedPosts: PostWithInteractions[] = posts.map((post) => {
-        const { bookmarks, favorites, ...rest } = post as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-        return {
-          ...rest,
-          isBookmarked: userId ? (bookmarks?.length ?? 0) > 0 : false,
-          isFavorited: userId ? (favorites?.length ?? 0) > 0 : false,
-        };
-      });
+      // If userId is provided, fetch bookmark/favorite status in a separate optimized query
+      if (userId && posts.length > 0) {
+        const postIds = posts.map((post) => post.id);
+
+        // Fetch all bookmarks and favorites for these posts in one query each
+        const [bookmarks, favorites] = await Promise.all([
+          prisma.bookmark.findMany({
+            where: {
+              userId,
+              postId: { in: postIds },
+            },
+            select: { postId: true },
+          }),
+          prisma.favorite.findMany({
+            where: {
+              userId,
+              postId: { in: postIds },
+            },
+            select: { postId: true },
+          }),
+        ]);
+
+        // Create lookup sets for O(1) access
+        const bookmarkedPostIds = new Set(bookmarks.map((b) => b.postId));
+        const favoritedPostIds = new Set(favorites.map((f) => f.postId));
+
+        // Transform posts with interaction data
+        transformedPosts = posts.map((post) => ({
+          ...post,
+          isBookmarked: bookmarkedPostIds.has(post.id),
+          isFavorited: favoritedPostIds.has(post.id),
+        }));
+      } else {
+        // No user context - no interactions
+        transformedPosts = posts.map((post) => ({
+          ...post,
+          isBookmarked: false,
+          isFavorited: false,
+        }));
+      }
+
+      const totalPages = Math.ceil(totalCount / limit);
 
       return {
         data: transformedPosts,
@@ -450,7 +474,7 @@ export class PostQueries {
       };
     }
 
-    // Build complex search where clause
+    // Build complex search where clause with optimized category filtering
     const searchWhere: Prisma.PostWhereInput = {
       isPublished: true,
       AND: searchTerms.map((term) => ({
@@ -461,31 +485,22 @@ export class PostQueries {
           { tags: { some: { name: { contains: term, mode: "insensitive" } } } },
         ],
       })),
-      ...(categoryId && {
-        OR: [{ categoryId }, { category: { parentId: categoryId } }],
-      }),
       ...(isPremium !== undefined && { isPremium }),
     };
+
+    // Optimize category filtering - apply after other filters
+    if (categoryId) {
+      searchWhere.OR = [{ categoryId }, { category: { parentId: categoryId } }];
+    }
 
     const endTimer = DatabaseMetrics.startQuery();
 
     try {
+      // Fetch posts without user interactions first for better performance
       const [posts, totalCount] = await Promise.all([
         prisma.post.findMany({
           where: searchWhere,
-          select: {
-            ...POST_SELECTS.list,
-            ...(userId && {
-              bookmarks: {
-                where: { userId },
-                select: { id: true },
-              },
-              favorites: {
-                where: { userId },
-                select: { id: true },
-              },
-            }),
-          },
+          select: POST_SELECTS.list,
           orderBy: [{ views: { _count: "desc" } }, { createdAt: "desc" }],
           skip,
           take: limit,
@@ -493,17 +508,50 @@ export class PostQueries {
         prisma.post.count({ where: searchWhere }),
       ]);
 
-      const totalPages = Math.ceil(totalCount / limit);
+      let transformedPosts: PostWithInteractions[];
 
-      // Transform posts to include interaction status
-      const transformedPosts: PostWithInteractions[] = posts.map((post) => {
-        const { bookmarks, favorites, ...rest } = post as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-        return {
-          ...rest,
-          isBookmarked: userId ? (bookmarks?.length ?? 0) > 0 : false,
-          isFavorited: userId ? (favorites?.length ?? 0) > 0 : false,
-        };
-      });
+      // If userId is provided, fetch bookmark/favorite status in optimized separate queries
+      if (userId && posts.length > 0) {
+        const postIds = posts.map((post) => post.id);
+
+        // Fetch all bookmarks and favorites for these posts in one query each
+        const [bookmarks, favorites] = await Promise.all([
+          prisma.bookmark.findMany({
+            where: {
+              userId,
+              postId: { in: postIds },
+            },
+            select: { postId: true },
+          }),
+          prisma.favorite.findMany({
+            where: {
+              userId,
+              postId: { in: postIds },
+            },
+            select: { postId: true },
+          }),
+        ]);
+
+        // Create lookup sets for O(1) access
+        const bookmarkedPostIds = new Set(bookmarks.map((b) => b.postId));
+        const favoritedPostIds = new Set(favorites.map((f) => f.postId));
+
+        // Transform posts with interaction data
+        transformedPosts = posts.map((post) => ({
+          ...post,
+          isBookmarked: bookmarkedPostIds.has(post.id),
+          isFavorited: favoritedPostIds.has(post.id),
+        }));
+      } else {
+        // No user context - no interactions
+        transformedPosts = posts.map((post) => ({
+          ...post,
+          isBookmarked: false,
+          isFavorited: false,
+        }));
+      }
+
+      const totalPages = Math.ceil(totalCount / limit);
 
       return {
         data: transformedPosts,

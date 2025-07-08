@@ -1,5 +1,4 @@
 import { getAllCategories } from "@/lib/content";
-import type { PostWithInteractions } from "@/lib/content";
 import { getCurrentUser } from "@/lib/auth";
 import { Suspense } from "react";
 import { PostMasonrySkeleton } from "@/components/post-masonry-skeleton";
@@ -8,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { InfinitePostGrid } from "@/components/infinite-scroll-grid";
 import { Container } from "@/components/ui/container";
 import { OptimizedQueries } from "@/lib/query";
-import { PostModal } from "@/components/post-modal";
+
 import { getSettingsAction } from "@/actions/settings";
 
 interface DirectoryPageProps {
@@ -17,8 +16,6 @@ interface DirectoryPageProps {
     category?: string;
     subcategory?: string;
     premium?: string;
-    entry?: string;
-    modal?: string;
   }>;
 }
 
@@ -61,6 +58,21 @@ function DirectoryPageSkeleton() {
         <Skeleton className="h-5 w-48" />
       </div>
 
+      {/* Loading Progress Indicator */}
+      <div className="mb-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="flex items-center justify-center mb-2">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Loading prompt directory...
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            This may take a few moments
+          </p>
+        </div>
+      </div>
+
       {/* Posts grid skeleton */}
       <PostMasonrySkeleton count={16} />
     </Container>
@@ -89,30 +101,10 @@ async function DirectoryContent({
     category: categoryFilter,
     subcategory: subcategoryFilter,
     premium: premiumFilter,
-    entry,
-    modal,
   } = params;
 
   const userId = currentUser?.userData?.id;
   const userType = currentUser?.userData?.type || null;
-
-  // Fetch the specific post if entry parameter is present
-  let selectedPost: PostWithInteractions | null = null;
-  if (entry && modal === "true") {
-    try {
-      selectedPost = (await OptimizedQueries.posts.getById(
-        entry,
-        userId
-      )) as PostWithInteractions | null;
-      // Only show modal for published posts
-      if (!selectedPost?.isPublished) {
-        selectedPost = null;
-      }
-    } catch (error) {
-      console.error("Error fetching post for modal:", error);
-      selectedPost = null;
-    }
-  }
 
   // Determine category ID for filtering
   let categoryId: string | undefined;
@@ -231,11 +223,6 @@ async function DirectoryContent({
         userType={userType}
         pageSize={postsPageSize}
       />
-
-      {/* Modal overlay when entry parameter is present */}
-      {selectedPost && modal === "true" && (
-        <PostModal post={selectedPost} userType={userType} />
-      )}
     </Container>
   );
 }

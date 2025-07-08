@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PostWithInteractions } from "@/lib/content";
-import { PostModal } from "@/components/post-modal";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { FavoriteButton } from "@/components/favorite-button";
 import { MediaImage, MediaVideo } from "@/components/ui/media-display";
@@ -17,7 +16,7 @@ import {
   VolumeX,
 } from "@/components/ui/icons";
 import { PostTextBaseCard } from "@/components/post-text-base-card";
-import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 interface PostMasonryGridProps {
   posts: PostWithInteractions[];
@@ -32,10 +31,7 @@ interface PostPosition {
 }
 
 export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
-  const searchParams = useSearchParams();
-  const [selectedPost, setSelectedPost] = useState<PostWithInteractions | null>(
-    null
-  );
+  const router = useRouter();
   const [postPositions, setPostPositions] = useState<PostPosition[]>([]);
   const [containerHeight, setContainerHeight] = useState(0);
   const [columnWidth, setColumnWidth] = useState(0);
@@ -53,78 +49,14 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
     Record<string, { width: number; height: number }>
   >({});
 
-  // Store the original path when modal opens
-  const originalPathRef = useRef<string | null>(null);
-
-  // Check if there are active filters or search parameters
-  const hasActiveFilters = useCallback(() => {
-    const currentQuery = searchParams.get("q");
-    const currentCategory = searchParams.get("category");
-    const currentSubcategory = searchParams.get("subcategory");
-    const currentPremium = searchParams.get("premium");
-
-    return !!(
-      currentQuery ||
-      (currentCategory && currentCategory !== "all") ||
-      (currentSubcategory && currentSubcategory !== "all") ||
-      (currentPremium && currentPremium !== "all")
-    );
-  }, [searchParams]);
-
-  // Build URL with current filters and additional parameters
-  const buildURLWithFilters = useCallback(
-    (additionalParams: Record<string, string>) => {
-      const params = new URLSearchParams(searchParams.toString());
-
-      // Add the additional parameters
-      Object.entries(additionalParams).forEach(([key, value]) => {
-        if (value) {
-          params.set(key, value);
-        } else {
-          params.delete(key);
-        }
-      });
-
-      return `/directory?${params.toString()}`;
-    },
-    [searchParams]
-  );
-
   const handleViewPost = (post: PostWithInteractions) => {
-    setSelectedPost(post);
-
-    if (hasActiveFilters()) {
-      // Stay on directory page with filters and add entry and modal parameters
-      const newURL = buildURLWithFilters({
-        entry: post.id,
-        modal: "true",
-      });
-      window.history.pushState(null, "", newURL);
-    } else {
-      // Store the current path before opening modal
-      originalPathRef.current =
-        window.location.pathname + window.location.search;
-      // No active filters, redirect to clean entry URL
-      window.history.pushState(null, "", `/entry/${post.id}?modal=true`);
-    }
-  };
-
-  const handleCloseModal = () => {
-    setSelectedPost(null);
-
-    if (hasActiveFilters()) {
-      // Stay on directory page but remove entry and modal parameters
-      const newURL = buildURLWithFilters({
-        entry: "", // This will delete the entry param
-        modal: "", // This will delete the modal param
-      });
-      window.history.pushState(null, "", newURL);
-    } else {
-      // No active filters, restore original path
-      const pathToRestore = originalPathRef.current || "/";
-      window.history.pushState(null, "", pathToRestore);
-      originalPathRef.current = null; // Reset after use
-    }
+    console.log(
+      "🎯 Navigating to post:",
+      post.id,
+      "Current URL:",
+      window.location.href
+    );
+    router.push(`/entry/${post.id}`);
   };
 
   // Handle video play/pause
@@ -539,18 +471,6 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
           );
         })}
       </div>
-
-      {selectedPost &&
-        (() => {
-          console.log("Rendering PostModal for post:", selectedPost.id);
-          return (
-            <PostModal
-              post={selectedPost}
-              userType={userType}
-              onClose={handleCloseModal}
-            />
-          );
-        })()}
     </>
   );
 }
