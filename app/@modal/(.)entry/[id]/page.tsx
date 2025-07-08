@@ -6,7 +6,7 @@ import { PostModal } from "@/components/post-modal";
 import { useAuth } from "@/hooks/use-auth";
 import type { PostWithInteractions } from "@/lib/content";
 
-export default function InterceptedModalPage() {
+export default function GlobalInterceptedModalPage() {
   const params = useParams();
   const id = params.id as string;
   const { user, loading: authLoading } = useAuth();
@@ -14,7 +14,7 @@ export default function InterceptedModalPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log("🚀 Intercepting route activated for post:", id);
+    console.log("🌐 Global intercepting route activated for post:", id);
 
     async function fetchPostData() {
       try {
@@ -26,7 +26,7 @@ export default function InterceptedModalPage() {
         const postData = await response.json();
 
         setPost(postData);
-        console.log("✅ Returning modal for post:", postData.title);
+        console.log("✅ Global modal for post:", postData.title);
       } catch (error) {
         console.error("Error fetching post data:", error);
       } finally {
@@ -69,6 +69,6 @@ export default function InterceptedModalPage() {
   // Get user type from cached auth data
   const userType = user?.userData?.type || null;
 
-  // Return the modal component - it will overlay the directory page
+  // Return the modal component - it will overlay any page in the app
   return <PostModal post={post} userType={userType} />;
 }

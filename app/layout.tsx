@@ -117,12 +117,16 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({
   children,
+  modal,
 }: Readonly<{
   children: React.ReactNode;
+  modal: React.ReactNode;
 }>) {
   // Get CSP nonce for inline scripts/styles (only in production)
   const nonce = await CSPNonce.getFromHeaders();
   const isProduction = process.env.NODE_ENV === "production";
+
+  // console.log("🌐 Root layout rendered, modal:", !!modal);
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -182,6 +186,7 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          {modal}
           <GoogleOneTap />
           <Analytics />
           <Toaster />

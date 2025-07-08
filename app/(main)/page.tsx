@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { TrendingUp, Clock, Heart } from "@/components/ui/icons";
 import Link from "next/link";
-import { getPostsWithSorting, type SortOption } from "@/lib/content";
+import { getPostsWithSorting } from "@/lib/content";
 import { getCurrentUser } from "@/lib/auth";
 import { Suspense } from "react";
 import { PostMasonryGrid } from "@/components/post-masonry-grid";
@@ -9,145 +8,55 @@ import { PostMasonrySkeleton } from "@/components/post-masonry-skeleton";
 import { HeroSection } from "@/components/hero-section";
 import Testimonials from "@/components/testimonials";
 import { BentoGrid } from "@/components/bento-grid";
-import { cn } from "@/lib/utils";
 import { CtaSection } from "@/components/cta-section";
 import { Container } from "@/components/ui/container";
 
 // Route segment config for better caching
 export const revalidate = 300; // Revalidate every 5 minutes (matches CACHE_DURATIONS.POSTS_LIST)
 
-interface SearchProps {
-  searchParams: Promise<{
-    q?: string;
-    sort?: SortOption;
-  }>;
-}
-
-async function PostGrid({
-  searchQuery,
-  sortBy = "latest",
-}: {
-  searchQuery?: string;
-  sortBy?: SortOption;
-}) {
+async function PostGrid() {
   // Get current user to determine bookmark status
   const currentUser = await getCurrentUser();
   const userId = currentUser?.userData?.id;
   const userType = currentUser?.userData?.type || null;
 
-  const posts = await getPostsWithSorting(userId, sortBy);
+  const posts = await getPostsWithSorting(userId, "latest");
 
-  // Filter for featured posts first
-  const featuredPosts = posts.filter((post) => post.isFeatured);
+  // Filter for featured posts first and show latest 12
+  const featuredPosts = posts.filter((post) => post.isFeatured).slice(0, 12);
 
-  const filteredPosts = searchQuery
-    ? featuredPosts.filter(
-        (post) =>
-          post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          post.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          post.tags.some((tag) =>
-            tag.name.toLowerCase().includes(searchQuery.toLowerCase())
-          )
-      )
-    : featuredPosts.slice(0, 12); // Show latest 12 featured posts on home
-
-  return <PostMasonryGrid posts={filteredPosts} userType={userType} />;
+  return <PostMasonryGrid posts={featuredPosts} userType={userType} />;
 }
 
-function FilterButtons({ currentSort }: { currentSort: SortOption }) {
-  const filters = [
-    {
-      key: "latest" as SortOption,
-      label: "Latest",
-      icon: Clock,
-      description: "Newest prompts",
-    },
-    {
-      key: "popular" as SortOption,
-      label: "Most Popular",
-      icon: Heart,
-      description: "Most favorited",
-    },
-    {
-      key: "trending" as SortOption,
-      label: "Trending",
-      icon: TrendingUp,
-      description: "Most viewed",
-    },
-  ];
-
-  return (
-    <div className="flex flex-wrap gap-2 justify-center mb-8">
-      {filters.map((filter) => {
-        const Icon = filter.icon;
-        return (
-          <Link
-            key={filter.key}
-            href={`/?sort=${filter.key}`}
-            className={cn(
-              "inline-flex items-center gap-2 px-4 py-2 rounded-lg border transition-all",
-              "hover:bg-accent hover:text-accent-foreground",
-              currentSort === filter.key
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-background border-border"
-            )}
-          >
-            <Icon className="h-4 w-4" />
-            <span className="font-medium text-sm">{filter.label}</span>
-          </Link>
-        );
-      })}
-    </div>
-  );
-}
-
-export default async function HomePage({ searchParams }: SearchProps) {
-  const { q: searchQuery, sort = "latest" } = await searchParams;
-
+export default async function HomePage() {
   return (
     <Container className="min-h-screen bg-background space-y-10 flex flex-col justify-center">
       {/* Hero Section */}
-      <HeroSection searchQuery={searchQuery} sort={sort} />
+      <HeroSection />
 
       {/* Posts Section */}
       <section className="pb-12">
-        {searchQuery ? (
-          <div className="mb-8">
-            <h2 className="text-2xl font-semibold mb-2">
-              Featured Results for &ldquo;{searchQuery}&rdquo;
-            </h2>
-            <p className="text-muted-foreground">
-              Showing featured prompts matching your search criteria
-            </p>
-          </div>
-        ) : (
-          <div className="mb-8 text-center">
-            <h2 className="text-2xl md:text-3xl font-semibold mb-2">
-              Featured Prompts
-            </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Discover our hand-picked collection of the best prompts, carefully
-              curated by our team
-            </p>
-          </div>
-        )}
-
-        {/* Filter Buttons */}
-        {!searchQuery && <FilterButtons currentSort={sort} />}
+        <div className="mb-8 text-center">
+          <h2 className="text-2xl md:text-3xl font-semibold mb-2">
+            Featured Prompts
+          </h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Discover our hand-picked collection of the best prompts, carefully
+            curated by our team
+          </p>
+        </div>
 
         <Suspense fallback={<PostMasonrySkeleton />}>
-          <PostGrid searchQuery={searchQuery} sortBy={sort} />
+          <PostGrid />
         </Suspense>
 
-        {!searchQuery && (
-          <div className="text-center mt-12">
-            <Link href="/directory">
-              <Button size="lg" variant="outline">
-                Browse All Prompts
-              </Button>
-            </Link>
-          </div>
-        )}
+        <div className="text-center mt-12">
+          <Link href="/directory">
+            <Button size="lg" variant="outline">
+              Browse All Prompts
+            </Button>
+          </Link>
+        </div>
       </section>
 
       {/* Bento Grid Section */}

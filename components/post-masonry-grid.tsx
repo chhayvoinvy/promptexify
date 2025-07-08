@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PostWithInteractions } from "@/lib/content";
@@ -16,7 +17,6 @@ import {
   VolumeX,
 } from "@/components/ui/icons";
 import { PostTextBaseCard } from "@/components/post-text-base-card";
-import { useRouter } from "next/navigation";
 
 interface PostMasonryGridProps {
   posts: PostWithInteractions[];
@@ -31,7 +31,6 @@ interface PostPosition {
 }
 
 export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
-  const router = useRouter();
   const [postPositions, setPostPositions] = useState<PostPosition[]>([]);
   const [containerHeight, setContainerHeight] = useState(0);
   const [columnWidth, setColumnWidth] = useState(0);
@@ -48,16 +47,6 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
   const [imageDimensions, setImageDimensions] = useState<
     Record<string, { width: number; height: number }>
   >({});
-
-  const handleViewPost = (post: PostWithInteractions) => {
-    console.log(
-      "🎯 Navigating to post:",
-      post.id,
-      "Current URL:",
-      window.location.href
-    );
-    router.push(`/entry/${post.id}`);
-  };
 
   // Handle video play/pause
   const handleVideoPlay = useCallback(
@@ -312,144 +301,143 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                 top: position?.y || 0,
               }}
             >
-              <Card
-                className="overflow-hidden hover:shadow-lg cursor-pointer py-0 shadow-lg"
-                onClick={() => handleViewPost(post)}
-              >
-                <div
-                  className="relative"
-                  style={
-                    post.featuredImage || post.featuredVideo
-                      ? getDynamicAspectRatio(post.id)
-                      : { height: "auto", minHeight: "120px" }
-                  }
-                >
-                  {post.featuredImage ? (
-                    <MediaImage
-                      src={post.featuredImage}
-                      alt={post.title}
-                      fill
-                      className="object-cover rounded-b-lg absolute"
-                      loading="lazy"
-                      blurDataURL={post.featuredImage}
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      onLoad={(e) => handleMediaLoad(post.id, e)}
-                    />
-                  ) : post.featuredVideo ? (
-                    <>
-                      <MediaVideo
-                        ref={(el) => {
-                          if (el) videoRefs.current[post.id] = el;
-                        }}
-                        src={post.featuredVideo}
-                        className="w-full h-full object-cover rounded-b-lg absolute scale-150"
-                        muted={mutedVideos.has(post.id)}
-                        loop
-                        playsInline
-                        onLoadedMetadata={(e) => handleMediaLoad(post.id, e)}
-                        onEnded={() => handleVideoEnded(post.id)}
+              <Link href={`/entry/${post.id}`}>
+                <Card className="overflow-hidden hover:shadow-lg cursor-zoom-in py-0 shadow-lg">
+                  <div
+                    className="relative"
+                    style={
+                      post.featuredImage || post.featuredVideo
+                        ? getDynamicAspectRatio(post.id)
+                        : { height: "auto", minHeight: "120px" }
+                    }
+                  >
+                    {post.featuredImage ? (
+                      <MediaImage
+                        src={post.featuredImage}
+                        alt={post.title}
+                        fill
+                        className="object-cover rounded-b-lg absolute"
+                        loading="lazy"
+                        blurDataURL={post.featuredImage}
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        onLoad={(e) => handleMediaLoad(post.id, e)}
                       />
+                    ) : post.featuredVideo ? (
+                      <>
+                        <MediaVideo
+                          ref={(el) => {
+                            if (el) videoRefs.current[post.id] = el;
+                          }}
+                          src={post.featuredVideo}
+                          className="w-full h-full object-cover rounded-b-lg absolute scale-150"
+                          muted={mutedVideos.has(post.id)}
+                          loop
+                          playsInline
+                          onLoadedMetadata={(e) => handleMediaLoad(post.id, e)}
+                          onEnded={() => handleVideoEnded(post.id)}
+                        />
 
-                      {/* Video controls */}
-                      <div className="absolute inset-0 top-3 left-3 pointer-events-none z-10">
-                        <div className="flex gap-2">
-                          {/* Play/pause button */}
-                          <button
-                            className="bg-background/90 hover:bg-background rounded-full p-1.5 transition-colors pointer-events-auto"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              handleVideoPlay(post.id, e);
-                            }}
-                          >
-                            {playingVideo === post.id ? (
-                              <Pause className="w-5 h-5 text-foreground" />
-                            ) : (
-                              <Play className="w-5 h-5 text-foreground" />
-                            )}
-                          </button>
+                        {/* Video controls */}
+                        <div className="absolute inset-0 top-3 left-3 pointer-events-none z-10">
+                          <div className="flex gap-2">
+                            {/* Play/pause button */}
+                            <button
+                              className="bg-background/90 hover:bg-background rounded-full p-1.5 transition-colors pointer-events-auto"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                handleVideoPlay(post.id, e);
+                              }}
+                            >
+                              {playingVideo === post.id ? (
+                                <Pause className="w-5 h-5 text-foreground" />
+                              ) : (
+                                <Play className="w-5 h-5 text-foreground" />
+                              )}
+                            </button>
 
-                          {/* Mute/unmute button */}
-                          <button
-                            className="bg-background/90 hover:bg-background rounded-full p-1.5 transition-colors pointer-events-auto"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              handleVideoMute(post.id, e);
-                            }}
-                          >
-                            {mutedVideos.has(post.id) ? (
-                              <VolumeX className="w-5 h-5 text-foreground" />
-                            ) : (
-                              <Volume2 className="w-5 h-5 text-foreground" />
-                            )}
-                          </button>
+                            {/* Mute/unmute button */}
+                            <button
+                              className="bg-background/90 hover:bg-background rounded-full p-1.5 transition-colors pointer-events-auto"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                handleVideoMute(post.id, e);
+                              }}
+                            >
+                              {mutedVideos.has(post.id) ? (
+                                <VolumeX className="w-5 h-5 text-foreground" />
+                              ) : (
+                                <Volume2 className="w-5 h-5 text-foreground" />
+                              )}
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    </>
-                  ) : (
-                    // Text base post with shiny hover effect
-                    <PostTextBaseCard title={post.title} />
-                  )}
+                      </>
+                    ) : (
+                      // Text base post with shiny hover effect
+                      <PostTextBaseCard title={post.title} />
+                    )}
 
-                  {post.isPremium && (
-                    <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
-                      <Badge className="text-foreground bg-gradient-to-r from-teal-500 to-sky-300 dark:from-teal-400 dark:to-sky-300 border border-black/20 dark:border-white/20">
-                        {userType === "PREMIUM" ? (
-                          <UnlockIcon className="w-4 h-4" />
-                        ) : (
-                          <LockIcon className="w-4 h-4" />
-                        )}
-                        Premium
-                      </Badge>
-                    </div>
-                  )}
-
-                  {/* Action buttons overlay */}
-                  <div className="absolute bottom-3 left-0 right-0 px-3 flex gap-2 items-end justify-between z-20">
-                    <div
-                      className="flex items-bottom justify-end gap-2"
-                      onClick={(e) => e.stopPropagation()}
-                      onTouchStart={(e) => e.stopPropagation()}
-                      onTouchEnd={(e) => e.stopPropagation()}
-                    >
-                      <FavoriteButton
-                        postId={post.id}
-                        className="border-1 border-black/20 dark:border-white/20 backdrop-blur-lg bg-background"
-                        initialFavorited={post.isFavorited || false}
-                      />
-                      <BookmarkButton
-                        postId={post.id}
-                        className="border-1 border-black/20 dark:border-white/20 backdrop-blur-lg bg-background"
-                        initialBookmarked={post.isBookmarked || false}
-                      />
-                    </div>
-                    <div className="flex items-end justify-end gap-1 flex-col flex-wrap">
-                      <div className="flex items-center gap-1">
-                        <Badge
-                          variant="outline"
-                          className="text-xs bg-background"
-                        >
-                          {post.category.parent?.name || post.category.name}
+                    {post.isPremium && (
+                      <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
+                        <Badge className="text-foreground bg-gradient-to-r from-teal-500 to-sky-300 dark:from-teal-400 dark:to-sky-300 border border-black/20 dark:border-white/20">
+                          {userType === "PREMIUM" ? (
+                            <UnlockIcon className="w-4 h-4" />
+                          ) : (
+                            <LockIcon className="w-4 h-4" />
+                          )}
+                          Premium
                         </Badge>
                       </div>
-                      <div className="flex items-end gap-1">
-                        {/* Show up to 2 tags */}
-                        {post.tags &&
-                          post.tags.slice(0, 2).map((tag) => (
-                            <Badge
-                              key={tag.id}
-                              variant="outline"
-                              className="text-xs bg-background"
-                            >
-                              {tag.name}
-                            </Badge>
-                          ))}
+                    )}
+
+                    {/* Action buttons overlay */}
+                    <div className="absolute bottom-3 left-0 right-0 px-3 flex gap-2 items-end justify-between z-20">
+                      <div
+                        className="flex items-bottom justify-end gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
+                        onTouchEnd={(e) => e.stopPropagation()}
+                      >
+                        <FavoriteButton
+                          postId={post.id}
+                          className="border-1 border-black/20 dark:border-white/20 backdrop-blur-lg bg-background"
+                          initialFavorited={post.isFavorited || false}
+                        />
+                        <BookmarkButton
+                          postId={post.id}
+                          className="border-1 border-black/20 dark:border-white/20 backdrop-blur-lg bg-background"
+                          initialBookmarked={post.isBookmarked || false}
+                        />
+                      </div>
+                      <div className="flex items-end justify-end gap-1 flex-col flex-wrap">
+                        <div className="flex items-center gap-1">
+                          <Badge
+                            variant="outline"
+                            className="text-xs bg-background"
+                          >
+                            {post.category.parent?.name || post.category.name}
+                          </Badge>
+                        </div>
+                        <div className="flex items-end gap-1">
+                          {/* Show up to 2 tags */}
+                          {post.tags &&
+                            post.tags.slice(0, 2).map((tag) => (
+                              <Badge
+                                key={tag.id}
+                                variant="outline"
+                                className="text-xs bg-background"
+                              >
+                                {tag.name}
+                              </Badge>
+                            ))}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </Card>
+                </Card>
+              </Link>
 
               {/* Content overlay positioned outside the Card */}
               <div className="z-10 mx-3 border border-t-0 rounded-b-lg border-black/20 dark:border-white/20">
