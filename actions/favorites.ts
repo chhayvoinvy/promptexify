@@ -4,7 +4,6 @@ import { type FavoriteData, favoriteSchema } from "@/lib/schemas";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { handleAuthRedirect } from "./auth";
 import { revalidateCache, CACHE_TAGS } from "@/lib/cache";
 
 // Favorite actions
@@ -16,7 +15,11 @@ export async function toggleFavoriteAction(data: FavoriteData) {
     // Get the current user
     const currentUser = await getCurrentUser();
     if (!currentUser?.userData) {
-      handleAuthRedirect();
+      // Return authentication error instead of redirecting to prevent modal navigation issues
+      return {
+        success: false,
+        error: "Authentication required. Please sign in.",
+      };
     }
     const user = currentUser.userData;
 
@@ -101,7 +104,11 @@ export async function getUserFavoritesAction() {
     // Get the current user
     const currentUser = await getCurrentUser();
     if (!currentUser?.userData) {
-      handleAuthRedirect();
+      // Return authentication error instead of redirecting
+      return {
+        success: false,
+        error: "Authentication required. Please sign in.",
+      };
     }
     const user = currentUser.userData;
 
@@ -164,7 +171,11 @@ export async function checkFavoriteStatusAction(postId: string) {
     // Get the current user
     const currentUser = await getCurrentUser();
     if (!currentUser?.userData) {
-      handleAuthRedirect();
+      // Return authentication error instead of redirecting
+      return {
+        success: false,
+        error: "Authentication required. Please sign in.",
+      };
     }
     const user = currentUser.userData;
 

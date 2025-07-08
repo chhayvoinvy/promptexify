@@ -4,7 +4,6 @@ import { type BookmarkData, bookmarkSchema } from "@/lib/schemas";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { handleAuthRedirect } from "./auth";
 import { revalidateCache, CACHE_TAGS } from "@/lib/cache";
 
 // Bookmark actions
@@ -16,7 +15,11 @@ export async function toggleBookmarkAction(data: BookmarkData) {
     // Get the current user
     const currentUser = await getCurrentUser();
     if (!currentUser?.userData) {
-      handleAuthRedirect();
+      // Return authentication error instead of redirecting to prevent modal navigation issues
+      return {
+        success: false,
+        error: "Authentication required. Please sign in.",
+      };
     }
     const user = currentUser.userData;
 
@@ -101,7 +104,11 @@ export async function getUserBookmarksAction() {
     // Get the current user
     const currentUser = await getCurrentUser();
     if (!currentUser?.userData) {
-      handleAuthRedirect();
+      // Return authentication error instead of redirecting
+      return {
+        success: false,
+        error: "Authentication required. Please sign in.",
+      };
     }
     const user = currentUser.userData;
 
@@ -171,7 +178,11 @@ export async function checkBookmarkStatusAction(postId: string) {
     // Get the current user
     const currentUser = await getCurrentUser();
     if (!currentUser?.userData) {
-      handleAuthRedirect();
+      // Return authentication error instead of redirecting
+      return {
+        success: false,
+        error: "Authentication required. Please sign in.",
+      };
     }
     const user = currentUser.userData;
 
