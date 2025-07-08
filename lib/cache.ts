@@ -167,7 +167,7 @@ class RedisCache implements CacheStore {
     );
 
     if (redisUrl) {
-      console.log("🔄 Cache: Using Redis for caching");
+      // console.log("🔄 Cache: Using Redis for caching");
       return {
         url: redisUrl,
         // Recommended options for robustness
@@ -181,7 +181,7 @@ class RedisCache implements CacheStore {
 
     // If no Redis URL is available (e.g., during build or in a test environment),
     // return null to signal a fallback to memory cache.
-    console.log("🔄 Cache: Using in-memory cache (development)");
+    //  console.log("🔄 Cache: Using in-memory cache (development)");
     return null;
   }
 
@@ -271,17 +271,6 @@ const cacheStore: CacheStore =
   process.env.REDIS_URL || process.env.NODE_ENV === "development"
     ? new RedisCache()
     : new MemoryCache();
-
-// Log cache strategy for observability
-if (process.env.REDIS_URL) {
-  console.log("🔄 Cache: Using Redis for caching (remote instance)");
-} else if (process.env.NODE_ENV === "development") {
-  console.log("🔄 Cache: Using Redis for caching (local instance)");
-} else {
-  console.log("🔄 Cache: Using in-memory cache (fallback)");
-}
-
-// Export cache store for testing
 export { cacheStore };
 
 /**
