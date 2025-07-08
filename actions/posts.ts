@@ -404,17 +404,17 @@ export const updatePostAction = withCSRFProtection(
       }
 
       revalidatePath("/dashboard/posts");
-      revalidatePath(`/entry/${id}`);
-      // Revalidate cache tags for updated post and tags (since tags may have been created during updates)
+      // Removed entry path revalidation to prevent modal performance issues
+      // Ensure caches are also invalidated to reflect new status
       revalidateCache([
         CACHE_TAGS.POSTS,
-        CACHE_TAGS.POST_BY_SLUG,
         CACHE_TAGS.POST_BY_ID,
-        CACHE_TAGS.TAGS, // Important: Invalidate tags cache when new tags are created during updates
-        CACHE_TAGS.CATEGORIES, // Important: Invalidate categories cache when post category changes
+        CACHE_TAGS.POST_BY_SLUG,
+        CACHE_TAGS.CATEGORIES,
+        CACHE_TAGS.TAGS,
         CACHE_TAGS.SEARCH_RESULTS,
-        CACHE_TAGS.USER_POSTS, // Important: Invalidate user posts cache
-        CACHE_TAGS.ANALYTICS, // Important: Invalidate analytics for dashboard stats
+        CACHE_TAGS.USER_POSTS,
+        CACHE_TAGS.ANALYTICS,
       ]);
 
       redirect("/dashboard/posts");
@@ -482,7 +482,7 @@ export async function approvePostAction(postId: string) {
 
     // Revalidate relevant paths and caches
     revalidatePath("/dashboard/posts");
-    revalidatePath(`/entry/${postId}`);
+    // Removed entry path revalidation to prevent modal performance issues
     // Ensure caches are also invalidated to reflect new status
     revalidateCache([
       CACHE_TAGS.POSTS,
@@ -550,8 +550,7 @@ export async function rejectPostAction(postId: string) {
 
     // Revalidate relevant caches
     revalidatePath("/dashboard/posts");
-    revalidatePath(`/entry/${postId}`);
-    revalidatePath(`/dashboard/posts/edit/${postId}`);
+    // Removed entry path revalidations to prevent modal performance issues
     revalidateCache([
       CACHE_TAGS.POSTS,
       CACHE_TAGS.POST_BY_ID,
@@ -644,7 +643,7 @@ export async function deletePostAction(postId: string) {
     revalidatePath("/dashboard/posts");
     revalidatePath("/");
     revalidatePath("/directory");
-    revalidatePath(`/entry/${postId}`);
+    // Removed entry path revalidation to prevent modal performance issues
     revalidateCache([
       CACHE_TAGS.POSTS,
       CACHE_TAGS.POST_BY_ID,
@@ -712,8 +711,7 @@ export async function togglePostPublishAction(postId: string) {
 
     // Revalidate relevant paths and caches
     revalidatePath("/dashboard/posts");
-    revalidatePath(`/entry/${postId}`);
-    revalidatePath(`/dashboard/posts/edit/${postId}`); // Important: Revalidate edit page
+    // Removed entry path revalidation to prevent modal performance issues
     revalidatePath("/"); // Home page might show published posts
 
     // Invalidate cache for this specific post so edit page shows updated status
@@ -778,8 +776,7 @@ export async function togglePostFeaturedAction(postId: string) {
     });
 
     revalidatePath("/dashboard/posts");
-    revalidatePath(`/entry/${postId}`);
-    revalidatePath(`/dashboard/posts/edit/${postId}`); // Important: Revalidate edit page
+    // Removed entry path revalidations to prevent modal performance issues
     revalidatePath("/");
     revalidateCache([
       CACHE_TAGS.POSTS,
