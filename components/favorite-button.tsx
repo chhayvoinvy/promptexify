@@ -45,7 +45,9 @@ export function FavoriteButton({
           setIsFavorited(result.favorited ?? false);
 
           toast.success(
-            result.favorited ? "Added to favorites" : "Removed from favorites"
+            result.favorited
+              ? "Post added to favorites"
+              : "Post removed from favorites"
           );
         } else {
           // Rollback on error
@@ -72,7 +74,7 @@ export function FavoriteButton({
       className={cn(
         "gap-1.5 transition-colors",
         isFavorited &&
-          "text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300",
+          "text-zinc-700 dark:text-zinc-300 hover:text-zinc-400 dark:hover:text-zinc-200 transition-colors duration-300",
         className
       )}
       variant={variant}

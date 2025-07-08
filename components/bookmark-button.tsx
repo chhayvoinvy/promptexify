@@ -45,7 +45,9 @@ export function BookmarkButton({
           setIsBookmarked(result.bookmarked ?? false);
 
           toast.success(
-            result.bookmarked ? "Added to bookmarks" : "Removed from bookmarks"
+            result.bookmarked
+              ? "Post added to bookmarks"
+              : "Post removed from bookmarks"
           );
         } else {
           // Rollback on error
