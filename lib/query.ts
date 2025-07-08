@@ -91,8 +91,16 @@ export const POST_SELECTS = {
     featuredImage: true,
     featuredVideo: true,
     isPremium: true,
+    isFeatured: true,
     isPublished: true,
     status: true,
+    media: {
+      select: {
+        id: true,
+        mimeType: true,
+        relativePath: true,
+      },
+    },
 
     authorId: true,
     createdAt: true,
@@ -265,15 +273,29 @@ export interface PaginationParams {
 }
 
 // Type definitions for query results
-type PostListResult = Prisma.PostGetPayload<{
+export type PostListResult = Prisma.PostGetPayload<{
   select: typeof POST_SELECTS.list;
 }>;
 
-type PostFullResult = Prisma.PostGetPayload<{
+export type PostFullResult = Prisma.PostGetPayload<{
   select: typeof POST_SELECTS.full;
 }>;
 
-type PostWithInteractions = Omit<PostListResult, "bookmarks" | "favorites"> & {
+// Types for posts with interaction status
+export type PostWithInteractions = Omit<
+  PostListResult,
+  "bookmarks" | "favorites"
+> & {
+  isBookmarked?: boolean;
+  isFavorited?: boolean;
+  bookmarks?: undefined;
+  favorites?: undefined;
+};
+
+export type PostFullWithInteractions = Omit<
+  PostFullResult,
+  "bookmarks" | "favorites"
+> & {
   isBookmarked?: boolean;
   isFavorited?: boolean;
   bookmarks?: undefined;
@@ -378,8 +400,8 @@ export class PostQueries {
         const { bookmarks, favorites, ...rest } = post as any; // eslint-disable-line @typescript-eslint/no-explicit-any
         return {
           ...rest,
-          isBookmarked: userId ? bookmarks?.length > 0 : undefined,
-          isFavorited: userId ? favorites?.length > 0 : undefined,
+          isBookmarked: userId ? (bookmarks?.length ?? 0) > 0 : false,
+          isFavorited: userId ? (favorites?.length ?? 0) > 0 : false,
         };
       });
 
@@ -478,8 +500,8 @@ export class PostQueries {
         const { bookmarks, favorites, ...rest } = post as any; // eslint-disable-line @typescript-eslint/no-explicit-any
         return {
           ...rest,
-          isBookmarked: userId ? bookmarks?.length > 0 : undefined,
-          isFavorited: userId ? favorites?.length > 0 : undefined,
+          isBookmarked: userId ? (bookmarks?.length ?? 0) > 0 : false,
+          isFavorited: userId ? (favorites?.length ?? 0) > 0 : false,
         };
       });
 
@@ -508,7 +530,7 @@ export class PostQueries {
     tagIds: string[],
     limit = 6,
     userId?: string
-  ): Promise<PostListResult[]> {
+  ): Promise<PostWithInteractions[]> {
     const endTimer = DatabaseMetrics.startQuery();
 
     try {
@@ -542,7 +564,19 @@ export class PostQueries {
         take: limit,
       });
 
-      return relatedPosts as PostListResult[];
+      // Transform posts to include interaction status
+      const transformedPosts: PostWithInteractions[] = relatedPosts.map(
+        (post) => {
+          const { bookmarks, favorites, ...rest } = post as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+          return {
+            ...rest,
+            isBookmarked: userId ? (bookmarks?.length ?? 0) > 0 : false,
+            isFavorited: userId ? (favorites?.length ?? 0) > 0 : false,
+          };
+        }
+      );
+
+      return transformedPosts;
     } finally {
       endTimer();
     }
@@ -554,7 +588,7 @@ export class PostQueries {
   static async getById(
     id: string,
     userId?: string
-  ): Promise<PostFullResult | null> {
+  ): Promise<PostFullWithInteractions | null> {
     const endTimer = DatabaseMetrics.startQuery();
 
     try {
@@ -582,12 +616,9 @@ export class PostQueries {
 
       return {
         ...rest,
-        isBookmarked: userId ? (bookmarks?.length ?? 0) > 0 : undefined,
-        isFavorited: userId ? (favorites?.length ?? 0) > 0 : undefined,
-      } as PostFullResult & {
-        isBookmarked?: boolean;
-        isFavorited?: boolean;
-      };
+        isBookmarked: userId ? (bookmarks?.length ?? 0) > 0 : false,
+        isFavorited: userId ? (favorites?.length ?? 0) > 0 : false,
+      } as PostFullWithInteractions;
     } finally {
       endTimer();
     }
@@ -599,7 +630,7 @@ export class PostQueries {
   static async getBySlug(
     slug: string,
     userId?: string
-  ): Promise<PostFullResult | null> {
+  ): Promise<PostFullWithInteractions | null> {
     const endTimer = DatabaseMetrics.startQuery();
 
     try {
@@ -627,12 +658,9 @@ export class PostQueries {
 
       return {
         ...rest,
-        isBookmarked: userId ? (bookmarks?.length ?? 0) > 0 : undefined,
-        isFavorited: userId ? (favorites?.length ?? 0) > 0 : undefined,
-      } as PostFullResult & {
-        isBookmarked?: boolean;
-        isFavorited?: boolean;
-      };
+        isBookmarked: userId ? (bookmarks?.length ?? 0) > 0 : false,
+        isFavorited: userId ? (favorites?.length ?? 0) > 0 : false,
+      } as PostFullWithInteractions;
     } finally {
       endTimer();
     }
@@ -887,19 +915,60 @@ export const getCachedPopularTags = createCachedFunction(
 
 /**
  * Consolidated query interface for easy consumption
+ * Uses cached versions for anonymous users, direct methods for authenticated users
  */
 export const OptimizedQueries = {
   // Posts
   posts: {
-    getPaginated: getCachedPosts,
-    search: getCachedPostSearch,
-    getById: getCachedPostById,
-    getBySlug: getCachedPostBySlug,
-    getRelated: getCachedRelatedPosts,
-    getPopular: getCachedPopularPosts,
+    // For paginated queries, use direct method if userId is present to avoid stale user data
+    getPaginated: (params: PostGetPaginatedParams) => {
+      return params.userId
+        ? PostQueries.getPaginated(params)
+        : getCachedPosts(params);
+    },
+
+    // For search queries, use direct method if userId is present
+    search: (
+      query: string,
+      params: PaginationParams & {
+        userId?: string;
+        categoryId?: string;
+        isPremium?: boolean;
+      }
+    ) => {
+      return params.userId
+        ? PostQueries.search(query, params)
+        : getCachedPostSearch(query, params);
+    },
+
+    // Always use direct method for getById to ensure fresh user data
+    getById: PostQueries.getById,
+
+    // Always use direct method for getBySlug to ensure fresh user data
+    getBySlug: PostQueries.getBySlug,
+
+    // For related posts, use direct method if userId is present
+    getRelated: (
+      postId: string,
+      categoryId: string,
+      tagIds: string[],
+      limit: number,
+      userId?: string
+    ) => {
+      return userId
+        ? PostQueries.getRelated(postId, categoryId, tagIds, limit, userId)
+        : getCachedRelatedPosts(postId, categoryId, tagIds, limit, userId);
+    },
+
+    // For popular posts, use direct method if userId is present
+    getPopular: (limit: number, userId?: string) => {
+      return userId
+        ? PostQueries.getPopular(limit, userId)
+        : getCachedPopularPosts(limit, userId);
+    },
   },
 
-  // Metadata
+  // Metadata queries can remain cached as they don't contain user-specific data
   categories: {
     getAll: getCachedCategories,
   },

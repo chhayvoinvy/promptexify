@@ -123,13 +123,24 @@ export async function GET(request: NextRequest) {
       pagination: result.pagination,
     };
 
+    // Determine cache strategy based on user authentication
+    const cacheHeaders = userId
+      ? {
+          // For authenticated users, use private cache with shorter duration
+          // to ensure bookmark/favorite state is fresh
+          "Cache-Control": "private, max-age=60, stale-while-revalidate=120",
+        }
+      : {
+          // For anonymous users, longer public cache is fine
+          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+        };
+
     return NextResponse.json(responseData, {
       status: 200,
       headers: {
         ...SECURITY_HEADERS,
         ...getRateLimitHeaders(rateLimitResult),
-        // Cache for 5 minutes with stale-while-revalidate
-        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+        ...cacheHeaders,
       },
     });
   } catch (error) {
