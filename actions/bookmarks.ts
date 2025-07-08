@@ -3,7 +3,6 @@
 import { type BookmarkData, bookmarkSchema } from "@/lib/schemas";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
 import { revalidateCache, CACHE_TAGS } from "@/lib/cache";
 
 // Bookmark actions
@@ -55,8 +54,6 @@ export async function toggleBookmarkAction(data: BookmarkData) {
         CACHE_TAGS.USER_FAVORITES,
         CACHE_TAGS.POPULAR_POSTS,
       ]);
-      revalidatePath("/");
-      revalidatePath("/directory");
       return { success: true, bookmarked: false };
     } else {
       // Add bookmark
@@ -77,8 +74,6 @@ export async function toggleBookmarkAction(data: BookmarkData) {
         CACHE_TAGS.USER_FAVORITES,
         CACHE_TAGS.POPULAR_POSTS,
       ]);
-      revalidatePath("/");
-      revalidatePath("/directory");
       return { success: true, bookmarked: true };
     }
   } catch (error) {

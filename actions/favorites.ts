@@ -3,7 +3,6 @@
 import { type FavoriteData, favoriteSchema } from "@/lib/schemas";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
 import { revalidateCache, CACHE_TAGS } from "@/lib/cache";
 
 // Favorite actions
@@ -55,8 +54,6 @@ export async function toggleFavoriteAction(data: FavoriteData) {
         CACHE_TAGS.USER_BOOKMARKS,
         CACHE_TAGS.USER_FAVORITES,
       ]);
-      revalidatePath("/");
-      revalidatePath("/directory");
       return { success: true, favorited: false };
     } else {
       // Add favorite
@@ -77,8 +74,6 @@ export async function toggleFavoriteAction(data: FavoriteData) {
         CACHE_TAGS.USER_FAVORITES,
         CACHE_TAGS.POPULAR_POSTS,
       ]);
-      revalidatePath("/");
-      revalidatePath("/directory");
       return { success: true, favorited: true };
     }
   } catch (error) {
