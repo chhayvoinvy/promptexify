@@ -51,6 +51,50 @@ function PostContentModal({
   const [showAllTags, setShowAllTags] = useState(false);
   const viewTracked = useRef(false);
 
+  // State for fresh bookmark/favorite status
+  const [bookmarkStatus, setBookmarkStatus] = useState({
+    isBookmarked: post.isBookmarked,
+    isFavorited: post.isFavorited,
+    isLoading: false,
+  });
+
+  // Refresh bookmark/favorite status when modal opens
+  useEffect(() => {
+    const refreshStatus = async () => {
+      try {
+        setBookmarkStatus((prev) => ({ ...prev, isLoading: true }));
+
+        // Fetch fresh bookmark/favorite status
+        const response = await fetch(`/api/posts/${post.id}/status`);
+        if (response.ok) {
+          const data = await response.json();
+          setBookmarkStatus({
+            isBookmarked: data.isBookmarked ?? post.isBookmarked,
+            isFavorited: data.isFavorited ?? post.isFavorited,
+            isLoading: false,
+          });
+        } else {
+          // Fallback to original values if API fails
+          setBookmarkStatus({
+            isBookmarked: post.isBookmarked,
+            isFavorited: post.isFavorited,
+            isLoading: false,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to refresh bookmark/favorite status:", error);
+        // Fallback to original values on error
+        setBookmarkStatus({
+          isBookmarked: post.isBookmarked,
+          isFavorited: post.isFavorited,
+          isLoading: false,
+        });
+      }
+    };
+
+    refreshStatus();
+  }, [post.id, post.isBookmarked, post.isFavorited]);
+
   const copyToClipboard = async () => {
     const contentToCopy =
       post.content || "No content available for this prompt.";
@@ -241,13 +285,13 @@ function PostContentModal({
                   </Button>
                   <FavoriteButton
                     postId={post.id}
-                    initialFavorited={post.isFavorited}
+                    initialFavorited={bookmarkStatus.isFavorited}
                     variant="outline"
                     size="sm"
                   />
                   <BookmarkButton
                     postId={post.id}
-                    initialBookmarked={post.isBookmarked}
+                    initialBookmarked={bookmarkStatus.isBookmarked}
                     variant="outline"
                     size="sm"
                   />
