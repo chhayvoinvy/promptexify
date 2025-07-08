@@ -54,7 +54,6 @@ export async function toggleFavoriteAction(data: FavoriteData) {
       ]);
       revalidatePath("/");
       revalidatePath("/directory");
-      revalidatePath(`/entry/${validatedData.postId}`);
       return { success: true, favorited: false };
     } else {
       // Add favorite
@@ -77,7 +76,6 @@ export async function toggleFavoriteAction(data: FavoriteData) {
       ]);
       revalidatePath("/");
       revalidatePath("/directory");
-      revalidatePath(`/entry/${validatedData.postId}`);
       return { success: true, favorited: true };
     }
   } catch (error) {

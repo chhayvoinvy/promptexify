@@ -54,7 +54,6 @@ export async function toggleBookmarkAction(data: BookmarkData) {
       ]);
       revalidatePath("/");
       revalidatePath("/directory");
-      revalidatePath(`/entry/${validatedData.postId}`);
       return { success: true, bookmarked: false };
     } else {
       // Add bookmark
@@ -77,7 +76,6 @@ export async function toggleBookmarkAction(data: BookmarkData) {
       ]);
       revalidatePath("/");
       revalidatePath("/directory");
-      revalidatePath(`/entry/${validatedData.postId}`);
       return { success: true, bookmarked: true };
     }
   } catch (error) {
