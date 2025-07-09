@@ -37,7 +37,7 @@ export const createPostAction = withCSRFProtection(
       const rawDescription = formData.get("description") as string;
       const rawContent = formData.get("content") as string;
       const featuredImage = formData.get("featuredImageRelativePath") as string;
-      const featuredImageBlur = formData.get("featuredImageBlur") as string;
+      const blurData = formData.get("blurData") as string;
       const featuredVideo = formData.get("featuredVideoRelativePath") as string;
       const featuredImageId = formData.get("featuredImageId") as string;
       const featuredVideoId = formData.get("featuredVideoId") as string;
@@ -134,7 +134,7 @@ export const createPostAction = withCSRFProtection(
           description: description || null,
           content,
           featuredImage: featuredImage || null,
-          featuredImageBlur: featuredImageBlur || null,
+          blurData: blurData || null,
           featuredVideo: featuredVideo || null,
           isPremium,
           isPublished,
@@ -215,7 +215,7 @@ export const updatePostAction = withCSRFProtection(
       const description = formData.get("description") as string;
       const content = formData.get("content") as string;
       const featuredImage = formData.get("featuredImageRelativePath") as string;
-      const featuredImageBlur = formData.get("featuredImageBlur") as string;
+      const blurData = formData.get("blurData") as string;
       const featuredVideo = formData.get("featuredVideoRelativePath") as string;
       const featuredImageId = formData.get("featuredImageId") as string;
       const featuredVideoId = formData.get("featuredVideoId") as string;
@@ -364,7 +364,7 @@ export const updatePostAction = withCSRFProtection(
           description: description || null,
           content,
           featuredImage: featuredImage || null,
-          featuredImageBlur: featuredImageBlur || null,
+          blurData: blurData || null,
           featuredVideo: featuredVideo || null,
           isPremium,
           isPublished,

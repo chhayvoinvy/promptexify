@@ -47,25 +47,71 @@ export function PostCard({
   unobservePost,
   getPrefetchStatus,
 }: PostCardProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [imageDimensions, setImageDimensions] = useState<{
-    width: number;
-    height: number;
-  } | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  
+  // State to track if video should be loaded and displayed
+  const [showVideo, setShowVideo] = useState(false);
+  const [videoLoaded, setVideoLoaded] = useState(false);
+
+  // Get video preview URL and blur data
+  const videoPreviewUrl = post.featuredVideo 
+    ? post.media?.find(m => m.relativePath === post.featuredVideo)?.previewUrl 
+    : null;
+  const videoPreviewBlurData = post.featuredVideo
+    ? post.media?.find(m => m.relativePath === post.featuredVideo)?.blurDataUrl
+    : null;
+
+  // Calculate aspect ratio based on media type and dimensions
+  const getDynamicAspectRatio = () => {
+    if (post.featuredImage || post.featuredVideo) {
+      // Try to get actual media dimensions from database
+      const mediaItem = post.media?.find(
+        (m) => m.relativePath === post.featuredImage || m.relativePath === post.featuredVideo
+      );
+
+      // Default aspect ratio calculation based on width
+      const baseRatio = width < 300 ? 0.75 : width < 400 ? 0.8 : 0.85;
+      const randomOffset = (parseFloat(post.id.slice(-3)) / 1000) * 0.3;
+      const aspectRatio = baseRatio + randomOffset;
+
+      return { aspectRatio };
+    }
+    return { aspectRatio: 0.75 };
+  };
+
+  // Handle media load for dimensions tracking
+  const handleMediaLoad = useCallback(
+    (event: React.SyntheticEvent<HTMLImageElement | HTMLVideoElement>) => {
+      // Media loaded successfully - could track dimensions here if needed
+    },
+    []
+  );
 
   // Handle video play/pause
   const handleVideoPlay = useCallback(
     (event: React.MouseEvent) => {
       event.stopPropagation();
       event.preventDefault();
+      
+      if (!showVideo) {
+        // First click: show video and start loading
+        setShowVideo(true);
+        return;
+      }
+
       const video = videoRef.current;
       if (!video) return;
 
-      const isPlaying = playingVideo === post.id;
-      onVideoStateChange?.(post.id, !isPlaying);
+      if (playingVideo === post.id) {
+        video.pause();
+        onVideoStateChange?.(post.id, false);
+      } else {
+        video.play();
+        onVideoStateChange?.(post.id, true);
+      }
     },
-    [post.id, playingVideo, onVideoStateChange]
+    [post.id, playingVideo, onVideoStateChange, showVideo]
   );
 
   // Handle video mute/unmute
@@ -73,54 +119,10 @@ export function PostCard({
     (event: React.MouseEvent) => {
       event.stopPropagation();
       event.preventDefault();
-      const video = videoRef.current;
-      if (!video) return;
-
       onVideoMuteChange?.(post.id, !isVideoMuted);
     },
     [post.id, isVideoMuted, onVideoMuteChange]
   );
-
-  // Handle media load and calculate aspect ratio
-  const handleMediaLoad = useCallback(
-    (event: React.SyntheticEvent<HTMLImageElement | HTMLVideoElement>) => {
-      const media = event.currentTarget;
-      let mediaWidth: number, mediaHeight: number;
-
-      if (media instanceof HTMLImageElement) {
-        mediaWidth = media.naturalWidth;
-        mediaHeight = media.naturalHeight;
-      } else if (media instanceof HTMLVideoElement) {
-        mediaWidth = media.videoWidth;
-        mediaHeight = media.videoHeight;
-      } else {
-        return;
-      }
-
-      setImageDimensions({ width: mediaWidth, height: mediaHeight });
-    },
-    []
-  );
-
-  // Function to get dynamic aspect ratio style based on actual media dimensions
-  const getDynamicAspectRatio = () => {
-    if (!imageDimensions) {
-      // Generate a pseudo-random but consistent aspect ratio for each post while loading
-      const hash = post.id.split("").reduce((a, b) => {
-        a = (a << 5) - a + b.charCodeAt(0);
-        return a & a;
-      }, 0);
-      const normalized = Math.abs(hash) / 2147483648;
-      const aspectRatio = 0.67 + normalized * 1.13;
-      const calculatedWidth = Math.round(aspectRatio * 100);
-      return { aspectRatio: `${calculatedWidth} / 100` };
-    }
-
-    const naturalRatio = imageDimensions.width / imageDimensions.height;
-    const cappedRatio = naturalRatio < 0.67 ? 0.67 : naturalRatio;
-    const calculatedWidth = Math.round(cappedRatio * 100);
-    return { aspectRatio: `${calculatedWidth} / 100` };
-  };
 
   // Handle video ended
   const handleVideoEnded = useCallback(() => {
@@ -128,6 +130,20 @@ export function PostCard({
       onVideoStateChange?.(post.id, false);
     }
   }, [post.id, playingVideo, onVideoStateChange]);
+
+  // Handle video loaded metadata
+  const handleVideoLoadedMetadata = useCallback((event: React.SyntheticEvent<HTMLVideoElement>) => {
+    setVideoLoaded(true);
+    handleMediaLoad(event);
+    
+    // Auto-play if this video should be playing
+    if (playingVideo === post.id) {
+      const video = videoRef.current;
+      if (video) {
+        video.play();
+      }
+    }
+  }, [playingVideo, post.id, handleMediaLoad]);
 
   // Set up prefetch observer
   useEffect(() => {
@@ -142,25 +158,33 @@ export function PostCard({
     }
   }, [post.id, observePost, unobservePost]);
 
-  // Update video play/pause state
+  // Update video play/pause state when external playingVideo changes
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || !showVideo || !videoLoaded) return;
 
     if (playingVideo === post.id) {
       video.play();
     } else {
       video.pause();
     }
-  }, [playingVideo, post.id]);
+  }, [playingVideo, post.id, showVideo, videoLoaded]);
 
   // Update video mute state
   useEffect(() => {
     const video = videoRef.current;
-    if (video) {
+    if (video && showVideo) {
       video.muted = isVideoMuted;
     }
-  }, [isVideoMuted]);
+  }, [isVideoMuted, showVideo]);
+
+  // Reset video state when video changes
+  useEffect(() => {
+    if (playingVideo !== post.id) {
+      setShowVideo(false);
+      setVideoLoaded(false);
+    }
+  }, [playingVideo, post.id]);
 
   return (
     <div ref={containerRef} style={{ width }}>
@@ -185,37 +209,46 @@ export function PostCard({
                 fill
                 className="object-cover rounded-b-lg absolute"
                 loading="lazy"
-                blurDataURL={post.featuredImageBlur || undefined}
+                blurDataURL={post.blurData || undefined}
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 onLoad={handleMediaLoad}
                 previewUrl={post.media?.find(m => m.relativePath === post.featuredImage)?.previewUrl || undefined}
               />
             ) : post.featuredVideo ? (
               <>
-                {/* Video thumbnail preview */}
-                {post.media?.find(m => m.relativePath === post.featuredVideo)?.previewUrl && (
+                {/* Always show video preview image initially */}
+                {videoPreviewUrl && (
                   <MediaImage
                     src={post.featuredVideo}
                     alt={post.title}
                     fill
-                    className="object-cover rounded-b-lg absolute"
+                    className={`object-cover rounded-b-lg absolute transition-opacity duration-300 ${
+                      showVideo && videoLoaded ? "opacity-0" : "opacity-100"
+                    }`}
                     loading="lazy"
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     onLoad={handleMediaLoad}
-                    previewUrl={post.media?.find(m => m.relativePath === post.featuredVideo)?.previewUrl || undefined}
+                    previewUrl={videoPreviewUrl}
+                    blurDataURL={videoPreviewBlurData || undefined}
                   />
                 )}
                 
-                <MediaVideo
-                  ref={videoRef}
-                  src={post.featuredVideo}
-                  className="w-full h-full object-cover rounded-b-lg absolute scale-150"
-                  muted={isVideoMuted}
-                  loop
-                  playsInline
-                  onLoadedMetadata={handleMediaLoad}
-                  onEnded={handleVideoEnded}
-                />
+                {/* Load and show video only when user requests it */}
+                {showVideo && (
+                  <MediaVideo
+                    ref={videoRef}
+                    src={post.featuredVideo}
+                    className={`w-full h-full object-cover rounded-b-lg absolute scale-150 transition-opacity duration-300 ${
+                      videoLoaded ? "opacity-100" : "opacity-0"
+                    }`}
+                    muted={isVideoMuted}
+                    loop
+                    playsInline
+                    preload="metadata"
+                    onLoadedMetadata={handleVideoLoadedMetadata}
+                    onEnded={handleVideoEnded}
+                  />
+                )}
 
                 {/* Video controls */}
                 <div className="absolute inset-0 top-3 left-3 pointer-events-none z-10">
@@ -225,26 +258,37 @@ export function PostCard({
                       className="bg-background/90 hover:bg-background rounded-full p-1.5 transition-colors pointer-events-auto"
                       onClick={handleVideoPlay}
                     >
-                      {playingVideo === post.id ? (
+                      {playingVideo === post.id && videoLoaded ? (
                         <Pause className="w-5 h-5 text-foreground" />
                       ) : (
                         <Play className="w-5 h-5 text-foreground" />
                       )}
                     </button>
 
-                    {/* Mute/unmute button */}
-                    <button
-                      className="bg-background/90 hover:bg-background rounded-full p-1.5 transition-colors pointer-events-auto"
-                      onClick={handleVideoMute}
-                    >
-                      {isVideoMuted ? (
-                        <VolumeX className="w-5 h-5 text-foreground" />
-                      ) : (
-                        <Volume2 className="w-5 h-5 text-foreground" />
-                      )}
-                    </button>
+                    {/* Mute/unmute button - only show when video is loaded */}
+                    {showVideo && videoLoaded && (
+                      <button
+                        className="bg-background/90 hover:bg-background rounded-full p-1.5 transition-colors pointer-events-auto"
+                        onClick={handleVideoMute}
+                      >
+                        {isVideoMuted ? (
+                          <VolumeX className="w-5 h-5 text-foreground" />
+                        ) : (
+                          <Volume2 className="w-5 h-5 text-foreground" />
+                        )}
+                      </button>
+                    )}
                   </div>
                 </div>
+
+                {/* Loading indicator when video is being loaded */}
+                {showVideo && !videoLoaded && (
+                  <div className="absolute inset-0 bg-black/20 flex items-center justify-center z-5">
+                    <div className="bg-background/90 rounded-full p-2">
+                      <div className="w-4 h-4 border-2 border-foreground border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               // Text base post with shiny hover effect

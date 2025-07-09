@@ -10,7 +10,7 @@ export interface PostWithDetails {
   description: string | null;
   content: string;
   featuredImage: string | null;
-  featuredImageBlur?: string | null; // Optional for now, will be filled in gradually
+  blurData?: string | null; // Optional for now, will be filled in gradually
   featuredVideo: string | null;
   isPremium: boolean;
   isFeatured: boolean;
@@ -22,6 +22,7 @@ export interface PostWithDetails {
     relativePath: string;
     previewUrl?: string | null;
     previewRelativePath?: string | null;
+    blurDataUrl?: string | null;
   }[];
 
   authorId: string;
@@ -84,7 +85,7 @@ const optimizedPostSelect = {
   content: true,
   description: true,
   featuredImage: true,
-  featuredImageBlur: true,
+  blurData: true,
   featuredVideo: true,
   isPremium: true,
   isFeatured: true,
@@ -97,6 +98,7 @@ const optimizedPostSelect = {
       relativePath: true,
       previewUrl: true,
       previewRelativePath: true,
+      blurDataUrl: true,
     },
   },
 
@@ -685,7 +687,7 @@ export async function getPostsWithSorting(
       description: true,
       content: true,
       featuredImage: true,
-      featuredImageBlur: true,
+      blurData: true,
       featuredVideo: true,
       isPremium: true,
       isFeatured: true,
@@ -821,7 +823,7 @@ export async function getRelatedPosts(
       description: true,
       content: true,
       featuredImage: true,
-      featuredImageBlur: true,
+      blurData: true,
       featuredVideo: true,
       isPremium: true,
       isFeatured: true,

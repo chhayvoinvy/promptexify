@@ -960,7 +960,7 @@ export async function processAndUploadImageWithConfig(
     });
 
     const previewFilename = generatePreviewFilename(filename);
-    previewRelativePath = `uploads/preview/${previewFilename}`;
+    previewRelativePath = `preview/${previewFilename}`;
 
     // Upload preview based on storage type
     switch (storageType) {
@@ -1084,7 +1084,7 @@ export async function processAndUploadVideoWithConfig(
     });
 
     const previewFilename = generatePreviewFilename(filename);
-    previewRelativePath = `uploads/preview/${previewFilename}`;
+    previewRelativePath = `preview/${previewFilename}`;
 
     // Upload thumbnail based on storage type
     switch (storageType) {

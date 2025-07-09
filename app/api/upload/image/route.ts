@@ -290,6 +290,7 @@ export async function POST(request: NextRequest) {
         uploadedBy: user.userData!.id,
         previewUrl: uploadResult.previewUrl,
         previewRelativePath: uploadResult.previewRelativePath,
+        blurDataUrl: uploadResult.blurDataUrl,
       },
     });
 

@@ -41,6 +41,10 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
   const [mutedVideos, setMutedVideos] = useState<Set<string>>(
     new Set(posts.filter((post) => post.featuredVideo).map((post) => post.id))
   );
+  
+  // State to track which videos should be loaded and their loading status
+  const [videosToShow, setVideosToShow] = useState<Set<string>>(new Set());
+  const [videosLoaded, setVideosLoaded] = useState<Set<string>>(new Set());
 
   const containerRef = useRef<HTMLDivElement>(null);
   const postRefs = useRef<Record<string, HTMLDivElement>>({});
@@ -61,6 +65,14 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
   const handleVideoPlay = useCallback(
     (postId: string, event: React.MouseEvent) => {
       event.stopPropagation();
+      event.preventDefault();
+      
+      if (!videosToShow.has(postId)) {
+        // First click: show video and start loading
+        setVideosToShow(prev => new Set([...prev, postId]));
+        return;
+      }
+
       const video = videoRefs.current[postId];
       if (!video) return;
 
@@ -79,32 +91,17 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
         setPlayingVideo(postId);
       }
     },
-    [playingVideo]
-  );
-
-  // Handle video ended
-  const handleVideoEnded = useCallback(
-    (postId: string) => {
-      if (playingVideo === postId) {
-        setPlayingVideo(null);
-      }
-    },
-    [playingVideo]
+    [playingVideo, videosToShow]
   );
 
   // Handle video mute/unmute
   const handleVideoMute = useCallback(
     (postId: string, event: React.MouseEvent) => {
       event.stopPropagation();
-      const video = videoRefs.current[postId];
-      if (!video) return;
-
-      const isMuted = mutedVideos.has(postId);
-      video.muted = !isMuted;
-
+      event.preventDefault();
       setMutedVideos((prev) => {
         const newSet = new Set(prev);
-        if (isMuted) {
+        if (newSet.has(postId)) {
           newSet.delete(postId);
         } else {
           newSet.add(postId);
@@ -112,32 +109,59 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
         return newSet;
       });
     },
-    [mutedVideos]
+    []
   );
 
-  // Function to handle image/video load and calculate aspect ratio
-  const handleMediaLoad = (
-    postId: string,
-    event: React.SyntheticEvent<HTMLImageElement | HTMLVideoElement>
-  ) => {
-    const media = event.currentTarget;
-    let width: number, height: number;
-
-    if (media instanceof HTMLImageElement) {
-      width = media.naturalWidth;
-      height = media.naturalHeight;
-    } else if (media instanceof HTMLVideoElement) {
-      width = media.videoWidth;
-      height = media.videoHeight;
-    } else {
-      return;
+  // Handle video ended
+  const handleVideoEnded = useCallback((postId: string) => {
+    if (playingVideo === postId) {
+      setPlayingVideo(null);
     }
+  }, [playingVideo]);
 
-    setImageDimensions((prev) => ({
-      ...prev,
-      [postId]: { width, height },
-    }));
-  };
+  // Handle media load and calculate aspect ratio
+  const handleMediaLoad = useCallback(
+    (
+      postId: string,
+      event: React.SyntheticEvent<HTMLImageElement | HTMLVideoElement>
+    ) => {
+      const media = event.currentTarget;
+      let width: number, height: number;
+
+      if (media instanceof HTMLImageElement) {
+        width = media.naturalWidth;
+        height = media.naturalHeight;
+      } else if (media instanceof HTMLVideoElement) {
+        width = media.videoWidth;
+        height = media.videoHeight;
+      } else {
+        return;
+      }
+
+      setImageDimensions((prev) => ({
+        ...prev,
+        [postId]: { width, height },
+      }));
+    },
+    []
+  );
+
+  // Handle video loaded metadata
+  const handleVideoLoadedMetadata = useCallback(
+    (postId: string, event: React.SyntheticEvent<HTMLVideoElement>) => {
+      setVideosLoaded(prev => new Set([...prev, postId]));
+      handleMediaLoad(postId, event);
+      
+      // Auto-play if this video should be playing
+      if (playingVideo === postId) {
+        const video = videoRefs.current[postId];
+        if (video) {
+          video.play();
+        }
+      }
+    },
+    [playingVideo, handleMediaLoad]
+  );
 
   // Function to get dynamic aspect ratio style based on actual media dimensions
   const getDynamicAspectRatio = (postId: string) => {
@@ -180,51 +204,50 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
     setColumnWidth(width);
   }, []);
 
-  // Calculate masonry positions
+  // Calculate positions for masonry layout
   const calculatePositions = useCallback(() => {
-    if (columnWidth === 0 || posts.length === 0) return;
+    if (!containerRef.current || columnWidth === 0 || posts.length === 0) {
+      return;
+    }
 
     const gap = 24;
     const columnHeights = new Array(columnCount).fill(0);
-    const positions: PostPosition[] = [];
+    const newPositions: PostPosition[] = [];
 
     posts.forEach((post) => {
       const postElement = postRefs.current[post.id];
       if (!postElement) return;
 
-      // Find the shortest column
+      // Find shortest column
       const shortestColumnIndex = columnHeights.indexOf(
         Math.min(...columnHeights)
       );
+
       const x = shortestColumnIndex * (columnWidth + gap);
       const y = columnHeights[shortestColumnIndex];
-
-      // Get the actual height of the post element
       const height = postElement.offsetHeight;
 
-      positions.push({
+      newPositions.push({
         id: post.id,
         x,
         y,
         height,
       });
 
-      // Update column height
       columnHeights[shortestColumnIndex] += height + gap;
     });
 
-    setPostPositions(positions);
+    setPostPositions(newPositions);
     setContainerHeight(Math.max(...columnHeights) - gap);
   }, [posts, columnWidth, columnCount]);
 
   // Handle window resize
   useEffect(() => {
-    calculateLayout();
-
     const handleResize = () => {
       calculateLayout();
     };
 
+    calculateLayout();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [calculateLayout]);
@@ -260,7 +283,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
         }
 
         // Animate them in with stagger
-        newPosts.forEach((post, index) => {
+        newPosts.forEach((_, index) => {
           setTimeout(() => {}, index * 150); // 150ms delay between each post
         });
 
@@ -287,6 +310,22 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
     return () => observer.disconnect();
   }, [calculatePositions]);
 
+  // Reset video states when playingVideo changes
+  useEffect(() => {
+    // Clean up video states for posts that are no longer playing
+    posts.forEach(post => {
+      if (playingVideo !== post.id) {
+        setVideosToShow(prev => {
+          const newSet = new Set(prev);
+          if (newSet.has(post.id)) {
+            // Keep video loaded but not playing
+          }
+          return newSet;
+        });
+      }
+    });
+  }, [playingVideo, posts]);
+
   return (
     <>
       <div
@@ -296,6 +335,14 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
       >
         {posts.map((post) => {
           const position = postPositions.find((p) => p.id === post.id);
+          const videoPreviewUrl = post.featuredVideo 
+            ? post.media?.find(m => m.relativePath === post.featuredVideo)?.previewUrl 
+            : null;
+          const videoPreviewBlurData = post.featuredVideo
+            ? post.media?.find(m => m.relativePath === post.featuredVideo)?.blurDataUrl
+            : null;
+          const shouldShowVideo = videosToShow.has(post.id);
+          const isVideoLoaded = videosLoaded.has(post.id);
 
           return (
             <div
@@ -342,24 +389,48 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                         fill
                         className="object-cover rounded-b-lg absolute"
                         loading="lazy"
-                        blurDataURL={post.featuredImageBlur || undefined}
+                        blurDataURL={post.blurData || undefined}
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         onLoad={(e) => handleMediaLoad(post.id, e)}
+                        previewUrl={post.media?.find(m => m.relativePath === post.featuredImage)?.previewUrl || undefined}
                       />
                     ) : post.featuredVideo ? (
                       <>
-                        <MediaVideo
-                          ref={(el) => {
-                            if (el) videoRefs.current[post.id] = el;
-                          }}
-                          src={post.featuredVideo}
-                          className="w-full h-full object-cover rounded-b-lg absolute scale-150"
-                          muted={mutedVideos.has(post.id)}
-                          loop
-                          playsInline
-                          onLoadedMetadata={(e) => handleMediaLoad(post.id, e)}
-                          onEnded={() => handleVideoEnded(post.id)}
-                        />
+                        {/* Always show video preview image initially */}
+                        {videoPreviewUrl && (
+                          <MediaImage
+                            src={post.featuredVideo}
+                            alt={post.title}
+                            fill
+                            className={`object-cover rounded-b-lg absolute transition-opacity duration-300 ${
+                              shouldShowVideo && isVideoLoaded ? "opacity-0" : "opacity-100"
+                            }`}
+                            loading="lazy"
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            onLoad={(e) => handleMediaLoad(post.id, e)}
+                            previewUrl={videoPreviewUrl}
+                            blurDataURL={videoPreviewBlurData || undefined}
+                          />
+                        )}
+                        
+                        {/* Load and show video only when user requests it */}
+                        {shouldShowVideo && (
+                          <MediaVideo
+                            ref={(el) => {
+                              if (el) videoRefs.current[post.id] = el;
+                            }}
+                            src={post.featuredVideo}
+                            className={`w-full h-full object-cover rounded-b-lg absolute scale-150 transition-opacity duration-300 ${
+                              isVideoLoaded ? "opacity-100" : "opacity-0"
+                            }`}
+                            muted={mutedVideos.has(post.id)}
+                            loop
+                            playsInline
+                            preload="metadata"
+                            onLoadedMetadata={(e) => handleVideoLoadedMetadata(post.id, e)}
+                            onEnded={() => handleVideoEnded(post.id)}
+                          />
+                        )}
 
                         {/* Video controls */}
                         <div className="absolute inset-0 top-3 left-3 pointer-events-none z-10">
@@ -368,35 +439,42 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                             <button
                               className="bg-background/90 hover:bg-background rounded-full p-1.5 transition-colors pointer-events-auto"
                               onClick={(e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
                                 handleVideoPlay(post.id, e);
                               }}
                             >
-                              {playingVideo === post.id ? (
+                              {playingVideo === post.id && isVideoLoaded ? (
                                 <Pause className="w-5 h-5 text-foreground" />
                               ) : (
                                 <Play className="w-5 h-5 text-foreground" />
                               )}
                             </button>
 
-                            {/* Mute/unmute button */}
-                            <button
-                              className="bg-background/90 hover:bg-background rounded-full p-1.5 transition-colors pointer-events-auto"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
-                                handleVideoMute(post.id, e);
-                              }}
-                            >
-                              {mutedVideos.has(post.id) ? (
-                                <VolumeX className="w-5 h-5 text-foreground" />
-                              ) : (
-                                <Volume2 className="w-5 h-5 text-foreground" />
-                              )}
-                            </button>
+                            {/* Mute/unmute button - only show when video is loaded */}
+                            {shouldShowVideo && isVideoLoaded && (
+                              <button
+                                className="bg-background/90 hover:bg-background rounded-full p-1.5 transition-colors pointer-events-auto"
+                                onClick={(e) => {
+                                  handleVideoMute(post.id, e);
+                                }}
+                              >
+                                {mutedVideos.has(post.id) ? (
+                                  <VolumeX className="w-5 h-5 text-foreground" />
+                                ) : (
+                                  <Volume2 className="w-5 h-5 text-foreground" />
+                                )}
+                              </button>
+                            )}
                           </div>
                         </div>
+
+                        {/* Loading indicator when video is being loaded */}
+                        {shouldShowVideo && !isVideoLoaded && (
+                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center z-5">
+                            <div className="bg-background/90 rounded-full p-2">
+                              <div className="w-4 h-4 border-2 border-foreground border-t-transparent rounded-full animate-spin"></div>
+                            </div>
+                          </div>
+                        )}
                       </>
                     ) : (
                       // Text base post with shiny hover effect
@@ -417,7 +495,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                     )}
 
                     {/* Prefetch status indicator (development only) */}
-                    {process.env.NODE_ENV === "development" && (() => {
+                    {process.env.NODE_ENV === "development" && getPrefetchStatus && (() => {
                       const prefetchStatus = getPrefetchStatus(post.id);
                       return prefetchStatus.isPrefetching ? (
                         <div className="absolute top-3 left-3 z-20">

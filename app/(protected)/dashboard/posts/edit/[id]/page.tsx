@@ -360,7 +360,7 @@ export default function EditPostPage() {
         formData.set("featuredImageId", featuredImage.id);
         formData.set("featuredImageRelativePath", featuredImage.relativePath);
         if (featuredImage.blurDataUrl) {
-          formData.set("featuredImageBlur", featuredImage.blurDataUrl);
+          formData.set("blurData", featuredImage.blurDataUrl);
         }
       }
       if (featuredVideo) {
