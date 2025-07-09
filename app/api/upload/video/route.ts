@@ -176,6 +176,8 @@ export async function POST(request: NextRequest) {
           fileSize: uploadResult.fileSize,
           storageType: uploadResult.storageType,
           uploadedBy: user.userData.id,
+          previewUrl: uploadResult.previewUrl,
+          previewRelativePath: uploadResult.previewRelativePath,
         },
       });
 

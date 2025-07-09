@@ -131,6 +131,7 @@ interface MediaImageProps {
   priority?: boolean;
   onLoad?: (event: React.SyntheticEvent<HTMLImageElement>) => void;
   blurDataURL?: string;
+  previewUrl?: string; // New prop for preview URL
 }
 
 interface MediaVideoProps {
@@ -164,6 +165,7 @@ export function MediaImage({
   priority = false,
   onLoad,
   blurDataURL,
+  previewUrl,
 }: MediaImageProps) {
   const [resolvedUrl, setResolvedUrl] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
@@ -176,21 +178,29 @@ export function MediaImage({
       return;
     }
 
+    // Use preview URL if available and not empty, otherwise use original src
+    const imageSrc = (previewUrl && previewUrl.trim() !== '') ? previewUrl : src;
+
     // If src is already a full URL or a blob URL, use it directly
     if (
-      src.startsWith("http://") ||
-      src.startsWith("https://") ||
-      src.startsWith("blob:")
+      imageSrc.startsWith("http://") ||
+      imageSrc.startsWith("https://") ||
+      imageSrc.startsWith("blob:")
     ) {
-      setResolvedUrl(src);
+      setResolvedUrl(imageSrc);
       setIsLoading(false);
       return;
     }
 
     // Resolve relative path to full URL
-    resolveMediaUrl(src)
+    resolveMediaUrl(imageSrc)
       .then((url: string) => {
-        setResolvedUrl(url);
+        // Validate the resolved URL before setting it
+        if (url && url.trim() !== '') {
+          setResolvedUrl(url);
+        } else {
+          setError("Invalid resolved URL");
+        }
         setIsLoading(false);
       })
       .catch((err: Error) => {
@@ -198,7 +208,7 @@ export function MediaImage({
         setError("Failed to load image");
         setIsLoading(false);
       });
-  }, [src]);
+  }, [src, previewUrl]);
 
   if (error) {
     return (
@@ -265,7 +275,7 @@ export function MediaImage({
     }
   }
 
-  if (!resolvedUrl) {
+  if (!resolvedUrl || resolvedUrl.trim() === '') {
     return (
       <div
         className={`bg-muted border-2 border-dashed border-muted-foreground/25 ${className}`}
@@ -273,6 +283,35 @@ export function MediaImage({
       >
         <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
           Image not available
+        </div>
+      </div>
+    );
+  }
+
+  // Additional validation to ensure we have a valid URL format
+  let validUrl: string;
+  try {
+    // For blob URLs, relative URLs, and absolute URLs, validate differently
+    if (resolvedUrl.startsWith('blob:') || resolvedUrl.startsWith('http://') || resolvedUrl.startsWith('https://')) {
+      // Test if it's a valid URL
+      new URL(resolvedUrl);
+      validUrl = resolvedUrl;
+    } else if (resolvedUrl.startsWith('/')) {
+      // Relative URL starting with /
+      validUrl = resolvedUrl;
+    } else {
+      // Fallback for other relative paths
+      validUrl = `/${resolvedUrl}`;
+    }
+  } catch {
+    // If URL parsing fails, show error state
+    return (
+      <div
+        className={`bg-muted border-2 border-dashed border-muted-foreground/25 ${className}`}
+        style={{ width, height }}
+      >
+        <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+          Invalid image URL
         </div>
       </div>
     );
@@ -323,7 +362,7 @@ export function MediaImage({
       
       {/* Main image with smooth fade-in */}
       <Image
-        src={resolvedUrl}
+        src={validUrl}
         alt={alt}
         width={!fill ? width : undefined}
         height={!fill ? height : undefined}

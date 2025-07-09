@@ -49,6 +49,8 @@ interface FeaturedMedia {
   url: string;
   relativePath: string;
   blurDataUrl?: string;
+  previewUrl?: string;
+  previewRelativePath?: string;
 }
 
 export default function NewPostPage() {
@@ -317,6 +319,8 @@ export default function NewPostPage() {
       relativePath: string;
       mimeType: string;
       blurDataUrl?: string;
+      previewUrl?: string;
+      previewRelativePath?: string;
     } | null
   ) {
     if (result) {
@@ -326,6 +330,8 @@ export default function NewPostPage() {
           url: result.url,
           relativePath: result.relativePath,
           blurDataUrl: result.blurDataUrl,
+          previewUrl: result.previewUrl,
+          previewRelativePath: result.previewRelativePath,
         });
         setFeaturedVideo(null); // Clear video when image is uploaded
       } else if (result.mimeType.startsWith("video/")) {
@@ -333,6 +339,8 @@ export default function NewPostPage() {
           id: result.id,
           url: result.url,
           relativePath: result.relativePath,
+          previewUrl: result.previewUrl,
+          previewRelativePath: result.previewRelativePath,
         });
         setFeaturedImage(null); // Clear image when video is uploaded
       }

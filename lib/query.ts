@@ -40,6 +40,8 @@ export const POST_SELECTS = {
         id: true,
         mimeType: true,
         relativePath: true,
+        previewUrl: true,
+        previewRelativePath: true,
       },
     },
     authorId: true,
@@ -101,6 +103,8 @@ export const POST_SELECTS = {
         id: true,
         mimeType: true,
         relativePath: true,
+        previewUrl: true,
+        previewRelativePath: true,
       },
     },
 

@@ -52,6 +52,8 @@ interface FeaturedMedia {
   url: string;
   relativePath: string;
   blurDataUrl?: string;
+  previewUrl?: string;
+  previewRelativePath?: string;
 }
 
 interface Post {
@@ -426,6 +428,8 @@ export default function EditPostPage() {
       relativePath: string;
       mimeType: string;
       blurDataUrl?: string;
+      previewUrl?: string;
+      previewRelativePath?: string;
     } | null
   ) {
     if (result) {
@@ -435,6 +439,8 @@ export default function EditPostPage() {
           url: result.url,
           relativePath: result.relativePath,
           blurDataUrl: result.blurDataUrl,
+          previewUrl: result.previewUrl,
+          previewRelativePath: result.previewRelativePath,
         });
         setFeaturedVideo(null); // Clear video when image is uploaded
       } else if (result.mimeType.startsWith("video/")) {
@@ -442,6 +448,8 @@ export default function EditPostPage() {
           id: result.id,
           url: result.url,
           relativePath: result.relativePath,
+          previewUrl: result.previewUrl,
+          previewRelativePath: result.previewRelativePath,
         });
         setFeaturedImage(null); // Clear image when video is uploaded
       }
@@ -634,6 +642,8 @@ export default function EditPostPage() {
                     currentVideoUrl={featuredVideo?.url}
                     currentImageId={featuredImage?.id}
                     currentVideoId={featuredVideo?.id}
+                    currentImagePreviewUrl={featuredImage?.previewUrl}
+                    currentVideoPreviewUrl={featuredVideo?.previewUrl}
                     title={postTitle || "untitled-post"}
                   />
                   <p className="text-sm text-muted-foreground">

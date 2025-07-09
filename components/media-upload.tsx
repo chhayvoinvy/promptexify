@@ -34,6 +34,8 @@ interface UploadResult {
   height?: number;
   storageType: "S3" | "LOCAL" | "DOSPACE";
   blurDataUrl?: string; // Base64 blur placeholder for images
+  previewUrl?: string; // Full URL to preview image/video
+  previewRelativePath?: string; // Relative path to preview image/video
 }
 
 interface MediaUploadProps {
@@ -43,6 +45,8 @@ interface MediaUploadProps {
   currentVideoUrl?: string;
   currentImageId?: string;
   currentVideoId?: string;
+  currentImagePreviewUrl?: string;
+  currentVideoPreviewUrl?: string;
   title?: string;
   disabled?: boolean;
   className?: string;
@@ -70,6 +74,8 @@ export function MediaUpload({
   currentVideoUrl,
   currentImageId,
   currentVideoId,
+  currentImagePreviewUrl,
+  currentVideoPreviewUrl,
   title = "untitled",
   disabled = false,
   className,
@@ -80,6 +86,12 @@ export function MediaUpload({
   );
   const [videoPreview, setVideoPreview] = useState<string | null>(
     currentVideoUrl || null
+  );
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(
+    currentImagePreviewUrl || null
+  );
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(
+    currentVideoPreviewUrl || null
   );
   const [uploadState, setUploadState] = useState<UploadState>({
     uploading: false,
@@ -110,6 +122,14 @@ export function MediaUpload({
   useEffect(() => {
     setVideoPreview(currentVideoUrl || null);
   }, [currentVideoUrl]);
+
+  useEffect(() => {
+    setImagePreviewUrl(currentImagePreviewUrl || null);
+  }, [currentImagePreviewUrl]);
+
+  useEffect(() => {
+    setVideoPreviewUrl(currentVideoPreviewUrl || null);
+  }, [currentVideoPreviewUrl]);
 
   // Storage configuration state
   const [storageConfig, setStorageConfig] = useState<{
@@ -270,10 +290,32 @@ export function MediaUpload({
 
           // Use relative path for preview to ensure proper resolution by MediaImage/MediaVideo components
           const mediaPath = result.relativePath;
+          
+          // Validate that we have valid paths before setting them
+          if (!mediaPath || mediaPath.trim() === '') {
+            console.warn('Upload result missing valid relativePath:', result);
+            setUploadState((prev) => ({
+              ...prev,
+              error: 'Upload completed but file path is invalid',
+            }));
+            return;
+          }
+
           if (mediaType === "image") {
             setImagePreview(mediaPath);
+            // Only set preview URL if it's a valid string
+            setImagePreviewUrl(
+              result.previewRelativePath && result.previewRelativePath.trim() !== '' 
+                ? result.previewRelativePath 
+                : null
+            );
           } else {
             setVideoPreview(mediaPath);
+            setVideoPreviewUrl(
+              result.previewRelativePath && result.previewRelativePath.trim() !== '' 
+                ? result.previewRelativePath 
+                : null
+            );
           }
 
           setTimeout(() => {
@@ -297,6 +339,17 @@ export function MediaUpload({
               success: false,
             });
           }
+          
+          URL.revokeObjectURL(previewUrl);
+          
+          // Reset preview states to avoid invalid URLs
+          if (mediaType === "image") {
+            setImagePreview(null);
+            setImagePreviewUrl(null);
+          } else {
+            setVideoPreview(null);
+            setVideoPreviewUrl(null);
+          }
         }
       };
 
@@ -309,6 +362,15 @@ export function MediaUpload({
           success: false,
         });
         URL.revokeObjectURL(previewUrl);
+        
+        // Reset preview states to avoid invalid URLs
+        if (mediaType === "image") {
+          setImagePreview(null);
+          setImagePreviewUrl(null);
+        } else {
+          setVideoPreview(null);
+          setVideoPreviewUrl(null);
+        }
       };
 
       xhr.send(formData);
@@ -391,8 +453,10 @@ export function MediaUpload({
     // Immediately remove from UI
     if (pendingDeletionType === "image") {
       setImagePreview(null);
+      setImagePreviewUrl(null);
     } else {
       setVideoPreview(null);
+      setVideoPreviewUrl(null);
     }
 
     // Reset upload state and notify parent
@@ -479,6 +543,7 @@ export function MediaUpload({
               alt="Image preview"
               fill
               className="object-contain rounded-lg"
+              previewUrl={imagePreviewUrl || undefined}
             />
           ) : videoPreview ? (
             <MediaVideo

@@ -188,9 +188,24 @@ export function PostCard({
                 blurDataURL={post.featuredImageBlur || undefined}
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 onLoad={handleMediaLoad}
+                previewUrl={post.media?.find(m => m.relativePath === post.featuredImage)?.previewUrl || undefined}
               />
             ) : post.featuredVideo ? (
               <>
+                {/* Video thumbnail preview */}
+                {post.media?.find(m => m.relativePath === post.featuredVideo)?.previewUrl && (
+                  <MediaImage
+                    src={post.featuredVideo}
+                    alt={post.title}
+                    fill
+                    className="object-cover rounded-b-lg absolute"
+                    loading="lazy"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    onLoad={handleMediaLoad}
+                    previewUrl={post.media?.find(m => m.relativePath === post.featuredVideo)?.previewUrl || undefined}
+                  />
+                )}
+                
                 <MediaVideo
                   ref={videoRef}
                   src={post.featuredVideo}

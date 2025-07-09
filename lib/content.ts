@@ -20,6 +20,8 @@ export interface PostWithDetails {
     id: string;
     mimeType: string;
     relativePath: string;
+    previewUrl?: string | null;
+    previewRelativePath?: string | null;
   }[];
 
   authorId: string;
@@ -93,6 +95,8 @@ const optimizedPostSelect = {
       id: true,
       mimeType: true,
       relativePath: true,
+      previewUrl: true,
+      previewRelativePath: true,
     },
   },
 

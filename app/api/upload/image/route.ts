@@ -288,6 +288,8 @@ export async function POST(request: NextRequest) {
         height: uploadResult.height,
         storageType: uploadResult.storageType,
         uploadedBy: user.userData!.id,
+        previewUrl: uploadResult.previewUrl,
+        previewRelativePath: uploadResult.previewRelativePath,
       },
     });
 

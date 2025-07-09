@@ -405,6 +405,19 @@ CREATE POLICY "Prisma migrations access policy" ON "_prisma_migrations"
   WITH CHECK ((SELECT (SELECT is_admin())));
 
 -- =============================================
+-- PREVIEW IMAGE INDEXES (NEW)
+-- =============================================
+-- Ensure preview image indexes exist for optimal performance
+CREATE INDEX IF NOT EXISTS "media_previewUrl_idx" ON "media"("previewUrl");
+CREATE INDEX IF NOT EXISTS "media_previewRelativePath_idx" ON "media"("previewRelativePath");
+
+-- Composite index for efficient preview lookups by post and relative path
+CREATE INDEX IF NOT EXISTS "media_postId_relativePath_previewUrl_idx" ON "media"("postId", "relativePath", "previewUrl");
+
+-- Index for preview URL resolution performance
+CREATE INDEX IF NOT EXISTS "media_relativePath_previewUrl_uploadedBy_idx" ON "media"("relativePath", "previewUrl", "uploadedBy");
+
+-- =============================================
 -- ANALYZE TABLES FOR PERFORMANCE
 -- =============================================
 ANALYZE "users";
@@ -502,6 +515,12 @@ IMPORTANT SECURITY CONSIDERATIONS:
    - Audit logs track user actions
    - Helper functions prevent code duplication and improve maintainability
 
+5. PREVIEW IMAGE SECURITY:
+   - Preview images inherit the same access controls as original media
+   - Preview URLs are protected by RLS policies
+   - Preview access is tied to post accessibility
+   - Admin and owner access maintained for preview images
+
 TESTING RECOMMENDATIONS:
 
 1. Test with different user roles (admin, premium, free, anonymous)
@@ -512,6 +531,8 @@ TESTING RECOMMENDATIONS:
 6. Test featured posts functionality (admin-only access)
 7. Verify authors cannot change featured status of their posts
 8. Test policy performance with large datasets
+9. Test preview image access controls
+10. Verify preview URL resolution works correctly with RLS
 
 MONITORING:
 
@@ -521,6 +542,8 @@ MONITORING:
 4. Regularly audit user permissions and access patterns
 5. Monitor for policy conflicts or unexpected access patterns
 6. Track subscription validation performance
+7. Monitor preview image access patterns and performance
+8. Track preview URL resolution performance
 */
 
 -- =============================================
@@ -571,12 +594,20 @@ FIXES APPLIED:
    ✅ _PostToTag: Consolidated SELECT and ALL policies into single access policy
    ✅ _prisma_migrations: Consolidated SELECT and ALL policies into single access policy
    ✅ Eliminated policy conflicts for authenticated role SELECT actions
+
+9. PREVIEW IMAGE OPTIMIZATIONS:
+   ✅ Added previewUrl and previewRelativePath indexes for optimal performance
+   ✅ Added composite index for efficient preview lookups by post and relative path
+   ✅ Added index for preview URL resolution performance
+   ✅ Updated security documentation to include preview image considerations
+   ✅ Added preview image testing recommendations
+   ✅ Added preview image monitoring guidelines
 */
 
 -- =============================================
 -- SUCCESS MESSAGE
 -- =============================================
-SELECT 'SQL script executed successfully! 🚀🔐 Optimizations applied!' as result;
+SELECT 'SQL script executed successfully! 🚀🔐 Optimizations applied with preview image support!' as result;
 
 -- DROP DEFAULT AUTO-GENERATED POLICIES (for performance)
 DROP POLICY IF EXISTS "Bookmarks - Insert Access" ON "bookmarks";

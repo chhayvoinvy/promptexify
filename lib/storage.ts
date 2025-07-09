@@ -62,6 +62,8 @@ export interface UploadResult {
   duration?: number;
   storageType: StorageType;
   blurDataUrl?: string; // Base64 blur placeholder for images
+  previewUrl?: string; // URL to preview image
+  previewRelativePath?: string; // Relative path to preview image
 }
 
 // Cache for storage config to avoid repeated database calls
@@ -381,6 +383,99 @@ export async function deleteVideoFromLocal(videoUrl: string): Promise<boolean> {
   } catch (error) {
     console.error("Error deleting video from local storage:", error);
     return false;
+  }
+}
+
+// Add preview upload functions for different storage types
+export async function uploadPreviewToS3WithConfig(
+  previewBuffer: Buffer,
+  previewFilename: string,
+  config: StorageConfig
+): Promise<string> {
+  const s3Client = await createS3Client(config);
+  if (!s3Client) {
+    throw new Error("Failed to create S3 client");
+  }
+
+  const key = `preview/${previewFilename}`;
+
+  const uploadParams = {
+    Bucket: config.s3BucketName!,
+    Key: key,
+    Body: previewBuffer,
+    ContentType: "image/avif",
+    ACL: "private" as const,
+    ServerSideEncryption: ServerSideEncryption.AES256,
+    CacheControl: "public, max-age=31536000", // Cache for 1 year
+    ContentDisposition: "inline",
+  };
+
+  try {
+    await s3Client.send(new PutObjectCommand(uploadParams));
+
+    if (!config.s3CloudfrontUrl) {
+      throw new Error("S3 CloudFront URL is required for secure access");
+    }
+
+    return `${config.s3CloudfrontUrl}/${key}`;
+  } catch (error) {
+    console.error("Error uploading preview to S3:", error);
+    throw new Error("Failed to upload preview to S3");
+  }
+}
+
+export async function uploadPreviewToDOSpacesWithConfig(
+  previewBuffer: Buffer,
+  previewFilename: string,
+  config: StorageConfig
+): Promise<string> {
+  const doClient = await createDOSpacesClient(config);
+  if (!doClient) {
+    throw new Error("Failed to create DigitalOcean Spaces client");
+  }
+
+  const key = `preview/${previewFilename}`;
+
+  const uploadParams = {
+    Bucket: config.doSpaceName!,
+    Key: key,
+    Body: previewBuffer,
+    ContentType: "image/avif",
+    ACL: ObjectCannedACL.public_read,
+    CacheControl: "public, max-age=31536000",
+    ContentDisposition: "inline",
+  };
+
+  try {
+    await doClient.send(new PutObjectCommand(uploadParams));
+
+    if (!config.doCdnUrl) {
+      return `https://${config.doSpaceName}.${config.doRegion}.digitaloceanspaces.com/${key}`;
+    }
+
+    return `${config.doCdnUrl}/${key}`;
+  } catch (error) {
+    console.error("Error uploading preview to DigitalOcean Spaces:", error);
+    throw new Error("Failed to upload preview to DigitalOcean Spaces");
+  }
+}
+
+export async function uploadPreviewToLocal(
+  previewBuffer: Buffer,
+  previewFilename: string,
+  basePath: string = "/uploads"
+): Promise<string> {
+  const previewPath = path.join(basePath, "preview", previewFilename);
+  const fullPath = path.join(process.cwd(), "public", previewPath);
+
+  try {
+    // Ensure the preview directory exists
+    await fs.mkdir(path.dirname(fullPath), { recursive: true });
+    await fs.writeFile(fullPath, previewBuffer);
+    return previewPath;
+  } catch (error) {
+    console.error("Error uploading preview to local storage:", error);
+    throw new Error("Failed to upload preview to local storage");
   }
 }
 
@@ -829,6 +924,7 @@ export async function processAndUploadImageWithConfig(
   // Import functions dynamically to avoid circular dependencies
   const { convertToAvif, generateImageFilename } = await import("./s3");
   const { generateOptimizedBlurPlaceholder } = await import("./blur");
+  const { generateImagePreview, generatePreviewFilename } = await import("./preview");
 
   // Generate filename
   const filename = generateImageFilename(title, userId);
@@ -850,7 +946,50 @@ export async function processAndUploadImageWithConfig(
     blurDataUrl = await generateOptimizedBlurPlaceholder(buffer, file.type);
   } catch (error) {
     console.error("Failed to generate blur placeholder:", error);
-    // Continue without blur placeholder - it's not critical
+  }
+
+  // Generate preview image
+  let previewUrl: string | undefined;
+  let previewRelativePath: string | undefined;
+  try {
+    const previewBuffer = await generateImagePreview(buffer, {
+      maxWidth: 1280,
+      maxHeight: 720,
+      quality: 80,
+      format: "avif",
+    });
+
+    const previewFilename = generatePreviewFilename(filename);
+    previewRelativePath = `uploads/preview/${previewFilename}`;
+
+    // Upload preview based on storage type
+    switch (storageType) {
+      case "S3":
+        previewUrl = await uploadPreviewToS3WithConfig(
+          previewBuffer,
+          previewFilename,
+          config
+        );
+        break;
+      case "DOSPACE":
+        previewUrl = await uploadPreviewToDOSpacesWithConfig(
+          previewBuffer,
+          previewFilename,
+          config
+        );
+        break;
+      case "LOCAL":
+        const uploadedPreviewPath = await uploadPreviewToLocal(
+          previewBuffer,
+          previewFilename,
+          config.localBasePath || "/uploads"
+        );
+        previewUrl = await getPublicUrl(uploadedPreviewPath);
+        break;
+    }
+  } catch (error) {
+    console.error("Failed to generate and upload preview:", error);
+    // Continue without preview - it's not critical
   }
 
   // Convert to AVIF if enabled and not already AVIF
@@ -861,7 +1000,7 @@ export async function processAndUploadImageWithConfig(
 
   let uploadedPath: string;
 
-  // Upload based on storage type
+  // Upload original image based on storage type
   switch (storageType) {
     case "S3":
       uploadedPath = await uploadImageToS3WithConfig(
@@ -905,6 +1044,8 @@ export async function processAndUploadImageWithConfig(
     height,
     storageType: storageType as StorageType,
     blurDataUrl,
+    previewUrl,
+    previewRelativePath,
   };
 }
 
@@ -922,15 +1063,70 @@ export async function processAndUploadVideoWithConfig(
 
   // Import functions dynamically to avoid circular dependencies
   const { generateVideoFilename } = await import("./s3");
+  const { generateVideoThumbnail, generatePreviewFilename } = await import("./preview");
 
   // Generate filename
   const filename = generateVideoFilename(title, userId);
   const relativePath = `videos/${filename}`;
   const videoBuffer = Buffer.from(new Uint8Array(await file.arrayBuffer()));
 
+  // Generate video thumbnail
+  let previewUrl: string | undefined;
+  let previewRelativePath: string | undefined;
+  let blurDataUrl: string | undefined;
+  
+  try {
+    const thumbnailBuffer = await generateVideoThumbnail(videoBuffer, {
+      time: "00:00:01",
+      width: 1280,
+      height: 720,
+      quality: 80,
+    });
+
+    const previewFilename = generatePreviewFilename(filename);
+    previewRelativePath = `uploads/preview/${previewFilename}`;
+
+    // Upload thumbnail based on storage type
+    switch (storageType) {
+      case "S3":
+        previewUrl = await uploadPreviewToS3WithConfig(
+          thumbnailBuffer,
+          previewFilename,
+          config
+        );
+        break;
+      case "DOSPACE":
+        previewUrl = await uploadPreviewToDOSpacesWithConfig(
+          thumbnailBuffer,
+          previewFilename,
+          config
+        );
+        break;
+      case "LOCAL":
+        const uploadedPreviewPath = await uploadPreviewToLocal(
+          thumbnailBuffer,
+          previewFilename,
+          config.localBasePath || "/uploads"
+        );
+        previewUrl = await getPublicUrl(uploadedPreviewPath);
+        break;
+    }
+
+    // Generate blur placeholder from thumbnail
+    try {
+      const { generateOptimizedBlurPlaceholder } = await import("./blur");
+      blurDataUrl = await generateOptimizedBlurPlaceholder(thumbnailBuffer, "image/avif");
+    } catch (error) {
+      console.error("Failed to generate blur placeholder for video thumbnail:", error);
+    }
+  } catch (error) {
+    console.error("Failed to generate and upload video thumbnail:", error);
+    // Continue without thumbnail - it's not critical
+  }
+
   let uploadedPath: string;
 
-  // Upload based on storage type
+  // Upload original video based on storage type
   switch (storageType) {
     case "S3":
       uploadedPath = await uploadVideoToS3WithConfig(
@@ -970,8 +1166,10 @@ export async function processAndUploadVideoWithConfig(
     originalName: file.name,
     mimeType: file.type,
     fileSize: file.size,
-    // Note: width, height, and duration are not extracted for videos in this implementation
     storageType: storageType as StorageType,
+    previewUrl,
+    previewRelativePath,
+    blurDataUrl,
   };
 }
 
