@@ -88,6 +88,14 @@ export class SecurityMonitor {
         userAgent = "automation-script";
       }
 
+      // Ignore logging for localhost IPs in development
+      const isLocal =
+        !ip ||
+        ip === "127.0.0.1" ||
+        ip === "::1" ||
+        ip === "0:0:0:0:0:0:0:1";
+      if (process.env.NODE_ENV !== "production" && isLocal) return;
+
       const event: SecurityEvent = {
         type,
         timestamp: new Date().toISOString(),

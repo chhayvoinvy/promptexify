@@ -267,11 +267,12 @@ export function MediaUpload({
 
           URL.revokeObjectURL(previewUrl);
 
-          const mediaUrl = result.url;
+          // Use relative path for preview to ensure proper resolution by MediaImage/MediaVideo components
+          const mediaPath = result.relativePath;
           if (mediaType === "image") {
-            setImagePreview(mediaUrl);
+            setImagePreview(mediaPath);
           } else {
-            setVideoPreview(mediaUrl);
+            setVideoPreview(mediaPath);
           }
 
           setTimeout(() => {

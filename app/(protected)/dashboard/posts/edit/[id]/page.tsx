@@ -185,14 +185,14 @@ export default function EditPostPage() {
           if (image) {
             setFeaturedImage({
               id: image.id,
-              url: image.url,
+              url: image.relativePath, // Use relative path for consistent media resolution
               relativePath: image.relativePath,
             });
           }
           if (video) {
             setFeaturedVideo({
               id: video.id,
-              url: video.url,
+              url: video.relativePath, // Use relative path for consistent media resolution
               relativePath: video.relativePath,
             });
           }
@@ -202,14 +202,14 @@ export default function EditPostPage() {
             setFeaturedImage({
               id: "legacy-image",
               url: postData.featuredImage,
-              relativePath: postData.featuredImage, // This might not be accurate but it's a fallback
+              relativePath: postData.featuredImage,
             });
           }
           if (postData.featuredVideo) {
             setFeaturedVideo({
               id: "legacy-video",
               url: postData.featuredVideo,
-              relativePath: postData.featuredVideo, // This might not be accurate but it's a fallback
+              relativePath: postData.featuredVideo,
             });
           }
         }
@@ -808,7 +808,7 @@ export default function EditPostPage() {
             <div className="flex justify-end gap-4">
               <Button
                 type="submit"
-                className="px-8 w-full md:w-auto"
+                className="w-full md:w-auto"
                 disabled={isSubmitting || isUploadingMedia}
               >
                 {isSubmitting || isUploadingMedia ? (

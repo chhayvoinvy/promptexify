@@ -77,11 +77,21 @@ export const PostDataSchema = z.object({
     .string()
     .optional()
     .refine(
-      (url) =>
-        !url ||
-        url === "" ||
-        (z.string().url().safeParse(url).success && isAllowedImageUrl(url)),
-      "Invalid or suspicious image URL"
+      (path) =>
+        !path ||
+        path === "" ||
+        isAllowedLocalImagePath(path),
+      "Invalid or suspicious image path"
+    ),
+  featuredVideo: z
+    .string()
+    .optional()
+    .refine(
+      (path) =>
+        !path ||
+        path === "" ||
+        isAllowedLocalVideoPath(path),
+      "Invalid or suspicious video path"
     ),
 });
 
@@ -144,37 +154,21 @@ function containsSuspiciousContent(content: string): boolean {
 }
 
 /**
- * Validates if an image URL is from an allowed domain
+ * Validates if a local image path is allowed
  */
-function isAllowedImageUrl(url: string): boolean {
-  try {
-    const parsedUrl = new URL(url);
+function isAllowedLocalImagePath(path: string): boolean {
+  // Must start with /images/ and end with .jpg, .jpeg, .webp, .avif, or .png
+  return (
+    /^\/images\/[a-zA-Z0-9_\-./]+\.(jpg|jpeg|webp|avif|png)$/i.test(path)
+  );
+}
 
-    // Only allow HTTPS URLs
-    if (parsedUrl.protocol !== "https:") {
-      return false;
-    }
-
-    // Allow common image hosting services
-    const allowedDomains = [
-      "images.unsplash.com",
-      "unsplash.com",
-      "picsum.photos", // Lorem Picsum for testing
-      "cdn.example.com", // Replace with your CDN
-      "s3.amazonaws.com",
-      "storage.googleapis.com",
-      "cdn.jsdelivr.net",
-      "raw.githubusercontent.com",
-    ];
-
-    return allowedDomains.some(
-      (domain) =>
-        parsedUrl.hostname === domain ||
-        parsedUrl.hostname.endsWith(`.${domain}`)
-    );
-  } catch {
-    return false;
-  }
+/**
+ * Validates if a local video path is allowed
+ */
+function isAllowedLocalVideoPath(path: string): boolean {
+  // Must start with /videos/ and end with .mp4
+  return /^\/videos\/[a-zA-Z0-9_\-./]+\.mp4$/i.test(path);
 }
 
 /**

@@ -117,6 +117,61 @@ export async function getStorageConfig(): Promise<StorageConfig> {
 }
 
 /**
+ * Validate storage configuration for consistency
+ * @param config - Storage configuration to validate
+ * @returns Validation result with any issues found
+ */
+export function validateStorageConfig(config: StorageConfig): {
+  isValid: boolean;
+  issues: string[];
+} {
+  const issues: string[] = [];
+
+  switch (config.storageType) {
+    case "S3":
+      if (!config.s3BucketName) {
+        issues.push("S3 bucket name is required");
+      }
+      if (!config.s3AccessKeyId || !config.s3SecretKey) {
+        issues.push("S3 access credentials are required");
+      }
+      if (!config.s3CloudfrontUrl) {
+        issues.push("S3 CloudFront URL is recommended for secure access");
+      }
+      break;
+
+    case "DOSPACE":
+      if (!config.doSpaceName) {
+        issues.push("DigitalOcean Space name is required");
+      }
+      if (!config.doRegion) {
+        issues.push("DigitalOcean region is required");
+      }
+      if (!config.doAccessKeyId || !config.doSecretKey) {
+        issues.push("DigitalOcean access credentials are required");
+      }
+      break;
+
+    case "LOCAL":
+      if (!config.localBasePath) {
+        issues.push("Local base path is required");
+      }
+      if (!config.localBaseUrl) {
+        issues.push("Local base URL is required");
+      }
+      break;
+
+    default:
+      issues.push(`Unknown storage type: ${config.storageType}`);
+  }
+
+  return {
+    isValid: issues.length === 0,
+    issues,
+  };
+}
+
+/**
  * Clear storage config cache (useful when settings are updated)
  */
 export function clearStorageConfigCache(): void {
@@ -154,7 +209,7 @@ export async function getPublicUrl(
         )}`;
       }
       // Fallback to direct S3 URL if CloudFront is not configured
-      return `https://${config.s3BucketName}.s3.${config.s3Region}.amazonaws.com/${relativePath}`;
+      return `https://${config.s3BucketName}.s3.${config.s3Region || "us-east-1"}.amazonaws.com/${relativePath}`;
 
     case "DOSPACE":
       if (config.doCdnUrl) {
@@ -223,8 +278,8 @@ export async function uploadImageToLocal(
     // Write file
     await fs.writeFile(filePath, imageBuffer);
 
-    // Return public URL
-    return `${basePath}/images/${filename}`;
+    // Return relative path instead of full URL for storage independence
+    return `images/${filename}`;
   } catch (error) {
     console.error("Error uploading image to local storage:", error);
     throw new Error("Failed to upload image to local storage");
@@ -258,8 +313,8 @@ export async function uploadVideoToLocal(
     // Write file
     await fs.writeFile(filePath, videoBuffer);
 
-    // Return public URL
-    return `${basePath}/videos/${filename}`;
+    // Return relative path instead of full URL for storage independence
+    return `videos/${filename}`;
   } catch (error) {
     console.error("Error uploading video to local storage:", error);
     throw new Error("Failed to upload video to local storage");
@@ -793,26 +848,26 @@ export async function processAndUploadImageWithConfig(
     finalMimeType = "image/avif";
   }
 
-  let publicUrl: string;
+  let uploadedPath: string;
 
   // Upload based on storage type
   switch (storageType) {
     case "S3":
-      publicUrl = await uploadImageToS3WithConfig(
+      uploadedPath = await uploadImageToS3WithConfig(
         imageBuffer,
         filename,
         config
       );
       break;
     case "DOSPACE":
-      publicUrl = await uploadImageToDOSpacesWithConfig(
+      uploadedPath = await uploadImageToDOSpacesWithConfig(
         imageBuffer,
         filename,
         config
       );
       break;
     case "LOCAL":
-      publicUrl = await uploadImageToLocal(
+      uploadedPath = await uploadImageToLocal(
         imageBuffer,
         filename,
         config.localBasePath || "/uploads"
@@ -822,10 +877,16 @@ export async function processAndUploadImageWithConfig(
       throw new Error(`Unsupported storage type: ${storageType}`);
   }
 
+  // For local storage, uploadedPath is already a relative path
+  // For S3/DOSPACE, uploadedPath is a full URL
+  const publicUrl = storageType === "LOCAL" 
+    ? await getPublicUrl(uploadedPath)
+    : uploadedPath;
+
   return {
     url: publicUrl,
     filename,
-    relativePath,
+    relativePath: storageType === "LOCAL" ? uploadedPath : relativePath,
     originalName: file.name,
     mimeType: finalMimeType,
     fileSize: imageBuffer.length,
@@ -855,26 +916,26 @@ export async function processAndUploadVideoWithConfig(
   const relativePath = `videos/${filename}`;
   const videoBuffer = Buffer.from(new Uint8Array(await file.arrayBuffer()));
 
-  let publicUrl: string;
+  let uploadedPath: string;
 
   // Upload based on storage type
   switch (storageType) {
     case "S3":
-      publicUrl = await uploadVideoToS3WithConfig(
+      uploadedPath = await uploadVideoToS3WithConfig(
         videoBuffer,
         filename,
         config
       );
       break;
     case "DOSPACE":
-      publicUrl = await uploadVideoToDOSpacesWithConfig(
+      uploadedPath = await uploadVideoToDOSpacesWithConfig(
         videoBuffer,
         filename,
         config
       );
       break;
     case "LOCAL":
-      publicUrl = await uploadVideoToLocal(
+      uploadedPath = await uploadVideoToLocal(
         videoBuffer,
         filename,
         config.localBasePath || "/uploads"
@@ -884,14 +945,118 @@ export async function processAndUploadVideoWithConfig(
       throw new Error(`Unsupported storage type: ${storageType}`);
   }
 
+  // For local storage, uploadedPath is already a relative path
+  // For S3/DOSPACE, uploadedPath is a full URL
+  const publicUrl = storageType === "LOCAL" 
+    ? await getPublicUrl(uploadedPath)
+    : uploadedPath;
+
   return {
     url: publicUrl,
     filename,
-    relativePath,
+    relativePath: storageType === "LOCAL" ? uploadedPath : relativePath,
     originalName: file.name,
     mimeType: file.type,
     fileSize: file.size,
     // Note: width, height, and duration are not extracted for videos in this implementation
     storageType: storageType as StorageType,
   };
+}
+
+/**
+ * Test storage configuration and URL generation for all storage types
+ * This function helps verify that the storage system works correctly
+ * @returns Test results for each storage type
+ */
+export async function testStorageConfiguration(): Promise<{
+  [key: string]: {
+    isValid: boolean;
+    testUrl: string;
+    issues: string[];
+  };
+}> {
+  const testPath = "images/test-image.avif";
+  const results: { [key: string]: any } = {};
+
+  // Test current configuration
+  const currentConfig = await getStorageConfig();
+  const validation = validateStorageConfig(currentConfig);
+  
+  results.current = {
+    isValid: validation.isValid,
+    testUrl: await getPublicUrl(testPath),
+    issues: validation.issues,
+    storageType: currentConfig.storageType,
+  };
+
+  // Test S3 configuration
+  const s3Config: StorageConfig = {
+    ...currentConfig,
+    storageType: "S3",
+    s3BucketName: "test-bucket",
+    s3Region: "us-east-1",
+    s3CloudfrontUrl: "https://cdn.example.com",
+  };
+  
+  results.s3 = {
+    isValid: validateStorageConfig(s3Config).isValid,
+    testUrl: constructFullUrl(testPath, s3Config),
+    issues: validateStorageConfig(s3Config).issues,
+  };
+
+  // Test DigitalOcean Spaces configuration
+  const doConfig: StorageConfig = {
+    ...currentConfig,
+    storageType: "DOSPACE",
+    doSpaceName: "test-space",
+    doRegion: "nyc3",
+    doCdnUrl: "https://cdn.digitalocean.com",
+  };
+  
+  results.dospace = {
+    isValid: validateStorageConfig(doConfig).isValid,
+    testUrl: constructFullUrl(testPath, doConfig),
+    issues: validateStorageConfig(doConfig).issues,
+  };
+
+  // Test Local configuration
+  const localConfig: StorageConfig = {
+    ...currentConfig,
+    storageType: "LOCAL",
+    localBasePath: "/uploads",
+    localBaseUrl: "/uploads",
+  };
+  
+  results.local = {
+    isValid: validateStorageConfig(localConfig).isValid,
+    testUrl: constructFullUrl(testPath, localConfig),
+    issues: validateStorageConfig(localConfig).issues,
+  };
+
+  return results;
+}
+
+// Helper function for URL construction (used by test function)
+function constructFullUrl(relativePath: string, config: StorageConfig): string {
+  const cleanPath = relativePath.startsWith("/") ? relativePath.slice(1) : relativePath;
+  
+  switch (config.storageType) {
+    case "S3":
+      if (config.s3CloudfrontUrl) {
+        return `${config.s3CloudfrontUrl.replace(/\/$/, "")}/${cleanPath}`;
+      }
+      return `https://${config.s3BucketName}.s3.${config.s3Region || "us-east-1"}.amazonaws.com/${cleanPath}`;
+      
+    case "DOSPACE":
+      if (config.doCdnUrl) {
+        return `${config.doCdnUrl.replace(/\/$/, "")}/${cleanPath}`;
+      }
+      return `https://${config.doSpaceName}.${config.doRegion}.digitaloceanspaces.com/${cleanPath}`;
+      
+    case "LOCAL":
+      return `${(config.localBaseUrl || "/uploads").replace(/\/$/, "")}/${cleanPath}`;
+      
+    default:
+      return `/${cleanPath}`;
+  }
 }

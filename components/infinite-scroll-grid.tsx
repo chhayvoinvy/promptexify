@@ -202,7 +202,7 @@ export function InfinitePostGrid({
 
     const observer = new IntersectionObserver(handleIntersection, {
       threshold: 0.1,
-      rootMargin: "0px 0px 1000px 0px", // Large bottom margin to trigger at ~80% scroll progress
+      rootMargin: "0px 0px 800px 0px", // Large bottom margin to trigger at ~80% scroll progress
     });
 
     const currentRef = loadingRef.current;

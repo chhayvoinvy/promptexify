@@ -17,6 +17,7 @@ import {
   VolumeX,
 } from "@/components/ui/icons";
 import { PostTextBaseCard } from "@/components/post-text-base-card";
+import { usePrefetchPosts } from "@/hooks/use-prefetch-posts";
 
 interface PostMasonryGridProps {
   posts: PostWithInteractions[];
@@ -47,6 +48,14 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
   const [imageDimensions, setImageDimensions] = useState<
     Record<string, { width: number; height: number }>
   >({});
+
+  // Initialize prefetch hook for viewport-based prefetching
+  const { observePost, unobservePost, getPrefetchStatus } = usePrefetchPosts({
+    rootMargin: "0px 0px 800px 0px", // Start prefetching 800px before entering viewport
+    threshold: 0.1,
+    prefetchData: true, // Prefetch both route and API data
+    debounceMs: 100, // Quick response for better UX
+  });
 
   // Handle video play/pause
   const handleVideoPlay = useCallback(
@@ -292,7 +301,18 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
             <div
               key={post.id}
               ref={(el) => {
-                if (el) postRefs.current[post.id] = el;
+                if (el) {
+                  postRefs.current[post.id] = el;
+                  // Start observing this post for prefetching
+                  observePost(el, post.id);
+                } else {
+                  // Clean up observer when element is unmounted
+                  const existingEl = postRefs.current[post.id];
+                  if (existingEl) {
+                    unobservePost(existingEl);
+                    delete postRefs.current[post.id];
+                  }
+                }
               }}
               className="absolute"
               style={{
@@ -301,7 +321,11 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                 top: position?.y || 0,
               }}
             >
-              <Link href={`/entry/${post.id}`} scroll={false}>
+              <Link 
+                href={`/entry/${post.id}`} 
+                scroll={false}
+                prefetch={true} // Enable automatic Next.js prefetching
+              >
                 <Card className="overflow-hidden hover:shadow-lg cursor-zoom-in py-0 shadow-lg">
                   <div
                     className="relative"
@@ -391,6 +415,24 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                         </Badge>
                       </div>
                     )}
+
+                    {/* Prefetch status indicator (development only) */}
+                    {process.env.NODE_ENV === "development" && (() => {
+                      const prefetchStatus = getPrefetchStatus(post.id);
+                      return prefetchStatus.isPrefetching ? (
+                        <div className="absolute top-3 left-3 z-20">
+                          <Badge variant="outline" className="text-xs bg-blue-500/90 text-white border-blue-400">
+                            ⚡ Prefetching...
+                          </Badge>
+                        </div>
+                      ) : prefetchStatus.isPrefetched ? (
+                        <div className="absolute top-3 left-3 z-20">
+                          <Badge variant="outline" className="text-xs bg-green-500/90 text-white border-green-400">
+                            ✅ Ready
+                          </Badge>
+                        </div>
+                      ) : null;
+                    })()}
 
                     {/* Action buttons overlay */}
                     <div className="absolute bottom-3 left-0 right-0 px-3 flex gap-2 items-end justify-between z-20">

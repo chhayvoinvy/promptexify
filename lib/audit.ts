@@ -257,15 +257,23 @@ export const SecurityEvents = {
       metadata: { resource },
     }),
 
-  protectedAreaAccess: (userId: string, ipAddress?: string, area?: string) =>
-    logAuditEvent({
+  protectedAreaAccess: (userId: string, ipAddress?: string, area?: string) => {
+    // Ignore in development for localhost IPs
+    const isLocal =
+      !ipAddress ||
+      ipAddress === "127.0.0.1" ||
+      ipAddress === "::1" ||
+      ipAddress === "0:0:0:0:0:0:0:1";
+    if (process.env.NODE_ENV !== "production" && isLocal) return;
+    return logAuditEvent({
       action: "Protected Area Access",
       userId,
       entityType: "protected_route",
       ipAddress,
       severity: "LOW",
       metadata: { area: area || "unknown" },
-    }),
+    });
+  },
 };
 
 /**

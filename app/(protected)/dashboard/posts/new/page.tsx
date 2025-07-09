@@ -638,7 +638,7 @@ export default function NewPostPage() {
             <div className="flex justify-end gap-4">
               <Button
                 type="submit"
-                className="px-8 w-full md:w-auto"
+                className="w-full md:w-auto"
                 disabled={isSubmitting || isUploadingMedia}
               >
                 {isSubmitting || isUploadingMedia ? (

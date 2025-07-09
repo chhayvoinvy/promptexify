@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getStorageConfigAction } from "@/actions/settings";
+import { testStorageConfiguration } from "@/lib/storage";
+import { NextRequest } from "next/server";
 
 /**
  * GET /api/settings/storage-config
@@ -49,9 +51,31 @@ export async function GET() {
   }
 }
 
-// Only allow GET
-export async function POST() {
-  return NextResponse.json({ error: "Method not allowed" }, { status: 405 });
+/**
+ * POST /api/settings/storage-config/test
+ * Test storage configuration across all storage types.
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const action = searchParams.get("action");
+
+    if (action === "test") {
+      const testResults = await testStorageConfiguration();
+      return NextResponse.json({
+        success: true,
+        testResults,
+      });
+    }
+
+    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+  } catch (error) {
+    console.error("Error testing storage config:", error);
+    return NextResponse.json({
+      success: false,
+      error: "Failed to test storage configuration",
+    }, { status: 500 });
+  }
 }
 
 export async function PUT() {

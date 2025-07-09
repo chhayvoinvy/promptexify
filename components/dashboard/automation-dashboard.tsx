@@ -282,7 +282,8 @@ export function AutomationDashboard() {
           isPublished: false,
           status: "PENDING_APPROVAL",
           isFeatured: false,
-          featuredImage: "",
+          featuredImage: "/images/example-image.webp", // must be local image path
+          featuredVideo: "/videos/example-video.mp4", // must be local video path
         },
       ],
     };
@@ -554,9 +555,13 @@ export function AutomationDashboard() {
                       • <code>is_premium</code>, <code>is_published</code>
                     </li>
                     <li>
-                      • <code>status</code>, <code>featured_image</code>
+                      • <code>status</code>, <code>featured_image</code>, <code>featured_video</code>
                     </li>
                   </ul>
+                  <div className="text-xs text-muted-foreground mt-2">
+                    <b>featured_image</b>: must be a local path like <code>/images/example.webp</code> (.jpg, .jpeg, .webp, .avif, .png)<br />
+                    <b>featured_video</b>: must be a local path like <code>/videos/example.mp4</code> (.mp4 only)
+                  </div>
                 </div>
                 <div>
                   <h4 className="font-medium mb-2">Limits:</h4>

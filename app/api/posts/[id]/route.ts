@@ -9,7 +9,7 @@ interface RouteParams {
   }>;
 }
 
-export async function GET(request: NextRequest, { params }: RouteParams) {
+async function handlePostRequest(request: NextRequest, { params }: RouteParams, isHeadRequest = false) {
   try {
     const { id } = await params;
 
@@ -58,6 +58,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       }
     }
 
+    // For HEAD requests, just return 200 with cache headers
+    if (isHeadRequest) {
+      return new NextResponse(null, {
+        status: 200,
+        headers: {
+          'Cache-Control': 'public, max-age=300, stale-while-revalidate=600', // 5min cache, 10min stale
+          'Content-Type': 'application/json',
+        }
+      });
+    }
+
     const postWithPublicUrls = {
       ...post,
       featuredImage: post.featuredImage
@@ -74,7 +85,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       ),
     };
 
-    return NextResponse.json(postWithPublicUrls);
+    return NextResponse.json(postWithPublicUrls, {
+      headers: {
+        'Cache-Control': 'public, max-age=300, stale-while-revalidate=600', // 5min cache, 10min stale
+      }
+    });
   } catch (error) {
     console.error("Post API error:", error);
     return NextResponse.json(
@@ -82,4 +97,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       { status: 500 }
     );
   }
+}
+
+export async function GET(request: NextRequest, context: RouteParams) {
+  return handlePostRequest(request, context, false);
+}
+
+export async function HEAD(request: NextRequest, context: RouteParams) {
+  return handlePostRequest(request, context, true);
 }

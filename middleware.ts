@@ -91,11 +91,19 @@ export async function middleware(request: NextRequest) {
       // Log successful state-changing requests for monitoring
       const skipLogging = ["/api/webhooks/", "/api/upload/"];
 
-      if (!skipLogging.some((path) => pathname.startsWith(path))) {
+      // Ignore logging for localhost IPs in development
+      const clientIp = getClientIP(request);
+      const isLocal =
+        !clientIp ||
+        clientIp === "127.0.0.1" ||
+        clientIp === "::1" ||
+        clientIp === "0:0:0:0:0:0:0:1";
+      if (
+        !skipLogging.some((path) => pathname.startsWith(path)) &&
+        (process.env.NODE_ENV === "production" || !isLocal)
+      ) {
         console.log(
-          `[SECURITY] ${request.method} ${pathname} - IP: ${getClientIP(
-            request
-          )} - User-Agent: ${sanitizeUserAgent(
+          `[SECURITY] ${request.method} ${pathname} - IP: ${clientIp} - User-Agent: ${sanitizeUserAgent(
             request.headers.get("user-agent")
           )}`
         );
@@ -194,7 +202,7 @@ export const config = {
      */
     {
       source:
-        "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+        "/((?!api|_next/static|_next/image|favicon.ico|uploads|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|mp4|mov|avi|webm)$).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },

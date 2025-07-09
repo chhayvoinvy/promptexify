@@ -32,8 +32,16 @@ export default function GlobalInterceptedModalPage() {
 
     async function fetchPostData() {
       try {
-        // Fetch post data
-        const response = await fetch(`/api/posts/${id}`);
+        // Fetch post data with caching for instant loads
+        const response = await fetch(`/api/posts/${id}`, {
+          // Use default cache to leverage prefetched data
+          cache: "default",
+          // Add cache headers for better performance
+          headers: {
+            'Cache-Control': 'max-age=300', // 5 minute cache
+          }
+        });
+        
         if (!response.ok) {
           throw new Error("Failed to fetch post");
         }

@@ -94,18 +94,18 @@ export class CSRFProtection {
           cookieStore.get(`${this.CSRF_COOKIE_NAME}-debug`)?.value || null;
       }
 
-      if (!token) {
-        console.warn(
-          `[CSRF] No token found in cookies. Checked: ${this.CSRF_COOKIE_NAME}, ${this.CSRF_COOKIE_NAME}-backup`
-        );
-        if (!isProduction) {
-          console.warn(
-            `[CSRF] Also checked debug cookie: ${this.CSRF_COOKIE_NAME}-debug`
-          );
-        }
-      } else {
-        console.log(`[CSRF] Token retrieved successfully from cookie`);
-      }
+      // if (!token) {
+      //   console.warn(
+      //     `[CSRF] No token found in cookies. Checked: ${this.CSRF_COOKIE_NAME}, ${this.CSRF_COOKIE_NAME}-backup`
+      //   );
+      //   if (!isProduction) {
+      //     console.warn(
+      //       `[CSRF] Also checked debug cookie: ${this.CSRF_COOKIE_NAME}-debug`
+      //     );
+      //   }
+      // } else {
+      //   console.log(`[CSRF] Token retrieved successfully from cookie`);
+      // }
 
       return token;
     } catch (error) {
@@ -119,11 +119,11 @@ export class CSRFProtection {
    */
   static getTokenFromHeaders(request: NextRequest): string | null {
     const token = request.headers.get(this.CSRF_HEADER_NAME);
-    if (token) {
-      console.log("[CSRF] Token found in request headers");
-    } else {
-      console.warn("[CSRF] No token found in request headers");
-    }
+    // if (token) {
+    //   console.log("[CSRF] Token found in request headers");
+    // } else {
+    //   console.warn("[CSRF] No token found in request headers");
+    // }
     return token;
   }
 
@@ -243,21 +243,21 @@ export class CSRFProtection {
       let token = await this.getTokenFromCookie();
 
       if (!token) {
-        console.log("[CSRF] No existing token found, generating new one");
+        // console.log("[CSRF] No existing token found, generating new one");
         token = this.generateToken();
         await this.setToken(token);
 
         // Verify the token was set successfully
-        const verifyToken = await this.getTokenFromCookie();
-        if (!verifyToken) {
-          console.warn(
-            "[CSRF] Token verification failed after setting, but continuing with generated token"
-          );
-        } else {
-          console.log("[CSRF] Token set and verified successfully");
-        }
-      } else {
-        console.log("[CSRF] Retrieved existing token from cookie");
+        // const verifyToken = await this.getTokenFromCookie();
+      //   if (!verifyToken) {
+      //     console.warn(
+      //       "[CSRF] Token verification failed after setting, but continuing with generated token"
+      //     );
+      //   } else {
+      //     console.log("[CSRF] Token set and verified successfully");
+      //   }
+      // } else {
+      //   console.log("[CSRF] Retrieved existing token from cookie");
       }
 
       return token;

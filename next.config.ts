@@ -82,6 +82,50 @@ const nextConfig: NextConfig = {
         port: "",
         pathname: "/**",
       },
+      // DigitalOcean Spaces patterns
+      {
+        protocol: "https",
+        hostname: "*.digitaloceanspaces.com",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.nyc3.digitaloceanspaces.com",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.sfo3.digitaloceanspaces.com",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.ams3.digitaloceanspaces.com",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.sgp1.digitaloceanspaces.com",
+        port: "",
+        pathname: "/**",
+      },
+      // Generic CDN patterns
+      {
+        protocol: "https",
+        hostname: "*.cdn.digitalocean.com",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.cloudflare.com",
+        port: "",
+        pathname: "/**",
+      },
     ],
     formats: ["image/webp", "image/avif"],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],

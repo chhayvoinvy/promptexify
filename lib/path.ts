@@ -34,6 +34,13 @@ export async function resolveMediaUrl(relativePath: string): Promise<string> {
 
   try {
     const storageConfig = await getStorageConfig();
+    
+    // Validate storage configuration
+    if (!storageConfig) {
+      console.warn("No storage configuration found, using fallback");
+      return relativePath.startsWith("/") ? relativePath : `/${relativePath}`;
+    }
+
     const fullUrl = constructFullUrl(relativePath, storageConfig);
 
     // Cache the result
@@ -116,6 +123,11 @@ function constructS3Url(relativePath: string, config: StorageConfig): string {
   const bucketName = config.s3BucketName;
   const region = config.s3Region || "us-east-1";
 
+  if (!bucketName) {
+    console.warn("S3 bucket name not configured, using fallback");
+    return `/${relativePath}`;
+  }
+
   if (cdnUrl) {
     return `${cdnUrl.replace(/\/$/, "")}/${relativePath}`;
   }
@@ -133,6 +145,11 @@ function constructDOSpacesUrl(
   const cdnUrl = config.doCdnUrl;
   const spaceName = config.doSpaceName;
   const region = config.doRegion;
+
+  if (!spaceName || !region) {
+    console.warn("DigitalOcean Spaces configuration incomplete, using fallback");
+    return `/${relativePath}`;
+  }
 
   if (cdnUrl) {
     return `${cdnUrl.replace(/\/$/, "")}/${relativePath}`;
