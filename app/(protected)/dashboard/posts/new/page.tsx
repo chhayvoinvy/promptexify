@@ -48,6 +48,7 @@ interface FeaturedMedia {
   id: string;
   url: string;
   relativePath: string;
+  blurDataUrl?: string;
 }
 
 export default function NewPostPage() {
@@ -258,6 +259,9 @@ export default function NewPostPage() {
       if (featuredImage) {
         formData.set("featuredImageId", featuredImage.id);
         formData.set("featuredImageRelativePath", featuredImage.relativePath);
+        if (featuredImage.blurDataUrl) {
+          formData.set("featuredImageBlur", featuredImage.blurDataUrl);
+        }
       }
       if (featuredVideo) {
         formData.set("featuredVideoId", featuredVideo.id);
@@ -312,6 +316,7 @@ export default function NewPostPage() {
       url: string;
       relativePath: string;
       mimeType: string;
+      blurDataUrl?: string;
     } | null
   ) {
     if (result) {
@@ -320,6 +325,7 @@ export default function NewPostPage() {
           id: result.id,
           url: result.url,
           relativePath: result.relativePath,
+          blurDataUrl: result.blurDataUrl,
         });
         setFeaturedVideo(null); // Clear video when image is uploaded
       } else if (result.mimeType.startsWith("video/")) {

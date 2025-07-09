@@ -61,6 +61,7 @@ export interface UploadResult {
   height?: number;
   duration?: number;
   storageType: StorageType;
+  blurDataUrl?: string; // Base64 blur placeholder for images
 }
 
 // Cache for storage config to avoid repeated database calls
@@ -827,6 +828,7 @@ export async function processAndUploadImageWithConfig(
 
   // Import functions dynamically to avoid circular dependencies
   const { convertToAvif, generateImageFilename } = await import("./s3");
+  const { generateOptimizedBlurPlaceholder } = await import("./blur");
 
   // Generate filename
   const filename = generateImageFilename(title, userId);
@@ -841,6 +843,15 @@ export async function processAndUploadImageWithConfig(
   const image = sharp(buffer);
   const metadata = await image.metadata();
   const { width, height } = metadata;
+
+  // Generate blur placeholder from original buffer (before compression)
+  let blurDataUrl: string | undefined;
+  try {
+    blurDataUrl = await generateOptimizedBlurPlaceholder(buffer, file.type);
+  } catch (error) {
+    console.error("Failed to generate blur placeholder:", error);
+    // Continue without blur placeholder - it's not critical
+  }
 
   // Convert to AVIF if enabled and not already AVIF
   if (config.enableCompression && file.type !== "image/avif") {
@@ -893,6 +904,7 @@ export async function processAndUploadImageWithConfig(
     width,
     height,
     storageType: storageType as StorageType,
+    blurDataUrl,
   };
 }
 

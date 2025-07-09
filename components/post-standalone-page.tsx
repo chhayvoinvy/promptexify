@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
-import { MediaImage, MediaVideo } from "@/components/ui/media-display";
+import { MediaImage, MediaVideo } from "@/components/media-display";
 
 import {
   Copy,
@@ -388,6 +388,7 @@ export function PostStandalonePage({
                                 height={400}
                                 className="w-full h-auto max-h-80 object-contain"
                                 priority
+                                blurDataURL={post.featuredImageBlur || undefined}
                               />
                             </div>
                           ) : (

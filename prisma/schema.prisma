@@ -74,17 +74,18 @@ model Tag {
 }
 
 model Post {
-  id            String     @id @default(uuid())
-  title         String
-  slug          String
-  description   String?
-  content       String
-  featuredImage String? // Relative path to the featured image
-  featuredVideo String? // Relative path to the featured video
-  isPremium     Boolean    @default(false)
-  isFeatured    Boolean    @default(false)
-  isPublished   Boolean    @default(false)
-  status        PostStatus @default(DRAFT)
+  id                 String     @id @default(uuid())
+  title              String
+  slug               String
+  description        String?
+  content            String
+  featuredImage      String? // Relative path to the featured image
+  featuredImageBlur  String? // Base64 blur placeholder for featured image
+  featuredVideo      String? // Relative path to the featured video
+  isPremium          Boolean    @default(false)
+  isFeatured         Boolean    @default(false)
+  isPublished        Boolean    @default(false)
+  status             PostStatus @default(DRAFT)
 
   authorId   String
   categoryId String

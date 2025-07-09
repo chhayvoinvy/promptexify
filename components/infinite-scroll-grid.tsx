@@ -26,6 +26,8 @@ interface PostsResponse {
   };
 }
 
+
+
 export function InfinitePostGrid({
   initialPosts,
   totalCount,
@@ -254,7 +256,7 @@ export function InfinitePostGrid({
 
   return (
     <div className="space-y-6">
-      {/* Posts Grid - remove dynamic key to prevent unmounting during modal navigation */}
+      {/* Posts Grid */}
       <PostMasonryGrid posts={memoizedPosts} userType={userType} />
 
       {/* Loading indicator and load more button */}

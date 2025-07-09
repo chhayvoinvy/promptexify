@@ -10,6 +10,7 @@ export interface PostWithDetails {
   description: string | null;
   content: string;
   featuredImage: string | null;
+  featuredImageBlur?: string | null; // Optional for now, will be filled in gradually
   featuredVideo: string | null;
   isPremium: boolean;
   isFeatured: boolean;
@@ -81,6 +82,7 @@ const optimizedPostSelect = {
   content: true,
   description: true,
   featuredImage: true,
+  featuredImageBlur: true,
   featuredVideo: true,
   isPremium: true,
   isFeatured: true,
@@ -524,40 +526,8 @@ export async function getPostsWithInteractions(
     where: {
       ...(includeUnpublished ? {} : { isPublished: true }),
     },
-    include: {
-      media: {
-        select: {
-          id: true,
-          mimeType: true,
-          relativePath: true,
-        },
-      },
-      author: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          avatar: true,
-        },
-      },
-      category: {
-        include: {
-          parent: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-            },
-          },
-        },
-      },
-      tags: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-        },
-      },
+    select: {
+      ...optimizedPostSelect,
       bookmarks: userId
         ? {
             where: {
@@ -578,11 +548,6 @@ export async function getPostsWithInteractions(
             },
           }
         : false,
-      _count: {
-        select: {
-          views: true,
-        },
-      },
     },
     orderBy: {
       createdAt: "desc",
@@ -709,7 +674,22 @@ export async function getPostsWithSorting(
     where: {
       ...(includeUnpublished ? {} : { isPublished: true }),
     },
-    include: {
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      description: true,
+      content: true,
+      featuredImage: true,
+      featuredImageBlur: true,
+      featuredVideo: true,
+      isPremium: true,
+      isFeatured: true,
+      isPublished: true,
+      status: true,
+      authorId: true,
+      createdAt: true,
+      updatedAt: true,
       media: {
         select: {
           id: true,
@@ -726,7 +706,10 @@ export async function getPostsWithSorting(
         },
       },
       category: {
-        include: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
           parent: {
             select: {
               id: true,
@@ -827,7 +810,22 @@ export async function getRelatedPosts(
         },
       ],
     },
-    include: {
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      description: true,
+      content: true,
+      featuredImage: true,
+      featuredImageBlur: true,
+      featuredVideo: true,
+      isPremium: true,
+      isFeatured: true,
+      isPublished: true,
+      status: true,
+      authorId: true,
+      createdAt: true,
+      updatedAt: true,
       media: {
         select: {
           id: true,
@@ -844,7 +842,10 @@ export async function getRelatedPosts(
         },
       },
       category: {
-        include: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
           parent: {
             select: {
               id: true,

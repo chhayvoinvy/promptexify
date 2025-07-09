@@ -58,21 +58,6 @@ function DirectoryPageSkeleton() {
         <Skeleton className="h-5 w-48" />
       </div>
 
-      {/* Loading Progress Indicator */}
-      <div className="mb-6 flex items-center justify-center">
-        <div className="text-center">
-          <div className="flex items-center justify-center mb-2">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Loading prompt directory...
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            This may take a few moments
-          </p>
-        </div>
-      </div>
-
       {/* Posts grid skeleton */}
       <PostMasonrySkeleton count={16} />
     </Container>

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Upload, X, Loader2, Trash } from "@/components/ui/icons";
-import { MediaImage, MediaVideo } from "@/components/ui/media-display";
+import { MediaImage, MediaVideo } from "@/components/media-display";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +33,7 @@ interface UploadResult {
   width?: number;
   height?: number;
   storageType: "S3" | "LOCAL" | "DOSPACE";
+  blurDataUrl?: string; // Base64 blur placeholder for images
 }
 
 interface MediaUploadProps {

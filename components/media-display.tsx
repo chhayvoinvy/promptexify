@@ -77,6 +77,7 @@ export function MediaImage({
   const [resolvedUrl, setResolvedUrl] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   useEffect(() => {
     if (!src) {
@@ -108,46 +109,145 @@ export function MediaImage({
       });
   }, [src]);
 
-  if (isLoading) {
-    return (
-      <div
-        className={`bg-muted animate-pulse ${className}`}
-        style={{ width, height }}
-      >
-        <div className="flex items-center justify-center h-full text-muted-foreground">
-          Loading...
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !resolvedUrl) {
+  if (error) {
     return (
       <div
         className={`bg-muted border-2 border-dashed border-muted-foreground/25 ${className}`}
         style={{ width, height }}
       >
         <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-          {error || "Image not available"}
+          {error}
         </div>
       </div>
     );
   }
 
+  // Loading state - always show blur image if available, otherwise show loading placeholder
+  if (isLoading) {
+    // When using fill, ensure proper container styling during loading
+    const loadingContainerStyle = fill 
+      ? { 
+          width: width || "100%", 
+          height: height || "100%",
+          minHeight: height || "200px",
+          position: "relative" as const
+        }
+      : { width, height };
+
+    const loadingContainerClassName = fill 
+      ? `relative overflow-hidden ${className || ""}` + (
+          (!height && !className?.includes('h-')) ? ' min-h-[200px]' : ''
+        )
+      : `relative overflow-hidden ${className || ""}`;
+
+    if (blurDataURL) {
+      return (
+        <div className={loadingContainerClassName} style={loadingContainerStyle}>
+          <Image
+            src={blurDataURL}
+            alt={alt}
+            width={!fill ? width : undefined}
+            height={!fill ? height : undefined}
+            fill={fill}
+            className="object-cover"
+            placeholder="blur"
+            blurDataURL={blurDataURL}
+            loading="eager"
+            priority={true}
+          />
+          {/* Subtle loading indicator overlay */}
+          <div className="absolute inset-0 bg-background/10 animate-pulse" />
+        </div>
+      );
+    } else {
+      // Fallback loading state when no blur data available
+      return (
+        <div
+          className={`bg-muted animate-pulse ${loadingContainerClassName}`}
+          style={loadingContainerStyle}
+        >
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            Loading...
+          </div>
+        </div>
+      );
+    }
+  }
+
+  if (!resolvedUrl) {
+    return (
+      <div
+        className={`bg-muted border-2 border-dashed border-muted-foreground/25 ${className}`}
+        style={{ width, height }}
+      >
+        <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+          Image not available
+        </div>
+      </div>
+    );
+  }
+
+  // Enhanced image loading with proper blur-to-sharp transition
+  const handleImageLoad = (event: React.SyntheticEvent<HTMLImageElement>) => {
+    setImageLoaded(true);
+    onLoad?.(event);
+  };
+
+  // When using fill, ensure the container has proper styling and minimum dimensions
+  const containerStyle = fill 
+    ? { 
+        width: width || "100%", 
+        height: height || "100%",
+        minHeight: height || "200px", // Ensure minimum height when using fill
+        position: "relative" as const
+      }
+    : { width, height };
+
+  const containerClassName = fill 
+    ? `relative overflow-hidden ${className || ""}` + (
+        // Add min-height class if no explicit height is provided
+        (!height && !className?.includes('h-')) ? ' min-h-[200px]' : ''
+      )
+    : `relative overflow-hidden ${className || ""}`;
+
   return (
-    <Image
-      src={resolvedUrl}
-      alt={alt}
-      width={width}
-      height={height}
-      fill={fill}
-      className={className}
-      loading={priority ? "eager" : loading}
-      sizes={sizes}
-      priority={priority}
-      onLoad={onLoad}
-      blurDataURL={blurDataURL}
-    />
+    <div className={containerClassName} style={containerStyle}>
+      {/* Blur placeholder that stays visible until the sharp image loads */}
+      {blurDataURL && (
+        <Image
+          src={blurDataURL}
+          alt={alt}
+          width={!fill ? width : undefined}
+          height={!fill ? height : undefined}
+          fill={fill}
+          className={`absolute inset-0 object-cover transition-opacity duration-300 ${
+            imageLoaded ? "opacity-0" : "opacity-100"
+          }`}
+          placeholder="blur"
+          blurDataURL={blurDataURL}
+          loading="eager"
+          priority={true}
+        />
+      )}
+      
+      {/* Main image with smooth fade-in */}
+      <Image
+        src={resolvedUrl}
+        alt={alt}
+        width={!fill ? width : undefined}
+        height={!fill ? height : undefined}
+        fill={fill}
+        className={`object-cover transition-opacity duration-300 ${
+          imageLoaded ? "opacity-100" : "opacity-0"
+        }`}
+        loading={priority ? "eager" : loading}
+        sizes={sizes}
+        priority={priority}
+        onLoad={handleImageLoad}
+        placeholder="empty"
+        blurDataURL={undefined}
+      />
+    </div>
   );
 }
 
