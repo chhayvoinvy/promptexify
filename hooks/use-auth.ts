@@ -53,13 +53,13 @@ const fetchUserData = async (): Promise<UserData | null> => {
   // Create new request
   userDataCache.promise = (async () => {
     try {
-      console.log("🔄 Fetching user profile data...");
+      // console.log("🔄 Fetching user profile data...");
       const response = await fetch("/api/user/profile");
       if (response.ok) {
         const userData = await response.json();
         userDataCache.data = userData;
         userDataCache.timestamp = now;
-        console.log("✅ User profile data cached");
+        // console.log("✅ User profile data cached");
         return userData;
       } else {
         // Don't cache failed responses
@@ -101,7 +101,7 @@ export function useAuth(): AuthState {
 
     const getUser = async () => {
       try {
-        console.log("🔍 Checking auth session...");
+        // console.log("🔍 Checking auth session...");
         // More robust check using getSession
         const {
           data: { session },
@@ -132,7 +132,7 @@ export function useAuth(): AuthState {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("🔄 Auth state changed:", event);
+      // console.log("🔄 Auth state changed:", event);
 
       if (session?.user) {
         try {

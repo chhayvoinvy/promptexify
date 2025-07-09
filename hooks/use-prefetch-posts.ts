@@ -85,7 +85,7 @@ export function usePrefetchPosts(options: UsePrefetchPostsOptions = {}) {
           isPrefetching: false,
         });
 
-        console.log(`✅ Prefetched post: ${postId}`);
+        // console.log(`✅ Prefetched post: ${postId}`);
       } catch (error) {
         console.warn(`Failed to prefetch post ${postId}:`, error);
         
