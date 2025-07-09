@@ -59,19 +59,21 @@ export default function NewPostPage() {
   const { createFormDataWithCSRF, getHeadersWithCSRF, isReady } = useCSRFForm();
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
-  const [featuredImage, setFeaturedImage] = useState<FeaturedMedia | null>(
-    null
-  );
-  const [featuredVideo, setFeaturedVideo] = useState<FeaturedMedia | null>(
-    null
-  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [postTitle, setPostTitle] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [uploadPath, setUploadPath] = useState<string | null>(null);
+  const [uploadFileType, setUploadFileType] = useState<"IMAGE" | "VIDEO" | null>(null);
+  const [uploadMediaId, setUploadMediaId] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [blurData, setBlurData] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [pendingTags, setPendingTags] = useState<string[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [maxTagsPerPost, setMaxTagsPerPost] = useState<number>(15);
+
+
 
   // Redirect if not authenticated or not authorized
   useEffect(() => {
@@ -247,27 +249,24 @@ export default function NewPostPage() {
         }
 
         // If there were failed tags, show a warning but still continue
-        if (failedTags.length > 0) {
-          console.warn(
-            `Some tags could not be created: ${failedTags.join(", ")}`
-          );
-          toast.warning(
-            `Some tags could not be created: ${failedTags.join(", ")}`
-          );
-        }
+                  if (failedTags.length > 0) {
+            console.warn(
+              `Some tags could not be created: ${failedTags.join(", ")}`
+            );
+            toast.warning(
+              `Some tags could not be created: ${failedTags.join(", ")}`
+            );
+          }
       }
 
       // Add the featured media URLs to form data
-      if (featuredImage) {
-        formData.set("featuredImageId", featuredImage.id);
-        formData.set("featuredImageRelativePath", featuredImage.relativePath);
-        if (featuredImage.blurDataUrl) {
-          formData.set("blurData", featuredImage.blurDataUrl);
+      if (uploadMediaId) {
+        formData.set("uploadMediaId", uploadMediaId);
+        formData.set("uploadPath", uploadPath || "");
+        formData.set("uploadFileType", uploadFileType || "");
+        if (blurData) {
+          formData.set("blurData", blurData);
         }
-      }
-      if (featuredVideo) {
-        formData.set("featuredVideoId", featuredVideo.id);
-        formData.set("featuredVideoRelativePath", featuredVideo.relativePath);
       }
 
       // Add the selected tags to form data
@@ -283,29 +282,29 @@ export default function NewPostPage() {
       const secureFormData = createFormDataWithCSRF(formObject);
       await createPostAction(secureFormData);
 
-      // Show success message - redirect is handled by server action
-      toast.success("Post submitted successfully!");
-    } catch (error) {
-      console.error("Error creating post:", error);
+              // Show success message - redirect is handled by server action
+        toast.success("Post submitted successfully!");
+      } catch (error) {
+        console.error("Error creating post:", error);
 
-      // Check if this is a Next.js redirect (expected behavior)
-      if (error && typeof error === "object" && "digest" in error) {
-        const errorDigest = (error as { digest?: string }).digest;
-        if (
-          typeof errorDigest === "string" &&
-          errorDigest.includes("NEXT_REDIRECT")
-        ) {
-          // This is a redirect - don't show error, redirect is working as expected
-          return;
+        // Check if this is a Next.js redirect (expected behavior)
+        if (error && typeof error === "object" && "digest" in error) {
+          const errorDigest = (error as { digest?: string }).digest;
+          if (
+            typeof errorDigest === "string" &&
+            errorDigest.includes("NEXT_REDIRECT")
+          ) {
+            // This is a redirect - don't show error, redirect is working as expected
+            return;
+          }
         }
-      }
 
-      // Show user-friendly error message for actual errors
-      if (error instanceof Error) {
-        toast.error(error.message);
-      } else {
-        toast.error("Failed to create post. Please try again.");
-      }
+        // Show user-friendly error message for actual errors
+        if (error instanceof Error) {
+          toast.error(error.message);
+        } else {
+          toast.error("Failed to create post. Please try again.");
+        }
     } finally {
       setIsSubmitting(false);
     }
@@ -324,29 +323,17 @@ export default function NewPostPage() {
     } | null
   ) {
     if (result) {
-      if (result.mimeType.startsWith("image/")) {
-        setFeaturedImage({
-          id: result.id,
-          url: result.url,
-          relativePath: result.relativePath,
-          blurDataUrl: result.blurDataUrl,
-          previewUrl: result.previewUrl,
-          previewRelativePath: result.previewRelativePath,
-        });
-        setFeaturedVideo(null); // Clear video when image is uploaded
-      } else if (result.mimeType.startsWith("video/")) {
-        setFeaturedVideo({
-          id: result.id,
-          url: result.url,
-          relativePath: result.relativePath,
-          previewUrl: result.previewUrl,
-          previewRelativePath: result.previewRelativePath,
-        });
-        setFeaturedImage(null); // Clear image when video is uploaded
-      }
+      setUploadMediaId(result.id);
+      setUploadPath(result.relativePath);
+      setPreviewUrl(result.previewUrl || result.url);
+      setBlurData(result.blurDataUrl || null);
+      setUploadFileType(result.mimeType.startsWith("image/") ? "IMAGE" : "VIDEO");
     } else {
-      setFeaturedImage(null);
-      setFeaturedVideo(null);
+      setUploadMediaId(null);
+      setUploadPath(null);
+      setPreviewUrl(null);
+      setBlurData(null);
+      setUploadFileType(null);
     }
   }
 
@@ -507,6 +494,10 @@ export default function NewPostPage() {
                   <MediaUpload
                     onMediaUploaded={handleMediaUploaded}
                     onUploadStateChange={handleUploadStateChange}
+                    currentUploadPath={uploadPath || undefined}
+                    currentUploadFileType={uploadFileType || undefined}
+                    currentUploadMediaId={uploadMediaId || undefined}
+                    currentPreviewUrl={previewUrl || undefined}
                     title={postTitle || "untitled-post"}
                   />
                   <p className="text-sm text-muted-foreground">

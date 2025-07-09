@@ -69,26 +69,14 @@ async function handlePostRequest(request: NextRequest, { params }: RouteParams, 
       });
     }
 
-    const postWithPublicUrls = {
+    return NextResponse.json({
       ...post,
-      featuredImage: post.featuredImage
-        ? await getPublicUrl(post.featuredImage)
+      uploadPath: post.uploadPath && post.uploadFileType === "IMAGE"
+        ? await getPublicUrl(post.uploadPath)
         : null,
-      featuredVideo: post.featuredVideo
-        ? await getPublicUrl(post.featuredVideo)
+      uploadVideo: post.uploadPath && post.uploadFileType === "VIDEO"
+        ? await getPublicUrl(post.uploadPath)
         : null,
-      media: await Promise.all(
-        (post.media || []).map(async (mediaItem) => ({
-          ...mediaItem,
-          url: await getPublicUrl(mediaItem.relativePath),
-        }))
-      ),
-    };
-
-    return NextResponse.json(postWithPublicUrls, {
-      headers: {
-        'Cache-Control': 'public, max-age=300, stale-while-revalidate=600', // 5min cache, 10min stale
-      }
     });
   } catch (error) {
     console.error("Post API error:", error);

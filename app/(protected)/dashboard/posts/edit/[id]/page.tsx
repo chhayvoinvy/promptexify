@@ -62,8 +62,8 @@ interface Post {
   slug: string;
   description?: string;
   content: string;
-  featuredImage?: string;
-  featuredVideo?: string;
+  uploadPath?: string;
+  uploadFileType?: "IMAGE" | "VIDEO";
   isPublished: boolean;
   isPremium: boolean;
   media: { id: string; mimeType: string; relativePath: string; url: string }[];
@@ -83,28 +83,27 @@ interface Post {
 export default function EditPostPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const { createFormDataWithCSRF, getHeadersWithCSRF, isReady } = useCSRFForm();
   const params = useParams();
-  const { createFormDataWithCSRF, isReady } = useCSRFForm();
+  const postId = params.id as string;
+
   const [post, setPost] = useState<Post | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [pendingTags, setPendingTags] = useState<string[]>([]); // New state for pending tags
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const [featuredImage, setFeaturedImage] = useState<FeaturedMedia | null>(
-    null
-  );
-  const [featuredVideo, setFeaturedVideo] = useState<FeaturedMedia | null>(
-    null
-  );
-  const [postTitle, setPostTitle] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [postTitle, setPostTitle] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [uploadPath, setUploadPath] = useState<string | null>(null);
+  const [uploadFileType, setUploadFileType] = useState<"IMAGE" | "VIDEO" | null>(null);
+  const [uploadMediaId, setUploadMediaId] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [blurData, setBlurData] = useState<string | null>(null);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [pendingTags, setPendingTags] = useState<string[]>([]);
   const [maxTagsPerPost, setMaxTagsPerPost] = useState<number>(15);
-
-  const postId = params?.id as string;
 
   // Redirect if not authenticated or not authorized
   useEffect(() => {
@@ -186,34 +185,18 @@ export default function EditPostPage() {
           );
 
           if (image) {
-            setFeaturedImage({
-              id: image.id,
-              url: image.relativePath, // Use relative path for consistent media resolution
-              relativePath: image.relativePath,
-            });
+            setUploadPath(image.relativePath);
+            setUploadFileType("IMAGE");
+            setUploadMediaId(image.id);
+            setPreviewUrl(image.url);
+            setBlurData(image.blurDataUrl || null);
           }
           if (video) {
-            setFeaturedVideo({
-              id: video.id,
-              url: video.relativePath, // Use relative path for consistent media resolution
-              relativePath: video.relativePath,
-            });
-          }
-        } else {
-          // Fallback: if no media array, use the direct fields from postData
-          if (postData.featuredImage) {
-            setFeaturedImage({
-              id: "legacy-image",
-              url: postData.featuredImage,
-              relativePath: postData.featuredImage,
-            });
-          }
-          if (postData.featuredVideo) {
-            setFeaturedVideo({
-              id: "legacy-video",
-              url: postData.featuredVideo,
-              relativePath: postData.featuredVideo,
-            });
+            setUploadPath(video.relativePath);
+            setUploadFileType("VIDEO");
+            setUploadMediaId(video.id);
+            setPreviewUrl(video.url || null);
+            setBlurData(null); // Videos don't have blurDataUrl
           }
         }
 
@@ -355,18 +338,15 @@ export default function EditPostPage() {
         }
       }
 
-      // Add the featured media URLs to form data
-      if (featuredImage) {
-        formData.set("featuredImageId", featuredImage.id);
-        formData.set("featuredImageRelativePath", featuredImage.relativePath);
-        if (featuredImage.blurDataUrl) {
-          formData.set("blurData", featuredImage.blurDataUrl);
+              // Add the featured media URLs to form data
+        if (uploadPath) {
+          formData.set("uploadMediaId", uploadMediaId || "");
+          formData.set("uploadPath", uploadPath);
+          formData.set("uploadFileType", uploadFileType || "");
+          if (blurData) {
+            formData.set("blurData", blurData);
+          }
         }
-      }
-      if (featuredVideo) {
-        formData.set("featuredVideoId", featuredVideo.id);
-        formData.set("featuredVideoRelativePath", featuredVideo.relativePath);
-      }
 
       // Add the selected tags to form data
       formData.set("tags", selectedTags.join(","));
@@ -434,28 +414,24 @@ export default function EditPostPage() {
   ) {
     if (result) {
       if (result.mimeType.startsWith("image/")) {
-        setFeaturedImage({
-          id: result.id,
-          url: result.url,
-          relativePath: result.relativePath,
-          blurDataUrl: result.blurDataUrl,
-          previewUrl: result.previewUrl,
-          previewRelativePath: result.previewRelativePath,
-        });
-        setFeaturedVideo(null); // Clear video when image is uploaded
+        setUploadPath(result.relativePath);
+        setUploadFileType("IMAGE");
+        setUploadMediaId(result.id);
+        setPreviewUrl(result.url);
+        setBlurData(result.blurDataUrl || null);
       } else if (result.mimeType.startsWith("video/")) {
-        setFeaturedVideo({
-          id: result.id,
-          url: result.url,
-          relativePath: result.relativePath,
-          previewUrl: result.previewUrl,
-          previewRelativePath: result.previewRelativePath,
-        });
-        setFeaturedImage(null); // Clear image when video is uploaded
+        setUploadPath(result.relativePath);
+        setUploadFileType("VIDEO");
+        setUploadMediaId(result.id);
+        setPreviewUrl(result.url);
+        setBlurData(null); // Videos don't have blurDataUrl
       }
     } else {
-      setFeaturedImage(null);
-      setFeaturedVideo(null);
+      setUploadPath(null);
+      setUploadFileType(null);
+      setUploadMediaId(null);
+      setPreviewUrl(null);
+      setBlurData(null);
     }
   }
 
@@ -638,12 +614,10 @@ export default function EditPostPage() {
                   <MediaUpload
                     onMediaUploaded={handleMediaUploaded}
                     onUploadStateChange={handleUploadStateChange}
-                    currentImageUrl={featuredImage?.url}
-                    currentVideoUrl={featuredVideo?.url}
-                    currentImageId={featuredImage?.id}
-                    currentVideoId={featuredVideo?.id}
-                    currentImagePreviewUrl={featuredImage?.previewUrl}
-                    currentVideoPreviewUrl={featuredVideo?.previewUrl}
+                    currentUploadPath={uploadPath || undefined}
+                    currentUploadFileType={uploadFileType || undefined}
+                    currentUploadMediaId={uploadMediaId || undefined}
+                    currentPreviewUrl={previewUrl || undefined}
                     title={postTitle || "untitled-post"}
                   />
                   <p className="text-sm text-muted-foreground">

@@ -53,11 +53,11 @@ export function PostStandalonePage({
   const viewTracked = useRef(false);
 
   // Get video preview URL and blur data
-  const videoPreviewUrl = post.featuredVideo 
-    ? post.media?.find(m => m.relativePath === post.featuredVideo)?.previewUrl 
+  const videoPreviewUrl = post.uploadPath && post.uploadFileType === "VIDEO"
+    ? post.media?.find(m => m.relativePath === post.uploadPath)?.previewUrl
     : null;
-  const videoPreviewBlurData = post.featuredVideo
-    ? post.media?.find(m => m.relativePath === post.featuredVideo)?.blurDataUrl
+  const videoPreviewBlurData = post.uploadPath && post.uploadFileType === "VIDEO"
+    ? post.media?.find(m => m.relativePath === post.uploadPath)?.blurDataUrl
     : null;
 
   const copyToClipboard = async () => {
@@ -315,7 +315,7 @@ export function PostStandalonePage({
                   />
 
                   {/* Toggle Preview Button */}
-                  {(post.featuredImage || post.featuredVideo) && (
+                  {post.uploadPath && (
                     <Button
                       onClick={togglePreview}
                       variant="outline"
@@ -397,12 +397,12 @@ export function PostStandalonePage({
                     >
                       <div className="h-full overflow-y-auto">
                         <div className="px-8 pb-6">
-                          {post.featuredVideo ? (
+                          {post.uploadPath && post.uploadFileType === "VIDEO" ? (
                             <div className="relative w-full rounded-lg overflow-hidden">
                               {/* Always show video preview image initially */}
                               {videoPreviewUrl && (
                                 <MediaImage
-                                  src={post.featuredVideo}
+                                  src={post.uploadPath}
                                   alt={post.title}
                                   width={800}
                                   height={400}
@@ -421,7 +421,7 @@ export function PostStandalonePage({
                                   ref={(el) => {
                                     if (el) videoRefs.current['main'] = el;
                                   }}
-                                  src={post.featuredVideo}
+                                  src={post.uploadPath}
                                   controls
                                   className={`w-full h-auto max-h-80 object-contain transition-opacity duration-300 ${
                                     videoLoaded ? "opacity-100" : "opacity-0"
@@ -454,10 +454,10 @@ export function PostStandalonePage({
                                 </div>
                               )}
                             </div>
-                          ) : post.featuredImage ? (
+                          ) : post.uploadPath && post.uploadFileType === "IMAGE" ? (
                             <div className="relative w-full rounded-lg overflow-hidden">
                               <MediaImage
-                                src={post.featuredImage}
+                                src={post.uploadPath}
                                 alt={post.title}
                                 width={800}
                                 height={400}
@@ -527,10 +527,9 @@ export function PostStandalonePage({
                       onClick={() => router.push(`/entry/${relatedPost.id}`)}
                     >
                       <div className="flex items-start gap-3">
-                        {(relatedPost.featuredImage ||
-                          relatedPost.featuredVideo) && (
+                                                  {relatedPost.uploadPath && (
                           <div className="w-12 h-12 rounded overflow-hidden flex-shrink-0 relative">
-                            {relatedPost.featuredVideo ? (
+                            {relatedPost.uploadPath && relatedPost.uploadFileType === "VIDEO" ? (
                               <>
                                 <MediaVideo
                                   ref={(el) => {
@@ -539,7 +538,7 @@ export function PostStandalonePage({
                                         `related-${relatedPost.id}`
                                       ] = el;
                                   }}
-                                  src={relatedPost.featuredVideo}
+                                  src={relatedPost.uploadPath}
                                   className="w-full h-full object-cover"
                                   preload="metadata"
                                   muted
@@ -577,7 +576,7 @@ export function PostStandalonePage({
                               </>
                             ) : (
                               <MediaImage
-                                src={relatedPost.featuredImage!}
+                                src={relatedPost.uploadPath!}
                                 alt={relatedPost.title}
                                 fill
                                 className="object-cover"

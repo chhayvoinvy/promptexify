@@ -73,26 +73,20 @@ export const PostDataSchema = z.object({
   status: z.enum(["APPROVED", "PENDING_APPROVAL", "REJECTED"]),
   isFeatured: z.boolean(),
 
-  featuredImage: z
+  uploadPath: z
     .string()
     .optional()
     .refine(
       (path) =>
         !path ||
         path === "" ||
-        isAllowedLocalImagePath(path),
-      "Invalid or suspicious image path"
-    ),
-  featuredVideo: z
-    .string()
-    .optional()
-    .refine(
-      (path) =>
-        !path ||
-        path === "" ||
+        isAllowedLocalImagePath(path) ||
         isAllowedLocalVideoPath(path),
-      "Invalid or suspicious video path"
+      "Invalid or suspicious upload path"
     ),
+  uploadFileType: z
+    .enum(["IMAGE", "VIDEO"])
+    .optional(),
 });
 
 export const ContentFileSchema = z.object({

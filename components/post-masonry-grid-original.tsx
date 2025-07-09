@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -39,7 +39,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
   const [previousPostCount, setPreviousPostCount] = useState(0);
   const [playingVideo, setPlayingVideo] = useState<string | null>(null);
   const [mutedVideos, setMutedVideos] = useState<Set<string>>(
-    new Set(posts.filter((post) => post.featuredVideo).map((post) => post.id))
+    new Set(posts.filter((post) => post.uploadPath && post.uploadFileType === "VIDEO").map((post) => post.id))
   );
   
   // State to track which videos should be loaded and their loading status
@@ -60,6 +60,13 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
     prefetchData: true, // Prefetch both route and API data
     debounceMs: 100, // Quick response for better UX
   });
+
+  // Get all video post IDs for video state management
+  const videoPostIds = useMemo(
+    () =>
+      new Set(posts.filter((post) => post.uploadPath && post.uploadFileType === "VIDEO").map((post) => post.id)),
+    [posts]
+  );
 
   // Handle video play/pause
   const handleVideoPlay = useCallback(
@@ -275,7 +282,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
       if (newPosts.length > 0) {
         // Add new videos to muted list by default
         const newVideoPostIds = newPosts
-          .filter((post) => post.featuredVideo)
+          .filter((post) => post.uploadPath && post.uploadFileType === "VIDEO")
           .map((post) => post.id);
 
         if (newVideoPostIds.length > 0) {
@@ -335,11 +342,11 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
       >
         {posts.map((post) => {
           const position = postPositions.find((p) => p.id === post.id);
-          const videoPreviewUrl = post.featuredVideo 
-            ? post.media?.find(m => m.relativePath === post.featuredVideo)?.previewUrl 
+          const videoPreviewUrl = post.uploadPath && post.uploadFileType === "VIDEO"
+            ? post.media?.find(m => m.relativePath === post.uploadPath)?.previewUrl 
             : null;
-          const videoPreviewBlurData = post.featuredVideo
-            ? post.media?.find(m => m.relativePath === post.featuredVideo)?.blurDataUrl
+          const videoPreviewBlurData = post.uploadPath && post.uploadFileType === "VIDEO"
+            ? post.media?.find(m => m.relativePath === post.uploadPath)?.blurDataUrl
             : null;
           const shouldShowVideo = videosToShow.has(post.id);
           const isVideoLoaded = videosLoaded.has(post.id);
@@ -376,15 +383,15 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                 <Card className="overflow-hidden hover:shadow-lg cursor-zoom-in py-0 shadow-lg">
                   <div
                     className="relative"
-                    style={
-                      post.featuredImage || post.featuredVideo
-                        ? getDynamicAspectRatio(post.id)
-                        : { height: "auto", minHeight: "120px" }
-                    }
+                                          style={
+                        post.uploadPath
+                           ? getDynamicAspectRatio(post.id)
+                           : { height: "auto", minHeight: "120px" }
+                      }
                   >
-                    {post.featuredImage ? (
+                    {post.uploadPath && post.uploadFileType === "IMAGE" ? (
                       <MediaImage
-                        src={post.featuredImage}
+                        src={post.uploadPath}
                         alt={post.title}
                         fill
                         className="object-cover rounded-b-lg absolute"
@@ -392,14 +399,14 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                         blurDataURL={post.blurData || undefined}
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         onLoad={(e) => handleMediaLoad(post.id, e)}
-                        previewUrl={post.media?.find(m => m.relativePath === post.featuredImage)?.previewUrl || undefined}
+                        previewUrl={post.media?.find(m => m.relativePath === post.uploadPath)?.previewUrl || undefined}
                       />
-                    ) : post.featuredVideo ? (
+                    ) : post.uploadPath && post.uploadFileType === "VIDEO" ? (
                       <>
                         {/* Always show video preview image initially */}
                         {videoPreviewUrl && (
                           <MediaImage
-                            src={post.featuredVideo}
+                            src={post.uploadPath}
                             alt={post.title}
                             fill
                             className={`object-cover rounded-b-lg absolute transition-opacity duration-300 ${
@@ -419,7 +426,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                             ref={(el) => {
                               if (el) videoRefs.current[post.id] = el;
                             }}
-                            src={post.featuredVideo}
+                            src={post.uploadPath}
                             className={`w-full h-full object-cover rounded-b-lg absolute scale-150 transition-opacity duration-300 ${
                               isVideoLoaded ? "opacity-100" : "opacity-0"
                             }`}

@@ -41,12 +41,10 @@ interface UploadResult {
 interface MediaUploadProps {
   onMediaUploaded?: (result: UploadResult | null) => void;
   onUploadStateChange?: (uploading: boolean) => void;
-  currentImageUrl?: string;
-  currentVideoUrl?: string;
-  currentImageId?: string;
-  currentVideoId?: string;
-  currentImagePreviewUrl?: string;
-  currentVideoPreviewUrl?: string;
+  currentUploadPath?: string;
+  currentUploadFileType?: "IMAGE" | "VIDEO";
+  currentUploadMediaId?: string;
+  currentPreviewUrl?: string;
   title?: string;
   disabled?: boolean;
   className?: string;
@@ -70,28 +68,26 @@ type MediaType = "image" | "video";
 export function MediaUpload({
   onMediaUploaded,
   onUploadStateChange,
-  currentImageUrl,
-  currentVideoUrl,
-  currentImageId,
-  currentVideoId,
-  currentImagePreviewUrl,
-  currentVideoPreviewUrl,
+  currentUploadPath,
+  currentUploadFileType,
+  currentUploadMediaId,
+  currentPreviewUrl,
   title = "untitled",
   disabled = false,
   className,
 }: MediaUploadProps) {
   const [dragOver, setDragOver] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(
-    currentImageUrl || null
+  const [uploadPath, setUploadPath] = useState<string | null>(
+    currentUploadPath || null
   );
-  const [videoPreview, setVideoPreview] = useState<string | null>(
-    currentVideoUrl || null
+  const [uploadFileType, setUploadFileType] = useState<"IMAGE" | "VIDEO" | null>(
+    currentUploadFileType || null
   );
-  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(
-    currentImagePreviewUrl || null
+  const [uploadMediaId, setUploadMediaId] = useState<string | null>(
+    currentUploadMediaId || null
   );
-  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(
-    currentVideoPreviewUrl || null
+  const [previewUrl, setPreviewUrl] = useState<string | null>(
+    currentPreviewUrl || null
   );
   const [uploadState, setUploadState] = useState<UploadState>({
     uploading: false,
@@ -114,22 +110,22 @@ export function MediaUpload({
     onUploadStateChange?.(uploadState.uploading);
   }, [uploadState.uploading, onUploadStateChange]);
 
-  // Sync previews with props
+  // Sync states with props
   useEffect(() => {
-    setImagePreview(currentImageUrl || null);
-  }, [currentImageUrl]);
+    setUploadPath(currentUploadPath || null);
+  }, [currentUploadPath]);
 
   useEffect(() => {
-    setVideoPreview(currentVideoUrl || null);
-  }, [currentVideoUrl]);
+    setUploadFileType(currentUploadFileType || null);
+  }, [currentUploadFileType]);
 
   useEffect(() => {
-    setImagePreviewUrl(currentImagePreviewUrl || null);
-  }, [currentImagePreviewUrl]);
+    setUploadMediaId(currentUploadMediaId || null);
+  }, [currentUploadMediaId]);
 
   useEffect(() => {
-    setVideoPreviewUrl(currentVideoPreviewUrl || null);
-  }, [currentVideoPreviewUrl]);
+    setPreviewUrl(currentPreviewUrl || null);
+  }, [currentPreviewUrl]);
 
   // Storage configuration state
   const [storageConfig, setStorageConfig] = useState<{
@@ -240,11 +236,11 @@ export function MediaUpload({
       // Create preview
       const previewUrl = URL.createObjectURL(file);
       if (mediaType === "image") {
-        setImagePreview(previewUrl);
-        setVideoPreview(null); // Clear video when uploading image
+        setUploadPath(previewUrl);
+        setUploadFileType("IMAGE");
       } else {
-        setVideoPreview(previewUrl);
-        setImagePreview(null); // Clear image when uploading video
+        setUploadFileType("VIDEO");
+        setUploadPath(previewUrl);
       }
 
       // Prepare form data
@@ -302,16 +298,18 @@ export function MediaUpload({
           }
 
           if (mediaType === "image") {
-            setImagePreview(mediaPath);
+            setUploadPath(mediaPath);
+            setUploadFileType("IMAGE");
             // Only set preview URL if it's a valid string
-            setImagePreviewUrl(
+            setPreviewUrl(
               result.previewRelativePath && result.previewRelativePath.trim() !== '' 
                 ? result.previewRelativePath 
                 : null
             );
           } else {
-            setVideoPreview(mediaPath);
-            setVideoPreviewUrl(
+            setUploadFileType("VIDEO");
+            setUploadPath(mediaPath);
+            setPreviewUrl(
               result.previewRelativePath && result.previewRelativePath.trim() !== '' 
                 ? result.previewRelativePath 
                 : null
@@ -344,11 +342,13 @@ export function MediaUpload({
           
           // Reset preview states to avoid invalid URLs
           if (mediaType === "image") {
-            setImagePreview(null);
-            setImagePreviewUrl(null);
+            setUploadPath(null);
+            setUploadFileType(null);
+            setPreviewUrl(null);
           } else {
-            setVideoPreview(null);
-            setVideoPreviewUrl(null);
+            setUploadFileType(null);
+            setUploadPath(null);
+            setPreviewUrl(null);
           }
         }
       };
@@ -365,11 +365,13 @@ export function MediaUpload({
         
         // Reset preview states to avoid invalid URLs
         if (mediaType === "image") {
-          setImagePreview(null);
-          setImagePreviewUrl(null);
+          setUploadPath(null);
+          setUploadFileType(null);
+          setPreviewUrl(null);
         } else {
-          setVideoPreview(null);
-          setVideoPreviewUrl(null);
+          setUploadFileType(null);
+          setUploadPath(null);
+          setPreviewUrl(null);
         }
       };
 
@@ -446,17 +448,18 @@ export function MediaUpload({
 
     // Get the details for deletion before clearing the state
     const urlToDelete =
-      pendingDeletionType === "image" ? imagePreview : videoPreview;
+      pendingDeletionType === "image" ? uploadPath : uploadPath;
     const idToDelete =
-      pendingDeletionType === "image" ? currentImageId : currentVideoId;
+      pendingDeletionType === "image" ? uploadMediaId : uploadMediaId;
 
     // Immediately remove from UI
     if (pendingDeletionType === "image") {
-      setImagePreview(null);
-      setImagePreviewUrl(null);
+      setUploadPath(null);
+      setPreviewUrl(null);
     } else {
-      setVideoPreview(null);
-      setVideoPreviewUrl(null);
+      setUploadFileType(null);
+      setUploadPath(null);
+      setPreviewUrl(null);
     }
 
     // Reset upload state and notify parent
@@ -530,28 +533,20 @@ export function MediaUpload({
   };
 
   const renderPreview = () => {
-    if (!imagePreview && !videoPreview) return null;
+    if (!uploadPath) return null;
 
     const isDeleting = deletionState.deleting;
 
     return (
       <div className="absolute inset-0 p-2">
         <div className="relative w-full h-full">
-          {imagePreview ? (
+          {uploadPath ? (
             <MediaImage
-              src={imagePreview}
+              src={uploadPath}
               alt="Image preview"
               fill
               className="object-contain rounded-lg"
-              previewUrl={imagePreviewUrl || undefined}
-            />
-          ) : videoPreview ? (
-            <MediaVideo
-              src={videoPreview}
-              className="w-full h-full object-contain rounded-lg"
-              muted
-              loop
-              playsInline
+              previewUrl={previewUrl || undefined}
             />
           ) : null}
 
@@ -563,7 +558,8 @@ export function MediaUpload({
               className="absolute top-1 right-1 h-7 w-7 z-10"
               onClick={(e) => {
                 e.stopPropagation();
-                handleRemoveMedia(imagePreview ? "image" : "video")();
+                const mediaType: MediaType = uploadFileType === "VIDEO" ? "video" : "image";
+                handleRemoveMedia(mediaType)();
               }}
               disabled={isDeleting}
             >
@@ -610,7 +606,7 @@ export function MediaUpload({
               <div
                 className={cn("flex flex-col items-center justify-center", {
                   "opacity-0 hover:opacity-100 transition-opacity absolute inset-0 bg-black/90":
-                    imagePreview || videoPreview,
+                    uploadPath,
                 })}
               >
                 <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center">

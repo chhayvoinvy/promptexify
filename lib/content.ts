@@ -9,9 +9,9 @@ export interface PostWithDetails {
   slug: string;
   description: string | null;
   content: string;
-  featuredImage: string | null;
+  uploadPath: string | null;
+  uploadFileType: "IMAGE" | "VIDEO" | null;
   blurData?: string | null; // Optional for now, will be filled in gradually
-  featuredVideo: string | null;
   isPremium: boolean;
   isFeatured: boolean;
   isPublished: boolean;
@@ -84,9 +84,9 @@ const optimizedPostSelect = {
   slug: true,
   content: true,
   description: true,
-  featuredImage: true,
+  uploadPath: true,
+  uploadFileType: true,
   blurData: true,
-  featuredVideo: true,
   isPremium: true,
   isFeatured: true,
   isPublished: true,
@@ -686,9 +686,9 @@ export async function getPostsWithSorting(
       slug: true,
       description: true,
       content: true,
-      featuredImage: true,
+      uploadPath: true,
+      uploadFileType: true,
       blurData: true,
-      featuredVideo: true,
       isPremium: true,
       isFeatured: true,
       isPublished: true,
@@ -822,9 +822,9 @@ export async function getRelatedPosts(
       slug: true,
       description: true,
       content: true,
-      featuredImage: true,
+      uploadPath: true,
+      uploadFileType: true,
       blurData: true,
-      featuredVideo: true,
       isPremium: true,
       isFeatured: true,
       isPublished: true,

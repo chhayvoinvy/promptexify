@@ -42,14 +42,14 @@ async function downloadImage(url: string): Promise<Buffer> {
 }
 
 async function processPost(
-  post: { id: string; title: string; featuredImage: string | null }
+  post: { id: string; title: string; uploadPath: string | null; uploadFileType: string | null }
 ): Promise<{ success: boolean; error?: string }> {
   try {
     console.log(`Processing post: ${post.title} (${post.id})`);
 
-    // Check if featuredImage exists
-    if (!post.featuredImage) {
-      return { success: false, error: "No featured image found" };
+    // Check if uploadPath exists and is an image
+    if (!post.uploadPath || post.uploadFileType !== 'IMAGE') {
+      return { success: false, error: "No image upload path found or not an image" };
     }
 
     let imageBuffer: Buffer | null = null;
@@ -57,7 +57,7 @@ async function processPost(
     // Try different approaches to get the image
     try {
       // First, try using getPublicUrl to resolve the URL
-      const imageUrl = await getPublicUrl(post.featuredImage);
+      const imageUrl = await getPublicUrl(post.uploadPath);
       console.log(`  Trying to download from: ${imageUrl}`);
       imageBuffer = await downloadImage(imageUrl);
     } catch (urlError) {
@@ -69,10 +69,10 @@ async function processPost(
       
       // Try different local paths
       const possiblePaths = [
-        path.join(process.cwd(), "public", post.featuredImage),
-        path.join(process.cwd(), "public", "uploads", post.featuredImage),
-        path.join(process.cwd(), "public", post.featuredImage.replace(/^\//, "")),
-        path.join(process.cwd(), post.featuredImage),
+        path.join(process.cwd(), "public", post.uploadPath),
+        path.join(process.cwd(), "public", "uploads", post.uploadPath),
+        path.join(process.cwd(), "public", post.uploadPath.replace(/^\//, "")),
+        path.join(process.cwd(), post.uploadPath),
       ];
       
       let fileFound = false;
@@ -89,7 +89,7 @@ async function processPost(
       }
       
       if (!fileFound) {
-        throw new Error(`Could not find image file. Tried URL: ${post.featuredImage}, and local paths: ${possiblePaths.join(", ")}`);
+        throw new Error(`Could not find image file. Tried URL: ${post.uploadPath}, and local paths: ${possiblePaths.join(", ")}`);
       }
     }
     
@@ -212,13 +212,15 @@ async function backfillBlurData(): Promise<ProcessResult> {
     console.log("📊 PART 1: Processing featured images...");
     const postsToProcess = await prisma.post.findMany({
       where: {
-        featuredImage: { not: null },
+        uploadPath: { not: null },
+        uploadFileType: 'IMAGE',
         blurData: null
       },
       select: {
         id: true,
         title: true,
-        featuredImage: true
+        uploadPath: true,
+        uploadFileType: true
       }
     });
 

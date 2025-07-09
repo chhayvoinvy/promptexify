@@ -55,19 +55,19 @@ export function PostCard({
   const [videoLoaded, setVideoLoaded] = useState(false);
 
   // Get video preview URL and blur data
-  const videoPreviewUrl = post.featuredVideo 
-    ? post.media?.find(m => m.relativePath === post.featuredVideo)?.previewUrl 
+  const videoPreviewUrl = post.uploadFileType === "VIDEO" && post.uploadPath
+    ? post.media?.find(m => m.relativePath === post.uploadPath)?.previewUrl 
     : null;
-  const videoPreviewBlurData = post.featuredVideo
-    ? post.media?.find(m => m.relativePath === post.featuredVideo)?.blurDataUrl
+  const videoPreviewBlurData = post.uploadFileType === "VIDEO" && post.uploadPath
+    ? post.media?.find(m => m.relativePath === post.uploadPath)?.blurDataUrl
     : null;
 
   // Calculate aspect ratio based on media type and dimensions
   const getDynamicAspectRatio = () => {
-    if (post.featuredImage || post.featuredVideo) {
+    if (post.uploadPath) {
       // Try to get actual media dimensions from database
       const mediaItem = post.media?.find(
-        (m) => m.relativePath === post.featuredImage || m.relativePath === post.featuredVideo
+        (m) => m.relativePath === post.uploadPath
       );
 
       // Default aspect ratio calculation based on width
@@ -197,99 +197,101 @@ export function PostCard({
           <div
             className="relative"
             style={
-              post.featuredImage || post.featuredVideo
+              post.uploadPath
                 ? getDynamicAspectRatio()
                 : { height: "auto", minHeight: "120px" }
             }
           >
-            {post.featuredImage ? (
-              <MediaImage
-                src={post.featuredImage}
-                alt={post.title}
-                fill
-                className="object-cover rounded-b-lg absolute"
-                loading="lazy"
-                blurDataURL={post.blurData || undefined}
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                onLoad={handleMediaLoad}
-                previewUrl={post.media?.find(m => m.relativePath === post.featuredImage)?.previewUrl || undefined}
-              />
-            ) : post.featuredVideo ? (
-              <>
-                {/* Always show video preview image initially */}
-                {videoPreviewUrl && (
-                  <MediaImage
-                    src={post.featuredVideo}
-                    alt={post.title}
-                    fill
-                    className={`object-cover rounded-b-lg absolute transition-opacity duration-300 ${
-                      showVideo && videoLoaded ? "opacity-0" : "opacity-100"
-                    }`}
-                    loading="lazy"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    onLoad={handleMediaLoad}
-                    previewUrl={videoPreviewUrl}
-                    blurDataURL={videoPreviewBlurData || undefined}
-                  />
-                )}
-                
-                {/* Load and show video only when user requests it */}
-                {showVideo && (
-                  <MediaVideo
-                    ref={videoRef}
-                    src={post.featuredVideo}
-                    className={`w-full h-full object-cover rounded-b-lg absolute scale-150 transition-opacity duration-300 ${
-                      videoLoaded ? "opacity-100" : "opacity-0"
-                    }`}
-                    muted={isVideoMuted}
-                    loop
-                    playsInline
-                    preload="metadata"
-                    onLoadedMetadata={handleVideoLoadedMetadata}
-                    onEnded={handleVideoEnded}
-                  />
-                )}
+            {post.uploadPath ? (
+              post.uploadFileType === "IMAGE" ? (
+                <MediaImage
+                  src={post.uploadPath}
+                  alt={post.title}
+                  fill
+                  className="object-cover rounded-b-lg absolute"
+                  loading="lazy"
+                  blurDataURL={post.blurData || undefined}
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  onLoad={handleMediaLoad}
+                  previewUrl={post.media?.find(m => m.relativePath === post.uploadPath)?.previewUrl || undefined}
+                />
+              ) : post.uploadFileType === "VIDEO" ? (
+                <>
+                  {/* Always show video preview image initially */}
+                  {videoPreviewUrl && (
+                    <MediaImage
+                      src={post.uploadPath}
+                      alt={post.title}
+                      fill
+                      className={`object-cover rounded-b-lg absolute transition-opacity duration-300 ${
+                        showVideo && videoLoaded ? "opacity-0" : "opacity-100"
+                      }`}
+                      loading="lazy"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      onLoad={handleMediaLoad}
+                      previewUrl={videoPreviewUrl}
+                      blurDataURL={videoPreviewBlurData || undefined}
+                    />
+                  )}
+                  
+                  {/* Load and show video only when user requests it */}
+                  {showVideo && (
+                    <MediaVideo
+                      ref={videoRef}
+                      src={post.uploadPath}
+                      className={`w-full h-full object-cover rounded-b-lg absolute scale-150 transition-opacity duration-300 ${
+                        videoLoaded ? "opacity-100" : "opacity-0"
+                      }`}
+                      muted={isVideoMuted}
+                      loop
+                      playsInline
+                      preload="metadata"
+                      onLoadedMetadata={handleVideoLoadedMetadata}
+                      onEnded={handleVideoEnded}
+                    />
+                  )}
 
-                {/* Video controls */}
-                <div className="absolute inset-0 top-3 left-3 pointer-events-none z-10">
-                  <div className="flex gap-2">
-                    {/* Play/pause button */}
-                    <button
-                      className="bg-background/90 hover:bg-background rounded-full p-1.5 transition-colors pointer-events-auto"
-                      onClick={handleVideoPlay}
-                    >
-                      {playingVideo === post.id && videoLoaded ? (
-                        <Pause className="w-5 h-5 text-foreground" />
-                      ) : (
-                        <Play className="w-5 h-5 text-foreground" />
-                      )}
-                    </button>
-
-                    {/* Mute/unmute button - only show when video is loaded */}
-                    {showVideo && videoLoaded && (
+                  {/* Video controls */}
+                  <div className="absolute inset-0 top-3 left-3 pointer-events-none z-10">
+                    <div className="flex gap-2">
+                      {/* Play/pause button */}
                       <button
                         className="bg-background/90 hover:bg-background rounded-full p-1.5 transition-colors pointer-events-auto"
-                        onClick={handleVideoMute}
+                        onClick={handleVideoPlay}
                       >
-                        {isVideoMuted ? (
-                          <VolumeX className="w-5 h-5 text-foreground" />
+                        {playingVideo === post.id && videoLoaded ? (
+                          <Pause className="w-5 h-5 text-foreground" />
                         ) : (
-                          <Volume2 className="w-5 h-5 text-foreground" />
+                          <Play className="w-5 h-5 text-foreground" />
                         )}
                       </button>
-                    )}
-                  </div>
-                </div>
 
-                {/* Loading indicator when video is being loaded */}
-                {showVideo && !videoLoaded && (
-                  <div className="absolute inset-0 bg-black/20 flex items-center justify-center z-5">
-                    <div className="bg-background/90 rounded-full p-2">
-                      <div className="w-4 h-4 border-2 border-foreground border-t-transparent rounded-full animate-spin"></div>
+                      {/* Mute/unmute button - only show when video is loaded */}
+                      {showVideo && videoLoaded && (
+                        <button
+                          className="bg-background/90 hover:bg-background rounded-full p-1.5 transition-colors pointer-events-auto"
+                          onClick={handleVideoMute}
+                        >
+                          {isVideoMuted ? (
+                            <VolumeX className="w-5 h-5 text-foreground" />
+                          ) : (
+                            <Volume2 className="w-5 h-5 text-foreground" />
+                          )}
+                        </button>
+                      )}
                     </div>
                   </div>
-                )}
-              </>
+
+                  {/* Loading indicator when video is being loaded */}
+                  {showVideo && !videoLoaded && (
+                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center z-5">
+                      <div className="bg-background/90 rounded-full p-2">
+                        <div className="w-4 h-4 border-2 border-foreground border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : null
             ) : (
               // Text base post with shiny hover effect
               <PostTextBaseCard title={post.title} />

@@ -36,11 +36,10 @@ export const createPostAction = withCSRFProtection(
       const rawSlug = formData.get("slug") as string;
       const rawDescription = formData.get("description") as string;
       const rawContent = formData.get("content") as string;
-      const featuredImage = formData.get("featuredImageRelativePath") as string;
+      const uploadPath = formData.get("uploadPath") as string;
+      const uploadFileType = formData.get("uploadFileType") as "IMAGE" | "VIDEO";
       const blurData = formData.get("blurData") as string;
-      const featuredVideo = formData.get("featuredVideoRelativePath") as string;
-      const featuredImageId = formData.get("featuredImageId") as string;
-      const featuredVideoId = formData.get("featuredVideoId") as string;
+      const uploadMediaId = formData.get("uploadMediaId") as string;
       const category = formData.get("category") as string;
       const subcategory = formData.get("subcategory") as string;
       const tags = formData.get("tags") as string;
@@ -133,9 +132,9 @@ export const createPostAction = withCSRFProtection(
           slug,
           description: description || null,
           content,
-          featuredImage: featuredImage || null,
+          uploadPath: uploadPath || null,
+          uploadFileType: uploadFileType || null,
           blurData: blurData || null,
-          featuredVideo: featuredVideo || null,
           isPremium,
           isPublished,
           status: status,
@@ -148,7 +147,7 @@ export const createPostAction = withCSRFProtection(
       });
 
       // Link media to the post
-      const mediaIds = [featuredImageId, featuredVideoId].filter(Boolean);
+      const mediaIds = [uploadMediaId].filter(Boolean);
       if (mediaIds.length > 0) {
         await prisma.media.updateMany({
           where: {
@@ -214,11 +213,10 @@ export const updatePostAction = withCSRFProtection(
       const slug = formData.get("slug") as string;
       const description = formData.get("description") as string;
       const content = formData.get("content") as string;
-      const featuredImage = formData.get("featuredImageRelativePath") as string;
+      const uploadPath = formData.get("uploadPath") as string;
+      const uploadFileType = formData.get("uploadFileType") as "IMAGE" | "VIDEO";
       const blurData = formData.get("blurData") as string;
-      const featuredVideo = formData.get("featuredVideoRelativePath") as string;
-      const featuredImageId = formData.get("featuredImageId") as string;
-      const featuredVideoId = formData.get("featuredVideoId") as string;
+      const uploadMediaId = formData.get("uploadMediaId") as string;
       const category = formData.get("category") as string;
       const subcategory = formData.get("subcategory") as string;
       const tags = formData.get("tags") as string;
@@ -294,7 +292,7 @@ export const updatePostAction = withCSRFProtection(
       }
 
       // Prepare media updates
-      const newMediaIds = [featuredImageId, featuredVideoId].filter(
+      const newMediaIds = [uploadMediaId].filter(
         (id) => id && typeof id === "string"
       );
       const oldMediaIds = existingPost.media.map((m) => m.id);
@@ -363,9 +361,9 @@ export const updatePostAction = withCSRFProtection(
           slug,
           description: description || null,
           content,
-          featuredImage: featuredImage || null,
+          uploadPath: uploadPath || null,
+          uploadFileType: uploadFileType || null,
           blurData: blurData || null,
-          featuredVideo: featuredVideo || null,
           isPremium,
           isPublished,
           status: status,

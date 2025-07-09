@@ -282,8 +282,9 @@ export function AutomationDashboard() {
           isPublished: false,
           status: "PENDING_APPROVAL",
           isFeatured: false,
-          featuredImage: "/images/example-image.webp", // must be local image path
-          featuredVideo: "/videos/example-video.mp4", // must be local video path
+          uploadPath: "/images/example-image.webp", // must be local image path
+          uploadFileType: "image", // "image" or "video"
+          uploadUrl: "/videos/example-video.mp4", // must be local video path
         },
       ],
     };
@@ -555,12 +556,13 @@ export function AutomationDashboard() {
                       • <code>is_premium</code>, <code>is_published</code>
                     </li>
                     <li>
-                      • <code>status</code>, <code>featured_image</code>, <code>featured_video</code>
+                      • <code>status</code>, <code>upload_path</code>, <code>upload_file_type</code>, <code>upload_url</code>
                     </li>
                   </ul>
                   <div className="text-xs text-muted-foreground mt-2">
-                    <b>featured_image</b>: must be a local path like <code>/images/example.webp</code> (.jpg, .jpeg, .webp, .avif, .png)<br />
-                    <b>featured_video</b>: must be a local path like <code>/videos/example.mp4</code> (.mp4 only)
+                    <b>upload_path</b>: must be a local path like <code>/images/example.webp</code> (.jpg, .jpeg, .webp, .avif, .png)<br />
+                    <b>upload_file_type</b>: "image" or "video"<br />
+                    <b>upload_url</b>: must be a local path like <code>/videos/example.mp4</code> (.mp4 only)
                   </div>
                 </div>
                 <div>

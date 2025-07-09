@@ -26,7 +26,13 @@ export function PostMasonryGridV2({
   // Video state management (global across all posts)
   const [playingVideo, setPlayingVideo] = useState<string | null>(null);
   const [mutedVideos, setMutedVideos] = useState<Set<string>>(
-    new Set(posts.filter((post) => post.featuredVideo).map((post) => post.id))
+    new Set(posts.filter((post) => post.uploadPath && post.uploadFileType === "VIDEO").map((post) => post.id))
+  );
+  // Get all video post IDs for video state management
+  const videoPostIds = useMemo(
+    () =>
+      new Set(posts.filter((post) => post.uploadPath && post.uploadFileType === "VIDEO").map((post) => post.id)),
+    [posts]
   );
 
   // Initialize prefetch hook for viewport-based prefetching
@@ -88,13 +94,13 @@ export function PostMasonryGridV2({
   // Update muted videos when posts change (for new posts)
   useEffect(() => {
     const newVideoPostIds = posts
-      .filter((post) => post.featuredVideo && !mutedVideos.has(post.id))
+      .filter((post) => post.uploadPath && post.uploadFileType === "VIDEO" && !videoPostIds.has(post.id))
       .map((post) => post.id);
 
     if (newVideoPostIds.length > 0) {
       setMutedVideos((prev) => new Set([...prev, ...newVideoPostIds]));
     }
-  }, [posts, mutedVideos]);
+  }, [posts, videoPostIds]);
 
   // Render function for each post
   const renderPost = useCallback(({ index, data, width }: PostItemProps) => {

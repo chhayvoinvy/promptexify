@@ -427,6 +427,19 @@ export class CsvParser {
     const posts = await Promise.all(
       rows.map(async (row): Promise<PostData> => {
         const title = row[columnMapping.title]?.trim() || "";
+        const uploadPath = row[columnMapping.featured_image]?.trim();
+        
+        // Determine upload file type based on path extension
+        let uploadFileType: "IMAGE" | "VIDEO" | undefined;
+        if (uploadPath) {
+          const extension = uploadPath.split('.').pop()?.toLowerCase();
+          if (['jpg', 'jpeg', 'png', 'webp', 'avif', 'gif'].includes(extension || '')) {
+            uploadFileType = 'IMAGE';
+          } else if (['mp4', 'webm', 'mov', 'avi'].includes(extension || '')) {
+            uploadFileType = 'VIDEO';
+          }
+        }
+        
         return {
           title: await sanitizeContent(title),
           slug: row[columnMapping.slug]?.trim() || this.generateSlug(title),
@@ -440,7 +453,8 @@ export class CsvParser {
           isPublished: this.parseBoolean(row[columnMapping.is_published]),
           status: this.parseStatus(row[columnMapping.status]),
           isFeatured: this.parseBoolean(row[columnMapping.is_featured]),
-          featuredImage: row[columnMapping.featured_image]?.trim(),
+          uploadPath,
+          uploadFileType,
         };
       })
     );

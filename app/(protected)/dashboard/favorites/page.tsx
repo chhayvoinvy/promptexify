@@ -146,10 +146,10 @@ async function FavoritesList({
                   <CardHeader className="pb-0">
                     <div className="flex items-start gap-4">
                       {/* Thumbnail Image */}
-                      {post.featuredImage && (
+                      {post.uploadPath && post.uploadFileType === "IMAGE" && (
                         <div className="relative w-20 h-16 flex-shrink-0 rounded-md overflow-hidden">
                           <Image
-                            src={post.featuredImage}
+                            src={post.uploadPath}
                             alt={post.title}
                             fill
                             className="object-cover"
