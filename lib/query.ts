@@ -748,6 +748,98 @@ export class PostQueries {
       endTimer();
     }
   }
+
+  /**
+   * Get efficient post statistics for dashboard
+   */
+  static async getStats(params: {
+    authorId?: string;
+    includeUnpublished?: boolean;
+    categoryId?: string;
+  }): Promise<{
+    total: number;
+    published: number;
+    draft: number;
+    pending: number;
+    rejected: number;
+    premium: number;
+    featured: number;
+    totalViews: number;
+  }> {
+    const endTimer = DatabaseMetrics.startQuery();
+
+    try {
+      const baseWhere: Prisma.PostWhereInput = {
+        ...(params.authorId && { authorId: params.authorId }),
+        ...(params.categoryId && {
+          OR: [
+            { categoryId: params.categoryId },
+            { category: { parentId: params.categoryId } },
+          ],
+        }),
+      };
+
+      // Use Promise.all for parallel queries for better performance
+      const [
+        totalCount,
+        publishedCount,
+        draftCount,
+        pendingCount,
+        rejectedCount,
+        premiumCount,
+        featuredCount,
+        viewsAggregate,
+      ] = await Promise.all([
+        // Total posts
+        prisma.post.count({
+          where: params.includeUnpublished ? baseWhere : { ...baseWhere, isPublished: true },
+        }),
+        // Published posts
+        prisma.post.count({
+          where: { ...baseWhere, isPublished: true },
+        }),
+        // Draft posts
+        prisma.post.count({
+          where: { ...baseWhere, status: "DRAFT" },
+        }),
+        // Pending approval posts
+        prisma.post.count({
+          where: { ...baseWhere, status: "PENDING_APPROVAL" },
+        }),
+        // Rejected posts
+        prisma.post.count({
+          where: { ...baseWhere, status: "REJECTED" },
+        }),
+        // Premium posts
+        prisma.post.count({
+          where: { ...baseWhere, isPremium: true, isPublished: true },
+        }),
+        // Featured posts (admin only)
+        prisma.post.count({
+          where: { ...baseWhere, isFeatured: true, isPublished: true },
+        }),
+        // Total views across all posts
+        prisma.view.count({
+          where: {
+            post: params.includeUnpublished ? baseWhere : { ...baseWhere, isPublished: true },
+          },
+        }),
+      ]);
+
+      return {
+        total: totalCount,
+        published: publishedCount,
+        draft: draftCount,
+        pending: pendingCount,
+        rejected: rejectedCount,
+        premium: premiumCount,
+        featured: featuredCount,
+        totalViews: viewsAggregate,
+      };
+    } finally {
+      endTimer();
+    }
+  }
 }
 
 /**
@@ -1014,6 +1106,9 @@ export const OptimizedQueries = {
         ? PostQueries.getPopular(limit, userId)
         : getCachedPopularPosts(limit, userId);
     },
+
+    // Stats queries - always direct for fresh data
+    getStats: PostQueries.getStats,
   },
 
   // Metadata queries can remain cached as they don't contain user-specific data

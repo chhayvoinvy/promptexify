@@ -24,7 +24,7 @@ export function usePageTitle(): PageTitleConfig {
     } else if (pathname === "/dashboard/favorites") {
       config = {
         title: "Favorites",
-        description: "Posts you've marked as favorites, organized by date",
+        description: "Posts you've liked, organized by date",
       };
     } else if (pathname === "/dashboard/bookmarks") {
       config = {

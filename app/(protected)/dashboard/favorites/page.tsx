@@ -12,7 +12,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { getUserFavoritesAction, getUserBookmarksAction } from "@/actions";
 import { FavoriteButton } from "@/components/favorite-button";
-import { BookmarkButton } from "@/components/bookmark-button";
 import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -20,8 +19,8 @@ import { requireAuth } from "@/lib/auth";
 import Image from "next/image";
 import Link from "next/link";
 
-// Force dynamic rendering for this page
-export const dynamic = "force-dynamic";
+// Enable caching for better performance  
+export const revalidate = 30; // Revalidate every 30 seconds for user-specific data
 
 // Helper function to group favorites by date
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -204,12 +203,6 @@ async function FavoritesList({
                               variant="outline"
                               size="sm"
                             />
-                            <BookmarkButton
-                              postId={post.id}
-                              initialBookmarked={isBookmarked}
-                              variant="outline"
-                              size="sm"
-                            />
                           </div>
                         </div>
 
@@ -342,7 +335,7 @@ export default async function FavoritesPage() {
         <div className="flex flex-1 flex-col gap-4 p-6 lg:p-6">
           <div className="space-y-6">
             <p className="text-muted-foreground">
-              Posts you&apos;ve marked as favorites, organized by date
+              Posts you&apos;ve liked, organized by date
             </p>
 
             <Suspense fallback={<FavoritesLoading />}>

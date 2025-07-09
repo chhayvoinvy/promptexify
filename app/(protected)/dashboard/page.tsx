@@ -19,8 +19,8 @@ import {
 } from "@/actions/users";
 import { Shield, BarChart3 } from "@/components/ui/icons";
 
-// Force dynamic rendering for this page
-export const dynamic = "force-dynamic";
+// Enable caching for better performance
+export const revalidate = 120; // Revalidate every 2 minutes for dashboard stats
 
 export default async function DashboardPage() {
   // Enforce authentication using standardized requireAuth function

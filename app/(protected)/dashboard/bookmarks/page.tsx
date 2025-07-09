@@ -10,8 +10,8 @@ import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
-// Force dynamic rendering for this page
-export const dynamic = "force-dynamic";
+// Enable caching for better performance
+export const revalidate = 30; // Revalidate every 30 seconds for user-specific data
 
 async function BookmarksContent() {
   // Get current user info
