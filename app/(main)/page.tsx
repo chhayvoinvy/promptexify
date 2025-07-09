@@ -10,6 +10,7 @@ import Testimonials from "@/components/testimonials";
 import { BentoGrid } from "@/components/bento-grid";
 import { CtaSection } from "@/components/cta-section";
 import { Container } from "@/components/ui/container";
+import { getSettingsAction } from "@/actions/settings";
 
 // Route segment config for better caching
 export const revalidate = 300; // Revalidate every 5 minutes (matches CACHE_DURATIONS.POSTS_LIST)
@@ -20,10 +21,16 @@ async function PostGrid() {
   const userId = currentUser?.userData?.id;
   const userType = currentUser?.userData?.type || null;
 
+  // Get settings for configurable limits
+  const settingsResult = await getSettingsAction();
+  const featuredPostsLimit = settingsResult?.success && settingsResult.data?.featuredPostsLimit
+    ? settingsResult.data.featuredPostsLimit
+    : 12; // Fallback to default
+
   const posts = await getPostsWithSorting(userId, "latest");
 
-  // Filter for featured posts first and show latest 12
-  const featuredPosts = posts.filter((post) => post.isFeatured).slice(0, 12);
+  // Filter for featured posts first and show configurable limit
+  const featuredPosts = posts.filter((post) => post.isFeatured).slice(0, featuredPostsLimit);
 
   return <PostMasonryGrid posts={featuredPosts} userType={userType} />;
 }

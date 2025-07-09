@@ -55,6 +55,9 @@ const settingsSchema = z.object({
 
   // Add postsPageSize for infinite scroll/page size
   postsPageSize: z.number().min(6).max(100),
+  
+  // Add featuredPostsLimit for homepage featured posts
+  featuredPostsLimit: z.number().min(1).max(50),
 });
 
 export type SettingsFormData = z.infer<typeof settingsSchema>;
@@ -369,6 +372,8 @@ export async function resetSettingsToDefaultAction() {
       maxPostsPerDay: 10,
       maxUploadsPerHour: 20,
       enableAuditLogging: true,
+      postsPageSize: 12,
+      featuredPostsLimit: 12,
       updatedBy: user.userData.id,
     };
 

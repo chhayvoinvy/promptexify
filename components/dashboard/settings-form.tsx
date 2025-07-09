@@ -95,6 +95,7 @@ const settingsFormSchema = z.object({
   enableCaptcha: z.boolean(),
   requireApproval: z.boolean(),
   postsPageSize: z.number().min(6).max(100),
+  featuredPostsLimit: z.number().min(1).max(50),
 
   // Security & Rate Limiting
   maxPostsPerDay: z.number().min(1).max(1000),
@@ -136,6 +137,7 @@ export function SettingsForm() {
       maxUploadsPerHour: 20,
       enableAuditLogging: true,
       postsPageSize: 12,
+      featuredPostsLimit: 12,
     },
   });
 
@@ -173,6 +175,7 @@ export function SettingsForm() {
             maxUploadsPerHour: settings.maxUploadsPerHour,
             enableAuditLogging: settings.enableAuditLogging,
             postsPageSize: settings.postsPageSize,
+            featuredPostsLimit: settings.featuredPostsLimit,
           });
         }
       } catch (error) {
@@ -790,6 +793,32 @@ export function SettingsForm() {
                         <FormDescription>
                           Number of posts to show per page in the directory
                           (6-100)
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid gap-6 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="featuredPostsLimit"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Featured Posts Limit: {field.value}</FormLabel>
+                        <FormControl>
+                          <Slider
+                            value={[field.value]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                            max={50}
+                            min={1}
+                            step={1}
+                            className="w-full"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Number of featured posts to show on homepage (1-50)
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

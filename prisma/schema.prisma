@@ -238,6 +238,7 @@ model Settings {
   updatedAt          DateTime    @updatedAt
   updatedBy          String
   postsPageSize      Int         @default(12)
+  featuredPostsLimit Int         @default(12)
 
   @@index([storageType])
   @@index([updatedBy])
