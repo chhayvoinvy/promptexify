@@ -207,6 +207,12 @@ function createRateLimits() {
       config.interactions.limit,
       config.interactions.window
     ),
+
+    // Media resolution endpoints
+    mediaResolve: createRateLimit(
+      config.mediaResolve.limit,
+      config.mediaResolve.window
+    ),
   };
 }
 

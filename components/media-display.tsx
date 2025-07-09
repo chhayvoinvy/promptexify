@@ -3,29 +3,120 @@
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 
-/**
- * Client-side URL resolver that calls the API endpoint
- */
-async function resolveMediaUrl(path: string): Promise<string> {
-  try {
-    const response = await fetch("/api/media/resolve", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ paths: [path] }),
-    });
+// Batched media resolver to reduce API calls
+class BatchedMediaResolver {
+  private static instance: BatchedMediaResolver;
+  private pendingPaths: Set<string> = new Set();
+  private resolvedUrls: Map<string, string> = new Map();
+  private pendingCallbacks: Map<string, Array<(url: string) => void>> = new Map();
+  private isProcessing = false;
+  private batchTimeout: NodeJS.Timeout | null = null;
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+  static getInstance(): BatchedMediaResolver {
+    if (!BatchedMediaResolver.instance) {
+      BatchedMediaResolver.instance = new BatchedMediaResolver();
+    }
+    return BatchedMediaResolver.instance;
+  }
+
+  async resolveMediaUrl(path: string): Promise<string> {
+    // If already resolved, return immediately
+    if (this.resolvedUrls.has(path)) {
+      return this.resolvedUrls.get(path)!;
     }
 
-    const data = await response.json();
-    return data.url || path;
-  } catch (error) {
-    console.error("Error resolving media URL:", error);
-    return path; // Fallback to original path
+    // If it's already a full URL, return it as-is
+    if (
+      path.startsWith("http://") ||
+      path.startsWith("https://") ||
+      path.startsWith("blob:")
+    ) {
+      return path;
+    }
+
+    // Add to pending paths and set up callback
+    this.pendingPaths.add(path);
+    
+    return new Promise((resolve) => {
+      if (!this.pendingCallbacks.has(path)) {
+        this.pendingCallbacks.set(path, []);
+      }
+      this.pendingCallbacks.get(path)!.push(resolve);
+
+      // Schedule batch processing
+      this.scheduleBatchProcessing();
+    });
   }
+
+  private scheduleBatchProcessing() {
+    if (this.batchTimeout) {
+      clearTimeout(this.batchTimeout);
+    }
+
+    this.batchTimeout = setTimeout(() => {
+      this.processBatch();
+    }, 50); // 50ms debounce to collect multiple requests
+  }
+
+  private async processBatch() {
+    if (this.isProcessing || this.pendingPaths.size === 0) {
+      return;
+    }
+
+    this.isProcessing = true;
+    const pathsToResolve = Array.from(this.pendingPaths);
+    this.pendingPaths.clear();
+
+    try {
+      const response = await fetch("/api/media/resolve", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ paths: pathsToResolve }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const resolvedUrls = data.urls || [];
+
+      // Store resolved URLs and trigger callbacks
+      pathsToResolve.forEach((path, index) => {
+        const resolvedUrl = resolvedUrls[index] || path;
+        this.resolvedUrls.set(path, resolvedUrl);
+
+        // Trigger all callbacks for this path
+        const callbacks = this.pendingCallbacks.get(path) || [];
+        callbacks.forEach(callback => callback(resolvedUrl));
+        this.pendingCallbacks.delete(path);
+      });
+    } catch (error) {
+      console.error("Error resolving media URLs:", error);
+      
+      // On error, resolve with original paths
+      pathsToResolve.forEach((path) => {
+        this.resolvedUrls.set(path, path);
+        const callbacks = this.pendingCallbacks.get(path) || [];
+        callbacks.forEach(callback => callback(path));
+        this.pendingCallbacks.delete(path);
+      });
+    } finally {
+      this.isProcessing = false;
+      
+      // Process any new pending paths that accumulated during processing
+      if (this.pendingPaths.size > 0) {
+        this.scheduleBatchProcessing();
+      }
+    }
+  }
+}
+
+// Legacy function for backward compatibility (now uses batched resolver)
+async function resolveMediaUrl(path: string): Promise<string> {
+  return BatchedMediaResolver.getInstance().resolveMediaUrl(path);
 }
 
 interface MediaImageProps {

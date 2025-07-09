@@ -6,9 +6,35 @@ import { getStorageConfig, StorageConfig } from "@/lib/storage";
  * This enables storage provider independence
  */
 
-// Cache for resolved URLs to avoid repeated processing
+// Enhanced cache for resolved URLs with longer duration and better management
 const urlCache = new Map<string, { url: string; timestamp: number }>();
-const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes (increased from 10 minutes)
+const MAX_CACHE_SIZE = 1000; // Prevent memory leaks
+
+/**
+ * Clean up old cache entries to prevent memory leaks
+ */
+function cleanupCache() {
+  const now = Date.now();
+  const entriesToDelete: string[] = [];
+  
+  for (const [key, value] of urlCache.entries()) {
+    if (now - value.timestamp > CACHE_DURATION) {
+      entriesToDelete.push(key);
+    }
+  }
+  
+  entriesToDelete.forEach(key => urlCache.delete(key));
+  
+  // If cache is still too large, remove oldest entries
+  if (urlCache.size > MAX_CACHE_SIZE) {
+    const sortedEntries = Array.from(urlCache.entries())
+      .sort((a, b) => a[1].timestamp - b[1].timestamp);
+    
+    const toRemove = sortedEntries.slice(0, urlCache.size - MAX_CACHE_SIZE);
+    toRemove.forEach(([key]) => urlCache.delete(key));
+  }
+}
 
 /**
  * Resolve a relative media path to a full URL
@@ -24,6 +50,11 @@ export async function resolveMediaUrl(relativePath: string): Promise<string> {
     relativePath.startsWith("https://")
   ) {
     return relativePath;
+  }
+
+  // Clean up cache periodically
+  if (urlCache.size > MAX_CACHE_SIZE * 0.8) {
+    cleanupCache();
   }
 
   // Check cache first
@@ -55,7 +86,7 @@ export async function resolveMediaUrl(relativePath: string): Promise<string> {
 }
 
 /**
- * Resolve multiple media paths to full URLs
+ * Resolve multiple media paths to full URLs with optimized caching
  * @param relativePaths - Array of relative paths
  * @returns Array of full URLs
  */
@@ -64,24 +95,52 @@ export async function resolveMediaUrls(
 ): Promise<string[]> {
   if (!relativePaths.length) return [];
 
+  // Clean up cache periodically
+  if (urlCache.size > MAX_CACHE_SIZE * 0.8) {
+    cleanupCache();
+  }
+
   const storageConfig = await getStorageConfig();
+  const results: string[] = [];
+  const pathsToResolve: { index: number; path: string }[] = [];
 
-  return relativePaths.map((relativePath) => {
-    if (!relativePath) return "";
-
-    // Check cache first
-    const cached = urlCache.get(relativePath);
-    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      return cached.url;
+  // First pass: check cache and collect paths that need resolution
+  relativePaths.forEach((relativePath, index) => {
+    if (!relativePath) {
+      results[index] = "";
+      return;
     }
 
-    const fullUrl = constructFullUrl(relativePath, storageConfig);
+    // If it's already a full URL, use it directly
+    if (
+      relativePath.startsWith("http://") ||
+      relativePath.startsWith("https://")
+    ) {
+      results[index] = relativePath;
+      return;
+    }
 
-    // Cache the result
-    urlCache.set(relativePath, { url: fullUrl, timestamp: Date.now() });
+    // Check cache
+    const cached = urlCache.get(relativePath);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      results[index] = cached.url;
+      return;
+    }
 
-    return fullUrl;
+    // Need to resolve this path
+    pathsToResolve.push({ index, path: relativePath });
   });
+
+  // Second pass: resolve uncached paths
+  if (pathsToResolve.length > 0) {
+    pathsToResolve.forEach(({ index, path }) => {
+      const fullUrl = constructFullUrl(path, storageConfig);
+      urlCache.set(path, { url: fullUrl, timestamp: Date.now() });
+      results[index] = fullUrl;
+    });
+  }
+
+  return results;
 }
 
 /**

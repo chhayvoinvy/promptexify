@@ -598,6 +598,7 @@ export function getRateLimitConfig() {
       api: { limit: 60, window: 60 * 1000 }, // 60 requests per minute (stricter)
       search: { limit: 30, window: 60 * 1000 }, // 30 searches per minute (stricter)
       interactions: { limit: 100, window: 60 * 1000 }, // 100 interactions per minute (stricter)
+      mediaResolve: { limit: 100, window: 60 * 1000 }, // 100 media resolves per minute (stricter)
     };
   } else {
     // More lenient rate limits in development
@@ -609,6 +610,7 @@ export function getRateLimitConfig() {
       api: { limit: 200, window: 60 * 1000 }, // 200 requests per minute
       search: { limit: 100, window: 60 * 1000 }, // 100 searches per minute
       interactions: { limit: 500, window: 60 * 1000 }, // 500 interactions per minute
+      mediaResolve: { limit: 300, window: 60 * 1000 }, // 300 media resolves per minute (lenient)
     };
   }
 }
