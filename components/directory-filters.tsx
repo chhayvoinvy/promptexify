@@ -33,11 +33,11 @@ export function DirectoryFilters({ categories }: DirectoryFiltersProps) {
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
-  // Get current values from URL
-  const currentQuery = searchParams.get("q") || "";
-  const currentCategory = searchParams.get("category") || "all";
-  const currentSubcategory = searchParams.get("subcategory") || "all";
-  const currentPremium = searchParams.get("premium") || "all";
+  // Get current values from URL with safety checks
+  const currentQuery = searchParams?.get("q") || "";
+  const currentCategory = searchParams?.get("category") || "all";
+  const currentSubcategory = searchParams?.get("subcategory") || "all";
+  const currentPremium = searchParams?.get("premium") || "all";
 
   // Local state for form inputs
   const [searchQuery, setSearchQuery] = useState(currentQuery);
@@ -72,6 +72,8 @@ export function DirectoryFilters({ categories }: DirectoryFiltersProps) {
       subcategory?: string;
       premium?: string;
     }) => {
+      if (!searchParams || !router) return;
+      
       const params = new URLSearchParams(searchParams.toString());
 
       Object.entries(newParams).forEach(([key, value]) => {
@@ -151,9 +153,11 @@ export function DirectoryFilters({ categories }: DirectoryFiltersProps) {
     setCategoryFilter("all");
     setSubcategoryFilter("all");
     setPremiumFilter("all");
-    startTransition(() => {
-      router.push("/directory");
-    });
+    if (router) {
+      startTransition(() => {
+        router.push("/directory");
+      });
+    }
   }, [router]);
 
   const hasActiveFilters =

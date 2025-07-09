@@ -2,9 +2,8 @@ import { getAllCategories } from "@/lib/content";
 import { getCurrentUser } from "@/lib/auth";
 import { Suspense } from "react";
 import { PostMasonrySkeleton } from "@/components/post-masonry-skeleton";
-import { DirectoryFilters } from "@/components/directory-filters";
+import { DirectoryClientWrapper } from "@/components/directory-client-wrapper";
 import { Skeleton } from "@/components/ui/skeleton";
-import { InfinitePostGrid } from "@/components/infinite-scroll-grid";
 import { Container } from "@/components/ui/container";
 import { OptimizedQueries } from "@/lib/query";
 
@@ -141,74 +140,19 @@ async function DirectoryContent({
   const { data: posts, pagination } = result;
 
   return (
-    <Container>
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-4">Prompt Directory</h1>
-        <p className="text-muted-foreground text-lg max-w-2xl">
-          Discover and explore our curated collection of AI prompts. Find the
-          perfect prompt for your creative and professional needs.
-        </p>
-      </div>
-
-      {/* Filters */}
-      <div className="mb-6">
-        <DirectoryFilters categories={categories} />
-      </div>
-
-      {/* Results Summary */}
-      <div className="mb-6 flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {searchQuery ? (
-            <>
-              Found {pagination.totalCount} result
-              {pagination.totalCount !== 1 ? "s" : ""} for &quot;{searchQuery}
-              &quot;
-            </>
-          ) : (
-            <>
-              Showing {pagination.totalCount} prompt
-              {pagination.totalCount !== 1 ? "s" : ""}
-              {((categoryFilter && categoryFilter !== "all") ||
-                (subcategoryFilter && subcategoryFilter !== "all")) && (
-                <>
-                  {" "}
-                  {subcategoryFilter && subcategoryFilter !== "all" ? (
-                    <>
-                      in{" "}
-                      {categories.find((c) => c.slug === subcategoryFilter)
-                        ?.name || subcategoryFilter}
-                    </>
-                  ) : (
-                    <>
-                      in{" "}
-                      {categories.find((c) => c.slug === categoryFilter)
-                        ?.name || categoryFilter}
-                    </>
-                  )}
-                </>
-              )}
-            </>
-          )}
-        </p>
-        {pagination.totalCount > 0 && (
-          <p className="text-xs text-muted-foreground">
-            {pagination.hasNextPage
-              ? `Showing first ${posts.length} of ${pagination.totalCount}`
-              : `All ${pagination.totalCount} results`}
-          </p>
-        )}
-      </div>
-
-      {/* Posts Grid with Infinite Scroll */}
-      <InfinitePostGrid
-        initialPosts={posts}
-        hasNextPage={pagination.hasNextPage}
-        totalCount={pagination.totalCount}
-        userType={userType}
-        pageSize={postsPageSize}
-      />
-    </Container>
+    <DirectoryClientWrapper
+      categories={categories}
+      initialPosts={posts}
+      hasNextPage={pagination.hasNextPage}
+      totalCount={pagination.totalCount}
+      userType={userType}
+      pageSize={postsPageSize}
+      searchQuery={searchQuery}
+      categoryFilter={categoryFilter}
+      subcategoryFilter={subcategoryFilter}
+      premiumFilter={premiumFilter}
+      pagination={pagination}
+    />
   );
 }
 

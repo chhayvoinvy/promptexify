@@ -52,6 +52,8 @@ export function InfinitePostGrid({
   // Create a stable key for the search params to detect changes
   // Only include actual filtering parameters, ignore modal/entry params
   const searchParamsKey = useMemo(() => {
+    if (!searchParams) return "";
+    
     const params = new URLSearchParams();
     const q = searchParams.get("q");
     const category = searchParams.get("category");
@@ -136,10 +138,10 @@ export function InfinitePostGrid({
       params.set("limit", pageSize.toString());
 
       // Add current search parameters
-      const q = searchParams.get("q");
-      const category = searchParams.get("category");
-      const subcategory = searchParams.get("subcategory");
-      const premium = searchParams.get("premium");
+      const q = searchParams?.get("q");
+      const category = searchParams?.get("category");
+      const subcategory = searchParams?.get("subcategory");
+      const premium = searchParams?.get("premium");
 
       if (q) params.set("q", q);
       if (category) params.set("category", category);
