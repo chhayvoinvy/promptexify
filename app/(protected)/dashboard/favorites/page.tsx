@@ -163,9 +163,13 @@ async function FavoritesList({
                                   href="/pricing"
                                   className="hover:underline flex items-center text-amber-600 dark:text-amber-400"
                                 >
-                                  <Lock className="w-3 h-3 mr-2" />
+                                  <Badge 
+                                  variant="outline" 
+                                  className="text-xs mr-2 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950 dark:to-yellow-950 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300"
+                                >
+                                  <Lock className="w-3 h-3 mr-1" />
+                                </Badge>
                                   {post.title}
-                                  <Crown className="w-3 h-3 ml-2" />
                                 </Link>
                               ) : (
                                 <Link
@@ -174,7 +178,12 @@ async function FavoritesList({
                                   target="_blank"
                                 >
                                   {isPremiumPost && (
-                                    <Crown className="w-3 h-3 mr-2 text-amber-500" />
+                                  <Badge 
+                                    variant="outline" 
+                                    className="text-xs mr-2 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950 dark:to-yellow-950 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300"
+                                  >
+                                    <Crown className="w-3 h-3 mr-1" />
+                                  </Badge>
                                   )}
                                   {post.title}
                                   <ExternalLink className="w-3 h-3 ml-3" />
@@ -189,21 +198,6 @@ async function FavoritesList({
                               {post.category.parent && (
                                 <Badge variant="outline" className="text-xs">
                                   {post.category.name}
-                                </Badge>
-                              )}
-                              {isPremiumPost && (
-                                <Badge 
-                                  variant="outline" 
-                                  className="text-xs bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950 dark:to-yellow-950 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300"
-                                >
-                                  <Crown className="w-3 h-3 mr-1" />
-                                  Premium
-                                </Badge>
-                              )}
-                              {shouldShowPricingLink && (
-                                <Badge variant="destructive" className="text-xs">
-                                  <Lock className="w-3 h-3 mr-1" />
-                                  Upgrade Required
                                 </Badge>
                               )}
                             </div>
