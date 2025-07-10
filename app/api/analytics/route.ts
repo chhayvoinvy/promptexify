@@ -21,6 +21,7 @@ interface AnalyticsData {
   }>;
 }
 
+// Interface for processed analytics data
 interface ProcessedAnalyticsData {
   chartData: Array<{
     date: string;
@@ -73,15 +74,25 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get environment variables
+    // Check if we're in production environment
+    const isProduction = process.env.NODE_ENV === "production";
+
+    // In development, always return mock data
+    if (!isProduction) {
+      console.log("Development mode: Returning mock analytics data");
+      const mockData = generateMockData(range);
+      return NextResponse.json(mockData);
+    }
+
+    // Production: Get environment variables for Vercel Analytics
     const teamId = process.env.VERCEL_TEAM_ID;
     const projectId = process.env.VERCEL_PROJECT_ID;
     const analyticsToken = process.env.VERCEL_ANALYTICS_TOKEN;
 
     if (!teamId || !projectId || !analyticsToken) {
-      console.error("Missing Vercel Analytics configuration");
+      console.error("Missing Vercel Analytics configuration in production");
 
-      // Return mock data for development/demo purposes
+      // Return mock data as fallback
       const mockData = generateMockData(range);
       return NextResponse.json(mockData);
     }

@@ -67,23 +67,7 @@ interface PostsManagementPageProps {
   }>;
 }
 
-// Stats cards skeleton
-function StatsCardsSkeleton() {
-  return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <Card key={i}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <Skeleton className="h-4 w-20" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-8 w-16" />
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
-}
+
 
 // Table skeleton
 function TableSkeleton() {
@@ -110,12 +94,7 @@ function TableSkeleton() {
 
 // Combined loading skeleton
 function LoadingSkeleton() {
-  return (
-    <>
-      <StatsCardsSkeleton />
-      <TableSkeleton />
-    </>
-  );
+  return <TableSkeleton />;
 }
 
 // Filter option interface for the component
@@ -188,23 +167,16 @@ async function PostsManagementContent({
     else if (filters.sortBy === "oldest") sortBy = "latest"; // Will be handled differently
 
     // Use optimized paginated query instead of loading all posts
-    const [postsResult, statsData] = await Promise.all([
-      Queries.posts.getPaginated({
-        page: currentPage,
-        limit: validPageSize,
-        userId: user.id,
-        authorId: isAdmin ? undefined : user.id, // Users see only their posts
-        categoryId,
-        isPremium,
-        sortBy,
-        includeUnpublished: isAdmin, // Only admins see unpublished posts
-      }),
-      Queries.posts.getStats({
-        authorId: isAdmin ? undefined : user.id,
-        includeUnpublished: isAdmin,
-        categoryId,
-      }),
-    ]);
+    const postsResult = await Queries.posts.getPaginated({
+      page: currentPage,
+      limit: validPageSize,
+      userId: user.id,
+      authorId: isAdmin ? undefined : user.id, // Users see only their posts
+      categoryId,
+      isPremium,
+      sortBy,
+      includeUnpublished: isAdmin, // Only admins see unpublished posts
+    });
 
     // Apply client-side filters that can't be done at database level
     let filteredPosts = postsResult.data;
@@ -265,55 +237,6 @@ async function PostsManagementContent({
 
     return (
       <>
-        {/* Stats cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Posts</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{statsData.total}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Published</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{statsData.published}</div>
-            </CardContent>
-          </Card>
-          {isAdmin ? (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Featured Posts
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{statsData.featured}</div>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Premium</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{statsData.premium}</div>
-              </CardContent>
-            </Card>
-          )}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Views</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{statsData.totalViews}</div>
-            </CardContent>
-          </Card>
-        </div>
-
         <Card>
           <CardHeader>
             <CardTitle>{isAdmin ? "All Posts" : "My Submissions"}</CardTitle>
@@ -513,58 +436,8 @@ async function PostsManagementContent({
   } catch (error) {
     console.error("Error loading posts:", error);
     
-    // Provide fallback stats and empty state
-    const fallbackStats = {
-      total: 0,
-      published: 0,
-      draft: 0,
-      pending: 0,
-      rejected: 0,
-      premium: 0,
-      featured: 0,
-      totalViews: 0,
-    };
-
     return (
       <>
-        {/* Fallback stats cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Posts</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-muted-foreground">--</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Published</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-muted-foreground">--</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                {user.role === "ADMIN" ? "Featured Posts" : "Premium"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-muted-foreground">--</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Views</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-muted-foreground">--</div>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Error state card */}
         <Card>
           <CardHeader>

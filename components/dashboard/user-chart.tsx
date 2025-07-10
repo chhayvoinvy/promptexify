@@ -55,6 +55,7 @@ const chartConfig = {
 export function ChartAreaInteractive() {
   const isMobile = useIsMobile();
   const [timeRange, setTimeRange] = React.useState<"7d" | "30d" | "90d">("30d");
+  const isDevelopment = process.env.NODE_ENV !== "production";
 
   // Use the analytics hook to fetch real data
   const { chartData, totalViews, totalVisitors, isLoading, error, refetch } =
@@ -144,14 +145,21 @@ export function ChartAreaInteractive() {
               {isLoading && (
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               )}
+              {isDevelopment && (
+                <Badge variant="secondary" className="text-xs">
+                  DEV
+                </Badge>
+              )}
             </CardTitle>
             <CardDescription>
               <span className="hidden @[540px]/card:block">
                 {formatNumber(totalViews)} total views •{" "}
                 {formatNumber(totalVisitors)} unique visitors
+                {isDevelopment && " (mock data)"}
               </span>
               <span className="@[540px]/card:hidden">
                 {formatNumber(totalViews)} views
+                {isDevelopment && " (mock)"}
               </span>
             </CardDescription>
           </div>
@@ -199,123 +207,92 @@ export function ChartAreaInteractive() {
                 setTimeRange(value as "7d" | "30d" | "90d")
               }
             >
-              <SelectTrigger
-                className="flex w-40 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate @[767px]/card:hidden"
-                size="sm"
-                aria-label="Select a value"
-              >
-                <SelectValue placeholder="Last 30 days" />
+              <SelectTrigger className="w-[140px] @[767px]/card:hidden">
+                <SelectValue />
               </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="90d" className="rounded-lg">
-                  Last 3 months
-                </SelectItem>
-                <SelectItem value="30d" className="rounded-lg">
-                  Last 30 days
-                </SelectItem>
-                <SelectItem value="7d" className="rounded-lg">
-                  Last 7 days
-                </SelectItem>
+              <SelectContent>
+                <SelectItem value="90d">Last 3 months</SelectItem>
+                <SelectItem value="30d">Last 30 days</SelectItem>
+                <SelectItem value="7d">Last 7 days</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </CardAction>
       </CardHeader>
-      <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
-        {isLoading ? (
-          // Loading skeleton
-          <div className="aspect-auto h-[250px] w-full animate-pulse bg-muted rounded-lg" />
-        ) : chartData.length === 0 ? (
-          // No data state
-          <div className="aspect-auto h-[250px] w-full flex items-center justify-center">
-            <div className="text-center">
-              <p className="text-muted-foreground text-sm">No data available</p>
-              <p className="text-muted-foreground text-xs mt-1">
-                Try selecting a different time range
-              </p>
-            </div>
-          </div>
-        ) : (
-          // Chart with real data
-          <ChartContainer
-            config={chartConfig}
-            className="aspect-auto h-[250px] w-full"
+      <CardContent>
+        <ChartContainer config={chartConfig}>
+          <AreaChart
+            data={chartData}
+            margin={{
+              top: 5,
+              right: 10,
+              left: 10,
+              bottom: 0,
+            }}
           >
-            <AreaChart data={chartData}>
-              <defs>
-                <linearGradient id="fillDesktop" x1="0" y1="0" x2="0" y2="1">
-                  <stop
-                    offset="5%"
-                    stopColor="var(--color-desktop)"
-                    stopOpacity={1.0}
-                  />
-                  <stop
-                    offset="95%"
-                    stopColor="var(--color-desktop)"
-                    stopOpacity={0.1}
-                  />
-                </linearGradient>
-                <linearGradient id="fillMobile" x1="0" y1="0" x2="0" y2="1">
-                  <stop
-                    offset="5%"
-                    stopColor="var(--color-mobile)"
-                    stopOpacity={0.8}
-                  />
-                  <stop
-                    offset="95%"
-                    stopColor="var(--color-mobile)"
-                    stopOpacity={0.1}
-                  />
-                </linearGradient>
-              </defs>
-              <CartesianGrid vertical={false} />
-              <XAxis
-                dataKey="date"
-                tickLine={false}
-                axisLine={false}
-                tickMargin={8}
-                minTickGap={32}
-                tickFormatter={(value) => {
-                  const date = new Date(value);
-                  return date.toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                  });
-                }}
-              />
-              <ChartTooltip
-                cursor={false}
-                defaultIndex={isMobile ? -1 : 10}
-                content={
-                  <ChartTooltipContent
-                    labelFormatter={(value) => {
-                      return new Date(value).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      });
-                    }}
-                    indicator="dot"
-                  />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              className="stroke-muted"
+              horizontal
+            />
+            <XAxis
+              dataKey="date"
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(value) => {
+                const date = new Date(value);
+                return date.toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                });
+              }}
+              className="text-xs"
+            />
+            <ChartTooltip
+              content={({ active, payload }) => {
+                if (active && payload && payload.length) {
+                  return (
+                    <ChartTooltipContent
+                      className="rounded-lg border bg-background p-2 shadow-sm"
+                    >
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="flex flex-col">
+                          <span className="text-[0.70rem] uppercase text-muted-foreground">
+                            Desktop
+                          </span>
+                          <span className="font-bold text-muted-foreground">
+                            {payload[0]?.value}
+                          </span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[0.70rem] uppercase text-muted-foreground">
+                            Mobile
+                          </span>
+                          <span className="font-bold">
+                            {payload[1]?.value}
+                          </span>
+                        </div>
+                      </div>
+                    </ChartTooltipContent>
+                  );
                 }
-              />
-              <Area
-                dataKey="mobile"
-                type="natural"
-                fill="url(#fillMobile)"
-                stroke="var(--color-mobile)"
-                stackId="a"
-              />
-              <Area
-                dataKey="desktop"
-                type="natural"
-                fill="url(#fillDesktop)"
-                stroke="var(--color-desktop)"
-                stackId="a"
-              />
-            </AreaChart>
-          </ChartContainer>
-        )}
+                return null;
+              }}
+            />
+            <Area
+              dataKey="desktop"
+              fill="var(--primary)"
+              className="fill-none stroke-primary"
+              strokeWidth={2}
+            />
+            <Area
+              dataKey="mobile"
+              fill="var(--primary)"
+              className="fill-none stroke-primary"
+              strokeWidth={2}
+            />
+          </AreaChart>
+        </ChartContainer>
       </CardContent>
     </Card>
   );

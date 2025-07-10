@@ -232,6 +232,8 @@ export function DataTable() {
     refetch: refetchAnalytics,
   } = useAnalyticsTable({ range: "30d" });
 
+  const isDevelopment = process.env.NODE_ENV !== "production";
+
   // Convert analytics data to table format
   const analyticsData = React.useMemo(() => {
     return topPages.map((page, index) => ({
@@ -625,9 +627,17 @@ export function DataTable() {
           <>
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold">Page Analytics</h3>
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  Page Analytics
+                  {isDevelopment && (
+                    <Badge variant="secondary" className="text-xs">
+                      DEV
+                    </Badge>
+                  )}
+                </h3>
                 <p className="text-sm text-muted-foreground">
                   Top performing pages by total views (last 30 days)
+                  {isDevelopment && " (mock data)"}
                 </p>
               </div>
               <div className="text-right">

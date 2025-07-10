@@ -188,7 +188,8 @@ export default async function RootLayout({
           {children}
           {modal}
           <GoogleOneTap />
-          <Analytics />
+          {/* Only render Vercel Analytics in production */}
+          {isProduction && <Analytics />}
           <Toaster />
         </ThemeProvider>
       </body>
