@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
+import { Play, Loader2 } from "@/components/ui/icons";
 
 // Batched media resolver to reduce API calls
 class BatchedMediaResolver {
@@ -146,6 +147,35 @@ interface MediaVideoProps {
   onPlay?: () => void;
   onPause?: () => void;
   onEnded?: () => void;
+}
+
+interface MediaVideoLazyProps {
+  src: string; // Video path like "videos/user123-video-xyz789.mp4"
+  previewSrc?: string; // Preview image path like "preview/preview-user123-video-xyz789.avif"
+  alt: string;
+  className?: string;
+  controls?: boolean;
+  autoPlay?: boolean;
+  loop?: boolean;
+  muted?: boolean;
+  playsInline?: boolean;
+  preload?: "none" | "metadata" | "auto";
+  onLoadedMetadata?: (event: React.SyntheticEvent<HTMLVideoElement>) => void;
+  onPlay?: () => void;
+  onPause?: () => void;
+  onEnded?: () => void;
+  blurDataURL?: string;
+  width?: number;
+  height?: number;
+  fill?: boolean;
+  sizes?: string;
+  priority?: boolean;
+  // Custom props for lazy loading behavior
+  autoShowVideo?: boolean; // If true, show video immediately (useful for components that manage this externally)
+  onVideoRequested?: () => void; // Callback when user clicks to load video
+  loading?: "lazy" | "eager";
+  showPlayButton?: boolean; // Whether to show the play button overlay
+  playButtonClassName?: string; // Custom styling for play button
 }
 
 /**
@@ -482,6 +512,182 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
       >
         Your browser does not support the video tag.
       </video>
+    );
+  }
+);
+
+/**
+ * MediaVideoLazy - Shows preview image first, loads video only on demand
+ * This significantly reduces bandwidth by only loading videos when users actually want to watch them
+ * 
+ * Usage: 
+ * <MediaVideoLazy 
+ *   src="videos/user123-video-xyz789.mp4" 
+ *   previewSrc="preview/preview-user123-video-xyz789.avif"
+ *   alt="Video description"
+ *   controls
+ * />
+ */
+export const MediaVideoLazy = React.forwardRef<HTMLVideoElement, MediaVideoLazyProps>(
+  function MediaVideoLazy(
+    {
+      src,
+      previewSrc,
+      alt,
+      className,
+      controls = false,
+      autoPlay = false,
+      loop = false,
+      muted = false,
+      playsInline = false,
+      preload = "metadata",
+      onLoadedMetadata,
+      onPlay,
+      onPause,
+      onEnded,
+      blurDataURL,
+      width,
+      height,
+      fill = false,
+      sizes,
+      priority = false,
+      autoShowVideo = false,
+      onVideoRequested,
+      loading = "lazy",
+      showPlayButton = true,
+      playButtonClassName,
+    },
+    ref
+  ) {
+    const [showVideo, setShowVideo] = useState(autoShowVideo);
+    const [videoLoaded, setVideoLoaded] = useState(false);
+    const [isLoadingVideo, setIsLoadingVideo] = useState(false);
+
+    // Handle play button click - this loads the video for the first time
+    const handlePlayButtonClick = (event: React.MouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      
+      if (!showVideo) {
+        setIsLoadingVideo(true);
+        setShowVideo(true);
+        onVideoRequested?.();
+      }
+    };
+
+    // Handle video loaded metadata
+    const handleVideoLoadedMetadata = (event: React.SyntheticEvent<HTMLVideoElement>) => {
+      setVideoLoaded(true);
+      setIsLoadingVideo(false);
+      onLoadedMetadata?.(event);
+      
+      // Auto-play if requested
+      if (autoPlay) {
+        const video = event.currentTarget as HTMLVideoElement;
+        video.play();
+      }
+    };
+
+    // Update showVideo when autoShowVideo prop changes
+    useEffect(() => {
+      if (autoShowVideo && !showVideo) {
+        setIsLoadingVideo(true);
+        setShowVideo(true);
+      }
+    }, [autoShowVideo, showVideo]);
+
+    // Container styling for consistent dimensions
+    const containerStyle = fill 
+      ? { 
+          width: width || "100%", 
+          height: height || "100%",
+          minHeight: height || "200px",
+          position: "relative" as const
+        }
+      : { width, height };
+
+    const containerClassName = fill 
+      ? `relative overflow-hidden ${className || ""}` + (
+          (!height && !className?.includes('h-')) ? ' min-h-[200px]' : ''
+        )
+      : `relative overflow-hidden ${className || ""}`;
+
+    return (
+      <div className={containerClassName} style={containerStyle}>
+        {/* Preview Image - Always shown initially, fades out when video loads */}
+        {previewSrc && (
+          <MediaImage
+            src={previewSrc}
+            alt={alt}
+            width={!fill ? width : undefined}
+            height={!fill ? height : undefined}
+            fill={fill}
+            className={`object-cover transition-opacity duration-300 ${
+              showVideo && videoLoaded ? "opacity-0" : "opacity-100"
+            } ${fill ? "absolute inset-0" : ""}`}
+            loading={loading}
+            sizes={sizes}
+            priority={priority}
+            blurDataURL={blurDataURL}
+          />
+        )}
+
+        {/* Video Element - Only rendered when user requests it */}
+        {showVideo && (
+          <MediaVideo
+            ref={ref}
+            src={src}
+            className={`transition-opacity duration-300 ${
+              videoLoaded ? "opacity-100" : "opacity-0"
+            } ${fill ? "absolute inset-0 w-full h-full object-cover" : ""}`}
+            controls={controls}
+            autoPlay={autoPlay}
+            loop={loop}
+            muted={muted}
+            playsInline={playsInline}
+            preload={preload}
+            onLoadedMetadata={handleVideoLoadedMetadata}
+            onPlay={onPlay}
+            onPause={onPause}
+            onEnded={onEnded}
+          />
+        )}
+
+        {/* Play Button Overlay - Only shown when video is not loaded */}
+        {showPlayButton && !showVideo && previewSrc && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <button
+              className={`bg-black/50 hover:bg-black/70 text-white rounded-full p-3 transition-all duration-200 hover:scale-110 ${playButtonClassName || ""}`}
+              onClick={handlePlayButtonClick}
+              aria-label="Play video"
+            >
+              <Play className="w-6 h-6" />
+            </button>
+          </div>
+        )}
+
+        {/* Loading Indicator - Shown while video is loading */}
+        {isLoadingVideo && !videoLoaded && (
+          <div className="absolute inset-0 bg-black/20 flex items-center justify-center z-10">
+            <div className="bg-white/90 rounded-full p-3">
+              <Loader2 className="w-6 h-6 text-gray-600 animate-spin" />
+            </div>
+          </div>
+        )}
+
+        {/* Fallback when no preview is available */}
+        {!previewSrc && !showVideo && (
+          <div className="absolute inset-0 bg-muted flex items-center justify-center">
+            <button
+              className={`bg-primary text-primary-foreground rounded-full p-4 transition-all duration-200 hover:scale-110 ${playButtonClassName || ""}`}
+              onClick={handlePlayButtonClick}
+              aria-label="Load and play video"
+            >
+              <Play className="w-8 h-8" />
+            </button>
+          </div>
+        )}
+      </div>
     );
   }
 );

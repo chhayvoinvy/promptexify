@@ -133,19 +133,36 @@ export async function generateVideoThumbnail(
 }
 
 /**
- * Generate preview filename with "preview-" prefix
- * @param originalFilename - The original filename
- * @returns string - Preview filename
+ * Generate preview filename with random pattern
+ * @param originalFilename - The original filename (used to extract userPrefix)
+ * @returns string - Preview filename in format: {userPrefix}{randomId15chars}.avif
  */
 export function generatePreviewFilename(originalFilename: string): string {
-  // Extract name and extension
+  // Extract userPrefix from original filename
+  // Format is expected to be: {title}-{userPrefix}{randomId5digits}.{ext}
   const lastDotIndex = originalFilename.lastIndexOf(".");
-  if (lastDotIndex === -1) {
-    return `preview-${originalFilename}.avif`;
+  const nameWithoutExt = lastDotIndex === -1 ? originalFilename : originalFilename.substring(0, lastDotIndex);
+  
+  // Find the last dash to locate userPrefix
+  const lastDashIndex = nameWithoutExt.lastIndexOf("-");
+  let userPrefix = "admin";
+  
+  if (lastDashIndex !== -1) {
+    // Extract the part after the last dash (userPrefix + 5 digit randomId)
+    const userPrefixAndId = nameWithoutExt.substring(lastDashIndex + 1);
+    // Take first 8 chars as userPrefix (matching the logic in filename generation)
+    if (userPrefixAndId.length >= 8) {
+      userPrefix = userPrefixAndId.substring(0, 8);
+    }
   }
 
-  const name = originalFilename.substring(0, lastDotIndex);
-  return `preview-${name}.avif`;
+  // Generate 15 random alphanumeric characters
+  const randomId = Array.from(
+    { length: 15 },
+    () => "0123456789abcdefghijklmnopqrstuvwxyz"[Math.floor(Math.random() * 36)]
+  ).join("");
+
+  return `${userPrefix}${randomId}.avif`;
 }
 
 /**

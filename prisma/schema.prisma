@@ -196,7 +196,7 @@ model Media {
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
   blurDataUrl         String?
-  post                Post?       @relation(fields: [postId], references: [id])
+  post                Post?       @relation(fields: [postId], references: [id], onDelete: SetNull)
 
   @@index([filename])
   @@index([relativePath])

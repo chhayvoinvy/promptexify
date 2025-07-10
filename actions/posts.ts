@@ -594,7 +594,7 @@ export async function deletePostAction(postId: string) {
       throw new Error("Invalid post ID");
     }
 
-    // Fetch post to verify permissions
+    // Fetch post to verify permissions and get associated media
     const existingPost = await prisma.post.findUnique({
       where: { id: postId },
       select: {
@@ -603,6 +603,17 @@ export async function deletePostAction(postId: string) {
         authorId: true,
         isPublished: true,
         status: true,
+        uploadPath: true,
+        uploadFileType: true,
+        previewPath: true,
+        media: {
+          select: {
+            id: true,
+            relativePath: true,
+            mimeType: true,
+            filename: true,
+          },
+        },
         _count: {
           select: {
             bookmarks: true,
@@ -640,8 +651,88 @@ export async function deletePostAction(postId: string) {
       throw new Error("Unauthorized: Invalid user role");
     }
 
-    // Delete post and all related data (cascading delete should handle this)
-    // The database schema should handle the cascade deletion of related records
+    // Delete associated media files from storage before deleting the post
+    const mediaDeletePromises: Promise<boolean>[] = [];
+
+    // Delete media from the Media table
+    for (const media of existingPost.media) {
+      try {
+        // Import storage functions dynamically to avoid circular imports
+        const { deleteImage, deleteVideo, getPublicUrl } = await import("@/lib/storage");
+        
+        // Get the full URL for deletion
+        const fullUrl = await getPublicUrl(media.relativePath);
+        
+        if (media.mimeType.startsWith("image/")) {
+          mediaDeletePromises.push(deleteImage(fullUrl));
+        } else if (media.mimeType.startsWith("video/")) {
+          mediaDeletePromises.push(deleteVideo(fullUrl));
+        }
+      } catch (error) {
+        console.error(`Failed to delete media file ${media.relativePath}:`, error);
+        // Continue with other deletions even if one fails
+      }
+    }
+
+    // Delete legacy media files if they exist (uploadPath from post)
+    if (existingPost.uploadPath) {
+      try {
+        const { deleteImage, deleteVideo, getPublicUrl } = await import("@/lib/storage");
+        const fullUrl = await getPublicUrl(existingPost.uploadPath);
+        
+        if (existingPost.uploadFileType === "IMAGE") {
+          mediaDeletePromises.push(deleteImage(fullUrl));
+        } else if (existingPost.uploadFileType === "VIDEO") {
+          mediaDeletePromises.push(deleteVideo(fullUrl));
+        }
+      } catch (error) {
+        console.error(`Failed to delete legacy upload file ${existingPost.uploadPath}:`, error);
+      }
+    }
+
+    // Delete preview file if it exists
+    if (existingPost.previewPath) {
+      try {
+        const { deleteImage, getPublicUrl } = await import("@/lib/storage");
+        const previewUrl = await getPublicUrl(existingPost.previewPath);
+        mediaDeletePromises.push(deleteImage(previewUrl));
+      } catch (error) {
+        console.error(`Failed to delete preview file ${existingPost.previewPath}:`, error);
+      }
+    }
+
+    // Wait for all media deletions to complete (with timeout)
+    if (mediaDeletePromises.length > 0) {
+      try {
+        const results = await Promise.allSettled(mediaDeletePromises);
+        const failedDeletions = results.filter(
+          (result) => result.status === "rejected" || result.value === false
+        ).length;
+
+        if (failedDeletions > 0) {
+          console.warn(
+            `${failedDeletions} out of ${mediaDeletePromises.length} media files failed to delete from storage`
+          );
+        } else {
+          console.log(
+            `Successfully deleted ${mediaDeletePromises.length} media files from storage`
+          );
+        }
+      } catch (error) {
+        console.error("Error during media file deletion:", error);
+        // Continue with post deletion even if media deletion fails
+      }
+    }
+
+    // Delete media records from database before deleting the post
+    if (existingPost.media.length > 0) {
+      await prisma.media.deleteMany({
+        where: { postId: postId },
+      });
+      console.log(`Deleted ${existingPost.media.length} media records from database`);
+    }
+
+    // Delete post and all related data (cascading delete should handle other relations)
     await prisma.post.delete({
       where: { id: postId },
     });
@@ -807,6 +898,57 @@ export async function togglePostFeaturedAction(postId: string) {
       error instanceof Error
         ? error.message
         : "Failed to update post featured status"
+    );
+  }
+}
+
+// Cleanup orphaned media action
+export async function cleanupOrphanedMediaAction(dryRun: boolean = true) {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.userData) {
+      handleAuthRedirect();
+    }
+
+    // Only admins can run cleanup
+    if (currentUser.userData.role !== "ADMIN") {
+      throw new Error("Unauthorized: Admin access required");
+    }
+
+    // Import cleanup function
+    const { cleanupOrphanedMedia } = await import("@/lib/storage");
+    
+    // Run cleanup
+    const result = await cleanupOrphanedMedia(dryRun);
+
+    const message = dryRun
+      ? `Found ${result.orphanedCount} orphaned media files that can be cleaned up`
+      : `Successfully cleaned up ${result.deletedCount} out of ${result.orphanedCount} orphaned media files`;
+
+    // Revalidate relevant paths if actual cleanup was performed
+    if (!dryRun && result.deletedCount > 0) {
+      revalidatePath("/dashboard/settings");
+      revalidateCache([
+        CACHE_TAGS.POSTS,
+        CACHE_TAGS.POST_BY_ID,
+        CACHE_TAGS.POST_BY_SLUG,
+      ]);
+    }
+
+    return {
+      success: true,
+      message,
+      data: {
+        orphanedCount: result.orphanedCount,
+        deletedCount: result.deletedCount,
+        errors: result.errors,
+        dryRun,
+      },
+    };
+  } catch (error) {
+    console.error("Error in cleanup orphaned media action:", error);
+    throw new Error(
+      error instanceof Error ? error.message : "Failed to cleanup orphaned media"
     );
   }
 }

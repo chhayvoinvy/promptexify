@@ -344,6 +344,14 @@ export async function deleteImageFromLocal(imageUrl: string): Promise<boolean> {
       imageUrl.replace(/^\//, "")
     );
 
+    // Check if file exists before attempting deletion
+    try {
+      await fs.access(filePath);
+    } catch (accessError) {
+      console.log(`File not found, skipping deletion: ${filePath}`);
+      return true; // Consider this a success since the file is already gone
+    }
+
     // Delete file
     await fs.unlink(filePath);
     console.log("Successfully deleted local image:", filename);
@@ -374,6 +382,14 @@ export async function deleteVideoFromLocal(videoUrl: string): Promise<boolean> {
       "public",
       videoUrl.replace(/^\//, "")
     );
+
+    // Check if file exists before attempting deletion
+    try {
+      await fs.access(filePath);
+    } catch (accessError) {
+      console.log(`File not found, skipping deletion: ${filePath}`);
+      return true; // Consider this a success since the file is already gone
+    }
 
     // Delete file
     await fs.unlink(filePath);
@@ -937,17 +953,20 @@ export async function deleteImage(imageUrl: string): Promise<boolean> {
         
         // Attempt to delete preview file (don't fail if it doesn't exist)
         if (config.storageType === "LOCAL") {
-          await deleteImageFromLocal(previewUrl).catch(() => {
+          const previewDeleted = await deleteImageFromLocal(previewUrl);
+          if (!previewDeleted) {
             console.log("Preview file not found or already deleted:", previewUrl);
-          });
+          }
         } else if (config.storageType === "DOSPACE") {
-          await deleteImageFromDOSpacesWithConfig(previewUrl, config).catch(() => {
+          const previewDeleted = await deleteImageFromDOSpacesWithConfig(previewUrl, config);
+          if (!previewDeleted) {
             console.log("Preview file not found or already deleted:", previewUrl);
-          });
+          }
         } else {
-          await deleteImageFromS3WithConfig(previewUrl, config).catch(() => {
+          const previewDeleted = await deleteImageFromS3WithConfig(previewUrl, config);
+          if (!previewDeleted) {
             console.log("Preview file not found or already deleted:", previewUrl);
-          });
+          }
         }
         
         console.log("Attempted to delete associated preview file:", previewUrl);
@@ -1004,17 +1023,20 @@ export async function deleteVideo(videoUrl: string): Promise<boolean> {
         // Attempt to delete preview file (don't fail if it doesn't exist)
         // Note: We use image deletion functions since video previews are images
         if (config.storageType === "LOCAL") {
-          await deleteImageFromLocal(previewUrl).catch(() => {
+          const previewDeleted = await deleteImageFromLocal(previewUrl);
+          if (!previewDeleted) {
             console.log("Preview file not found or already deleted:", previewUrl);
-          });
+          }
         } else if (config.storageType === "DOSPACE") {
-          await deleteImageFromDOSpacesWithConfig(previewUrl, config).catch(() => {
+          const previewDeleted = await deleteImageFromDOSpacesWithConfig(previewUrl, config);
+          if (!previewDeleted) {
             console.log("Preview file not found or already deleted:", previewUrl);
-          });
+          }
         } else {
-          await deleteImageFromS3WithConfig(previewUrl, config).catch(() => {
+          const previewDeleted = await deleteImageFromS3WithConfig(previewUrl, config);
+          if (!previewDeleted) {
             console.log("Preview file not found or already deleted:", previewUrl);
-          });
+          }
         }
         
         console.log("Attempted to delete associated preview file:", previewUrl);
@@ -1033,7 +1055,6 @@ export async function deleteVideo(videoUrl: string): Promise<boolean> {
  */
 export async function processAndUploadImageWithConfig(
   file: File,
-  title: string,
   userId?: string
 ): Promise<UploadResult> {
   // Get storage configuration
@@ -1046,7 +1067,7 @@ export async function processAndUploadImageWithConfig(
   const { generateImagePreview, generatePreviewFilename } = await import("./preview");
 
   // Generate filename
-  const filename = generateImageFilename(title, userId);
+  const filename = generateImageFilename(file.name, userId);
   const relativePath = `images/${filename}`;
 
   // Process the image
@@ -1171,7 +1192,6 @@ export async function processAndUploadImageWithConfig(
  */
 export async function processAndUploadVideoWithConfig(
   file: File,
-  title: string,
   userId?: string
 ): Promise<UploadResult> {
   // Get storage configuration
@@ -1183,7 +1203,7 @@ export async function processAndUploadVideoWithConfig(
   const { generateVideoThumbnail, generatePreviewFilename } = await import("./preview");
 
   // Generate filename
-  const filename = generateVideoFilename(title, userId);
+  const filename = generateVideoFilename(file.name, userId);
   const relativePath = `videos/${filename}`;
   const videoBuffer = Buffer.from(new Uint8Array(await file.arrayBuffer()));
 
@@ -1384,4 +1404,138 @@ function constructFullUrl(relativePath: string, config: StorageConfig): string {
     default:
       return `/${cleanPath}`;
   }
+}
+
+/**
+ * Delete multiple media files associated with a post
+ * @param mediaRecords - Array of media records with relativePath and mimeType
+ * @returns Promise with deletion results
+ */
+export async function deletePostMedia(
+  mediaRecords: Array<{
+    relativePath: string;
+    mimeType: string;
+  }>
+): Promise<{
+  successCount: number;
+  failureCount: number;
+  errors: string[];
+}> {
+  const errors: string[] = [];
+  let successCount = 0;
+  let failureCount = 0;
+
+  for (const media of mediaRecords) {
+    try {
+      const fullUrl = await getPublicUrl(media.relativePath);
+      let deleteResult = false;
+
+      if (media.mimeType.startsWith("image/")) {
+        deleteResult = await deleteImage(fullUrl);
+      } else if (media.mimeType.startsWith("video/")) {
+        deleteResult = await deleteVideo(fullUrl);
+      } else {
+        errors.push(`Unsupported media type: ${media.mimeType} for ${media.relativePath}`);
+        failureCount++;
+        continue;
+      }
+
+      if (deleteResult) {
+        successCount++;
+      } else {
+        failureCount++;
+        errors.push(`Failed to delete ${media.relativePath}`);
+      }
+    } catch (error) {
+      failureCount++;
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      errors.push(`Error deleting ${media.relativePath}: ${errorMessage}`);
+    }
+  }
+
+  return { successCount, failureCount, errors };
+}
+
+/**
+ * Clean up orphaned media files that are not associated with any post
+ * This function should be run periodically as a maintenance task
+ * @param dryRun - If true, only returns what would be deleted without actually deleting
+ * @returns Promise with cleanup results
+ */
+export async function cleanupOrphanedMedia(dryRun: boolean = true): Promise<{
+  orphanedCount: number;
+  deletedCount: number;
+  errors: string[];
+  orphanedFiles: Array<{
+    id: string;
+    relativePath: string;
+    mimeType: string;
+    uploadedBy: string;
+    createdAt: Date;
+  }>;
+}> {
+  const { prisma } = await import("@/lib/prisma");
+  const errors: string[] = [];
+  let deletedCount = 0;
+
+  // Find media records that are not associated with any post
+  // and are older than 24 hours (to avoid deleting recently uploaded files)
+  const orphanedMedia = await prisma.media.findMany({
+    where: {
+      postId: null,
+      createdAt: {
+        lt: new Date(Date.now() - 24 * 60 * 60 * 1000), // 24 hours ago
+      },
+    },
+    select: {
+      id: true,
+      relativePath: true,
+      mimeType: true,
+      uploadedBy: true,
+      createdAt: true,
+    },
+  });
+
+  if (dryRun) {
+    return {
+      orphanedCount: orphanedMedia.length,
+      deletedCount: 0,
+      errors: [],
+      orphanedFiles: orphanedMedia,
+    };
+  }
+
+  // Delete orphaned files from storage and database
+  for (const media of orphanedMedia) {
+    try {
+      const fullUrl = await getPublicUrl(media.relativePath);
+      let deleteResult = false;
+
+      if (media.mimeType.startsWith("image/")) {
+        deleteResult = await deleteImage(fullUrl);
+      } else if (media.mimeType.startsWith("video/")) {
+        deleteResult = await deleteVideo(fullUrl);
+      }
+
+      if (deleteResult) {
+        // Delete from database only if file deletion succeeded
+        await prisma.media.delete({
+          where: { id: media.id },
+        });
+        deletedCount++;
+      } else {
+        errors.push(`Failed to delete file: ${media.relativePath}`);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      errors.push(`Error processing ${media.relativePath}: ${errorMessage}`);
+    }
+  }
+
+  return {
+    orphanedCount: orphanedMedia.length,
+    deletedCount,
+    errors,
+    orphanedFiles: orphanedMedia,
+  };
 }

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processAndUploadVideoWithConfig } from "@/lib/storage";
 import { getCurrentUser } from "@/lib/auth";
-import { fileUploadSchema } from "@/lib/schemas";
 import {
   rateLimits,
   getClientIdentifier,
@@ -133,40 +132,11 @@ export async function POST(request: NextRequest) {
     }
 
     const file = formData.get("video") as File;
-    const title = formData.get("title") as string;
 
     // Input validation
     if (!file) {
       return NextResponse.json(
         { error: "No video file provided" },
-        {
-          status: 400,
-          headers: SECURITY_HEADERS,
-        }
-      );
-    }
-
-    if (!title) {
-      return NextResponse.json(
-        { error: "Title is required for filename generation" },
-        {
-          status: 400,
-          headers: SECURITY_HEADERS,
-        }
-      );
-    }
-
-    // Validate file using schema
-    const validationResult = fileUploadSchema.safeParse({ title });
-    if (!validationResult.success) {
-      return NextResponse.json(
-        {
-          error: "Invalid title format",
-          details: validationResult.error.errors.map((err) => ({
-            field: err.path.join("."),
-            message: err.message,
-          })),
-        },
         {
           status: 400,
           headers: SECURITY_HEADERS,
@@ -300,22 +270,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Sanitize title input to prevent injection attacks
-    const sanitizedTitle = sanitizeFilename(validationResult.data.title);
-    if (!sanitizedTitle || sanitizedTitle === "file") {
-      return NextResponse.json(
-        { error: "Invalid title provided" },
-        {
-          status: 400,
-          headers: SECURITY_HEADERS,
-        }
-      );
-    }
+    // No title sanitization needed - using actual filename from uploaded file
 
     // Process and upload video using original File object with the new config-aware function
     const uploadResult = await processAndUploadVideoWithConfig(
       file,
-      sanitizedTitle,
       user.userData!.id
     );
 

@@ -21,29 +21,33 @@ const CDN_URL =
 
 /**
  * Generates a secure random filename with specified format and user ID
- * @param title - The title to use in filename (will be slugified)
+ * @param originalFilename - The original filename from the uploaded file
  * @param userId - User's Supabase ID (optional, for path prefixing)
- * @returns string - Random filename in format: {userId}-title-sample-XXXXXXXX.avif
+ * @returns string - Random filename in format: {fileName}-{userPrefix}{randomId5chars}.avif
  */
-export function generateImageFilename(title: string, userId?: string): string {
-  // Slugify title: lowercase, replace spaces/special chars with dashes, limit length
-  const slugTitle =
-    title
+export function generateImageFilename(originalFilename: string, userId?: string): string {
+  // Extract filename without extension
+  const lastDotIndex = originalFilename.lastIndexOf(".");
+  const nameWithoutExt = lastDotIndex === -1 ? originalFilename : originalFilename.substring(0, lastDotIndex);
+  
+  // Sanitize filename: lowercase, replace spaces/special chars with dashes, limit length
+  const sanitizedName =
+    nameWithoutExt
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "")
       .substring(0, 30) || "untitled";
 
-  // Generate 8 random alphanumeric characters
+  // Generate 5 random alphanumeric characters
   const randomId = Array.from(
-    { length: 8 },
+    { length: 5 },
     () => "0123456789abcdefghijklmnopqrstuvwxyz"[Math.floor(Math.random() * 36)]
   ).join("");
 
   // Include user ID prefix if provided (take first 8 chars for brevity)
   const userPrefix = userId ? userId.substring(0, 8) : "admin";
 
-  return `${userPrefix}-${slugTitle}-${randomId}.avif`;
+  return `${sanitizedName}-${userPrefix}${randomId}.avif`;
 }
 
 /**
@@ -170,13 +174,11 @@ export async function generatePresignedUploadUrl(
 /**
  * Complete image processing and upload pipeline
  * @param file - Input image file
- * @param title - Title for filename generation
  * @param userId - User's Supabase ID for path organization (optional)
  * @returns Promise<string> - Public URL of uploaded image
  */
 export async function processAndUploadImage(
   file: File,
-  title: string,
   userId?: string
 ): Promise<string> {
   // Validate input
@@ -194,7 +196,7 @@ export async function processAndUploadImage(
     const avifBuffer = await convertToAvif(imageBuffer);
 
     // Generate secure filename with user ID
-    const filename = generateImageFilename(title, userId);
+    const filename = generateImageFilename(file.name, userId);
 
     // Upload to S3
     const imageUrl = await uploadImageToS3(avifBuffer, filename);
@@ -267,29 +269,33 @@ export function extractImageFilename(imageUrl: string): string {
 
 /**
  * Generates a secure random filename with specified format for videos and user ID
- * @param title - The title to use in filename (will be slugified)
+ * @param originalFilename - The original filename from the uploaded file
  * @param userId - User's Supabase ID (optional, for path prefixing)
- * @returns string - Random filename in format: {userId}-title-sample-XXXXXXXX.mp4
+ * @returns string - Random filename in format: {fileName}-{userPrefix}{randomId5chars}.mp4
  */
-export function generateVideoFilename(title: string, userId?: string): string {
-  // Slugify title: lowercase, replace spaces/special chars with dashes, limit length
-  const slugTitle =
-    title
+export function generateVideoFilename(originalFilename: string, userId?: string): string {
+  // Extract filename without extension
+  const lastDotIndex = originalFilename.lastIndexOf(".");
+  const nameWithoutExt = lastDotIndex === -1 ? originalFilename : originalFilename.substring(0, lastDotIndex);
+  
+  // Sanitize filename: lowercase, replace spaces/special chars with dashes, limit length
+  const sanitizedName =
+    nameWithoutExt
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "")
       .substring(0, 30) || "untitled";
 
-  // Generate 8 random alphanumeric characters
+  // Generate 5 random alphanumeric characters
   const randomId = Array.from(
-    { length: 8 },
+    { length: 5 },
     () => "0123456789abcdefghijklmnopqrstuvwxyz"[Math.floor(Math.random() * 36)]
   ).join("");
 
   // Include user ID prefix if provided (take first 8 chars for brevity)
   const userPrefix = userId ? userId.substring(0, 8) : "admin";
 
-  return `${userPrefix}-${slugTitle}-${randomId}.mp4`;
+  return `${sanitizedName}-${userPrefix}${randomId}.mp4`;
 }
 
 /**
@@ -374,13 +380,11 @@ export async function uploadVideoToS3(
 /**
  * Complete video processing and upload pipeline
  * @param file - Input video file
- * @param title - Title for filename generation
  * @param userId - User's Supabase ID for path organization (optional)
  * @returns Promise<string> - Public URL of uploaded video
  */
 export async function processAndUploadVideo(
   file: File,
-  title: string,
   userId?: string
 ): Promise<string> {
   // Validate input
@@ -395,7 +399,7 @@ export async function processAndUploadVideo(
     const videoBuffer = Buffer.from(arrayBuffer);
 
     // Generate secure filename with user ID
-    const filename = generateVideoFilename(title, userId);
+    const filename = generateVideoFilename(file.name, userId);
 
     // Upload to S3
     const videoUrl = await uploadVideoToS3(videoBuffer, filename);
