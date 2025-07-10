@@ -37,24 +37,44 @@ async function handlePostRequest(request: NextRequest, { params }: RouteParams, 
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
 
-    // Authorization check: Users can only edit their own posts that haven't been approved
-    // Admins can edit any post regardless of status
-    if (user.userData?.role === "USER") {
-      if (post.authorId !== user.userData.id) {
-        return NextResponse.json(
-          { error: "You can only edit your own posts" },
-          { status: 403 }
-        );
+    // Check if this is for editing or viewing
+    const isEditingRequest = post.authorId === user.userData?.id || user.userData?.role === "ADMIN";
+    
+    if (isEditingRequest) {
+      // Authorization check for editing: Users can only edit their own posts that haven't been approved
+      // Admins can edit any post regardless of status
+      if (user.userData?.role === "USER") {
+        if (post.authorId !== user.userData.id) {
+          return NextResponse.json(
+            { error: "You can only edit your own posts" },
+            { status: 403 }
+          );
+        }
+        // Prevent editing approved posts
+        if (post.status === "APPROVED") {
+          return NextResponse.json(
+            {
+              error:
+                "Cannot edit approved posts. Once your content has been approved by an admin, it cannot be modified.",
+            },
+            { status: 403 }
+          );
+        }
       }
-      // Prevent editing approved posts
-      if (post.status === "APPROVED") {
-        return NextResponse.json(
-          {
-            error:
-              "Cannot edit approved posts. Once your content has been approved by an admin, it cannot be modified.",
-          },
-          { status: 403 }
-        );
+    } else {
+      // This is for viewing - check premium access control
+      if (post.isPremium) {
+        const userType = user.userData?.type || null;
+        const isUserFree = userType === "FREE" || userType === null;
+        const isAdmin = user.userData?.role === "ADMIN";
+        
+        // Only allow access for premium users and admins
+        if (isUserFree && !isAdmin) {
+          return NextResponse.json(
+            { error: "Premium subscription required to access this content" },
+            { status: 403 }
+          );
+        }
       }
     }
 

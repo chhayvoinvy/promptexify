@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +26,7 @@ export function PremiumUpgradeModal({
   post,
   onClose,
 }: PremiumUpgradeModalProps) {
+  const router = useRouter();
   const [isYearly, setIsYearly] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -54,8 +56,8 @@ export function PremiumUpgradeModal({
     if (onClose) {
       onClose();
     } else {
-      // If no onClose handler, navigate to home page (for direct URL access)
-      window.location.href = "/";
+      // Use router.back() for clean navigation history
+      router.back();
     }
   };
 
