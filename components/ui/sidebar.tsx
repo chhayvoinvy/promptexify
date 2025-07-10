@@ -42,15 +42,28 @@ type SidebarContextProps = {
   toggleSidebar: () => void
 }
 
-const SidebarContext = React.createContext<SidebarContextProps | null>(null)
+const SidebarContext = React.createContext<SidebarContextProps | undefined>(
+  undefined
+)
 
 function useSidebar() {
   const context = React.useContext(SidebarContext)
   if (!context) {
-    throw new Error("useSidebar must be used within a SidebarProvider.")
+    throw new Error("useSidebar must be used within a SidebarProvider")
   }
-
   return context
+}
+
+// Utility function to read cookies safely
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) {
+    return parts.pop()?.split(';').shift() || null;
+  }
+  return null;
 }
 
 function SidebarProvider({
@@ -87,6 +100,20 @@ function SidebarProvider({
     },
     [setOpenProp, open]
   )
+
+  // Restore sidebar state from cookie on mount
+  React.useEffect(() => {
+    // Only restore state on client side and when not controlled externally
+    if (typeof window !== 'undefined' && !setOpenProp) {
+      const savedState = getCookie(SIDEBAR_COOKIE_NAME);
+      if (savedState !== null) {
+        const shouldBeOpen = savedState === 'true';
+        if (shouldBeOpen !== defaultOpen) {
+          _setOpen(shouldBeOpen);
+        }
+      }
+    }
+  }, [defaultOpen, setOpenProp]); // Include dependencies to handle prop changes
 
   // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {
