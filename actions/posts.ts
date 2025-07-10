@@ -658,7 +658,7 @@ export async function deletePostAction(postId: string) {
     for (const media of existingPost.media) {
       try {
         // Import storage functions dynamically to avoid circular imports
-        const { deleteImage, deleteVideo, getPublicUrl } = await import("@/lib/storage");
+        const { deleteImage, deleteVideo, getPublicUrl } = await import("@/lib/image/storage");
         
         // Get the full URL for deletion
         const fullUrl = await getPublicUrl(media.relativePath);
@@ -677,7 +677,7 @@ export async function deletePostAction(postId: string) {
     // Delete legacy media files if they exist (uploadPath from post)
     if (existingPost.uploadPath) {
       try {
-        const { deleteImage, deleteVideo, getPublicUrl } = await import("@/lib/storage");
+        const { deleteImage, deleteVideo, getPublicUrl } = await import("@/lib/image/storage");
         const fullUrl = await getPublicUrl(existingPost.uploadPath);
         
         if (existingPost.uploadFileType === "IMAGE") {
@@ -693,7 +693,7 @@ export async function deletePostAction(postId: string) {
     // Delete preview file if it exists
     if (existingPost.previewPath) {
       try {
-        const { deleteImage, getPublicUrl } = await import("@/lib/storage");
+        const { deleteImage, getPublicUrl } = await import("@/lib/image/storage");
         const previewUrl = await getPublicUrl(existingPost.previewPath);
         mediaDeletePromises.push(deleteImage(previewUrl));
       } catch (error) {
@@ -916,7 +916,7 @@ export async function cleanupOrphanedMediaAction(dryRun: boolean = true) {
     }
 
     // Import cleanup function
-    const { cleanupOrphanedMedia } = await import("@/lib/storage");
+    const { cleanupOrphanedMedia } = await import("@/lib/image/storage");
     
     // Run cleanup
     const result = await cleanupOrphanedMedia(dryRun);

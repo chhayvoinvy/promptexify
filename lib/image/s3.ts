@@ -23,7 +23,7 @@ const CDN_URL =
  * Generates a secure random filename with specified format and user ID
  * @param originalFilename - The original filename from the uploaded file
  * @param userId - User's Supabase ID (optional, for path prefixing)
- * @returns string - Random filename in format: {fileName}-{userPrefix}{randomId5chars}.avif
+ * @returns string - Random filename in format: {fileName}-{userPrefix}{randomId5chars}.webp
  */
 export function generateImageFilename(originalFilename: string, userId?: string): string {
   // Extract filename without extension
@@ -47,21 +47,21 @@ export function generateImageFilename(originalFilename: string, userId?: string)
   // Include user ID prefix if provided (take first 8 chars for brevity)
   const userPrefix = userId ? userId.substring(0, 8) : "admin";
 
-  return `${sanitizedName}-${userPrefix}${randomId}.avif`;
+  return `${sanitizedName}-${userPrefix}${randomId}.webp`;
 }
 
 /**
- * Converts image buffer to AVIF format
+ * Converts image buffer to WebP format
  * @param imageBuffer - Input image buffer
- * @returns Promise<Buffer> - AVIF formatted image buffer
+ * @returns Promise<Buffer> - WebP formatted image buffer
  */
-export async function convertToAvif(imageBuffer: Buffer): Promise<Buffer> {
+export async function convertToWebp(imageBuffer: Buffer): Promise<Buffer> {
   const sharp = (await import("sharp")).default;
 
   return await sharp(imageBuffer)
-    .avif({
+    .webp({
       quality: 80,
-      effort: 4, // Higher effort for better compression
+      effort: 6, // Higher effort for better compression
     })
     .toBuffer();
 }
@@ -104,7 +104,7 @@ export function validateImageFile(file: File): {
 
 /**
  * Uploads image to S3 with secure configuration
- * @param imageBuffer - Processed image buffer (AVIF format)
+ * @param imageBuffer - Processed image buffer (WebP format)
  * @param filename - Generated filename
  * @returns Promise<string> - Public URL of uploaded image
  */
@@ -118,7 +118,7 @@ export async function uploadImageToS3(
     Bucket: BUCKET_NAME,
     Key: key,
     Body: imageBuffer,
-    ContentType: "image/avif",
+    ContentType: "image/webp",
     // Security headers
     ACL: "private" as const,
     ServerSideEncryption: ServerSideEncryption.AES256,
@@ -192,14 +192,14 @@ export async function processAndUploadImage(
     const arrayBuffer = await file.arrayBuffer();
     const imageBuffer = Buffer.from(arrayBuffer);
 
-    // Convert to AVIF format
-    const avifBuffer = await convertToAvif(imageBuffer);
+    // Convert to WebP format
+    const webpBuffer = await convertToWebp(imageBuffer);
 
     // Generate secure filename with user ID
     const filename = generateImageFilename(file.name, userId);
 
     // Upload to S3
-    const imageUrl = await uploadImageToS3(avifBuffer, filename);
+    const imageUrl = await uploadImageToS3(webpBuffer, filename);
 
     return imageUrl;
   } catch (error) {
@@ -255,8 +255,8 @@ export function extractImageFilename(imageUrl: string): string {
     const pathname = url.pathname;
     const filename = pathname.split("/").pop() || "";
 
-    // Only return if it's an AVIF file in the images directory
-    if (pathname.includes("/images/") && filename.endsWith(".avif")) {
+    // Only return if it's a WebP file in the images directory
+    if (pathname.includes("/images/") && filename.endsWith(".webp")) {
       return filename;
     }
 

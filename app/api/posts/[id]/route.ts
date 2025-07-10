@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPostById } from "@/lib/content";
-import { getPublicUrl } from "@/lib/storage";
+import { getPublicUrl } from "@/lib/image/storage";
 
 interface RouteParams {
   params: Promise<{

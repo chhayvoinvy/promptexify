@@ -433,7 +433,7 @@ export class CsvParser {
         let uploadFileType: "IMAGE" | "VIDEO" | undefined;
         if (uploadPath) {
           const extension = uploadPath.split('.').pop()?.toLowerCase();
-          if (['jpg', 'jpeg', 'png', 'webp', 'avif', 'gif'].includes(extension || '')) {
+          if (['webp', 'jpg', 'jpeg', 'png', 'avif', 'gif'].includes(extension || '')) {
             uploadFileType = 'IMAGE';
           } else if (['mp4', 'webm', 'mov', 'avi'].includes(extension || '')) {
             uploadFileType = 'VIDEO';

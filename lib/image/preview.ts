@@ -39,7 +39,7 @@ export async function generateImagePreview(
     maxWidth = 1280,
     maxHeight = 720,
     quality = 80,
-    format = "avif",
+    format = "webp",
   } = options;
 
   try {
@@ -116,7 +116,7 @@ export async function generateVideoThumbnail(
 
     // Read thumbnail file
     const thumbnailBuffer = await sharp(thumbnailPath)
-      .avif({ quality, effort: 4 })
+      .webp({ quality, effort: 6 })
       .toBuffer();
 
     // Clean up temporary files
@@ -135,7 +135,7 @@ export async function generateVideoThumbnail(
 /**
  * Generate preview filename with random pattern
  * @param originalFilename - The original filename (used to extract userPrefix)
- * @returns string - Preview filename in format: {userPrefix}{randomId15chars}.avif
+ * @returns string - Preview filename in format: {userPrefix}{randomId15chars}.webp
  */
 export function generatePreviewFilename(originalFilename: string): string {
   // Extract userPrefix from original filename
@@ -162,7 +162,7 @@ export function generatePreviewFilename(originalFilename: string): string {
     () => "0123456789abcdefghijklmnopqrstuvwxyz"[Math.floor(Math.random() * 36)]
   ).join("");
 
-  return `${userPrefix}${randomId}.avif`;
+  return `${userPrefix}${randomId}.webp`;
 }
 
 /**

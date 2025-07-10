@@ -275,7 +275,7 @@ export function getOptimizationRecommendations(): string[] {
   // Bundle size recommendations
   recommendations.push(
     "Use dynamic imports for large components",
-    "Optimize images with WebP/AVIF formats",
+            "Optimize images with WebP format (AVIF support available)",
     "Consider code splitting for route-level chunks"
   );
 

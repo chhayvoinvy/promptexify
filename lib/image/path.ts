@@ -1,4 +1,4 @@
-import { getStorageConfig, StorageConfig } from "@/lib/storage";
+import { getStorageConfig, StorageConfig } from "@/lib/image/storage";
 
 /**
  * Path Resolver Service
@@ -38,7 +38,7 @@ function cleanupCache() {
 
 /**
  * Resolve a relative media path to a full URL
- * @param relativePath - Relative path like "images/user123-prompt-abc123.avif"
+ * @param relativePath - Relative path like "images/user123-prompt-abc123.webp"
  * @returns Full URL based on current storage configuration
  */
 export async function resolveMediaUrl(relativePath: string): Promise<string> {
@@ -145,7 +145,7 @@ export async function resolveMediaUrls(
 
 /**
  * Construct full URL based on storage configuration
- * @param relativePath - Relative path like "images/user123-prompt-abc123.avif"
+ * @param relativePath - Relative path like "images/user123-prompt-abc123.webp"
  * @param storageConfig - Current storage configuration
  * @returns Full URL
  */

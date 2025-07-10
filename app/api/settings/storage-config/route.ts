@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getStorageConfigAction } from "@/actions/settings";
-import { testStorageConfiguration } from "@/lib/storage";
+import { testStorageConfiguration } from "@/lib/image/storage";
 import { NextRequest } from "next/server";
 
 /**

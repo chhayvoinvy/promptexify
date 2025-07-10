@@ -12,7 +12,7 @@ import { StorageType } from "@/app/generated/prisma";
 import {
   generateImageFilename,
   generateVideoFilename,
-  convertToAvif,
+  convertToWebp,
   validateImageFile,
   validateVideoFile,
   extractImageFilename,
@@ -22,7 +22,7 @@ import {
 export {
   generateImageFilename,
   generateVideoFilename,
-  convertToAvif,
+  convertToWebp,
   validateImageFile,
   validateVideoFile,
   extractImageFilename,
@@ -418,7 +418,7 @@ export async function uploadPreviewToS3WithConfig(
     Bucket: config.s3BucketName!,
     Key: key,
     Body: previewBuffer,
-    ContentType: "image/avif",
+    ContentType: "image/webp",
     ACL: "private" as const,
     ServerSideEncryption: ServerSideEncryption.AES256,
     CacheControl: "public, max-age=31536000", // Cache for 1 year
@@ -566,7 +566,7 @@ export async function uploadImageToS3WithConfig(
     Bucket: config.s3BucketName!,
     Key: key,
     Body: imageBuffer,
-    ContentType: "image/avif",
+    ContentType: "image/webp",
     ServerSideEncryption: ServerSideEncryption.AES256,
     CacheControl: "public, max-age=31536000",
     ContentDisposition: "inline",
@@ -720,7 +720,7 @@ export async function uploadImageToDOSpacesWithConfig(
     Bucket: config.doSpaceName!,
     Key: key,
     Body: imageBuffer,
-    ContentType: "image/avif",
+    ContentType: "image/webp",
     CacheControl: "public, max-age=31536000",
     ContentDisposition: "inline",
     ACL: ObjectCannedACL.public_read, // DigitalOcean Spaces requires explicit ACL
@@ -1062,7 +1062,7 @@ export async function processAndUploadImageWithConfig(
   const { storageType } = config;
 
   // Import functions dynamically to avoid circular dependencies
-  const { convertToAvif, generateImageFilename } = await import("./s3");
+  const { convertToWebp, generateImageFilename } = await import("./s3");
   const { generateOptimizedBlurPlaceholder } = await import("./blur");
   const { generateImagePreview, generatePreviewFilename } = await import("./preview");
 
@@ -1095,7 +1095,7 @@ export async function processAndUploadImageWithConfig(
       maxWidth: 1280,
       maxHeight: 720,
       quality: 80,
-      format: "avif",
+      format: "webp",
     });
 
     const previewFilename = generatePreviewFilename(filename);
@@ -1131,10 +1131,10 @@ export async function processAndUploadImageWithConfig(
     // Continue without preview - it's not critical
   }
 
-  // Convert to AVIF if enabled and not already AVIF
-  if (config.enableCompression && file.type !== "image/avif") {
-    imageBuffer = await convertToAvif(buffer);
-    finalMimeType = "image/avif";
+  // Convert to WebP if enabled and not already WebP
+  if (config.enableCompression && file.type !== "image/webp") {
+    imageBuffer = await convertToWebp(buffer);
+    finalMimeType = "image/webp";
   }
 
   let uploadedPath: string;
@@ -1251,7 +1251,7 @@ export async function processAndUploadVideoWithConfig(
     // Generate blur placeholder from thumbnail
     try {
       const { generateOptimizedBlurPlaceholder } = await import("./blur");
-      blurDataUrl = await generateOptimizedBlurPlaceholder(thumbnailBuffer, "image/avif");
+      blurDataUrl = await generateOptimizedBlurPlaceholder(thumbnailBuffer, "image/webp");
     } catch (error) {
       console.error("Failed to generate blur placeholder for video thumbnail:", error);
     }
@@ -1320,7 +1320,7 @@ export async function testStorageConfiguration(): Promise<{
     issues: string[];
   };
 }> {
-  const testPath = "images/test-image.avif";
+  const testPath = "images/test-image.webp";
   const results: { [key: string]: any } = {};
 
   // Test current configuration

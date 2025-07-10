@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { deleteVideo, getStorageConfig } from "@/lib/storage";
+import { deleteVideo, getStorageConfig } from "@/lib/image/storage";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { CSRFProtection } from "@/lib/csp";

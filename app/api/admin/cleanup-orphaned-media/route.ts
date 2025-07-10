@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { cleanupOrphanedMedia } from "@/lib/storage";
+import { cleanupOrphanedMedia } from "@/lib/image/storage";
 import { SECURITY_HEADERS } from "@/lib/sanitize";
 import { CSRFProtection } from "@/lib/csp";
 

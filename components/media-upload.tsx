@@ -634,7 +634,7 @@ export function MediaUpload({
               )}
 
               <p className="text-xs text-muted-foreground mt-1">
-                Supported: .avif, .png, .jpg, and .mp4.
+                                      Supported: .webp, .png, .jpg, and .mp4.
               </p>
             </div>
           )}

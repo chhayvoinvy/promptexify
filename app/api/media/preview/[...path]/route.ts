@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStorageConfig } from "@/lib/storage";
+import { getStorageConfig } from "@/lib/image/storage";
 import { getCurrentUser } from "@/lib/auth";
 import { rateLimits, getClientIdentifier, getRateLimitHeaders } from "@/lib/limits";
 import { SECURITY_HEADERS } from "@/lib/sanitize";
@@ -152,7 +152,7 @@ export async function GET(
         
         return new NextResponse(fileBuffer, {
           headers: {
-            "Content-Type": "image/avif",
+            "Content-Type": "image/webp",
             "Cache-Control": "public, max-age=31536000, immutable",
             "Content-Length": fileBuffer.length.toString(),
             ...SECURITY_HEADERS,

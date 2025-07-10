@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { processAndUploadImageWithConfig } from "@/lib/storage";
+import { processAndUploadImageWithConfig } from "@/lib/image/storage";
 import { getCurrentUser } from "@/lib/auth";
 import {
   rateLimits,

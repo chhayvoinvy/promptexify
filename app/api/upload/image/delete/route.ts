@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { deleteImage, getStorageConfig } from "@/lib/storage";
+import { deleteImage, getStorageConfig } from "@/lib/image/storage";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { CSRFProtection } from "@/lib/csp";
@@ -18,8 +18,8 @@ function extractImageFilename(imageUrl: string): string {
     if (!imageUrl.startsWith("http")) {
       const parts = imageUrl.split("/");
       const filename = parts[parts.length - 1];
-      // Accept various image formats, not just AVIF
-      if (filename && /\.(avif|jpg|jpeg|png|webp)$/i.test(filename)) {
+          // Accept various image formats, prioritizing webp but supporting others  
+    if (filename && /\.(webp|avif|jpg|jpeg|png)$/i.test(filename)) {
         return filename;
       }
       return "";
@@ -34,7 +34,7 @@ function extractImageFilename(imageUrl: string): string {
     if (
       (pathname.includes("/images/") || pathname.includes("/preview/")) &&
       filename &&
-      /\.(avif|jpg|jpeg|png|webp)$/i.test(filename)
+              /\.(webp|avif|jpg|jpeg|png)$/i.test(filename)
     ) {
       return filename;
     }

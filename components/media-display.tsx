@@ -121,7 +121,7 @@ async function resolveMediaUrl(path: string): Promise<string> {
 }
 
 interface MediaImageProps {
-  src: string; // Relative path like "images/user123-prompt-abc123.avif" or "preview/preview-user123-prompt-abc123.avif"
+  src: string; // Relative path like "images/user123-prompt-abc123.webp" or "preview/preview-user123-prompt-abc123.webp"
   alt: string;
   width?: number;
   height?: number;
@@ -151,7 +151,7 @@ interface MediaVideoProps {
 
 interface MediaVideoLazyProps {
   src: string; // Video path like "videos/user123-video-xyz789.mp4"
-  previewSrc?: string; // Preview image path like "preview/preview-user123-video-xyz789.avif"
+  previewSrc?: string; // Preview image path like "preview/preview-user123-video-xyz789.webp"
   alt: string;
   className?: string;
   controls?: boolean;
@@ -180,7 +180,7 @@ interface MediaVideoLazyProps {
 
 /**
  * MediaImage - Automatically resolves relative paths to full URLs
- * Usage: <MediaImage src="images/user123-prompt-abc123.avif" alt="Prompt" />
+ * Usage: <MediaImage src="images/user123-prompt-abc123.webp" alt="Prompt" />
  */
 export function MediaImage({
   src,
@@ -523,7 +523,7 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
  * Usage: 
  * <MediaVideoLazy 
  *   src="videos/user123-video-xyz789.mp4" 
- *   previewSrc="preview/preview-user123-video-xyz789.avif"
+ *   previewSrc="preview/preview-user123-video-xyz789.webp"
  *   alt="Video description"
  *   controls
  * />

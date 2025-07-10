@@ -690,7 +690,7 @@ export function SettingsForm() {
                               Enable Compression
                             </FormLabel>
                             <FormDescription>
-                              Automatically compress images to AVIF format
+                              Automatically compress images to WebP format
                             </FormDescription>
                           </div>
                           <FormControl>

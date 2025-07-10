@@ -560,7 +560,7 @@ export function AutomationDashboard() {
                     </li>
                   </ul>
                   <div className="text-xs text-muted-foreground mt-2">
-                    <b>upload_path</b>: must be a local path like <code>/images/example.webp</code> (.jpg, .jpeg, .webp, .avif, .png)<br />
+                    <b>upload_path</b>: must be a local path like <code>/images/example.webp</code> (.webp, .jpg, .jpeg, .png, .avif)<br />
                     <b>upload_file_type</b>: "image" or "video"<br />
                     <b>upload_url</b>: must be a local path like <code>/videos/example.mp4</code> (.mp4 only)
                   </div>

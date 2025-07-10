@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { StorageType } from "@/app/generated/prisma";
 import { z } from "zod";
 import { sanitizeInput } from "@/lib/sanitize";
-import { clearStorageConfigCache } from "@/lib/storage";
+import { clearStorageConfigCache } from "@/lib/image/storage";
 
 // Settings validation schema
 const settingsSchema = z.object({

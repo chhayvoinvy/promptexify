@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { resolveMediaUrl, resolveMediaUrls } from "@/lib/path";
+import { resolveMediaUrl, resolveMediaUrls } from "@/lib/image/path";
 import { z } from "zod";
 import { rateLimits, getClientIdentifier, getRateLimitHeaders } from "@/lib/limits";
 import { SECURITY_HEADERS } from "@/lib/sanitize";
