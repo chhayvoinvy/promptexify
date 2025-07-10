@@ -9,9 +9,15 @@ import { Bookmark, BookmarkX } from "@/components/ui/icons";
 import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { Metadata } from "next";
 
 // Enable caching for better performance
 export const revalidate = 30; // Revalidate every 30 seconds for user-specific data
+
+export const metadata: Metadata = {
+  title: "Your Bookmarks",
+  description: "Your saved prompts and bookmarked content",
+};
 
 async function BookmarksContent() {
   // Get current user info

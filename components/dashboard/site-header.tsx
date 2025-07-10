@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { IconExternalLink } from "@/components/ui/icons";
-import { usePageTitle } from "@/hooks/use-page-title";
+import { usePathname } from "next/navigation";
+import { getPageTitle } from "@/config/page-titles";
 
 export function SiteHeader() {
-  const { title } = usePageTitle();
+  const pathname = usePathname();
+  const { title } = getPageTitle(pathname);
 
   return (
     <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">

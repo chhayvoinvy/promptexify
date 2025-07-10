@@ -16,11 +16,17 @@ import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { requireAuth } from "@/lib/auth";
+import { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
 // Enable caching for better performance  
 export const revalidate = 30; // Revalidate every 30 seconds for user-specific data
+
+export const metadata: Metadata = {
+  title: "Favorites",
+  description: "Posts you've liked, organized by date",
+};
 
 // Helper function to group favorites by date
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

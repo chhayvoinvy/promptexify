@@ -7,8 +7,14 @@ import { SettingsForm } from "@/components/dashboard/settings-form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Settings } from "@/components/ui/icons";
+import { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Settings",
+  description: "Configure your account and application preferences",
+};
 
 function SettingsLoading() {
   return (
