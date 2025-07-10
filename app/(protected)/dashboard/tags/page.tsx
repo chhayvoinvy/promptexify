@@ -4,7 +4,7 @@ import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { Button } from "@/components/ui/button";
 import { requireAdmin } from "@/lib/auth";
-import { getTagsPaginated, getAllTags } from "@/lib/content";
+import { getTagsPaginated } from "@/lib/content";
 import { Badge } from "@/components/ui/badge";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Plus, Tag } from "@/components/ui/icons";
@@ -49,24 +49,6 @@ interface TagsManagementPageProps {
   }>;
 }
 
-// Stats cards skeleton
-function StatsCardsSkeleton() {
-  return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <Card key={i}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <Skeleton className="h-4 w-20" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-8 w-16" />
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
 // Table skeleton
 function TableSkeleton() {
   return (
@@ -83,16 +65,6 @@ function TableSkeleton() {
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-// Combined loading skeleton
-function LoadingSkeleton() {
-  return (
-    <>
-      <StatsCardsSkeleton />
-      <TableSkeleton />
-    </>
   );
 }
 
@@ -116,15 +88,12 @@ async function TagsManagementContent({
     const validPageSize = Math.min(Math.max(pageSize, 5), 50);
 
     // Get tags with pagination and search
-    const [paginatedTags, allTagsForStats] = await Promise.all([
-      getTagsPaginated(
-        currentPage,
-        validPageSize,
-        filters.search,
-        filters.sortBy
-      ),
-      getAllTags(), // For statistics
-    ]);
+    const paginatedTags = await getTagsPaginated(
+      currentPage,
+      validPageSize,
+      filters.search,
+      filters.sortBy
+    );
 
     // Generate pagination links
     const generatePageLink = (page: number) => {
@@ -150,59 +119,6 @@ async function TagsManagementContent({
 
     return (
       <>
-        {/* Statistics Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Tags</CardTitle>
-              <Tag className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{allTagsForStats.length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Tags with Posts
-              </CardTitle>
-              <Tag className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {allTagsForStats.filter((tag) => tag._count.posts > 0).length}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Most Used Tag
-              </CardTitle>
-              <Tag className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {allTagsForStats.length > 0
-                  ? Math.max(...allTagsForStats.map((tag) => tag._count.posts))
-                  : 0}
-              </div>
-              <p className="text-xs text-muted-foreground">posts</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Unused Tags</CardTitle>
-              <Tag className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {allTagsForStats.filter((tag) => tag._count.posts === 0).length}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Tags Table */}
         <Card>
           <CardHeader>
@@ -347,10 +263,16 @@ async function TagsManagementContent({
     console.error("Error loading tags:", error);
     return (
       <Card>
-        <CardContent className="text-center py-8">
-          <p className="text-destructive">
-            Error loading tags. Please try again.
-          </p>
+        <CardHeader>
+          <CardTitle>Error</CardTitle>
+          <CardDescription>
+            Failed to load tags. Please try again later.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={() => window.location.reload()}>
+            Retry
+          </Button>
         </CardContent>
       </Card>
     );
@@ -360,8 +282,7 @@ async function TagsManagementContent({
 export default async function TagsManagementPage({
   searchParams,
 }: TagsManagementPageProps) {
-  // Enforce admin authentication using standardized requireAdmin function
-  // This provides consistent role-based security for tag management
+  // Check admin access
   const user = await requireAdmin();
 
   return (
@@ -380,7 +301,7 @@ export default async function TagsManagementPage({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-muted-foreground">
-                Manage content tags for better organization and discoverability.
+                Organize your content with tags for better discoverability.
               </p>
             </div>
             <Link href="/dashboard/tags/new">
@@ -391,7 +312,7 @@ export default async function TagsManagementPage({
             </Link>
           </div>
 
-          <Suspense fallback={<LoadingSkeleton />}>
+          <Suspense fallback={<TableSkeleton />}>
             <TagsManagementContent searchParams={searchParams} />
           </Suspense>
         </div>
