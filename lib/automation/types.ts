@@ -35,7 +35,8 @@ export interface PostData {
   status: "APPROVED" | "PENDING_APPROVAL" | "REJECTED";
   isFeatured: boolean;
   uploadPath?: string;
-  uploadFileType?: "IMAGE" | "VIDEO"; // Optional file type
+  uploadFileType?: "IMAGE" | "VIDEO"; 
+  previewPath?: string; 
 }
 
 export interface GenerationResult {

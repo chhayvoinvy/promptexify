@@ -40,6 +40,7 @@ const EXPECTED_COLUMNS = {
   IS_FEATURED: ["is_featured", "featured", "highlight"],
   FEATURED_IMAGE: ["featured_image", "image", "image_url", "thumbnail"],
   FEATURED_VIDEO: ["featured_video", "video", "video_url"],
+  PREVIEW_PATH: ["preview_path", "preview", "preview_image", "preview_url"],
 };
 
 /**
@@ -427,11 +428,25 @@ export class CsvParser {
     const posts = await Promise.all(
       rows.map(async (row): Promise<PostData> => {
         const title = row[columnMapping.title]?.trim() || "";
-        const uploadPath = row[columnMapping.featured_image]?.trim();
+        const previewPath = row[columnMapping["preview_path"]]?.trim();
         
-        // Determine upload file type based on path extension
+        // Handle upload path from either featured_image or featured_video columns
+        let uploadPath: string | undefined;
         let uploadFileType: "IMAGE" | "VIDEO" | undefined;
-        if (uploadPath) {
+        
+        const featuredImage = row[columnMapping["featured_image"]]?.trim();
+        const featuredVideo = row[columnMapping["featured_video"]]?.trim();
+        
+        if (featuredImage) {
+          uploadPath = featuredImage;
+          uploadFileType = "IMAGE";
+        } else if (featuredVideo) {
+          uploadPath = featuredVideo;
+          uploadFileType = "VIDEO";
+        }
+        
+        // If we have an uploadPath but no explicit type, determine from extension
+        if (uploadPath && !uploadFileType) {
           const extension = uploadPath.split('.').pop()?.toLowerCase();
           if (['webp', 'jpg', 'jpeg', 'png', 'avif', 'gif'].includes(extension || '')) {
             uploadFileType = 'IMAGE';
@@ -455,6 +470,7 @@ export class CsvParser {
           isFeatured: this.parseBoolean(row[columnMapping.is_featured]),
           uploadPath,
           uploadFileType,
+          previewPath,
         };
       })
     );

@@ -87,6 +87,17 @@ export const PostDataSchema = z.object({
   uploadFileType: z
     .enum(["IMAGE", "VIDEO"])
     .optional(),
+  
+  previewPath: z
+    .string()
+    .optional()
+    .refine(
+      (path) =>
+        !path ||
+        path === "" ||
+        isAllowedPreviewPath(path),
+      "Invalid or suspicious preview path"
+    ),
 });
 
 export const ContentFileSchema = z.object({
@@ -163,6 +174,16 @@ function isAllowedLocalImagePath(path: string): boolean {
 function isAllowedLocalVideoPath(path: string): boolean {
   // Must start with /videos/ and end with .mp4
   return /^\/videos\/[a-zA-Z0-9_\-./]+\.mp4$/i.test(path);
+}
+
+/**
+ * Validates if a preview path is allowed
+ */
+function isAllowedPreviewPath(path: string): boolean {
+  // Must start with /preview/ and end with allowed image extensions
+  return (
+    /^\/preview\/[a-zA-Z0-9_\-./]+\.(jpg|jpeg|webp|avif|png|gif)$/i.test(path)
+  );
 }
 
 /**

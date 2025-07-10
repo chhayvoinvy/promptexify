@@ -17,7 +17,7 @@ import {
   VolumeX,
 } from "@/components/ui/icons";
 import { PostTextBaseCard } from "@/components/post-text-base-card";
-import { usePrefetchPosts } from "@/hooks/use-prefetch-posts";
+import { usePrefetchPosts } from "@/hooks/use-prefetch";
 
 interface PostMasonryGridProps {
   posts: PostWithInteractions[];
