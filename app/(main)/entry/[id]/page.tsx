@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { incrementPostView, getAllPosts, getRelatedPosts } from "@/lib/content";
-import { OptimizedQueries } from "@/lib/query";
+import { Queries } from "@/lib/query";
 import type { PostWithInteractions } from "@/lib/content";
 import { PostStandalonePage } from "@/components/post-standalone-page";
 import { getCurrentUser } from "@/lib/auth";
@@ -43,7 +43,7 @@ export default async function PostPage({
   const currentUser = await getCurrentUser();
   const userId = currentUser?.userData?.id;
 
-  const result = await OptimizedQueries.posts.getById(id, userId);
+  const result = await Queries.posts.getById(id, userId);
 
   if (!result || !result.isPublished) {
     notFound();

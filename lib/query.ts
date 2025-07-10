@@ -1067,7 +1067,7 @@ export const getCachedPopularTags = createCachedFunction(
  * Consolidated query interface for easy consumption
  * Uses cached versions for anonymous users, direct methods for authenticated users
  */
-export const OptimizedQueries = {
+export const Queries = {
   // Posts
   posts: {
     // For paginated queries, use direct method if userId is present to avoid stale user data

@@ -37,7 +37,7 @@ import {
 import { requireRole } from "@/lib/auth";
 import { PostActionsDropdown } from "@/components/dashboard/(actions)/post-actions-dropdown";
 import { getAllCategories } from "@/lib/content";
-import { OptimizedQueries } from "@/lib/query";
+import { Queries } from "@/lib/query";
 import { PostFilters } from "@/components/dashboard/post-filters";
 
 import {
@@ -189,7 +189,7 @@ async function PostsManagementContent({
 
     // Use optimized paginated query instead of loading all posts
     const [postsResult, statsData] = await Promise.all([
-      OptimizedQueries.posts.getPaginated({
+      Queries.posts.getPaginated({
         page: currentPage,
         limit: validPageSize,
         userId: user.id,
@@ -199,7 +199,7 @@ async function PostsManagementContent({
         sortBy,
         includeUnpublished: isAdmin, // Only admins see unpublished posts
       }),
-      OptimizedQueries.posts.getStats({
+      Queries.posts.getStats({
         authorId: isAdmin ? undefined : user.id,
         includeUnpublished: isAdmin,
         categoryId,

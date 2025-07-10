@@ -5,7 +5,7 @@ import { PostMasonrySkeleton } from "@/components/post-masonry-skeleton";
 import { DirectoryClientWrapper } from "@/components/directory-client-wrapper";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Container } from "@/components/ui/container";
-import { OptimizedQueries } from "@/lib/query";
+import { Queries } from "@/lib/query";
 
 import { getSettingsAction } from "@/actions/settings";
 
@@ -118,7 +118,7 @@ async function DirectoryContent({
   let result;
   if (searchQuery && searchQuery.trim()) {
     // Use search query
-    result = await OptimizedQueries.posts.search(searchQuery, {
+    result = await Queries.posts.search(searchQuery, {
       page: 1,
       limit: postsPageSize, // Use setting
       userId,
@@ -127,7 +127,7 @@ async function DirectoryContent({
     });
   } else {
     // Use paginated query
-    result = await OptimizedQueries.posts.getPaginated({
+    result = await Queries.posts.getPaginated({
       page: 1,
       limit: postsPageSize, // Use setting
       userId,

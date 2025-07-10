@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ENHANCED_SECURITY_HEADERS } from "@/lib/sanitize";
+import { SECURITY_HEADERS } from "@/lib/sanitize";
 
 /**
  * POST /api/security/csp-report
@@ -29,6 +29,6 @@ export async function POST(request: NextRequest) {
   // Respond with 204 – required by CSP spec for report endpoints.
   return new NextResponse(null, {
     status: 204,
-    headers: ENHANCED_SECURITY_HEADERS,
+    headers: SECURITY_HEADERS,
   });
 }

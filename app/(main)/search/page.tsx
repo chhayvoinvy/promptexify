@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { PostMasonrySkeleton } from "@/components/post-masonry-skeleton";
 import { DirectoryFilters } from "@/components/directory-filters";
 import { Container } from "@/components/ui/container";
-import { OptimizedQueries } from "@/lib/query";
+import { Queries } from "@/lib/query";
 import { getSettingsAction } from "@/actions/settings";
 import { PostMasonryGrid } from "@/components/post-masonry-grid";
 import { Button } from "@/components/ui/button";
@@ -81,7 +81,7 @@ async function SearchResults({
   // Use search query if provided, otherwise show all posts
   let result;
   if (searchQuery && searchQuery.trim()) {
-    result = await OptimizedQueries.posts.search(searchQuery, {
+    result = await Queries.posts.search(searchQuery, {
       page,
       limit: postsPageSize,
       userId,
@@ -89,7 +89,7 @@ async function SearchResults({
       isPremium,
     });
   } else {
-    result = await OptimizedQueries.posts.getPaginated({
+    result = await Queries.posts.getPaginated({
       page,
       limit: postsPageSize,
       userId,

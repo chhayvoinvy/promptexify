@@ -7,11 +7,9 @@ import {
   getRateLimitHeaders,
 } from "@/lib/limits";
 import {
-  sanitizeFilename,
   validateFileExtension,
   SECURITY_HEADERS,
   getFileUploadConfig,
-  ENHANCED_SECURITY_HEADERS,
 } from "@/lib/sanitize";
 import { prisma } from "@/lib/prisma";
 import { CSRFProtection } from "@/lib/csp";
@@ -215,7 +213,7 @@ export async function POST(request: NextRequest) {
           { error: "File signature doesn't match declared video type" },
           {
             status: 400,
-            headers: ENHANCED_SECURITY_HEADERS,
+            headers: SECURITY_HEADERS,
           }
         );
       }
@@ -235,7 +233,7 @@ export async function POST(request: NextRequest) {
           { error: "Unable to determine file type" },
           {
             status: 400,
-            headers: ENHANCED_SECURITY_HEADERS,
+            headers: SECURITY_HEADERS,
           }
         );
       }
@@ -255,7 +253,7 @@ export async function POST(request: NextRequest) {
           { error: "File signature does not match declared video type" },
           {
             status: 400,
-            headers: ENHANCED_SECURITY_HEADERS,
+            headers: SECURITY_HEADERS,
           }
         );
       }

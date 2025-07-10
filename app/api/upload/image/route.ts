@@ -11,7 +11,6 @@ import {
   validateFileExtension,
   SECURITY_HEADERS,
   getFileUploadConfig,
-  ENHANCED_SECURITY_HEADERS,
 } from "@/lib/sanitize";
 import { CSRFProtection } from "@/lib/csp";
 import { SecurityEvents, getClientIP } from "@/lib/audit";
@@ -213,7 +212,7 @@ export async function POST(request: NextRequest) {
           { error: "File signature doesn't match declared type" },
           {
             status: 400,
-            headers: ENHANCED_SECURITY_HEADERS,
+            headers: SECURITY_HEADERS,
           }
         );
       }

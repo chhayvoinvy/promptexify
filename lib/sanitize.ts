@@ -529,6 +529,7 @@ function getSecurityHeaders() {
     "X-Frame-Options": "DENY",
     "X-XSS-Protection": "1; mode=block",
     "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
   };
 
   if (isProduction()) {
@@ -544,7 +545,7 @@ function getSecurityHeaders() {
       // Remove server information
       Server: "Promptexify",
       // Cache control for security
-      "Cache-Control": "no-cache, no-store, must-revalidate",
+      "Cache-Control": "no-store, no-cache, must-revalidate, private",
       Pragma: "no-cache",
       Expires: "0",
     };
@@ -566,23 +567,7 @@ function getSecurityHeaders() {
  */
 export const SECURITY_HEADERS = getSecurityHeaders();
 
-// Enhanced security headers for API responses
-export function getEnhancedSecurityHeaders() {
-  return {
-    ...getSecurityHeaders(),
-    "X-Content-Type-Options": "nosniff",
-    "X-Frame-Options": "DENY",
-    "X-XSS-Protection": "1; mode=block",
-    "Referrer-Policy": "strict-origin-when-cross-origin",
-    "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
-    "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
-    "Cache-Control": "no-store, no-cache, must-revalidate, private",
-    Pragma: "no-cache",
-    Expires: "0",
-  };
-}
 
-export const ENHANCED_SECURITY_HEADERS = getEnhancedSecurityHeaders();
 
 /**
  * Get rate limit configurations based on environment

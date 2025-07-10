@@ -6,7 +6,7 @@ import {
   getRateLimitHeaders,
 } from "@/lib/limits";
 import { sanitizeSearchQuery, SECURITY_HEADERS } from "@/lib/sanitize";
-import { OptimizedQueries } from "@/lib/query";
+import { Queries } from "@/lib/query";
 import { getAllCategories } from "@/lib/content";
 
 export async function GET(request: NextRequest) {
@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
     // Use search or paginated query based on search query presence
     if (searchQuery && searchQuery.trim()) {
       // Use optimized search query
-      result = await OptimizedQueries.posts.search(searchQuery, {
+      result = await Queries.posts.search(searchQuery, {
         page,
         limit,
         userId,
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
       });
     } else {
       // Use optimized paginated query
-      result = await OptimizedQueries.posts.getPaginated({
+      result = await Queries.posts.getPaginated({
         page,
         limit,
         userId,
