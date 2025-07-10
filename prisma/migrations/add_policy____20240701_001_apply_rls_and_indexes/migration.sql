@@ -409,7 +409,7 @@ CREATE POLICY "Prisma migrations access policy" ON "_prisma_migrations"
 -- =============================================
 -- Ensure preview image indexes exist for optimal performance
 CREATE INDEX IF NOT EXISTS "media_previewUrl_idx" ON "media"("previewUrl");
-CREATE INDEX IF NOT EXISTS "media_previewRelativePath_idx" ON "media"("previewRelativePath");
+CREATE INDEX IF NOT EXISTS "media_previewPath_idx" ON "media"("previewPath");
 
 -- Composite index for efficient preview lookups by post and relative path
 CREATE INDEX IF NOT EXISTS "media_postId_relativePath_previewUrl_idx" ON "media"("postId", "relativePath", "previewUrl");
@@ -596,7 +596,7 @@ FIXES APPLIED:
    ✅ Eliminated policy conflicts for authenticated role SELECT actions
 
 9. PREVIEW IMAGE OPTIMIZATIONS:
-   ✅ Added previewUrl and previewRelativePath indexes for optimal performance
+   ✅ Added previewUrl and previewPath indexes for optimal performance
    ✅ Added composite index for efficient preview lookups by post and relative path
    ✅ Added index for preview URL resolution performance
    ✅ Updated security documentation to include preview image considerations

@@ -52,8 +52,6 @@ interface FeaturedMedia {
   url: string;
   relativePath: string;
   blurDataUrl?: string;
-  previewUrl?: string;
-  previewRelativePath?: string;
 }
 
 interface Post {
@@ -99,7 +97,7 @@ export default function EditPostPage() {
   const [uploadPath, setUploadPath] = useState<string | null>(null);
   const [uploadFileType, setUploadFileType] = useState<"IMAGE" | "VIDEO" | null>(null);
   const [uploadMediaId, setUploadMediaId] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewPath, setPreviewPath] = useState<string | null>(null);
   const [blurData, setBlurData] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [pendingTags, setPendingTags] = useState<string[]>([]);
@@ -188,14 +186,14 @@ export default function EditPostPage() {
             setUploadPath(image.relativePath);
             setUploadFileType("IMAGE");
             setUploadMediaId(image.id);
-            setPreviewUrl(image.url);
+            setPreviewPath(postData.previewPath || null);
             setBlurData(image.blurDataUrl || null);
           }
           if (video) {
             setUploadPath(video.relativePath);
             setUploadFileType("VIDEO");
             setUploadMediaId(video.id);
-            setPreviewUrl(video.url || null);
+            setPreviewPath(postData.previewPath || null);
             setBlurData(null); // Videos don't have blurDataUrl
           }
         }
@@ -343,9 +341,8 @@ export default function EditPostPage() {
           formData.set("uploadMediaId", uploadMediaId || "");
           formData.set("uploadPath", uploadPath);
           formData.set("uploadFileType", uploadFileType || "");
-          if (blurData) {
-            formData.set("blurData", blurData);
-          }
+          formData.set("previewPath", previewPath || "");
+          formData.set("blurData", blurData || "");
         }
 
       // Add the selected tags to form data
@@ -408,8 +405,7 @@ export default function EditPostPage() {
       relativePath: string;
       mimeType: string;
       blurDataUrl?: string;
-      previewUrl?: string;
-      previewRelativePath?: string;
+      previewPath?: string;
     } | null
   ) {
     if (result) {
@@ -417,20 +413,20 @@ export default function EditPostPage() {
         setUploadPath(result.relativePath);
         setUploadFileType("IMAGE");
         setUploadMediaId(result.id);
-        setPreviewUrl(result.url);
+        setPreviewPath(result.previewPath || null); // Use preview path from upload response
         setBlurData(result.blurDataUrl || null);
       } else if (result.mimeType.startsWith("video/")) {
         setUploadPath(result.relativePath);
         setUploadFileType("VIDEO");
         setUploadMediaId(result.id);
-        setPreviewUrl(result.url);
+        setPreviewPath(result.previewPath || null); // Use preview path from upload response
         setBlurData(null); // Videos don't have blurDataUrl
       }
     } else {
       setUploadPath(null);
       setUploadFileType(null);
       setUploadMediaId(null);
-      setPreviewUrl(null);
+      setPreviewPath(null);
       setBlurData(null);
     }
   }
@@ -617,7 +613,7 @@ export default function EditPostPage() {
                     currentUploadPath={uploadPath || undefined}
                     currentUploadFileType={uploadFileType || undefined}
                     currentUploadMediaId={uploadMediaId || undefined}
-                    currentPreviewUrl={previewUrl || undefined}
+                    currentPreviewPath={previewPath || undefined}
                     title={postTitle || "untitled-post"}
                   />
                   <p className="text-sm text-muted-foreground">
@@ -794,6 +790,13 @@ export default function EditPostPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Hidden form fields for media data */}
+            <input type="hidden" name="uploadPath" value={uploadPath || ""} />
+            <input type="hidden" name="uploadFileType" value={uploadFileType || ""} />
+            <input type="hidden" name="uploadMediaId" value={uploadMediaId || ""} />
+            <input type="hidden" name="previewPath" value={previewPath || ""} />
+            <input type="hidden" name="blurData" value={blurData || ""} />
 
             <div className="flex justify-end gap-4">
               <Button

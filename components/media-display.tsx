@@ -120,7 +120,7 @@ async function resolveMediaUrl(path: string): Promise<string> {
 }
 
 interface MediaImageProps {
-  src: string; // Relative path like "images/user123-prompt-abc123.avif"
+  src: string; // Relative path like "images/user123-prompt-abc123.avif" or "preview/preview-user123-prompt-abc123.avif"
   alt: string;
   width?: number;
   height?: number;
@@ -131,7 +131,6 @@ interface MediaImageProps {
   priority?: boolean;
   onLoad?: (event: React.SyntheticEvent<HTMLImageElement>) => void;
   blurDataURL?: string;
-  previewUrl?: string; // New prop for preview URL
 }
 
 interface MediaVideoProps {
@@ -165,7 +164,6 @@ export function MediaImage({
   priority = false,
   onLoad,
   blurDataURL,
-  previewUrl,
 }: MediaImageProps) {
   const [resolvedUrl, setResolvedUrl] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
@@ -178,22 +176,29 @@ export function MediaImage({
       return;
     }
 
-    // Use preview URL if available and not empty, otherwise use original src
-    const imageSrc = (previewUrl && previewUrl.trim() !== '') ? previewUrl : src;
-
     // If src is already a full URL or a blob URL, use it directly
     if (
-      imageSrc.startsWith("http://") ||
-      imageSrc.startsWith("https://") ||
-      imageSrc.startsWith("blob:")
+      src.startsWith("http://") ||
+      src.startsWith("https://") ||
+      src.startsWith("blob:")
     ) {
-      setResolvedUrl(imageSrc);
+      setResolvedUrl(src);
       setIsLoading(false);
       return;
     }
 
-    // Resolve relative path to full URL
-    resolveMediaUrl(imageSrc)
+    // Handle preview paths differently - they should go through the preview API
+    if (src.startsWith("preview/")) {
+      // For preview images, use the preview API route
+      const previewUrl = `/api/media/preview/${src.replace("preview/", "")}`;
+      console.log("Using preview API for:", src, "→", previewUrl);
+      setResolvedUrl(previewUrl);
+      setIsLoading(false);
+      return;
+    }
+
+    // Resolve relative path to full URL for regular media
+    resolveMediaUrl(src)
       .then((url: string) => {
         // Validate the resolved URL before setting it
         if (url && url.trim() !== '') {
@@ -208,7 +213,7 @@ export function MediaImage({
         setError("Failed to load image");
         setIsLoading(false);
       });
-  }, [src, previewUrl]);
+  }, [src]);
 
   if (error) {
     return (

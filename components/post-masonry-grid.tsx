@@ -342,8 +342,8 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
       >
         {posts.map((post) => {
           const position = postPositions.find((p) => p.id === post.id);
-          const videoPreviewUrl = post.uploadPath && post.uploadFileType === "VIDEO"
-            ? post.media?.find(m => m.relativePath === post.uploadPath)?.previewUrl 
+          const videoPreviewPath = post.uploadPath && post.uploadFileType === "VIDEO"
+            ? post.previewPath 
             : null;
           const videoPreviewBlurData = post.uploadPath && post.uploadFileType === "VIDEO"
             ? post.media?.find(m => m.relativePath === post.uploadPath)?.blurDataUrl
@@ -391,7 +391,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                   >
                     {post.uploadPath && post.uploadFileType === "IMAGE" ? (
                       <MediaImage
-                        src={post.uploadPath}
+                        src={post.previewPath ?? post.uploadPath}
                         alt={post.title}
                         fill
                         className="object-cover rounded-b-lg absolute"
@@ -399,14 +399,13 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                         blurDataURL={post.blurData || undefined}
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         onLoad={(e) => handleMediaLoad(post.id, e)}
-                        previewUrl={post.media?.find(m => m.relativePath === post.uploadPath)?.previewUrl || undefined}
                       />
                     ) : post.uploadPath && post.uploadFileType === "VIDEO" ? (
                       <>
                         {/* Always show video preview image initially */}
-                        {videoPreviewUrl && (
+                        {videoPreviewPath && (
                           <MediaImage
-                            src={post.uploadPath}
+                            src={videoPreviewPath}
                             alt={post.title}
                             fill
                             className={`object-cover rounded-b-lg absolute transition-opacity duration-300 ${
@@ -415,7 +414,6 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                             loading="lazy"
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                             onLoad={(e) => handleMediaLoad(post.id, e)}
-                            previewUrl={videoPreviewUrl}
                             blurDataURL={videoPreviewBlurData || undefined}
                           />
                         )}

@@ -54,9 +54,9 @@ export function PostCard({
   const [showVideo, setShowVideo] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
 
-  // Get video preview URL and blur data
-  const videoPreviewUrl = post.uploadFileType === "VIDEO" && post.uploadPath
-    ? post.media?.find(m => m.relativePath === post.uploadPath)?.previewUrl 
+  // Get video preview path and blur data
+  const videoPreviewPath = post.uploadFileType === "VIDEO" && post.uploadPath
+    ? post.previewPath 
     : null;
   const videoPreviewBlurData = post.uploadFileType === "VIDEO" && post.uploadPath
     ? post.media?.find(m => m.relativePath === post.uploadPath)?.blurDataUrl
@@ -205,7 +205,7 @@ export function PostCard({
             {post.uploadPath ? (
               post.uploadFileType === "IMAGE" ? (
                 <MediaImage
-                  src={post.uploadPath}
+                  src={post.previewPath ?? post.uploadPath}
                   alt={post.title}
                   fill
                   className="object-cover rounded-b-lg absolute"
@@ -213,14 +213,13 @@ export function PostCard({
                   blurDataURL={post.blurData || undefined}
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   onLoad={handleMediaLoad}
-                  previewUrl={post.media?.find(m => m.relativePath === post.uploadPath)?.previewUrl || undefined}
                 />
               ) : post.uploadFileType === "VIDEO" ? (
                 <>
                   {/* Always show video preview image initially */}
-                  {videoPreviewUrl && (
+                  {videoPreviewPath && (
                     <MediaImage
-                      src={post.uploadPath}
+                      src={videoPreviewPath}
                       alt={post.title}
                       fill
                       className={`object-cover rounded-b-lg absolute transition-opacity duration-300 ${
@@ -229,7 +228,6 @@ export function PostCard({
                       loading="lazy"
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       onLoad={handleMediaLoad}
-                      previewUrl={videoPreviewUrl}
                       blurDataURL={videoPreviewBlurData || undefined}
                     />
                   )}

@@ -135,6 +135,10 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
+        source: "/preview/:path*",
+        destination: "/api/media/preview/:path*",
+      },
+      {
         source: "/robots.txt",
         destination: "/robots.txt",
       },

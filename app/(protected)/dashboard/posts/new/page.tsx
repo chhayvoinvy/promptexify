@@ -49,8 +49,6 @@ interface FeaturedMedia {
   url: string;
   relativePath: string;
   blurDataUrl?: string;
-  previewUrl?: string;
-  previewRelativePath?: string;
 }
 
 export default function NewPostPage() {
@@ -67,7 +65,7 @@ export default function NewPostPage() {
   const [uploadPath, setUploadPath] = useState<string | null>(null);
   const [uploadFileType, setUploadFileType] = useState<"IMAGE" | "VIDEO" | null>(null);
   const [uploadMediaId, setUploadMediaId] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewPath, setPreviewPath] = useState<string | null>(null);
   const [blurData, setBlurData] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [pendingTags, setPendingTags] = useState<string[]>([]);
@@ -264,9 +262,8 @@ export default function NewPostPage() {
         formData.set("uploadMediaId", uploadMediaId);
         formData.set("uploadPath", uploadPath || "");
         formData.set("uploadFileType", uploadFileType || "");
-        if (blurData) {
-          formData.set("blurData", blurData);
-        }
+        formData.set("previewPath", previewPath || "");
+        formData.set("blurData", blurData || "");
       }
 
       // Add the selected tags to form data
@@ -318,20 +315,19 @@ export default function NewPostPage() {
       relativePath: string;
       mimeType: string;
       blurDataUrl?: string;
-      previewUrl?: string;
-      previewRelativePath?: string;
+      previewPath?: string;
     } | null
   ) {
     if (result) {
       setUploadMediaId(result.id);
       setUploadPath(result.relativePath);
-      setPreviewUrl(result.previewUrl || result.url);
+      setPreviewPath(result.previewPath || null); // Use preview path from upload response
       setBlurData(result.blurDataUrl || null);
       setUploadFileType(result.mimeType.startsWith("image/") ? "IMAGE" : "VIDEO");
     } else {
       setUploadMediaId(null);
       setUploadPath(null);
-      setPreviewUrl(null);
+      setPreviewPath(null);
       setBlurData(null);
       setUploadFileType(null);
     }
@@ -497,7 +493,7 @@ export default function NewPostPage() {
                     currentUploadPath={uploadPath || undefined}
                     currentUploadFileType={uploadFileType || undefined}
                     currentUploadMediaId={uploadMediaId || undefined}
-                    currentPreviewUrl={previewUrl || undefined}
+                    currentPreviewPath={previewPath || undefined}
                     title={postTitle || "untitled-post"}
                   />
                   <p className="text-sm text-muted-foreground">
@@ -639,6 +635,13 @@ export default function NewPostPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Hidden form fields for media data */}
+            <input type="hidden" name="uploadPath" value={uploadPath || ""} />
+            <input type="hidden" name="uploadFileType" value={uploadFileType || ""} />
+            <input type="hidden" name="uploadMediaId" value={uploadMediaId || ""} />
+            <input type="hidden" name="previewPath" value={previewPath || ""} />
+            <input type="hidden" name="blurData" value={blurData || ""} />
 
             <div className="flex justify-end gap-4">
               <Button

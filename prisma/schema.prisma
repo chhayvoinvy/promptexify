@@ -86,8 +86,7 @@ model Post {
   blurData       String?
   uploadFileType UploadFileType?
   uploadPath     String?
-  previewPath    String?         // New: Preview image path for public serving
-  previewUrl     String?         // New: Full URL to preview image
+  previewPath    String?         // Preview image path for public serving
   bookmarks      Bookmark[]
   favorites      Favorite[]
   media          Media[]
@@ -110,7 +109,7 @@ model Post {
   @@index([authorId, isPublished, status])
   @@index([isFeatured, isPremium, isPublished, createdAt(sort: Desc)])
   @@index([authorId, status, createdAt(sort: Desc)])
-  @@index([previewPath]) // New: Index for preview path queries
+  @@index([previewPath]) // Index for preview path queries
   @@map("posts")
 }
 
@@ -196,8 +195,6 @@ model Media {
   postId              String?
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
-  previewRelativePath String?
-  previewUrl          String?
   blurDataUrl         String?
   post                Post?       @relation(fields: [postId], references: [id])
 
@@ -207,8 +204,6 @@ model Media {
   @@index([uploadedBy])
   @@index([storageType])
   @@index([mimeType])
-  @@index([previewUrl])
-  @@index([previewRelativePath])
   @@index([createdAt(sort: Desc)])
   @@map("media")
 }

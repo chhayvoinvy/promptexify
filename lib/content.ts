@@ -11,6 +11,7 @@ export interface PostWithDetails {
   content: string;
   uploadPath: string | null;
   uploadFileType: "IMAGE" | "VIDEO" | null;
+  previewPath: string | null;
   blurData?: string | null; // Optional for now, will be filled in gradually
   isPremium: boolean;
   isFeatured: boolean;
@@ -20,8 +21,6 @@ export interface PostWithDetails {
     id: string;
     mimeType: string;
     relativePath: string;
-    previewUrl?: string | null;
-    previewRelativePath?: string | null;
     blurDataUrl?: string | null;
   }[];
 
@@ -86,6 +85,7 @@ const optimizedPostSelect = {
   description: true,
   uploadPath: true,
   uploadFileType: true,
+  previewPath: true,
   blurData: true,
   isPremium: true,
   isFeatured: true,
@@ -96,8 +96,6 @@ const optimizedPostSelect = {
       id: true,
       mimeType: true,
       relativePath: true,
-      previewUrl: true,
-      previewRelativePath: true,
       blurDataUrl: true,
     },
   },
@@ -688,6 +686,7 @@ export async function getPostsWithSorting(
       content: true,
       uploadPath: true,
       uploadFileType: true,
+      previewPath: true,
       blurData: true,
       isPremium: true,
       isFeatured: true,
@@ -824,6 +823,7 @@ export async function getRelatedPosts(
       content: true,
       uploadPath: true,
       uploadFileType: true,
+      previewPath: true,
       blurData: true,
       isPremium: true,
       isFeatured: true,

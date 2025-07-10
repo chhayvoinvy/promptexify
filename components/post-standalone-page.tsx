@@ -52,12 +52,9 @@ export function PostStandalonePage({
   const videoRefs = useRef<Record<string, HTMLVideoElement>>({});
   const viewTracked = useRef(false);
 
-  // Get video preview URL and blur data
-  const videoPreviewUrl = post.uploadPath && post.uploadFileType === "VIDEO"
-    ? post.media?.find(m => m.relativePath === post.uploadPath)?.previewUrl
-    : null;
-  const videoPreviewBlurData = post.uploadPath && post.uploadFileType === "VIDEO"
-    ? post.media?.find(m => m.relativePath === post.uploadPath)?.blurDataUrl
+  // Get video preview path from post
+  const videoPreviewPath = post.uploadPath && post.uploadFileType === "VIDEO" && post.previewPath
+    ? post.previewPath
     : null;
 
   const copyToClipboard = async () => {
@@ -400,9 +397,9 @@ export function PostStandalonePage({
                           {post.uploadPath && post.uploadFileType === "VIDEO" ? (
                             <div className="relative w-full rounded-lg overflow-hidden">
                               {/* Always show video preview image initially */}
-                              {videoPreviewUrl && (
+                              {videoPreviewPath && (
                                 <MediaImage
-                                  src={post.uploadPath}
+                                  src={videoPreviewPath}
                                   alt={post.title}
                                   width={800}
                                   height={400}
@@ -410,8 +407,7 @@ export function PostStandalonePage({
                                     showVideo && videoLoaded ? "opacity-0" : "opacity-100"
                                   }`}
                                   priority
-                                  previewUrl={videoPreviewUrl}
-                                  blurDataURL={videoPreviewBlurData ? videoPreviewBlurData : undefined}
+                                  blurDataURL={post.blurData || undefined}
                                 />
                               )}
                               
@@ -434,7 +430,7 @@ export function PostStandalonePage({
                               )}
 
                               {/* Play button overlay for video preview */}
-                              {!showVideo && videoPreviewUrl && (
+                              {!showVideo && videoPreviewPath && (
                                 <div className="absolute inset-0 flex items-center justify-center">
                                   <button
                                     className="bg-black/50 hover:bg-black/70 text-white rounded-full p-4 transition-colors"

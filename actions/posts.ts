@@ -40,6 +40,7 @@ export const createPostAction = withCSRFProtection(
       const uploadFileType = formData.get("uploadFileType") as "IMAGE" | "VIDEO";
       const blurData = formData.get("blurData") as string;
       const uploadMediaId = formData.get("uploadMediaId") as string;
+      const previewPath = formData.get("previewPath") as string;
       const category = formData.get("category") as string;
       const subcategory = formData.get("subcategory") as string;
       const tags = formData.get("tags") as string;
@@ -134,6 +135,7 @@ export const createPostAction = withCSRFProtection(
           content,
           uploadPath: uploadPath || null,
           uploadFileType: uploadFileType || null,
+          previewPath: previewPath || null,
           blurData: blurData || null,
           isPremium,
           isPublished,
@@ -217,6 +219,7 @@ export const updatePostAction = withCSRFProtection(
       const uploadFileType = formData.get("uploadFileType") as "IMAGE" | "VIDEO";
       const blurData = formData.get("blurData") as string;
       const uploadMediaId = formData.get("uploadMediaId") as string;
+      const previewPath = formData.get("previewPath") as string;
       const category = formData.get("category") as string;
       const subcategory = formData.get("subcategory") as string;
       const tags = formData.get("tags") as string;
@@ -363,6 +366,7 @@ export const updatePostAction = withCSRFProtection(
           content,
           uploadPath: uploadPath || null,
           uploadFileType: uploadFileType || null,
+          previewPath: previewPath || null,
           blurData: blurData || null,
           isPremium,
           isPublished,

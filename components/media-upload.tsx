@@ -34,8 +34,7 @@ interface UploadResult {
   height?: number;
   storageType: "S3" | "LOCAL" | "DOSPACE";
   blurDataUrl?: string; // Base64 blur placeholder for images
-  previewUrl?: string; // Full URL to preview image/video
-  previewRelativePath?: string; // Relative path to preview image/video
+  previewPath?: string; // Path to preview image
 }
 
 interface MediaUploadProps {
@@ -44,7 +43,7 @@ interface MediaUploadProps {
   currentUploadPath?: string;
   currentUploadFileType?: "IMAGE" | "VIDEO";
   currentUploadMediaId?: string;
-  currentPreviewUrl?: string;
+  currentPreviewPath?: string;
   title?: string;
   disabled?: boolean;
   className?: string;
@@ -71,7 +70,7 @@ export function MediaUpload({
   currentUploadPath,
   currentUploadFileType,
   currentUploadMediaId,
-  currentPreviewUrl,
+  currentPreviewPath,
   title = "untitled",
   disabled = false,
   className,
@@ -86,9 +85,11 @@ export function MediaUpload({
   const [uploadMediaId, setUploadMediaId] = useState<string | null>(
     currentUploadMediaId || null
   );
-  const [previewUrl, setPreviewUrl] = useState<string | null>(
-    currentPreviewUrl || null
+  const [previewPath, setPreviewPath] = useState<string | null>(
+    currentPreviewPath || null
   );
+  // Store the full URL for deletion purposes
+  const [uploadFullUrl, setUploadFullUrl] = useState<string | null>(null);
   const [uploadState, setUploadState] = useState<UploadState>({
     uploading: false,
     progress: 0,
@@ -124,8 +125,8 @@ export function MediaUpload({
   }, [currentUploadMediaId]);
 
   useEffect(() => {
-    setPreviewUrl(currentPreviewUrl || null);
-  }, [currentPreviewUrl]);
+    setPreviewPath(currentPreviewPath || null);
+  }, [currentPreviewPath]);
 
   // Storage configuration state
   const [storageConfig, setStorageConfig] = useState<{
@@ -269,57 +270,66 @@ export function MediaUpload({
       // Handle completion
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
-          const result = JSON.parse(xhr.responseText);
+          try {
+            const result = JSON.parse(xhr.responseText);
 
-          setUploadState({
-            uploading: false,
-            progress: 100,
-            error: null,
-            success: true,
-          });
+            setUploadState({
+              uploading: false,
+              progress: 100,
+              error: null,
+              success: true,
+            });
 
-          if (onMediaUploaded) {
-            onMediaUploaded(result);
+            if (onMediaUploaded) {
+              onMediaUploaded(result);
+            }
+
+            URL.revokeObjectURL(previewUrl);
+
+            // Store both the relative path for display and the full URL for deletion
+            const mediaPath = result.relativePath;
+            const fullUrl = result.url;
+            
+            // Validate that we have valid paths before setting them
+            if (!mediaPath || mediaPath.trim() === '') {
+              console.warn('Upload result missing valid relativePath:', result);
+              setUploadState((prev) => ({
+                ...prev,
+                error: 'Upload completed but file path is invalid',
+              }));
+              return;
+            }
+
+            // Store the media ID for potential database cleanup
+            setUploadMediaId(result.id);
+
+            if (mediaType === "image") {
+              setUploadPath(mediaPath); // Relative path for display
+              setUploadFullUrl(fullUrl); // Full URL for deletion
+              setUploadFileType("IMAGE");
+              setPreviewPath(result.previewPath || null);
+            } else {
+              setUploadFileType("VIDEO");
+              setUploadPath(mediaPath); // Relative path for display
+              setUploadFullUrl(fullUrl); // Full URL for deletion
+              setPreviewPath(result.previewPath || null);
+            }
+
+            setTimeout(() => {
+              setUploadState((prev) => ({ ...prev, success: false }));
+            }, 3000);
+          } catch (parseError) {
+            console.error("Failed to parse upload response:", parseError);
+            setUploadState({
+              uploading: false,
+              progress: 0,
+              error: "Upload succeeded but response was invalid",
+              success: false,
+            });
+            URL.revokeObjectURL(previewUrl);
           }
-
-          URL.revokeObjectURL(previewUrl);
-
-          // Use relative path for preview to ensure proper resolution by MediaImage/MediaVideo components
-          const mediaPath = result.relativePath;
-          
-          // Validate that we have valid paths before setting them
-          if (!mediaPath || mediaPath.trim() === '') {
-            console.warn('Upload result missing valid relativePath:', result);
-            setUploadState((prev) => ({
-              ...prev,
-              error: 'Upload completed but file path is invalid',
-            }));
-            return;
-          }
-
-          if (mediaType === "image") {
-            setUploadPath(mediaPath);
-            setUploadFileType("IMAGE");
-            // Only set preview URL if it's a valid string
-            setPreviewUrl(
-              result.previewRelativePath && result.previewRelativePath.trim() !== '' 
-                ? result.previewRelativePath 
-                : null
-            );
-          } else {
-            setUploadFileType("VIDEO");
-            setUploadPath(mediaPath);
-            setPreviewUrl(
-              result.previewRelativePath && result.previewRelativePath.trim() !== '' 
-                ? result.previewRelativePath 
-                : null
-            );
-          }
-
-          setTimeout(() => {
-            setUploadState((prev) => ({ ...prev, success: false }));
-          }, 3000);
         } else {
+          // Handle HTTP error status
           try {
             const errorData = JSON.parse(xhr.responseText);
             setUploadState({
@@ -340,20 +350,16 @@ export function MediaUpload({
           
           URL.revokeObjectURL(previewUrl);
           
-          // Reset preview states to avoid invalid URLs
-          if (mediaType === "image") {
-            setUploadPath(null);
-            setUploadFileType(null);
-            setPreviewUrl(null);
-          } else {
-            setUploadFileType(null);
-            setUploadPath(null);
-            setPreviewUrl(null);
-          }
+          // Reset states on error
+          setUploadPath(null);
+          setUploadFullUrl(null);
+          setUploadFileType(null);
+          setPreviewPath(null);
+          setUploadMediaId(null);
         }
       };
 
-      // Handle errors
+      // Handle network errors
       xhr.onerror = () => {
         setUploadState({
           uploading: false,
@@ -363,16 +369,12 @@ export function MediaUpload({
         });
         URL.revokeObjectURL(previewUrl);
         
-        // Reset preview states to avoid invalid URLs
-        if (mediaType === "image") {
-          setUploadPath(null);
-          setUploadFileType(null);
-          setPreviewUrl(null);
-        } else {
-          setUploadFileType(null);
-          setUploadPath(null);
-          setPreviewUrl(null);
-        }
+        // Reset states on error
+        setUploadPath(null);
+        setUploadFullUrl(null);
+        setUploadFileType(null);
+        setPreviewPath(null);
+        setUploadMediaId(null);
       };
 
       xhr.send(formData);
@@ -446,21 +448,16 @@ export function MediaUpload({
       pendingDeletionType: null,
     }));
 
-    // Get the details for deletion before clearing the state
-    const urlToDelete =
-      pendingDeletionType === "image" ? uploadPath : uploadPath;
-    const idToDelete =
-      pendingDeletionType === "image" ? uploadMediaId : uploadMediaId;
+    // Get the URL to delete - prefer full URL if available, fallback to relative path
+    const urlToDelete = uploadFullUrl || uploadPath;
+    const idToDelete = uploadMediaId;
 
     // Immediately remove from UI
-    if (pendingDeletionType === "image") {
-      setUploadPath(null);
-      setPreviewUrl(null);
-    } else {
-      setUploadFileType(null);
-      setUploadPath(null);
-      setPreviewUrl(null);
-    }
+    setUploadPath(null);
+    setUploadFullUrl(null);
+    setUploadFileType(null);
+    setPreviewPath(null);
+    setUploadMediaId(null);
 
     // Reset upload state and notify parent
     setUploadState({
@@ -476,18 +473,17 @@ export function MediaUpload({
     // Give immediate feedback
     toast.success("Media removed from the post.");
 
-    // If there was an uploaded file, delete it from storage in the background (disabled for now)
+    // If there was an uploaded file, delete it from storage in the background
     if (urlToDelete && idToDelete) {
+      console.log(`Attempting to delete ${pendingDeletionType}: ${urlToDelete}`);
       const deletionSuccess = await handleDeleteFile(
         pendingDeletionType,
         urlToDelete
       );
       if (deletionSuccess) {
-        // toast.success("File successfully deleted from storage.");
+        console.log(`Successfully deleted ${pendingDeletionType} from storage`);
       } else {
-        // toast.error(
-        //   "Background deletion failed. The file may still exist in storage."
-        // );
+        console.warn(`Failed to delete ${pendingDeletionType} from storage: ${urlToDelete}`);
       }
     }
   };
@@ -538,39 +534,51 @@ export function MediaUpload({
     const isDeleting = deletionState.deleting;
 
     return (
-      <div className="absolute inset-0 p-2">
-        <div className="relative w-full h-full">
-          {uploadPath ? (
-            <MediaImage
-              src={uploadPath}
-              alt="Image preview"
-              fill
-              className="object-contain rounded-lg"
-              previewUrl={previewUrl || undefined}
-            />
-          ) : null}
+      <div className="relative w-full flex items-center justify-center">
+        {uploadPath ? (
+          uploadFileType === "VIDEO" ? (
+            <div className="w-full h-96">
+              <MediaVideo
+                src={uploadPath}
+                className="w-full h-full rounded-lg object-contain"
+                controls
+                preload="metadata"
+              />
+            </div>
+          ) : (
+            <div className="relative w-full h-96">
+              <MediaImage
+                src={previewPath ?? uploadPath}
+                alt="Image preview"
+                fill
+                className="object-contain rounded-lg"
+                loading="eager"
+                priority={true}
+              />
+            </div>
+          )
+        ) : null}
 
-          {!disabled && (
-            <Button
-              type="button"
-              variant="destructive"
-              size="icon"
-              className="absolute top-1 right-1 h-7 w-7 z-10"
-              onClick={(e) => {
-                e.stopPropagation();
-                const mediaType: MediaType = uploadFileType === "VIDEO" ? "video" : "image";
-                handleRemoveMedia(mediaType)();
-              }}
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <X className="h-4 w-4" />
-              )}
-            </Button>
-          )}
-        </div>
+        {!disabled && (
+          <Button
+            type="button"
+            variant="destructive"
+            size="icon"
+            className="absolute top-2 right-2 h-7 w-7 z-10"
+            onClick={(e) => {
+              e.stopPropagation();
+              const mediaType: MediaType = uploadFileType === "VIDEO" ? "video" : "image";
+              handleRemoveMedia(mediaType)();
+            }}
+            disabled={isDeleting}
+          >
+            {isDeleting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <X className="h-4 w-4" />
+            )}
+          </Button>
+        )}
       </div>
     );
   };
@@ -581,7 +589,8 @@ export function MediaUpload({
         <div
           ref={dropZoneRef}
           className={cn(
-            "relative flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted/75 transition-colors",
+            "relative flex flex-col items-center justify-center w-full border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted/75 transition-colors",
+            uploadPath ? "min-h-64" : "h-64",
             {
               "border-primary": dragOver,
               "border-destructive": uploadState.error,
@@ -600,50 +609,46 @@ export function MediaUpload({
               <p className="text-sm text-muted-foreground">Uploading...</p>
               <Progress value={uploadState.progress} className="w-48" />
             </div>
-          ) : (
-            <>
+          ) : uploadPath ? (
+            <div className="w-full p-4">
               {renderPreview()}
-              <div
-                className={cn("flex flex-col items-center justify-center", {
-                  "opacity-0 hover:opacity-100 transition-opacity absolute inset-0 bg-black/90":
-                    uploadPath,
-                })}
-              >
-                <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center">
-                  <Upload
-                    className="w-8 h-8 mb-4 text-muted-foreground"
-                    aria-hidden="true"
-                  />
-                  <p className="mb-2 text-sm text-muted-foreground">
-                    <span className="font-semibold">Click to upload</span> or
-                    drag and drop
-                  </p>
-                  {storageConfig && (
-                    <p className="text-xs text-muted-foreground mt-5">
-                      Max size:{" "}
-                      {Math.round(storageConfig.maxImageSize / (1024 * 1024))}
-                      MB (image),{" "}
-                      {Math.round(storageConfig.maxVideoSize / (1024 * 1024))}
-                      MB (video)
-                    </p>
-                  )}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center">
+              <Upload
+                className="w-8 h-8 mb-4 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <p className="mb-2 text-sm text-muted-foreground">
+                <span className="font-semibold">Click to upload</span> or
+                drag and drop
+              </p>
+              {storageConfig && (
+                <p className="text-xs text-muted-foreground mt-5">
+                  Max size:{" "}
+                  {Math.round(storageConfig.maxImageSize / (1024 * 1024))}
+                  MB (image),{" "}
+                  {Math.round(storageConfig.maxVideoSize / (1024 * 1024))}
+                  MB (video)
+                </p>
+              )}
 
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Supported: .avif, .png, .jpg, and .mp4.
-                  </p>
-                </div>
-                <Input
-                  id="media-upload"
-                  ref={fileInputRef}
-                  type="file"
-                  className="hidden"
-                  onChange={handleFileSelect}
-                  accept="image/*,video/*"
-                  disabled={disabled}
-                />
-              </div>
-            </>
+              <p className="text-xs text-muted-foreground mt-1">
+                Supported: .avif, .png, .jpg, and .mp4.
+              </p>
+            </div>
           )}
+          
+          {/* Hidden file input */}
+          <Input
+            id="media-upload"
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            onChange={handleFileSelect}
+            accept="image/*,video/*"
+            disabled={disabled}
+          />
         </div>
         {uploadState.error && (
           <Alert variant="destructive">

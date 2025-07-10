@@ -288,8 +288,6 @@ export async function POST(request: NextRequest) {
         height: uploadResult.height,
         storageType: uploadResult.storageType,
         uploadedBy: user.userData!.id,
-        previewUrl: uploadResult.previewUrl,
-        previewRelativePath: uploadResult.previewRelativePath,
         blurDataUrl: uploadResult.blurDataUrl,
       },
     });
@@ -299,6 +297,7 @@ export async function POST(request: NextRequest) {
       {
         ...uploadResult,
         id: newMedia.id,
+        previewPath: uploadResult.previewPath, // Explicitly include previewPath for frontend
       },
       {
         status: 200,

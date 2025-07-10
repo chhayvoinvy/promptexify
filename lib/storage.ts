@@ -62,8 +62,7 @@ export interface UploadResult {
   duration?: number;
   storageType: StorageType;
   blurDataUrl?: string; // Base64 blur placeholder for images
-  previewUrl?: string; // URL to preview image
-  previewRelativePath?: string; // Relative path to preview image
+  previewPath?: string; // Path to preview image
 }
 
 // Cache for storage config to avoid repeated database calls
@@ -465,14 +464,27 @@ export async function uploadPreviewToLocal(
   previewFilename: string,
   basePath: string = "/uploads"
 ): Promise<string> {
-  const previewPath = path.join(basePath, "preview", previewFilename);
-  const fullPath = path.join(process.cwd(), "public", previewPath);
-
   try {
-    // Ensure the preview directory exists
-    await fs.mkdir(path.dirname(fullPath), { recursive: true });
-    await fs.writeFile(fullPath, previewBuffer);
-    return previewPath;
+    // Ensure base directory exists first
+    await ensureUploadDirectory(basePath);
+
+    // Full file path - follow same pattern as other local upload functions
+    const filePath = path.join(
+      process.cwd(),
+      "public",
+      basePath.replace(/^\//, ""),
+      "preview",
+      previewFilename
+    );
+
+    // Ensure preview subdirectory exists
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+
+    // Write file
+    await fs.writeFile(filePath, previewBuffer);
+
+    // Return relative path for consistency
+    return `preview/${previewFilename}`;
   } catch (error) {
     console.error("Error uploading preview to local storage:", error);
     throw new Error("Failed to upload preview to local storage");
@@ -614,8 +626,9 @@ export async function deleteImageFromS3WithConfig(
       ? url.pathname.slice(1)
       : url.pathname;
 
-    if (!key.startsWith("images/")) {
-      console.warn("Attempted to delete non-image file:", key);
+    // Allow deletion of images from both images/ and preview/ directories
+    if (!key.startsWith("images/") && !key.startsWith("preview/")) {
+      console.warn("Attempted to delete file from unauthorized directory:", key);
       return false;
     }
 
@@ -626,10 +639,10 @@ export async function deleteImageFromS3WithConfig(
       })
     );
 
-    console.log("Successfully deleted S3 image:", key);
+    console.log("Successfully deleted S3 file:", key);
     return true;
   } catch (error) {
-    console.error("Error deleting image from S3:", error);
+    console.error("Error deleting file from S3:", error);
     return false;
   }
 }
@@ -652,8 +665,9 @@ export async function deleteVideoFromS3WithConfig(
       ? url.pathname.slice(1)
       : url.pathname;
 
-    if (!key.startsWith("videos/")) {
-      console.warn("Attempted to delete non-video file:", key);
+    // Allow deletion of videos from both videos/ and preview/ directories (for thumbnails)
+    if (!key.startsWith("videos/") && !key.startsWith("preview/")) {
+      console.warn("Attempted to delete file from unauthorized directory:", key);
       return false;
     }
 
@@ -664,10 +678,10 @@ export async function deleteVideoFromS3WithConfig(
       })
     );
 
-    console.log("Successfully deleted S3 video:", key);
+    console.log("Successfully deleted S3 file:", key);
     return true;
   } catch (error) {
-    console.error("Error deleting video from S3:", error);
+    console.error("Error deleting file from S3:", error);
     return false;
   }
 }
@@ -766,8 +780,9 @@ export async function deleteImageFromDOSpacesWithConfig(
       ? url.pathname.slice(1)
       : url.pathname;
 
-    if (!key.startsWith("images/")) {
-      console.warn("Attempted to delete non-image file:", key);
+    // Allow deletion of images from both images/ and preview/ directories
+    if (!key.startsWith("images/") && !key.startsWith("preview/")) {
+      console.warn("Attempted to delete file from unauthorized directory:", key);
       return false;
     }
 
@@ -778,10 +793,10 @@ export async function deleteImageFromDOSpacesWithConfig(
       })
     );
 
-    console.log("Successfully deleted DigitalOcean Spaces image:", key);
+    console.log("Successfully deleted DigitalOcean Spaces file:", key);
     return true;
   } catch (error) {
-    console.error("Error deleting image from DigitalOcean Spaces:", error);
+    console.error("Error deleting file from DigitalOcean Spaces:", error);
     return false;
   }
 }
@@ -804,8 +819,9 @@ export async function deleteVideoFromDOSpacesWithConfig(
       ? url.pathname.slice(1)
       : url.pathname;
 
-    if (!key.startsWith("videos/")) {
-      console.warn("Attempted to delete non-video file:", key);
+    // Allow deletion of videos from both videos/ and preview/ directories (for thumbnails)
+    if (!key.startsWith("videos/") && !key.startsWith("preview/")) {
+      console.warn("Attempted to delete file from unauthorized directory:", key);
       return false;
     }
 
@@ -816,10 +832,10 @@ export async function deleteVideoFromDOSpacesWithConfig(
       })
     );
 
-    console.log("Successfully deleted DigitalOcean Spaces video:", key);
+    console.log("Successfully deleted DigitalOcean Spaces file:", key);
     return true;
   } catch (error) {
-    console.error("Error deleting video from DigitalOcean Spaces:", error);
+    console.error("Error deleting file from DigitalOcean Spaces:", error);
     return false;
   }
 }
@@ -881,32 +897,135 @@ export async function uploadVideo(
 
 /**
  * Delete image using configured storage method
+ * Also deletes associated preview file if it exists
  */
 export async function deleteImage(imageUrl: string): Promise<boolean> {
   const config = await getStorageConfig();
 
+  // First, try to delete the main image file
+  let mainFileDeleted = false;
   if (config.storageType === "LOCAL") {
-    return deleteImageFromLocal(imageUrl);
+    mainFileDeleted = await deleteImageFromLocal(imageUrl);
   } else if (config.storageType === "DOSPACE") {
-    return deleteImageFromDOSpacesWithConfig(imageUrl, config);
+    mainFileDeleted = await deleteImageFromDOSpacesWithConfig(imageUrl, config);
   } else {
-    return deleteImageFromS3WithConfig(imageUrl, config);
+    mainFileDeleted = await deleteImageFromS3WithConfig(imageUrl, config);
   }
+
+  // If main file deletion succeeded, also try to delete the associated preview file
+  if (mainFileDeleted) {
+    try {
+      // Extract filename from the main image URL to generate preview filename
+      const urlParts = imageUrl.split("/");
+      const mainFilename = urlParts[urlParts.length - 1];
+      
+      // Only attempt preview deletion for main image files (not already preview files)
+      if (mainFilename && !mainFilename.startsWith("preview-")) {
+        // Generate preview filename using the same logic as upload
+        const { generatePreviewFilename } = await import("./preview");
+        const previewFilename = generatePreviewFilename(mainFilename);
+        
+        // Construct preview URL based on storage type
+        let previewUrl: string;
+        if (config.storageType === "LOCAL") {
+          // For local storage, replace the path segment
+          previewUrl = imageUrl.replace(/\/images\/[^/]+$/, `/preview/${previewFilename}`);
+        } else {
+          // For cloud storage, replace the key in the URL
+          previewUrl = imageUrl.replace(/\/images\/[^/]+$/, `/preview/${previewFilename}`);
+        }
+        
+        // Attempt to delete preview file (don't fail if it doesn't exist)
+        if (config.storageType === "LOCAL") {
+          await deleteImageFromLocal(previewUrl).catch(() => {
+            console.log("Preview file not found or already deleted:", previewUrl);
+          });
+        } else if (config.storageType === "DOSPACE") {
+          await deleteImageFromDOSpacesWithConfig(previewUrl, config).catch(() => {
+            console.log("Preview file not found or already deleted:", previewUrl);
+          });
+        } else {
+          await deleteImageFromS3WithConfig(previewUrl, config).catch(() => {
+            console.log("Preview file not found or already deleted:", previewUrl);
+          });
+        }
+        
+        console.log("Attempted to delete associated preview file:", previewUrl);
+      }
+    } catch (error) {
+      console.warn("Failed to delete associated preview file:", error);
+      // Don't fail the main operation if preview deletion fails
+    }
+  }
+
+  return mainFileDeleted;
 }
 
 /**
  * Delete video using configured storage method
+ * Also deletes associated preview file (thumbnail) if it exists
  */
 export async function deleteVideo(videoUrl: string): Promise<boolean> {
   const config = await getStorageConfig();
 
+  // First, try to delete the main video file
+  let mainFileDeleted = false;
   if (config.storageType === "LOCAL") {
-    return deleteVideoFromLocal(videoUrl);
+    mainFileDeleted = await deleteVideoFromLocal(videoUrl);
   } else if (config.storageType === "DOSPACE") {
-    return deleteVideoFromDOSpacesWithConfig(videoUrl, config);
+    mainFileDeleted = await deleteVideoFromDOSpacesWithConfig(videoUrl, config);
   } else {
-    return deleteVideoFromS3WithConfig(videoUrl, config);
+    mainFileDeleted = await deleteVideoFromS3WithConfig(videoUrl, config);
   }
+
+  // If main file deletion succeeded, also try to delete the associated preview file (thumbnail)
+  if (mainFileDeleted) {
+    try {
+      // Extract filename from the main video URL to generate preview filename
+      const urlParts = videoUrl.split("/");
+      const mainFilename = urlParts[urlParts.length - 1];
+      
+      // Only attempt preview deletion for main video files (not already preview files)
+      if (mainFilename && !mainFilename.startsWith("preview-")) {
+        // Generate preview filename using the same logic as upload
+        const { generatePreviewFilename } = await import("./preview");
+        const previewFilename = generatePreviewFilename(mainFilename);
+        
+        // Construct preview URL based on storage type
+        let previewUrl: string;
+        if (config.storageType === "LOCAL") {
+          // For local storage, replace the path segment
+          previewUrl = videoUrl.replace(/\/videos\/[^/]+$/, `/preview/${previewFilename}`);
+        } else {
+          // For cloud storage, replace the key in the URL
+          previewUrl = videoUrl.replace(/\/videos\/[^/]+$/, `/preview/${previewFilename}`);
+        }
+        
+        // Attempt to delete preview file (don't fail if it doesn't exist)
+        // Note: We use image deletion functions since video previews are images
+        if (config.storageType === "LOCAL") {
+          await deleteImageFromLocal(previewUrl).catch(() => {
+            console.log("Preview file not found or already deleted:", previewUrl);
+          });
+        } else if (config.storageType === "DOSPACE") {
+          await deleteImageFromDOSpacesWithConfig(previewUrl, config).catch(() => {
+            console.log("Preview file not found or already deleted:", previewUrl);
+          });
+        } else {
+          await deleteImageFromS3WithConfig(previewUrl, config).catch(() => {
+            console.log("Preview file not found or already deleted:", previewUrl);
+          });
+        }
+        
+        console.log("Attempted to delete associated preview file:", previewUrl);
+      }
+    } catch (error) {
+      console.warn("Failed to delete associated preview file:", error);
+      // Don't fail the main operation if preview deletion fails
+    }
+  }
+
+  return mainFileDeleted;
 }
 
 /**
@@ -949,8 +1068,7 @@ export async function processAndUploadImageWithConfig(
   }
 
   // Generate preview image
-  let previewUrl: string | undefined;
-  let previewRelativePath: string | undefined;
+  let previewPath: string | undefined;
   try {
     const previewBuffer = await generateImagePreview(buffer, {
       maxWidth: 1280,
@@ -960,19 +1078,19 @@ export async function processAndUploadImageWithConfig(
     });
 
     const previewFilename = generatePreviewFilename(filename);
-    previewRelativePath = `preview/${previewFilename}`;
+    previewPath = `preview/${previewFilename}`;
 
     // Upload preview based on storage type
     switch (storageType) {
       case "S3":
-        previewUrl = await uploadPreviewToS3WithConfig(
+        await uploadPreviewToS3WithConfig(
           previewBuffer,
           previewFilename,
           config
         );
         break;
       case "DOSPACE":
-        previewUrl = await uploadPreviewToDOSpacesWithConfig(
+        await uploadPreviewToDOSpacesWithConfig(
           previewBuffer,
           previewFilename,
           config
@@ -984,7 +1102,7 @@ export async function processAndUploadImageWithConfig(
           previewFilename,
           config.localBasePath || "/uploads"
         );
-        previewUrl = await getPublicUrl(uploadedPreviewPath);
+        previewPath = uploadedPreviewPath;
         break;
     }
   } catch (error) {
@@ -1044,8 +1162,7 @@ export async function processAndUploadImageWithConfig(
     height,
     storageType: storageType as StorageType,
     blurDataUrl,
-    previewUrl,
-    previewRelativePath,
+    previewPath,
   };
 }
 
@@ -1071,8 +1188,7 @@ export async function processAndUploadVideoWithConfig(
   const videoBuffer = Buffer.from(new Uint8Array(await file.arrayBuffer()));
 
   // Generate video thumbnail
-  let previewUrl: string | undefined;
-  let previewRelativePath: string | undefined;
+  let previewPath: string | undefined;
   let blurDataUrl: string | undefined;
   
   try {
@@ -1084,19 +1200,19 @@ export async function processAndUploadVideoWithConfig(
     });
 
     const previewFilename = generatePreviewFilename(filename);
-    previewRelativePath = `preview/${previewFilename}`;
+    previewPath = `preview/${previewFilename}`;
 
     // Upload thumbnail based on storage type
     switch (storageType) {
       case "S3":
-        previewUrl = await uploadPreviewToS3WithConfig(
+        await uploadPreviewToS3WithConfig(
           thumbnailBuffer,
           previewFilename,
           config
         );
         break;
       case "DOSPACE":
-        previewUrl = await uploadPreviewToDOSpacesWithConfig(
+        await uploadPreviewToDOSpacesWithConfig(
           thumbnailBuffer,
           previewFilename,
           config
@@ -1108,7 +1224,7 @@ export async function processAndUploadVideoWithConfig(
           previewFilename,
           config.localBasePath || "/uploads"
         );
-        previewUrl = await getPublicUrl(uploadedPreviewPath);
+        previewPath = uploadedPreviewPath;
         break;
     }
 
@@ -1167,8 +1283,7 @@ export async function processAndUploadVideoWithConfig(
     mimeType: file.type,
     fileSize: file.size,
     storageType: storageType as StorageType,
-    previewUrl,
-    previewRelativePath,
+    previewPath,
     blurDataUrl,
   };
 }
