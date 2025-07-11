@@ -694,68 +694,11 @@ export class SecurityHeaders {
           throw new Error("CSP nonce required in production");
         }
 
-        // Strict production CSP with required hashes for inline styles
-        const csp = [
-          "default-src 'self'",
-                  `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${CSP_HASHES.SCRIPTS.join(
-          " "
-        )} https://www.googletagmanager.com https://www.google-analytics.com https://accounts.google.com https://vitals.vercel-insights.com https://va.vercel-scripts.com https://securepubads.g.doubleclick.net https://pagead2.googlesyndication.com https://*.sanity.io`,
-          // Updated style-src with hashes for Next.js and library inline styles
-                  `style-src 'self' 'nonce-${nonce}' 'unsafe-hashes' https://fonts.googleapis.com https://accounts.google.com https://*.sanity.io ${CSP_HASHES.STYLES.join(
-          " "
-        )} https://pagead2.googlesyndication.com`,
-          "img-src 'self' blob: data: https: https://*.s3.amazonaws.com https://*.cloudfront.net https://cdn.sanity.io/ https://pagead2.googlesyndication.com",
-          "font-src 'self' https://fonts.gstatic.com",
-          `connect-src 'self' https://api.stripe.com https://*.supabase.co wss://*.supabase.co https://*.s3.amazonaws.com https://*.cloudfront.net https://vitals.vercel-analytics.com wss://vitals.vercel-analytics.com https://accounts.google.com https://*.api.sanity.io wss://*.api.sanity.io https://pagead2.googlesyndication.com`,
-          "frame-src 'self' https://accounts.google.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://pagead2.googlesyndication.com https://*.sanity.io",
-          "media-src 'self' blob: data: https://*.s3.amazonaws.com https://*.cloudfront.net",
-          "object-src 'none'",
-          "base-uri 'self'",
-          "form-action 'self'",
-          "frame-ancestors 'none'",
-          "upgrade-insecure-requests",
-          `report-uri ${CSP_REPORT_URI}`,
-          "worker-src 'self' blob:",
-        ];
-        
-        const cspString = csp.join("; ");
-        
-        // Log CSP generation in development for debugging
-        if (process.env.DEBUG_CSP === "true") {
-          console.log("[CSP] Generated production CSP:", cspString);
-        }
-        
-        return cspString;
+        // Use the new CSP Policy Builder for cleaner, more maintainable code
+        return CSPPolicyBuilder.createProductionPolicy(nonce);
       } else {
-        // Development-friendly CSP - No nonces in dev mode to allow 'unsafe-inline'
-        const csp = [
-          "default-src 'self' 'unsafe-inline' 'unsafe-eval'",
-          // Very permissive script sources for development (Next.js needs this)
-          "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://accounts.google.com https://vitals.vercel-insights.com https://va.vercel-scripts.com localhost:* ws: wss: blob:",
-          // More permissive style sources for development
-          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com localhost:* blob:",
-          "img-src 'self' blob: data: https: http: https://*.s3.amazonaws.com https://*.cloudfront.net localhost:*",
-          "font-src 'self' https://fonts.gstatic.com data: blob:",
-          // More permissive connect sources for development
-          "connect-src 'self' https://api.stripe.com https://*.supabase.co https://*.s3.amazonaws.com https://*.cloudfront.net https://vitals.vercel-analytics.com https://*.api.sanity.io wss://*.api.sanity.io localhost:* ws: wss: http: blob:",
-          "media-src 'self' blob: data: https: http: https://*.s3.amazonaws.com https://*.cloudfront.net localhost:*",
-          // Allow objects in development for debugging tools
-          "object-src 'self' blob:",
-          "base-uri 'self'",
-          "form-action 'self'",
-          // Allow framing in development for dev tools
-          "frame-ancestors 'self' localhost:*",
-          // Include report-uri in development too for debugging
-          `report-uri ${CSP_REPORT_URI}`,
-        ];
-        
-        const cspString = csp.join("; ");
-        
-        if (process.env.DEBUG_CSP === "true") {
-          console.log("[CSP] Generated development CSP:", cspString);
-        }
-        
-        return cspString;
+        // Use the new CSP Policy Builder for development
+        return CSPPolicyBuilder.createDevelopmentPolicy();
       }
     } catch (error) {
       console.error("[CSP] Failed to generate CSP policy:", error);
@@ -776,6 +719,278 @@ export class SecurityHeaders {
       
       console.warn("[CSP] Using emergency fallback CSP");
       return fallbackCSP.join("; ");
+    }
+  }
+}
+
+// NEW: Automated Hash Generation Utility
+export class CSPHashGenerator {
+  /**
+   * Generate SHA-256 hash for inline content
+   */
+  static async generateHash(content: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(content);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashBase64 = btoa(String.fromCharCode(...hashArray));
+    return `'sha256-${hashBase64}'`;
+  }
+
+  /**
+   * Generate hashes for multiple content pieces
+   */
+  static async generateHashes(contents: string[]): Promise<string[]> {
+    const hashes = await Promise.all(
+      contents.map(content => this.generateHash(content))
+    );
+    return hashes;
+  }
+
+  /**
+   * Validate if a hash is properly formatted
+   */
+  static isValidHash(hash: string): boolean {
+    return /^'sha256-[A-Za-z0-9+/=]+'$/.test(hash);
+  }
+}
+
+// NEW: Dynamic CSP Policy Builder
+export class CSPPolicyBuilder {
+  private directives: Map<string, Set<string>> = new Map();
+  private nonce?: string;
+
+  constructor(nonce?: string) {
+    this.nonce = nonce;
+  }
+
+  /**
+   * Add a directive with values
+   */
+  addDirective(directive: string, ...values: string[]): this {
+    if (!this.directives.has(directive)) {
+      this.directives.set(directive, new Set());
+    }
+    values.forEach(value => this.directives.get(directive)!.add(value));
+    return this;
+  }
+
+  /**
+   * Add script sources with automatic nonce handling
+   */
+  addScriptSources(...sources: string[]): this {
+    const scriptSources = ['self'];
+    
+    if (this.nonce) {
+      scriptSources.push(`'nonce-${this.nonce}'`);
+      scriptSources.push("'strict-dynamic'");
+    }
+    
+    scriptSources.push(...sources);
+    return this.addDirective('script-src', ...scriptSources);
+  }
+
+  /**
+   * Add style sources with automatic nonce handling
+   */
+  addStyleSources(...sources: string[]): this {
+    const styleSources = ['self'];
+    
+    if (this.nonce) {
+      styleSources.push(`'nonce-${this.nonce}'`);
+      styleSources.push("'unsafe-hashes'");
+    }
+    
+    styleSources.push(...sources);
+    return this.addDirective('style-src', ...styleSources);
+  }
+
+  /**
+   * Add hashes to a directive
+   */
+  addHashes(directive: string, hashes: string[]): this {
+    return this.addDirective(directive, ...hashes);
+  }
+
+  /**
+   * Build the final CSP string
+   */
+  build(): string {
+    const directives: string[] = [];
+    
+    for (const [directive, values] of this.directives) {
+      const valuesArray = Array.from(values);
+      directives.push(`${directive} ${valuesArray.join(' ')}`);
+    }
+    
+    return directives.join('; ');
+  }
+
+  /**
+   * Create a production-ready CSP policy
+   */
+  static createProductionPolicy(nonce: string, options?: {
+    additionalScripts?: string[];
+    additionalStyles?: string[];
+    additionalDomains?: Record<string, string[]>;
+  }): string {
+    const builder = new CSPPolicyBuilder(nonce);
+    
+    // Base directives
+    builder
+      .addDirective('default-src', 'self')
+      .addScriptSources(
+        ...CSP_HASHES.SCRIPTS,
+        'https://www.googletagmanager.com',
+        'https://www.google-analytics.com',
+        'https://accounts.google.com',
+        'https://vitals.vercel-insights.com',
+        'https://va.vercel-scripts.com',
+        'https://securepubads.g.doubleclick.net',
+        'https://pagead2.googlesyndication.com',
+        'https://*.sanity.io',
+        ...(options?.additionalScripts || [])
+      )
+      .addStyleSources(
+        ...CSP_HASHES.STYLES,
+        'https://fonts.googleapis.com',
+        'https://accounts.google.com',
+        'https://*.sanity.io',
+        'https://pagead2.googlesyndication.com',
+        ...(options?.additionalStyles || [])
+      )
+      .addDirective('img-src', 'self', 'blob:', 'data:', 'https:', 'https://*.s3.amazonaws.com', 'https://*.cloudfront.net', 'https://cdn.sanity.io/', 'https://pagead2.googlesyndication.com')
+      .addDirective('font-src', 'self', 'https://fonts.gstatic.com')
+      .addDirective('connect-src', 'self', 'https://api.stripe.com', 'https://*.supabase.co', 'wss://*.supabase.co', 'https://*.s3.amazonaws.com', 'https://*.cloudfront.net', 'https://vitals.vercel-analytics.com', 'wss://vitals.vercel-analytics.com', 'https://accounts.google.com', 'https://*.api.sanity.io', 'wss://*.api.sanity.io', 'https://pagead2.googlesyndication.com')
+      .addDirective('frame-src', 'self', 'https://accounts.google.com', 'https://googleads.g.doubleclick.net', 'https://tpc.googlesyndication.com', 'https://pagead2.googlesyndication.com', 'https://*.sanity.io')
+      .addDirective('media-src', 'self', 'blob:', 'data:', 'https://*.s3.amazonaws.com', 'https://*.cloudfront.net')
+      .addDirective('object-src', 'none')
+      .addDirective('base-uri', 'self')
+      .addDirective('form-action', 'self')
+      .addDirective('frame-ancestors', 'none')
+      .addDirective('upgrade-insecure-requests')
+      .addDirective('report-uri', CSP_REPORT_URI)
+      .addDirective('worker-src', 'self', 'blob:');
+
+    // Add additional domains if provided
+    if (options?.additionalDomains) {
+      for (const [directive, domains] of Object.entries(options.additionalDomains)) {
+        builder.addDirective(directive, ...domains);
+      }
+    }
+
+    return builder.build();
+  }
+
+  /**
+   * Create a development CSP policy
+   */
+  static createDevelopmentPolicy(): string {
+    const builder = new CSPPolicyBuilder();
+    
+    return builder
+      .addDirective('default-src', 'self', 'unsafe-inline', 'unsafe-eval')
+      .addDirective('script-src', 'self', 'unsafe-eval', 'unsafe-inline', 'https://www.googletagmanager.com', 'https://www.google-analytics.com', 'https://accounts.google.com', 'https://vitals.vercel-insights.com', 'https://va.vercel-scripts.com', 'localhost:*', 'ws:', 'wss:', 'blob:')
+      .addDirective('style-src', 'self', 'unsafe-inline', 'https://fonts.googleapis.com', 'https://accounts.google.com', 'localhost:*', 'blob:')
+      .addDirective('img-src', 'self', 'blob:', 'data:', 'https:', 'http:', 'https://*.s3.amazonaws.com', 'https://*.cloudfront.net', 'localhost:*')
+      .addDirective('font-src', 'self', 'https://fonts.gstatic.com', 'data:', 'blob:')
+      .addDirective('connect-src', 'self', 'https://api.stripe.com', 'https://*.supabase.co', 'https://*.s3.amazonaws.com', 'https://*.cloudfront.net', 'https://vitals.vercel-analytics.com', 'https://*.api.sanity.io', 'wss://*.api.sanity.io', 'localhost:*', 'ws:', 'wss:', 'http:', 'blob:')
+      .addDirective('media-src', 'self', 'blob:', 'data:', 'https:', 'http:', 'https://*.s3.amazonaws.com', 'https://*.cloudfront.net', 'localhost:*')
+      .addDirective('object-src', 'self', 'blob:')
+      .addDirective('base-uri', 'self')
+      .addDirective('form-action', 'self')
+      .addDirective('frame-ancestors', 'self', 'localhost:*')
+      .addDirective('report-uri', CSP_REPORT_URI)
+      .build();
+  }
+}
+
+// NEW: Enhanced CSP Violation Handler
+export class CSPViolationHandler {
+  /**
+   * Analyze CSP violation and suggest fixes
+   */
+  static async analyzeViolation(violation: {
+    'violated-directive': string;
+    'blocked-uri'?: string;
+    'script-sample'?: string;
+    'style-sample'?: string;
+  }): Promise<{
+    type: 'script' | 'style' | 'domain' | 'other';
+    suggestedFix: string;
+    hash?: string;
+    domain?: string;
+  }> {
+    const { 'violated-directive': directive, 'blocked-uri': uri, 'script-sample': script, 'style-sample': style } = violation;
+
+    // Handle script violations
+    if (directive === 'script-src' && script) {
+      const hash = await CSPHashGenerator.generateHash(script);
+      return {
+        type: 'script',
+        suggestedFix: `Add hash to CSP_HASHES.SCRIPTS: ${hash}`,
+        hash
+      };
+    }
+
+    // Handle style violations
+    if (directive === 'style-src' && style) {
+      const hash = await CSPHashGenerator.generateHash(style);
+      return {
+        type: 'style',
+        suggestedFix: `Add hash to CSP_HASHES.STYLES: ${hash}`,
+        hash
+      };
+    }
+
+    // Handle domain violations
+    if (uri && !uri.startsWith('data:') && !uri.startsWith('blob:')) {
+      const domain = this.extractDomain(uri);
+      if (domain) {
+        return {
+          type: 'domain',
+          suggestedFix: `Add domain to ${directive}: ${domain}`,
+          domain
+        };
+      }
+    }
+
+    return {
+      type: 'other',
+      suggestedFix: `Review ${directive} directive for blocked content`
+    };
+  }
+
+  /**
+   * Extract domain from URI
+   */
+  private static extractDomain(uri: string): string | null {
+    try {
+      const url = new URL(uri);
+      return url.origin;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Generate CSP configuration snippet
+   */
+  static generateConfigSnippet(analysis: ReturnType<typeof CSPViolationHandler.analyzeViolation> extends Promise<infer T> ? T : never): string {
+    switch (analysis.type) {
+      case 'script':
+        return `// Add to CSP_HASHES.SCRIPTS array:
+${analysis.hash}`;
+      
+      case 'style':
+        return `// Add to CSP_HASHES.STYLES array:
+${analysis.hash}`;
+      
+      case 'domain':
+        return `// Add to ${analysis.suggestedFix}`;
+      
+      default:
+        return analysis.suggestedFix;
     }
   }
 }

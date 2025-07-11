@@ -1,20 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
-import { SECURITY_HEADERS } from "@/lib/security/sanitize";
+import { NextRequest } from "next/server";
+import { CSPViolationHandler } from "@/lib/security/csp";
 
 interface CSPViolationReport {
   "csp-report": {
     "document-uri": string;
-    "referrer": string;
     "violated-directive": string;
-    "effective-directive": string;
-    "original-policy": string;
-    "disposition": string;
-    "blocked-uri": string;
-    "line-number"?: number;
-    "column-number"?: number;
-    "source-file"?: string;
-    "status-code": number;
+    "blocked-uri"?: string;
     "script-sample"?: string;
+    "style-sample"?: string;
+    "source-file"?: string;
+    "line-number"?: number;
   };
 }
 
@@ -41,55 +36,47 @@ export async function POST(request: NextRequest) {
         console.warn(`🚫 Directive: ${violation["violated-directive"]}`);
         console.warn(`🔗 Blocked URI: ${violation["blocked-uri"]}`);
         
+        // NEW: Automated violation analysis
+        try {
+          const analysis = await CSPViolationHandler.analyzeViolation(violation);
+          console.warn(`🔍 Analysis: ${analysis.type}`);
+          console.warn(`💡 Suggested Fix: ${analysis.suggestedFix}`);
+          
+          if (analysis.hash) {
+            console.warn(`🔑 Generated Hash: ${analysis.hash}`);
+          }
+          
+          if (analysis.domain) {
+            console.warn(`🌐 Domain: ${analysis.domain}`);
+          }
+          
+          // Generate configuration snippet
+          const configSnippet = CSPViolationHandler.generateConfigSnippet(analysis);
+          console.warn(`📝 Config Snippet:\n${configSnippet}`);
+          
+        } catch (analysisError) {
+          console.error("Failed to analyze CSP violation:", analysisError);
+        }
+        
         if (violation["script-sample"]) {
           console.warn(`📝 Script Sample: ${violation["script-sample"]}`);
-          
-          // Try to calculate hash for the script sample to help with debugging
-          try {
-            const encoder = new TextEncoder();
-            const data = encoder.encode(violation["script-sample"]);
-            const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            const hashBase64 = btoa(String.fromCharCode(...hashArray));
-            const hash = `'sha256-${hashBase64}'`;
-            console.warn(`🔑 Calculated Hash: ${hash}`);
-            console.warn(`💡 Add this hash to CSP_HASHES.SCRIPTS in lib/csp.ts`);
-          } catch (hashError) {
-            console.error("Failed to calculate hash for script sample:", hashError);
-          }
         }
         
-        if (violation["line-number"] && violation["column-number"]) {
-          console.warn(`📌 Location: Line ${violation["line-number"]}, Column ${violation["column-number"]}`);
+        if (violation["style-sample"]) {
+          console.warn(`🎨 Style Sample: ${violation["style-sample"]}`);
         }
-        
-        if (violation["source-file"]) {
-          console.warn(`📂 Source File: ${violation["source-file"]}`);
-        }
-        
-        console.warn("Full Report:", JSON.stringify(report, null, 2));
-        console.warn("═══════════════════════════════════════════════════════");
       }
 
-      // In production, you might want to send this to your logging service
-      // Example: await sendToLoggingService(violation);
-      
-      // Basic violation tracking for production
+      // Log violation for monitoring (production)
       if (process.env.NODE_ENV === "production") {
-        // Log essential violation info without exposing sensitive details
-        console.warn(`[CSP-VIOLATION] ${violation["violated-directive"]} - ${violation["blocked-uri"]}`);
+        console.warn(`[CSP-VIOLATION] ${violation["violated-directive"]} on ${violation["document-uri"]}`);
       }
     }
   } catch (error) {
-    // Swallow errors – we never want this endpoint to break the page load.
-    if (process.env.NODE_ENV !== "production") {
-      console.error("Failed to handle CSP report", error);
-    }
+    // Log error but don't expose details to client
+    console.error("[CSP-REPORT] Error processing violation report:", error);
   }
 
-  // Respond with 204 – required by CSP spec for report endpoints.
-  return new NextResponse(null, {
-    status: 204,
-    headers: SECURITY_HEADERS,
-  });
+  // Always return 204 No Content as per CSP spec
+  return new Response(null, { status: 204 });
 }
