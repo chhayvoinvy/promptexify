@@ -672,7 +672,7 @@ export class SecurityHeaders {
     // CSP handling based on environment
     if (config.isLocalDevelopment) {
       // Local development - use very permissive CSP
-      console.log("[CSP] Using permissive CSP for local development");
+      // console.log("[CSP] Using permissive CSP for local development");
       headers["Content-Security-Policy"] = this.generateCSP("");
     } else if (config.isProduction && nonce) {
       // Production with strict CSP
