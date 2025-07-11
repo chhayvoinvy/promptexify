@@ -637,8 +637,9 @@ export class SecurityHeaders {
   /**
    * Get comprehensive security headers with environment-aware policies
    */
-  static getSecurityHeaders(nonce?: string): Record<string, string> {
-    const isProduction = process.env.NODE_ENV === "production";
+  static getSecurityHeaders(nonce?: string, request?: Request): Record<string, string> {
+    const config = EnvironmentDetector.getCSPConfig();
+    const isLocalhost = request ? EnvironmentDetector.isLocalhost(request) : false;
 
     const headers: Record<string, string> = {
       // Prevent MIME type sniffing
@@ -652,7 +653,7 @@ export class SecurityHeaders {
     };
 
     // Production-only strict headers
-    if (isProduction) {
+    if (config.isProduction) {
       headers["X-Frame-Options"] = "DENY";
       headers["X-DNS-Prefetch-Control"] = "off";
       headers["Permissions-Policy"] =
@@ -668,12 +669,14 @@ export class SecurityHeaders {
         "camera=(*), microphone=(*), geolocation=(*)";
     }
 
-    // Add CSP header (with or without nonce based on environment)
-    if (isProduction && nonce) {
-      headers["Content-Security-Policy"] = this.generateCSP(nonce);
-    } else if (!isProduction) {
-      // In development, always add CSP (without nonce)
+    // CSP handling based on environment
+    if (config.isLocalDevelopment) {
+      // Local development - use very permissive CSP
+      console.log("[CSP] Using permissive CSP for local development");
       headers["Content-Security-Policy"] = this.generateCSP("");
+    } else if (config.isProduction && nonce) {
+      // Production with strict CSP
+      headers["Content-Security-Policy"] = this.generateCSP(nonce);
     }
 
     return headers;
@@ -683,10 +686,10 @@ export class SecurityHeaders {
    * Generate Content Security Policy with environment-aware policies
    */
   static generateCSP(nonce: string): string {
-    const isProduction = process.env.NODE_ENV === "production";
+    const config = EnvironmentDetector.getCSPConfig();
 
     try {
-      if (isProduction) {
+      if (config.isProduction) {
         // Validate nonce for production
         if (!nonce || nonce.length < 16) {
           console.error("[CSP] Invalid or missing nonce in production mode");
@@ -696,6 +699,9 @@ export class SecurityHeaders {
 
         // Use the new CSP Policy Builder for cleaner, more maintainable code
         return CSPPolicyBuilder.createProductionPolicy(nonce);
+      } else if (config.isLocalDevelopment) {
+        // Local development - use very permissive CSP
+        return CSPPolicyBuilder.createMinimalDevelopmentPolicy();
       } else {
         // Use the new CSP Policy Builder for development
         return CSPPolicyBuilder.createDevelopmentPolicy();
@@ -890,18 +896,26 @@ export class CSPPolicyBuilder {
     
     return builder
       .addDirective('default-src', 'self', 'unsafe-inline', 'unsafe-eval')
-      .addDirective('script-src', 'self', 'unsafe-eval', 'unsafe-inline', 'https://www.googletagmanager.com', 'https://www.google-analytics.com', 'https://accounts.google.com', 'https://vitals.vercel-insights.com', 'https://va.vercel-scripts.com', 'localhost:*', 'ws:', 'wss:', 'blob:')
-      .addDirective('style-src', 'self', 'unsafe-inline', 'https://fonts.googleapis.com', 'https://accounts.google.com', 'localhost:*', 'blob:')
-      .addDirective('img-src', 'self', 'blob:', 'data:', 'https:', 'http:', 'https://*.s3.amazonaws.com', 'https://*.cloudfront.net', 'localhost:*')
-      .addDirective('font-src', 'self', 'https://fonts.gstatic.com', 'data:', 'blob:')
-      .addDirective('connect-src', 'self', 'https://api.stripe.com', 'https://*.supabase.co', 'https://*.s3.amazonaws.com', 'https://*.cloudfront.net', 'https://vitals.vercel-analytics.com', 'https://*.api.sanity.io', 'wss://*.api.sanity.io', 'localhost:*', 'ws:', 'wss:', 'http:', 'blob:')
-      .addDirective('media-src', 'self', 'blob:', 'data:', 'https:', 'http:', 'https://*.s3.amazonaws.com', 'https://*.cloudfront.net', 'localhost:*')
-      .addDirective('object-src', 'self', 'blob:')
+      .addDirective('script-src', 'self', 'unsafe-eval', 'unsafe-inline', 'https://www.googletagmanager.com', 'https://www.google-analytics.com', 'https://accounts.google.com', 'https://vitals.vercel-insights.com', 'https://va.vercel-scripts.com', 'localhost:*', 'ws:', 'wss:', 'blob:', 'http:', 'https:')
+      .addDirective('style-src', 'self', 'unsafe-inline', 'https://fonts.googleapis.com', 'https://accounts.google.com', 'localhost:*', 'blob:', 'http:', 'https:')
+      .addDirective('img-src', 'self', 'blob:', 'data:', 'https:', 'http:', 'https://*.s3.amazonaws.com', 'https://*.cloudfront.net', 'localhost:*', '*')
+      .addDirective('font-src', 'self', 'https://fonts.gstatic.com', 'data:', 'blob:', 'http:', 'https:')
+      .addDirective('connect-src', 'self', 'https://api.stripe.com', 'https://*.supabase.co', 'https://*.s3.amazonaws.com', 'https://*.cloudfront.net', 'https://vitals.vercel-analytics.com', 'https://*.api.sanity.io', 'wss://*.api.sanity.io', 'localhost:*', 'ws:', 'wss:', 'http:', 'https:', 'blob:')
+      .addDirective('media-src', 'self', 'blob:', 'data:', 'https:', 'http:', 'https://*.s3.amazonaws.com', 'https://*.cloudfront.net', 'localhost:*', '*')
+      .addDirective('object-src', 'self', 'blob:', 'http:', 'https:')
       .addDirective('base-uri', 'self')
       .addDirective('form-action', 'self')
       .addDirective('frame-ancestors', 'self', 'localhost:*')
       .addDirective('report-uri', CSP_REPORT_URI)
       .build();
+  }
+
+  /**
+   * Create a minimal development CSP policy (when CSP is mostly disabled)
+   */
+  static createMinimalDevelopmentPolicy(): string {
+    // Ultra-permissive CSP for local development - allows everything
+    return "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' data: blob:; style-src * 'unsafe-inline' data: blob:; img-src * data: blob:; font-src * data: blob:; connect-src * data: blob: ws: wss:; media-src * data: blob:; object-src * data: blob:; frame-src * data: blob:; frame-ancestors *; worker-src * data: blob:; base-uri *; form-action *; report-uri " + CSP_REPORT_URI;
   }
 }
 
@@ -1057,4 +1071,71 @@ export function handleSecureActionError(error: unknown): {
     error: "An unexpected error occurred. Please try again.",
     code: "INTERNAL_ERROR",
   };
+}
+
+// NEW: Environment Detection Utility
+// Automatically detects development vs production environments
+// and applies appropriate CSP policies:
+// - Local development: Ultra-permissive CSP (allows everything)
+// - Production: Strict CSP with nonces and hashes
+export class EnvironmentDetector {
+  /**
+   * Check if we're in a development environment
+   */
+  static isDevelopment(): boolean {
+    return process.env.NODE_ENV === "development";
+  }
+
+  /**
+   * Check if we're in a production environment
+   */
+  static isProduction(): boolean {
+    return process.env.NODE_ENV === "production";
+  }
+
+  /**
+   * Check if we're running in Edge Runtime
+   */
+  static isEdgeRuntime(): boolean {
+    return process.env.NEXT_RUNTIME === "edge" ||
+           process.env.VERCEL_REGION !== undefined ||
+           (typeof globalThis !== "undefined" && "EdgeRuntime" in globalThis);
+  }
+
+  /**
+   * Check if we're running locally (localhost)
+   */
+  static isLocalhost(request?: Request): boolean {
+    if (request) {
+      const url = new URL(request.url);
+      return url.hostname === "localhost" || 
+             url.hostname === "127.0.0.1" || 
+             url.hostname.startsWith("192.168.") ||
+             url.hostname.startsWith("10.") ||
+             url.hostname.startsWith("172.");
+    }
+    return false;
+  }
+
+  /**
+   * Check if we're in a local development environment that needs permissive CSP
+   */
+  static isLocalDevelopment(): boolean {
+    return this.isDevelopment() || 
+           process.env.NODE_ENV === "development" ||
+           process.env.VERCEL_ENV === "development" ||
+           process.env.NEXT_PUBLIC_VERCEL_ENV === "development";
+  }
+
+  /**
+   * Get environment-specific CSP configuration
+   */
+  static getCSPConfig() {
+    return {
+      isDevelopment: this.isDevelopment(),
+      isProduction: this.isProduction(),
+      isEdgeRuntime: this.isEdgeRuntime(),
+      isLocalDevelopment: this.isLocalDevelopment(),
+    };
+  }
 }

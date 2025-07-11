@@ -13,9 +13,7 @@ import {
   HomeIcon,
   AlertTriangleIcon,
 } from "@/components/ui/icons";
-import { useEffect } from "react";
 import Link from "next/link";
-import * as Sentry from "@sentry/nextjs";
 
 export default function GlobalError({
   error,
@@ -24,16 +22,6 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  // Report error to Sentry once on mount
-  useEffect(() => {
-    if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
-      Sentry.captureException(error, {
-        tags: { scope: "global-error-boundary" },
-        extra: { digest: error.digest },
-      });
-    }
-  }, [error]);
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
       <div className="max-w-2xl w-full">

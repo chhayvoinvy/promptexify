@@ -27,50 +27,42 @@ export interface SecurityEvent extends AuditEvent {
   blocked: boolean;
 }
 
-// Simplified SeverityLevel type to avoid external type dependency
+// Map internal severity levels to logging levels
 type LocalSeverityLevel =
-  | "fatal"
   | "error"
-  | "warning"
+  | "warn"
   | "log"
   | "info"
-  | "debug"
-  | "critical";
+  | "debug";
 
-// Map internal severity levels to Sentry's expected SeverityLevel values
 const severityLevelMap: Record<AuditEvent["severity"], LocalSeverityLevel> = {
   LOW: "info",
-  MEDIUM: "warning",
+  MEDIUM: "warn",
   HIGH: "error",
-  CRITICAL: "fatal",
+  CRITICAL: "error",
 };
 
 /**
- * Log security events to database and console
+ * Log security events to database and external monitoring
  */
 export async function logSecurityEvent(event: SecurityEvent) {
   try {
-    // Log to console for immediate monitoring
-    const timestamp = new Date().toISOString();
-    console.warn(
-      `[SECURITY] ${timestamp} - ${event.threatType}: ${event.action}`,
-      {
-        userId: event.userId,
-        ipAddress: event.ipAddress,
-        blocked: event.blocked,
-        severity: event.severity,
-        metadata: event.metadata,
-      }
-    );
-
-    // In production, send to external security monitoring service
-    if (process.env.NODE_ENV === "production") {
-      // TODO: Integrate with security monitoring service (e.g., Sentry, DataDog)
-      await sendToSecurityMonitoring(event);
-    }
-
-    // Store in database for audit trail
+    // Store in database
     await storeAuditEvent(event);
+
+    // Log to console with structured format
+    const logLevel = severityLevelMap[event.severity];
+    console[logLevel](`[SECURITY] ${event.action}`, {
+      userId: event.userId,
+      entityType: event.entityType,
+      ipAddress: event.ipAddress,
+      threatType: event.threatType,
+      blocked: event.blocked,
+      metadata: event.metadata,
+    });
+
+    // Send to external monitoring
+    await sendToSecurityMonitoring(event);
   } catch (error) {
     console.error("Failed to log security event:", error);
     // Don't throw - logging failures shouldn't break the main flow
@@ -78,53 +70,45 @@ export async function logSecurityEvent(event: SecurityEvent) {
 }
 
 /**
- * Log general audit events
+ * Log general audit events to database
  */
 export async function logAuditEvent(event: AuditEvent) {
   try {
-    if (event.severity === "HIGH" || event.severity === "CRITICAL") {
-      console.warn(
-        `[AUDIT] ${event.action} - Severity: ${event.severity}`,
-        event
-      );
-    } else {
-      console.log(`[AUDIT] ${event.action}`, event);
-    }
-
+    // Store in database
     await storeAuditEvent(event);
+
+    // Log to console with structured format
+    const logLevel = severityLevelMap[event.severity];
+    console[logLevel](`[AUDIT] ${event.action}`, {
+      userId: event.userId,
+      entityType: event.entityType,
+      ipAddress: event.ipAddress,
+      metadata: event.metadata,
+    });
   } catch (error) {
     console.error("Failed to log audit event:", error);
+    // Don't throw - logging failures shouldn't break the main flow
   }
 }
 
 /**
- * Store audit event in database using the Log model
+ * Store audit event in database
  */
 async function storeAuditEvent(event: AuditEvent | SecurityEvent) {
   try {
-    // Prepare metadata with security event specific fields
-    // Using proper typing to match AuditEvent interface and handle security event extensions
-    const metadata: Record<string, string | number | boolean> = {
-      ...event.metadata,
-    };
-
-    // Add security-specific fields to metadata if it's a security event
-    if ("threatType" in event) {
-      metadata.threatType = event.threatType;
-      metadata.blocked = event.blocked;
-    }
-
-    // Create log entry in database
     await prisma.log.create({
       data: {
         action: event.action,
-        userId: event.userId || null,
+        userId: event.userId,
         entityType: event.entityType,
-        entityId: event.entityId || null,
-        ipAddress: event.ipAddress || null,
-        userAgent: event.userAgent || null,
-        metadata: metadata,
+        entityId: event.entityId,
+        ipAddress: event.ipAddress,
+        userAgent: event.userAgent,
+        metadata: event.metadata,
         severity: event.severity,
+        // Add threat type for security events
+        ...(("threatType" in event && { threatType: event.threatType }) || {}),
+        ...(("blocked" in event && { blocked: event.blocked }) || {}),
       },
     });
   } catch (error) {
@@ -137,19 +121,12 @@ async function storeAuditEvent(event: AuditEvent | SecurityEvent) {
  * Send security events to external monitoring
  */
 async function sendToSecurityMonitoring(event: SecurityEvent) {
-  // Forward to Sentry only (webhook removed)
-  if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
-    try {
-      const Sentry = await import("@sentry/nextjs");
-      Sentry.captureMessage(`Security event: ${event.action}`, {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        level: severityLevelMap[event.severity] as any,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        extra: event as any,
-      });
-    } catch (error) {
-      console.error("Failed to send security event to Sentry:", error);
-    }
+  // TODO: Integrate with security monitoring service (e.g., DataDog, New Relic)
+  if (process.env.NODE_ENV === "development") {
+    console.log(
+      "[SECURITY-MONITOR] Would send to monitoring service:",
+      event.action
+    );
   }
 }
 
@@ -330,13 +307,13 @@ export async function getSecurityStats(hours = 24) {
         },
       },
       _count: {
-        id: true,
+        severity: true,
       },
     });
 
     return stats.reduce(
       (acc, stat) => {
-        acc[stat.severity] = stat._count.id;
+        acc[stat.severity.toLowerCase()] = stat._count.severity;
         return acc;
       },
       {} as Record<string, number>

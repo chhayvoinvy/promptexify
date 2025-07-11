@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "./lib/supabase/middleware";
-import { CSPNonce, SecurityHeaders, CSRFProtection } from "./lib/security/csp";
+import { CSPNonce, SecurityHeaders, CSRFProtection, EnvironmentDetector } from "./lib/security/csp";
 import {
   rateLimits,
   getClientIdentifier,
@@ -12,10 +12,11 @@ import {
 
 export async function middleware(request: NextRequest) {
   try {
-    const isProduction = process.env.NODE_ENV === "production";
+    const config = EnvironmentDetector.getCSPConfig();
+    const isLocalhost = EnvironmentDetector.isLocalhost(request);
 
     // Generate nonce for CSP only in production (dev mode uses 'unsafe-inline')
-    const nonce = isProduction ? CSPNonce.generate() : null;
+    const nonce = config.isProduction && !config.isLocalDevelopment ? CSPNonce.generate() : null;
 
     // Handle Supabase session
     const response = await updateSession(request);
@@ -29,14 +30,14 @@ export async function middleware(request: NextRequest) {
     const requestHeaders = new Headers(request.headers);
 
     // Set nonce in headers and cookies if in production mode
-    if (nonce) {
+    if (nonce && config.isProduction) {
       // Set nonce in request headers for Server Components to access
       requestHeaders.set("x-nonce", nonce);
 
       // Set nonce in cookie for client components (httpOnly: false so client can read)
       response.cookies.set("csp-nonce", nonce, {
         httpOnly: false,
-        secure: true, // Always secure in production
+        secure: config.isProduction, // Only secure in production
         sameSite: "strict",
         maxAge: 60 * 60, // 1 hour
       });
@@ -44,7 +45,8 @@ export async function middleware(request: NextRequest) {
 
     // Apply security headers with CSP
     const securityHeaders = SecurityHeaders.getSecurityHeaders(
-      nonce || undefined
+      nonce || undefined,
+      request
     );
     Object.entries(securityHeaders).forEach(([key, value]) => {
       response.headers.set(key, value);
