@@ -2,14 +2,20 @@ import { Suspense } from "react";
 import { requireAuth } from "@/lib/auth";
 import { getUserProfileAction } from "@/actions";
 import { Card, CardContent } from "@/components/ui/card";
-import { User } from "lucide-react";
+import { User } from "@/components/ui/icons";
 import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AccountForm } from "@/components/dashboard/account-form";
+import { Metadata } from "next";
 
 // Force dynamic rendering for this page
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Account Settings",
+  description: "Manage your account information and preferences",
+};
 
 async function AccountContent() {
   // Get user profile data

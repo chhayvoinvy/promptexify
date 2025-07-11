@@ -14,9 +14,9 @@ import {
   IconRobot,
   type Icon,
   IconFile,
-} from "@tabler/icons-react";
+} from "@/components/ui/icons";
 import Link from "next/link";
-import { User } from "lucide-react";
+import { User } from "@/components/ui/icons";
 
 import { NavDocuments } from "@/components/dashboard/nav-documents";
 import { NavMain } from "@/components/dashboard/nav-main";
@@ -122,12 +122,6 @@ const navigationData: {
       allowUser: true, // Allow both USER and ADMIN roles (Temporary disabled)
     },
     {
-      title: "Pages",
-      url: "/dashboard/pages/studio",
-      icon: IconFile,
-      adminOnly: true, // Admin only
-    },
-    {
       title: "Categories",
       url: "/dashboard/categories",
       icon: IconCategory,
@@ -143,6 +137,12 @@ const navigationData: {
       title: "Automation",
       url: "/dashboard/automation",
       icon: IconRobot,
+      adminOnly: true, // Admin only
+    },
+    {
+      title: "Pages",
+      url: "/dashboard/pages/studio",
+      icon: IconFile,
       adminOnly: true, // Admin only
     },
   ],

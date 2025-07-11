@@ -14,7 +14,7 @@ import {
   type MagicLinkData,
 } from "@/lib/schemas";
 import { redirect } from "next/navigation";
-import { withCSRFProtection, handleSecureActionError } from "@/lib/security";
+import { withCSRFProtection, handleSecureActionError } from "@/lib/csp";
 
 // Helper function to handle authentication redirects properly
 function handleAuthRedirect(): never {

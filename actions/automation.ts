@@ -3,8 +3,7 @@
 import { getCurrentUser } from "@/lib/auth";
 import { handleAuthRedirect } from "./auth";
 import { revalidatePath } from "next/cache";
-import { withCSRFProtection } from "@/lib/security";
-import { SecurityMonitor, SecurityEventType } from "@/lib/security-monitor";
+import { SecurityMonitor, SecurityEventType } from "@/lib/monitor";
 import { prisma } from "@/lib/prisma";
 
 // Define types for automation actions
@@ -114,44 +113,42 @@ export async function getGenerationLogsAction(): Promise<ActionResult> {
 }
 
 // Clear generation logs with security logging
-export const clearGenerationLogsAction = withCSRFProtection(
-  async (): Promise<ActionResult> => {
-    try {
-      const user = await requireAdminAccess("clear_generation_logs");
+export async function clearGenerationLogsAction(): Promise<ActionResult> {
+  try {
+    const user = await requireAdminAccess("clear_generation_logs");
 
-      // Delete all automation logs from database
-      const deleteResult = await prisma.log.deleteMany({
-        where: {
-          action: "automation",
-          entityType: "content_generation",
-        },
-      });
+    // Delete all automation logs from database
+    const deleteResult = await prisma.log.deleteMany({
+      where: {
+        action: "automation",
+        entityType: "content_generation",
+      },
+    });
 
-      await SecurityMonitor.logSecurityEvent(
-        SecurityEventType.SUSPICIOUS_REQUEST,
-        {
-          action: "logs_cleared",
-          userId: user.id,
-          deletedCount: deleteResult.count,
-        },
-        "medium"
-      );
+    await SecurityMonitor.logSecurityEvent(
+      SecurityEventType.SUSPICIOUS_REQUEST,
+      {
+        action: "logs_cleared",
+        userId: user.id,
+        deletedCount: deleteResult.count,
+      },
+      "medium"
+    );
 
-      revalidatePath("/dashboard/automation");
+    revalidatePath("/dashboard/automation");
 
-      return {
-        success: true,
-        message: `Successfully cleared ${deleteResult.count} generation logs`,
-      };
-    } catch (error) {
-      console.error("Error clearing generation logs:", error);
-      return {
-        success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to clear generation logs",
-      };
-    }
+    return {
+      success: true,
+      message: `Successfully cleared ${deleteResult.count} generation logs`,
+    };
+  } catch (error) {
+    console.error("Error clearing generation logs:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to clear generation logs",
+    };
   }
-);
+}

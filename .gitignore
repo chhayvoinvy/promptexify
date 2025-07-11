@@ -40,21 +40,15 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-/lib/generated/prisma
-.contentlayer
+/app/generated/prisma/*
 
 # local files
 /backup
 /templates
 /docs
 
-# prisma
-prisma/migrations
-prisma/seed.ts
-
-# contentlayer
-.contentlayer
-
 # images
 /public/uploads
 /public/images
+# Sentry Config File
+.env.sentry-build-plugin

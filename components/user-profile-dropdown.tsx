@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { User, Settings, UserIcon } from "lucide-react";
+import { User, Settings, UserIcon } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { UserData } from "@/lib/utils";
-import { IconCrown } from "@tabler/icons-react";
+import { IconCrown } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { DarkModeToggle } from "./toggle-darkmode";
 

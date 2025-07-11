@@ -1,13 +1,13 @@
 import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
-import {
-  incrementPostView,
-  getPostContent,
-  getAllPosts,
-  getRelatedPosts,
-} from "@/lib/content";
+import { incrementPostView, getAllPosts, getRelatedPosts } from "@/lib/content";
+import { Queries } from "@/lib/query";
+import type { PostWithInteractions } from "@/lib/content";
 import { PostStandalonePage } from "@/components/post-standalone-page";
 import { getCurrentUser } from "@/lib/auth";
+import { Crown } from "@/components/ui/icons";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 interface PostPageProps {
   params: Promise<{
@@ -18,24 +18,17 @@ interface PostPageProps {
   }>;
 }
 
-// Enable ISR with revalidation every 5 minutes
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
-// Generate static params for popular posts at build time
 export async function generateStaticParams() {
   try {
-    // Get featured and popular posts for static generation
     const posts = await getAllPosts();
-
-    // Filter for featured posts and limit to 100
     const featuredPosts = posts.filter((post) => post.isFeatured).slice(0, 100);
-
     return featuredPosts.map((post) => ({
       id: post.id,
     }));
   } catch (error) {
     console.error("Error in generateStaticParams:", error);
-    // Return empty array to avoid build failures
     return [];
   }
 }
@@ -44,52 +37,70 @@ export default async function PostPage({
   params,
   searchParams,
 }: PostPageProps) {
-  // Await params to fix Next.js 15 compatibility
   const { id } = await params;
   const { modal } = await searchParams;
-
-  // If modal parameter is present, redirect to clean URL
   if (modal === "true") {
     redirect(`/entry/${id}`);
   }
 
-  // Get post content
-  const processedPost = await getPostContent(id);
+  const currentUser = await getCurrentUser();
+  const userId = currentUser?.userData?.id;
 
-  if (!processedPost || !processedPost.isPublished) {
+  const result = await Queries.posts.getById(id, userId);
+
+  if (!result || !result.isPublished) {
     notFound();
   }
 
-  // Track the view
+  const processedPost = result as PostWithInteractions;
+
+  // Check premium access control
+  const userType = currentUser?.userData?.type || null;
+  const userRole = currentUser?.userData?.role || null;
+  
+  // If this is premium content, check user access
+  if (processedPost.isPremium) {
+    const isUserFree = userType === "FREE" || userType === null;
+    const isAdmin = userRole === "ADMIN";
+    
+    // Only allow access for premium users and admins
+    if (isUserFree && !isAdmin) {
+      redirect("/pricing");
+    }
+  }
+
   const headersList = await headers();
   const forwarded = headersList.get("x-forwarded-for");
   const realIp = headersList.get("x-real-ip");
   const userAgent = headersList.get("user-agent");
-
-  // Get the client IP
   const clientIp = forwarded?.split(",")[0] || realIp || "127.0.0.1";
-
-  // Increment view count
   await incrementPostView(id, clientIp, userAgent || undefined);
+  const relatedPosts = await getRelatedPosts(id, processedPost, userId, 6);
 
-  // Get current user for authentication
-  const currentUser = await getCurrentUser();
-  const userType = currentUser?.userData?.type || null;
-
-  // Get related posts
-  const relatedPosts = await getRelatedPosts(
-    id,
-    processedPost,
-    currentUser?.userData?.id,
-    6
-  );
-
-  // For standalone page, use the PostStandalonePage component
   return (
-    <PostStandalonePage
-      post={processedPost}
-      relatedPosts={relatedPosts}
-      userType={userType}
-    />
+    <>
+      {processedPost.isPremium && (userType === "FREE" || userType === null) ? (
+        <div className="flex flex-col items-center justify-center min-h-[50vh]">
+          <Crown className="w-12 h-12 text-amber-500 mb-4" />
+          <h1 className="text-2xl font-bold mb-2">Premium Content</h1>
+          <p className="text-muted-foreground mb-6 text-center max-w-md">
+            This content requires a Premium subscription to access. 
+            Upgrade now to unlock exclusive AI prompts and advanced features.
+          </p>
+          <Link href="/pricing">
+            <Button size="lg" className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white">
+              <Crown className="w-4 h-4 mr-2" />
+              Upgrade to Premium
+            </Button>
+          </Link>
+        </div>
+      ) : (
+        <PostStandalonePage
+          post={processedPost}
+          relatedPosts={relatedPosts}
+          userType={userType}
+        />
+      )}
+    </>
   );
 }

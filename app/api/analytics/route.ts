@@ -21,6 +21,7 @@ interface AnalyticsData {
   }>;
 }
 
+// Interface for processed analytics data
 interface ProcessedAnalyticsData {
   chartData: Array<{
     date: string;
@@ -73,15 +74,25 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get environment variables
+    // Check if we're in production environment
+    const isProduction = process.env.NODE_ENV === "production";
+
+    // In development, always return mock data
+    if (!isProduction) {
+      console.log("Development mode: Returning mock analytics data");
+      const mockData = generateMockData(range);
+      return NextResponse.json(mockData);
+    }
+
+    // Production: Get environment variables for Vercel Analytics
     const teamId = process.env.VERCEL_TEAM_ID;
     const projectId = process.env.VERCEL_PROJECT_ID;
     const analyticsToken = process.env.VERCEL_ANALYTICS_TOKEN;
 
     if (!teamId || !projectId || !analyticsToken) {
-      console.error("Missing Vercel Analytics configuration");
+      console.error("Missing Vercel Analytics configuration in production");
 
-      // Return mock data for development/demo purposes
+      // Return mock data as fallback
       const mockData = generateMockData(range);
       return NextResponse.json(mockData);
     }
@@ -166,7 +177,6 @@ export async function GET(request: NextRequest) {
 function processAnalyticsData(data: AnalyticsData): ProcessedAnalyticsData {
   const chartData = [];
   const viewsMap = new Map(data.views.map((v) => [v.date, v.views]));
-  const visitorsMap = new Map(data.visitors.map((v) => [v.date, v.visitors]));
 
   // Get all unique dates and sort them
   const allDates = Array.from(
@@ -222,10 +232,14 @@ function generateMockData(range: string): ProcessedAnalyticsData {
   let totalViews = 0;
   let totalVisitors = 0;
 
-  // Generate data for the specified range
-  for (let i = days - 1; i >= 0; i--) {
+  // Optimize for smaller data structures
+  const maxDataPoints = Math.min(days, 30); // Limit to 30 days max for mock data
+  const stepSize = Math.ceil(days / maxDataPoints);
+
+  // Generate data for the specified range with optimization
+  for (let i = maxDataPoints - 1; i >= 0; i--) {
     const date = new Date();
-    date.setDate(date.getDate() - i);
+    date.setDate(date.getDate() - i * stepSize);
 
     // Generate realistic-looking data with some randomness
     const baseViews = Math.floor(Math.random() * 500) + 100;
@@ -244,26 +258,28 @@ function generateMockData(range: string): ProcessedAnalyticsData {
     });
   }
 
+  // Use smaller, more efficient data structures
+  const topPages = [
+    { page: "/", views: Math.floor(totalViews * 0.3) },
+    { page: "/directory", views: Math.floor(totalViews * 0.2) },
+    { page: "/entry/prompts", views: Math.floor(totalViews * 0.15) },
+    { page: "/pricing", views: Math.floor(totalViews * 0.1) },
+    { page: "/about", views: Math.floor(totalViews * 0.05) },
+  ];
+
+  const topReferrers = [
+    { referrer: "google.com", views: Math.floor(totalViews * 0.4) },
+    { referrer: "direct", views: Math.floor(totalViews * 0.2) },
+    { referrer: "twitter.com", views: Math.floor(totalViews * 0.15) },
+    { referrer: "github.com", views: Math.floor(totalViews * 0.1) },
+    { referrer: "reddit.com", views: Math.floor(totalViews * 0.05) },
+  ];
+
   return {
     chartData,
     totalViews,
     totalVisitors,
-    topPages: [
-      { page: "/", views: Math.floor(totalViews * 0.3) },
-      { page: "/directory", views: Math.floor(totalViews * 0.2) },
-      {
-        page: "/entry/ai-writing-prompts",
-        views: Math.floor(totalViews * 0.15),
-      },
-      { page: "/entry/business-prompts", views: Math.floor(totalViews * 0.1) },
-      { page: "/about", views: Math.floor(totalViews * 0.05) },
-    ],
-    topReferrers: [
-      { referrer: "google.com", views: Math.floor(totalViews * 0.4) },
-      { referrer: "twitter.com", views: Math.floor(totalViews * 0.2) },
-      { referrer: "direct", views: Math.floor(totalViews * 0.15) },
-      { referrer: "github.com", views: Math.floor(totalViews * 0.1) },
-      { referrer: "reddit.com", views: Math.floor(totalViews * 0.05) },
-    ],
+    topPages,
+    topReferrers,
   };
 }

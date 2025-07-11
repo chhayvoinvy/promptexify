@@ -1,10 +1,10 @@
+import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // Fix Supabase realtime-js webpack warnings
   webpack: (config, { isServer }) => {
     if (isServer) {
-      // Handle node-specific modules that cause webpack warnings
       config.externals = config.externals || [];
       config.externals.push({
         bufferutil: "bufferutil",
@@ -13,13 +13,38 @@ const nextConfig: NextConfig = {
       });
     }
 
-    // Ignore specific warnings from realtime-js
     config.ignoreWarnings = [
       { module: /node_modules\/@supabase\/realtime-js/ },
       { module: /node_modules\/node-gyp-build/ },
       { module: /node_modules\/bufferutil/ },
       { module: /node_modules\/utf-8-validate/ },
     ];
+
+    config.optimization = {
+      ...config.optimization,
+      splitChunks: {
+        ...config.optimization?.splitChunks,
+        cacheGroups: {
+          ...config.optimization?.splitChunks?.cacheGroups,
+          largeData: {
+            test: /[\\/](lib|components)[\\/](automation|analytics)[\\/]/,
+            name: "large-data",
+            chunks: "all",
+            priority: 10,
+            enforce: true,
+          },
+        },
+      },
+    };
+
+    // Add rule to handle large JSON/CSV data
+    config.module.rules.push({
+      test: /\.(json|csv)$/,
+      type: "asset/resource",
+      generator: {
+        filename: "static/data/[hash][ext]",
+      },
+    });
 
     return config;
   },
@@ -57,6 +82,50 @@ const nextConfig: NextConfig = {
         port: "",
         pathname: "/**",
       },
+      // DigitalOcean Spaces patterns
+      {
+        protocol: "https",
+        hostname: "*.digitaloceanspaces.com",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.nyc3.digitaloceanspaces.com",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.sfo3.digitaloceanspaces.com",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.ams3.digitaloceanspaces.com",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.sgp1.digitaloceanspaces.com",
+        port: "",
+        pathname: "/**",
+      },
+      // Generic CDN patterns
+      {
+        protocol: "https",
+        hostname: "*.cdn.digitalocean.com",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.cloudflare.com",
+        port: "",
+        pathname: "/**",
+      },
     ],
     formats: ["image/webp", "image/avif"],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
@@ -65,6 +134,10 @@ const nextConfig: NextConfig = {
   // Generate robots.txt and sitemap.xml, and handle local uploads
   async rewrites() {
     return [
+      {
+        source: "/preview/:path*",
+        destination: "/api/media/preview/:path*",
+      },
       {
         source: "/robots.txt",
         destination: "/robots.txt",
@@ -92,13 +165,49 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      // Global CORS headers for API routes
+      {
+        source: "/api/:path*",
+        headers: [
+          {
+            key: "Access-Control-Allow-Origin",
+            value: process.env.NEXT_PUBLIC_CORS_ALLOWED_ORIGIN || "*",
+          },
+          {
+            key: "Access-Control-Allow-Methods",
+            value: "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+          },
+          {
+            key: "Access-Control-Allow-Headers",
+            value: "Content-Type, Authorization, X-CSRF-Token",
+          },
+          {
+            key: "Access-Control-Max-Age",
+            value: "86400",
+          },
+        ],
+      },
     ];
   },
   eslint: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has ESLint errors.
     ignoreDuringBuilds: true,
+  },
+  turbopack: {
+    resolveAlias: {
+      "sanity/structure": "./node_modules/sanity/structure",
+    },
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  // Sentry configuration
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+
+  // Only print logs for uploading source maps in CI
+  silent: !process.env.CI,
+  widenClientFileUpload: false,
+  tunnelRoute: "/monitoring",
+  disableLogger: true,
+  automaticVercelMonitors: true,
+});

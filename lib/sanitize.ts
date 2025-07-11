@@ -383,14 +383,28 @@ export function sanitizeSearchQuery(
         `[SECURITY] Suspicious search pattern blocked: ${name} - ${sanitized}`
       );
 
-      // Log suspicious pattern if enabled
-      if (logSuspicious) {
+      // Log suspicious pattern if enabled (skip in Edge Runtime)
+      if (
+        logSuspicious &&
+        typeof process !== "undefined" &&
+        process.env.NEXT_RUNTIME !== "edge"
+      ) {
         // Dynamically import to avoid circular dependencies
-        import("@/lib/security-monitor").then(({ SecurityAlert }) => {
-          SecurityAlert.suspiciousSearchPattern(query, name, userId, ip).catch(
-            console.error
-          );
-        });
+        import("@/lib/monitor")
+          .then(({ SecurityAlert }) => {
+            SecurityAlert.suspiciousSearchPattern(
+              query,
+              name,
+              userId,
+              ip
+            ).catch(console.error);
+          })
+          .catch(() => {
+            // Fallback to console logging if monitor is unavailable
+            console.warn(
+              `[SECURITY] Suspicious search pattern: ${name} - User: ${userId} - IP: ${ip}`
+            );
+          });
       }
 
       return "";
@@ -515,6 +529,7 @@ function getSecurityHeaders() {
     "X-Frame-Options": "DENY",
     "X-XSS-Protection": "1; mode=block",
     "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
   };
 
   if (isProduction()) {
@@ -530,7 +545,7 @@ function getSecurityHeaders() {
       // Remove server information
       Server: "Promptexify",
       // Cache control for security
-      "Cache-Control": "no-cache, no-store, must-revalidate",
+      "Cache-Control": "no-store, no-cache, must-revalidate, private",
       Pragma: "no-cache",
       Expires: "0",
     };
@@ -552,23 +567,7 @@ function getSecurityHeaders() {
  */
 export const SECURITY_HEADERS = getSecurityHeaders();
 
-// Enhanced security headers for API responses
-export function getEnhancedSecurityHeaders() {
-  return {
-    ...getSecurityHeaders(),
-    "X-Content-Type-Options": "nosniff",
-    "X-Frame-Options": "DENY",
-    "X-XSS-Protection": "1; mode=block",
-    "Referrer-Policy": "strict-origin-when-cross-origin",
-    "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
-    "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
-    "Cache-Control": "no-store, no-cache, must-revalidate, private",
-    Pragma: "no-cache",
-    Expires: "0",
-  };
-}
 
-export const ENHANCED_SECURITY_HEADERS = getEnhancedSecurityHeaders();
 
 /**
  * Get rate limit configurations based on environment
@@ -584,6 +583,7 @@ export function getRateLimitConfig() {
       api: { limit: 60, window: 60 * 1000 }, // 60 requests per minute (stricter)
       search: { limit: 30, window: 60 * 1000 }, // 30 searches per minute (stricter)
       interactions: { limit: 100, window: 60 * 1000 }, // 100 interactions per minute (stricter)
+      mediaResolve: { limit: 100, window: 60 * 1000 }, // 100 media resolves per minute (stricter)
     };
   } else {
     // More lenient rate limits in development
@@ -595,6 +595,7 @@ export function getRateLimitConfig() {
       api: { limit: 200, window: 60 * 1000 }, // 200 requests per minute
       search: { limit: 100, window: 60 * 1000 }, // 100 searches per minute
       interactions: { limit: 500, window: 60 * 1000 }, // 500 interactions per minute
+      mediaResolve: { limit: 300, window: 60 * 1000 }, // 300 media resolves per minute (lenient)
     };
   }
 }

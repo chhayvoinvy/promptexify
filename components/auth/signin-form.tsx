@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, Mail } from "lucide-react";
+import { Loader2, Mail } from "@/components/ui/icons";
 
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";

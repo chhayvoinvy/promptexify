@@ -1,13 +1,13 @@
-import { getAllCategories, getPostById } from "@/lib/content";
+import { getAllCategories } from "@/lib/content";
 import { getCurrentUser } from "@/lib/auth";
 import { Suspense } from "react";
 import { PostMasonrySkeleton } from "@/components/post-masonry-skeleton";
-import { DirectoryFilters } from "@/components/directory-filters";
+import { DirectoryClientWrapper } from "@/components/directory-client-wrapper";
 import { Skeleton } from "@/components/ui/skeleton";
-import { InfinitePostGrid } from "@/components/infinite-scroll-grid";
 import { Container } from "@/components/ui/container";
-import { OptimizedQueries } from "@/lib/queries";
-import { PostModal } from "@/components/post-modal";
+import { Queries } from "@/lib/query";
+
+import { getSettingsAction } from "@/actions/settings";
 
 interface DirectoryPageProps {
   searchParams: Promise<{
@@ -15,13 +15,10 @@ interface DirectoryPageProps {
     category?: string;
     subcategory?: string;
     premium?: string;
-    entry?: string;
-    modal?: string;
   }>;
 }
 
-// Route segment config for better caching
-export const revalidate = 300; // Revalidate every 5 minutes (matches CACHE_DURATIONS.POSTS_LIST)
+export const dynamic = "force-dynamic";
 
 // Directory page skeleton that matches the full layout
 function DirectoryPageSkeleton() {
@@ -71,38 +68,27 @@ async function DirectoryContent({
 }: {
   searchParams: DirectoryPageProps["searchParams"];
 }) {
-  const [categories, params, currentUser] = await Promise.all([
+  const [categories, params, currentUser, settingsResult] = await Promise.all([
     getAllCategories(),
     searchParams,
     getCurrentUser(),
+    getSettingsAction(),
   ]);
+
+  const postsPageSize =
+    settingsResult?.success && settingsResult.data?.postsPageSize
+      ? settingsResult.data.postsPageSize
+      : 12;
 
   const {
     q: searchQuery,
     category: categoryFilter,
     subcategory: subcategoryFilter,
     premium: premiumFilter,
-    entry,
-    modal,
   } = params;
 
   const userId = currentUser?.userData?.id;
   const userType = currentUser?.userData?.type || null;
-
-  // Fetch the specific post if entry parameter is present
-  let selectedPost = null;
-  if (entry && modal === "true") {
-    try {
-      selectedPost = await getPostById(entry);
-      // Only show modal for published posts
-      if (!selectedPost?.isPublished) {
-        selectedPost = null;
-      }
-    } catch (error) {
-      console.error("Error fetching post for modal:", error);
-      selectedPost = null;
-    }
-  }
 
   // Determine category ID for filtering
   let categoryId: string | undefined;
@@ -132,18 +118,18 @@ async function DirectoryContent({
   let result;
   if (searchQuery && searchQuery.trim()) {
     // Use search query
-    result = await OptimizedQueries.posts.search(searchQuery, {
+    result = await Queries.posts.search(searchQuery, {
       page: 1,
-      limit: 24, // Load more for initial view
+      limit: postsPageSize, // Use setting
       userId,
       categoryId,
       isPremium,
     });
   } else {
     // Use paginated query
-    result = await OptimizedQueries.posts.getPaginated({
+    result = await Queries.posts.getPaginated({
       page: 1,
-      limit: 24, // Load more for initial view
+      limit: postsPageSize, // Use setting
       userId,
       categoryId,
       isPremium,
@@ -154,78 +140,19 @@ async function DirectoryContent({
   const { data: posts, pagination } = result;
 
   return (
-    <Container>
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-4">Prompt Directory</h1>
-        <p className="text-muted-foreground text-lg max-w-2xl">
-          Discover and explore our curated collection of AI prompts. Find the
-          perfect prompt for your creative and professional needs.
-        </p>
-      </div>
-
-      {/* Filters */}
-      <div className="mb-6">
-        <DirectoryFilters categories={categories} />
-      </div>
-
-      {/* Results Summary */}
-      <div className="mb-6 flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {searchQuery ? (
-            <>
-              Found {pagination.totalCount} result
-              {pagination.totalCount !== 1 ? "s" : ""} for &quot;{searchQuery}
-              &quot;
-            </>
-          ) : (
-            <>
-              Showing {pagination.totalCount} prompt
-              {pagination.totalCount !== 1 ? "s" : ""}
-              {((categoryFilter && categoryFilter !== "all") ||
-                (subcategoryFilter && subcategoryFilter !== "all")) && (
-                <>
-                  {" "}
-                  {subcategoryFilter && subcategoryFilter !== "all" ? (
-                    <>
-                      in{" "}
-                      {categories.find((c) => c.slug === subcategoryFilter)
-                        ?.name || subcategoryFilter}
-                    </>
-                  ) : (
-                    <>
-                      in{" "}
-                      {categories.find((c) => c.slug === categoryFilter)
-                        ?.name || categoryFilter}
-                    </>
-                  )}
-                </>
-              )}
-            </>
-          )}
-        </p>
-        {pagination.totalCount > 0 && (
-          <p className="text-xs text-muted-foreground">
-            {pagination.hasNextPage
-              ? `Showing first ${posts.length} of ${pagination.totalCount}`
-              : `All ${pagination.totalCount} results`}
-          </p>
-        )}
-      </div>
-
-      {/* Posts Grid with Infinite Scroll */}
-      <InfinitePostGrid
-        initialPosts={posts as any} // eslint-disable-line @typescript-eslint/no-explicit-any
-        hasNextPage={pagination.hasNextPage}
-        totalCount={pagination.totalCount}
-        userType={userType}
-      />
-
-      {/* Modal overlay when entry parameter is present */}
-      {selectedPost && modal === "true" && (
-        <PostModal post={selectedPost} userType={userType} />
-      )}
-    </Container>
+    <DirectoryClientWrapper
+      categories={categories}
+      initialPosts={posts}
+      hasNextPage={pagination.hasNextPage}
+      totalCount={pagination.totalCount}
+      userType={userType}
+      pageSize={postsPageSize}
+      searchQuery={searchQuery}
+      categoryFilter={categoryFilter}
+      subcategoryFilter={subcategoryFilter}
+      premiumFilter={premiumFilter}
+      pagination={pagination}
+    />
   );
 }
 

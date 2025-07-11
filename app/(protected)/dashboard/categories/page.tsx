@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Folder } from "lucide-react";
+import { Plus, Folder } from "@/components/ui/icons";
 import Link from "next/link";
 import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
@@ -72,60 +72,6 @@ export default async function CategoriesManagementPage() {
                 New Category
               </Button>
             </Link>
-          </div>
-
-          {/* Statistics Cards */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Categories
-                </CardTitle>
-                <Folder className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{categories.length}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Parent Categories
-                </CardTitle>
-                <Folder className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {parentCategories.length}
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Sub Categories
-                </CardTitle>
-                <Folder className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {childCategories.length}
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Posts
-                </CardTitle>
-                <Folder className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {categories.reduce((sum, cat) => sum + cat._count.posts, 0)}
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
           {/* Parent Categories */}
@@ -203,7 +149,7 @@ export default async function CategoriesManagementPage() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Slug</TableHead>
-                    <TableHead>Parent Category</TableHead>
+                    <TableHead>Parent</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead>Posts</TableHead>
                     <TableHead>Created</TableHead>
@@ -223,7 +169,7 @@ export default async function CategoriesManagementPage() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary">
-                          {category.parent?.name}
+                          {category.parent?.name || "Unknown"}
                         </Badge>
                       </TableCell>
                       <TableCell>

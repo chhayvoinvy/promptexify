@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { type Icon } from "@tabler/icons-react";
+import { type Icon } from "@/components/ui/icons";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 

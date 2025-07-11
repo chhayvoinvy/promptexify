@@ -1,5 +1,5 @@
 import { defineField, defineType } from "sanity";
-import { FileText, Eye, EyeOff } from "lucide-react";
+import { FileText, Eye, EyeOff } from "@/components/ui/icons";
 
 export const page = defineType({
   name: "page",

@@ -1,13 +1,13 @@
 "use server";
 
-import { PostStatus } from "@/lib/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { handleAuthRedirect } from "./auth";
 import { revalidateCache, CACHE_TAGS } from "@/lib/cache";
-import { withCSRFProtection } from "@/lib/security";
+import { PostStatus } from "@/app/generated/prisma";
+import { withCSRFProtection } from "@/lib/csp";
 
 import {
   sanitizeInput,
@@ -36,8 +36,11 @@ export const createPostAction = withCSRFProtection(
       const rawSlug = formData.get("slug") as string;
       const rawDescription = formData.get("description") as string;
       const rawContent = formData.get("content") as string;
-      const featuredImage = formData.get("featuredImage") as string;
-      const featuredVideo = formData.get("featuredVideo") as string;
+      const uploadPath = formData.get("uploadPath") as string;
+      const uploadFileType = formData.get("uploadFileType") as "IMAGE" | "VIDEO";
+      const blurData = formData.get("blurData") as string;
+      const uploadMediaId = formData.get("uploadMediaId") as string;
+      const previewPath = formData.get("previewPath") as string;
       const category = formData.get("category") as string;
       const subcategory = formData.get("subcategory") as string;
       const tags = formData.get("tags") as string;
@@ -96,6 +99,15 @@ export const createPostAction = withCSRFProtection(
             .map((tag) => sanitizeInput(tag.trim()))
             .filter(Boolean)
         : [];
+
+      // Enforce max tags per post according to settings
+      const maxTagsPerPost = await (
+        await import("@/lib/settings")
+      ).getMaxTagsPerPost();
+      if (tagNames.length > maxTagsPerPost) {
+        throw new Error(`A post may only have up to ${maxTagsPerPost} tags`);
+      }
+
       const tagConnections = [];
 
       for (const tagName of tagNames) {
@@ -115,14 +127,16 @@ export const createPostAction = withCSRFProtection(
       }
 
       // Create the post
-      await prisma.post.create({
+      const newPost = await prisma.post.create({
         data: {
           title,
           slug,
           description: description || null,
           content,
-          featuredImage: featuredImage || null,
-          featuredVideo: featuredVideo || null,
+          uploadPath: uploadPath || null,
+          uploadFileType: uploadFileType || null,
+          previewPath: previewPath || null,
+          blurData: blurData || null,
           isPremium,
           isPublished,
           status: status,
@@ -133,6 +147,23 @@ export const createPostAction = withCSRFProtection(
           },
         },
       });
+
+      // Link media to the post
+      const mediaIds = [uploadMediaId].filter(Boolean);
+      if (mediaIds.length > 0) {
+        await prisma.media.updateMany({
+          where: {
+            id: {
+              in: mediaIds,
+            },
+            // Ensure we don't overwrite another post's media
+            postId: null,
+          },
+          data: {
+            postId: newPost.id,
+          },
+        });
+      }
 
       // Revalidate cache tags for new post and tags (since tags may have been created)
       revalidateCache([
@@ -167,6 +198,7 @@ export const createPostAction = withCSRFProtection(
   }
 );
 
+// Update post action
 export const updatePostAction = withCSRFProtection(
   async (formData: FormData) => {
     try {
@@ -183,8 +215,11 @@ export const updatePostAction = withCSRFProtection(
       const slug = formData.get("slug") as string;
       const description = formData.get("description") as string;
       const content = formData.get("content") as string;
-      const featuredImage = formData.get("featuredImage") as string;
-      const featuredVideo = formData.get("featuredVideo") as string;
+      const uploadPath = formData.get("uploadPath") as string;
+      const uploadFileType = formData.get("uploadFileType") as "IMAGE" | "VIDEO";
+      const blurData = formData.get("blurData") as string;
+      const uploadMediaId = formData.get("uploadMediaId") as string;
+      const previewPath = formData.get("previewPath") as string;
       const category = formData.get("category") as string;
       const subcategory = formData.get("subcategory") as string;
       const tags = formData.get("tags") as string;
@@ -200,6 +235,7 @@ export const updatePostAction = withCSRFProtection(
         where: { id },
         include: {
           author: true,
+          media: true,
         },
       });
 
@@ -258,16 +294,56 @@ export const updatePostAction = withCSRFProtection(
         throw new Error("Invalid category");
       }
 
-      // Process tags
-      const tagNames = tags
+      // Prepare media updates
+      const newMediaIds = [uploadMediaId].filter(
+        (id) => id && typeof id === "string"
+      );
+      const oldMediaIds = existingPost.media.map((m) => m.id);
+
+      // IDs of media to be disassociated from the post
+      const mediaToUnlink = oldMediaIds.filter(
+        (id) => !newMediaIds.includes(id)
+      );
+
+      // IDs of media to be newly associated with the post
+      const mediaToLink = newMediaIds.filter((id) => !oldMediaIds.includes(id));
+
+      // Disassociate old media that is no longer used
+      if (mediaToUnlink.length > 0) {
+        await prisma.media.updateMany({
+          where: {
+            id: {
+              in: mediaToUnlink,
+            },
+            postId: existingPost.id,
+          },
+          data: {
+            postId: null,
+          },
+        });
+      }
+
+      // Process and sanitize tags, and disconnect old tags
+      const newTagNames = tags
         ? tags
             .split(",")
             .map((tag) => tag.trim())
             .filter(Boolean)
         : [];
-      const tagConnections = [];
 
-      for (const tagName of tagNames) {
+      // Enforce max tags per post according to settings
+      const maxTagsPerPostUpdate = await (
+        await import("@/lib/settings")
+      ).getMaxTagsPerPost();
+      if (newTagNames.length > maxTagsPerPostUpdate) {
+        throw new Error(
+          `A post may only have up to ${maxTagsPerPostUpdate} tags`
+        );
+      }
+
+      const newTagConnections = [];
+
+      for (const tagName of newTagNames) {
         const tagSlug = tagName.toLowerCase().replace(/\s+/g, "-");
         const tag = await prisma.tag.upsert({
           where: { slug: tagSlug },
@@ -277,42 +353,74 @@ export const updatePostAction = withCSRFProtection(
             slug: tagSlug,
           },
         });
-        tagConnections.push({ id: tag.id });
+        newTagConnections.push({ id: tag.id });
       }
 
       // Update the post
-      await prisma.post.update({
+      const updatedPost = await prisma.post.update({
         where: { id },
         data: {
           title,
           slug,
           description: description || null,
           content,
-          featuredImage: featuredImage || null,
-          featuredVideo: featuredVideo || null,
+          uploadPath: uploadPath || null,
+          uploadFileType: uploadFileType || null,
+          previewPath: previewPath || null,
+          blurData: blurData || null,
           isPremium,
           isPublished,
           status: status,
           categoryId: categoryRecord.id,
           tags: {
-            set: tagConnections,
+            set: newTagConnections,
           },
           updatedAt: new Date(),
         },
       });
 
+      // Associate new media with the post
+      if (mediaToLink.length > 0) {
+        await prisma.media.updateMany({
+          where: {
+            id: {
+              in: mediaToLink,
+            },
+            postId: null, // Only link unassociated media
+          },
+          data: {
+            postId: updatedPost.id,
+          },
+        });
+      }
+
+      // Associate new media with the post
+      if (mediaToLink.length > 0) {
+        await prisma.media.updateMany({
+          where: {
+            id: {
+              in: mediaToLink,
+            },
+            postId: null, // Only link unassociated media
+          },
+          data: {
+            postId: updatedPost.id,
+          },
+        });
+      }
+
       revalidatePath("/dashboard/posts");
-      revalidatePath(`/entry/${id}`);
-      // Revalidate cache tags for updated post and tags (since tags may have been created during updates)
+      // Removed entry path revalidation to prevent modal performance issues
+      // Ensure caches are also invalidated to reflect new status
       revalidateCache([
         CACHE_TAGS.POSTS,
-        CACHE_TAGS.POST_BY_SLUG,
         CACHE_TAGS.POST_BY_ID,
-        CACHE_TAGS.TAGS, // Important: Invalidate tags cache when new tags are created during updates
-        CACHE_TAGS.CATEGORIES, // Important: Invalidate categories cache when post category changes
+        CACHE_TAGS.POST_BY_SLUG,
+        CACHE_TAGS.CATEGORIES,
+        CACHE_TAGS.TAGS,
         CACHE_TAGS.SEARCH_RESULTS,
-        CACHE_TAGS.USER_POSTS, // Important: Invalidate user posts cache
-        CACHE_TAGS.ANALYTICS, // Important: Invalidate analytics for dashboard stats
+        CACHE_TAGS.USER_POSTS,
+        CACHE_TAGS.ANALYTICS,
       ]);
 
       redirect("/dashboard/posts");
@@ -335,6 +443,7 @@ export const updatePostAction = withCSRFProtection(
   }
 );
 
+// Approve post action
 export async function approvePostAction(postId: string) {
   try {
     // Get the current user
@@ -379,19 +488,17 @@ export async function approvePostAction(postId: string) {
 
     // Revalidate relevant paths and caches
     revalidatePath("/dashboard/posts");
-    revalidatePath(`/entry/${postId}`);
-    revalidatePath(`/dashboard/posts/edit/${postId}`); // Important: Revalidate edit page
-    revalidatePath("/"); // Home page might show published posts
-
-    // Invalidate cache for this specific post so edit page shows updated status
+    // Removed entry path revalidation to prevent modal performance issues
+    // Ensure caches are also invalidated to reflect new status
     revalidateCache([
       CACHE_TAGS.POSTS,
       CACHE_TAGS.POST_BY_ID,
       CACHE_TAGS.POST_BY_SLUG,
-      CACHE_TAGS.CATEGORIES, // Important: Invalidate categories cache when post deleted affects counts
+      CACHE_TAGS.CATEGORIES,
+      CACHE_TAGS.TAGS,
       CACHE_TAGS.SEARCH_RESULTS,
-      CACHE_TAGS.USER_POSTS, // Important: Invalidate user posts cache
-      CACHE_TAGS.ANALYTICS, // Important: Invalidate analytics for dashboard stats
+      CACHE_TAGS.USER_POSTS,
+      CACHE_TAGS.ANALYTICS,
     ]);
 
     return {
@@ -406,25 +513,25 @@ export async function approvePostAction(postId: string) {
   }
 }
 
+// Reject post action
 export async function rejectPostAction(postId: string) {
   try {
-    // Get the current user
+    // Ensure we have an authenticated user
     const currentUser = await getCurrentUser();
     if (!currentUser?.userData) {
       handleAuthRedirect();
     }
 
-    // Check admin permission
+    // Only admins can reject posts
     if (currentUser.userData.role !== "ADMIN") {
       throw new Error("Unauthorized: Admin access required");
     }
 
-    // Validate post ID
     if (!postId || typeof postId !== "string") {
       throw new Error("Invalid post ID");
     }
 
-    // Get current post status
+    // Fetch current status
     const existingPost = await prisma.post.findUnique({
       where: { id: postId },
       select: { id: true, status: true, title: true },
@@ -435,37 +542,36 @@ export async function rejectPostAction(postId: string) {
     }
 
     if (existingPost.status !== "PENDING_APPROVAL") {
-      throw new Error("Post is not pending approval");
+      throw new Error("Only posts pending approval can be rejected");
     }
 
-    // Reject the post
     await prisma.post.update({
       where: { id: postId },
       data: {
+        isPublished: false,
         status: PostStatus.REJECTED,
         updatedAt: new Date(),
       },
     });
 
-    // Revalidate relevant paths and caches
+    // Revalidate relevant caches
     revalidatePath("/dashboard/posts");
-    revalidatePath(`/dashboard/posts/edit/${postId}`); // Important: Revalidate edit page
-
-    // Invalidate cache for this specific post so edit page shows updated status
+    // Removed entry path revalidations to prevent modal performance issues
     revalidateCache([
       CACHE_TAGS.POSTS,
       CACHE_TAGS.POST_BY_ID,
       CACHE_TAGS.POST_BY_SLUG,
-      CACHE_TAGS.CATEGORIES, // Important: Invalidate categories cache when post deleted affects counts
+      CACHE_TAGS.CATEGORIES,
+      CACHE_TAGS.TAGS,
       CACHE_TAGS.SEARCH_RESULTS,
-      CACHE_TAGS.USER_POSTS, // Important: Invalidate user posts cache
-      CACHE_TAGS.ANALYTICS, // Important: Invalidate analytics for dashboard stats
+      CACHE_TAGS.USER_POSTS,
+      CACHE_TAGS.ANALYTICS,
     ]);
 
     return {
       success: true,
-      message: `Post "${existingPost.title}" rejected`,
-    };
+      message: `Post "${existingPost.title}" rejected successfully`,
+    } as const;
   } catch (error) {
     console.error("Error rejecting post:", error);
     throw new Error(
@@ -474,167 +580,21 @@ export async function rejectPostAction(postId: string) {
   }
 }
 
-export async function togglePostPublishAction(postId: string) {
-  try {
-    // Get the current user
-    const currentUser = await getCurrentUser();
-    if (!currentUser?.userData) {
-      handleAuthRedirect();
-    }
-
-    // Check admin permission
-    if (currentUser.userData.role !== "ADMIN") {
-      throw new Error("Unauthorized: Admin access required");
-    }
-
-    // Validate post ID
-    if (!postId || typeof postId !== "string") {
-      throw new Error("Invalid post ID");
-    }
-
-    // Get current post status
-    const existingPost = await prisma.post.findUnique({
-      where: { id: postId },
-      select: { id: true, isPublished: true, status: true, title: true },
-    });
-
-    if (!existingPost) {
-      throw new Error("Post not found");
-    }
-
-    // Toggle the published status and update status accordingly
-    const newPublishedState = !existingPost.isPublished;
-    const newStatus = newPublishedState
-      ? PostStatus.APPROVED
-      : PostStatus.DRAFT;
-
-    await prisma.post.update({
-      where: { id: postId },
-      data: {
-        isPublished: newPublishedState,
-        status: newStatus,
-        updatedAt: new Date(),
-      },
-    });
-
-    // Revalidate relevant paths and caches
-    revalidatePath("/dashboard/posts");
-    revalidatePath(`/entry/${postId}`);
-    revalidatePath(`/dashboard/posts/edit/${postId}`); // Important: Revalidate edit page
-    revalidatePath("/"); // Home page might show published posts
-
-    // Invalidate cache for this specific post so edit page shows updated status
-    revalidateCache([
-      CACHE_TAGS.POSTS,
-      CACHE_TAGS.POST_BY_ID,
-      CACHE_TAGS.POST_BY_SLUG,
-      CACHE_TAGS.CATEGORIES, // Important: Invalidate categories cache when post deleted affects counts
-      CACHE_TAGS.SEARCH_RESULTS,
-      CACHE_TAGS.USER_POSTS, // Important: Invalidate user posts cache
-      CACHE_TAGS.ANALYTICS, // Important: Invalidate analytics for dashboard stats
-    ]);
-
-    return {
-      success: true,
-      message: `Post ${
-        existingPost.isPublished ? "unpublished" : "published"
-      } successfully`,
-    };
-  } catch (error) {
-    console.error("Error toggling post publish status:", error);
-    throw new Error(
-      error instanceof Error ? error.message : "Failed to update post status"
-    );
-  }
-}
-
-export async function togglePostFeaturedAction(postId: string) {
-  try {
-    // Get the current user
-    const currentUser = await getCurrentUser();
-    if (!currentUser?.userData) {
-      handleAuthRedirect();
-    }
-
-    // Check admin permission
-    if (currentUser.userData.role !== "ADMIN") {
-      throw new Error("Unauthorized: Admin access required");
-    }
-
-    // Validate post ID
-    if (!postId || typeof postId !== "string") {
-      throw new Error("Invalid post ID");
-    }
-
-    // Get current post featured status
-    const existingPost = await prisma.post.findUnique({
-      where: { id: postId },
-      select: { id: true, isFeatured: true, title: true },
-    });
-
-    if (!existingPost) {
-      throw new Error("Post not found");
-    }
-
-    // Toggle the featured status
-    const newFeaturedState = !existingPost.isFeatured;
-
-    await prisma.post.update({
-      where: { id: postId },
-      data: {
-        isFeatured: newFeaturedState,
-        updatedAt: new Date(),
-      },
-    });
-
-    // Revalidate relevant paths and caches
-    revalidatePath("/dashboard/posts");
-    revalidatePath(`/entry/${postId}`);
-    revalidatePath(`/dashboard/posts/edit/${postId}`); // Important: Revalidate edit page
-    revalidatePath("/"); // Home page might show featured posts
-
-    // Invalidate cache for this specific post so edit page shows updated status
-    revalidateCache([
-      CACHE_TAGS.POSTS,
-      CACHE_TAGS.POST_BY_ID,
-      CACHE_TAGS.POST_BY_SLUG,
-      CACHE_TAGS.CATEGORIES, // Important: Invalidate categories cache when post deleted affects counts
-      CACHE_TAGS.SEARCH_RESULTS,
-      CACHE_TAGS.USER_POSTS, // Important: Invalidate user posts cache
-      CACHE_TAGS.ANALYTICS, // Important: Invalidate analytics for dashboard stats
-    ]);
-
-    return {
-      success: true,
-      message: `Post ${
-        existingPost.isFeatured ? "unfeatured" : "featured"
-      } successfully`,
-    };
-  } catch (error) {
-    console.error("Error toggling post featured status:", error);
-    throw new Error(
-      error instanceof Error
-        ? error.message
-        : "Failed to update post featured status"
-    );
-  }
-}
-
+// Delete post action
 export async function deletePostAction(postId: string) {
   try {
-    // Get the current user
     const currentUser = await getCurrentUser();
     if (!currentUser?.userData) {
       handleAuthRedirect();
     }
+
     const user = currentUser.userData;
 
-    // Validate post ID
     if (!postId || typeof postId !== "string") {
       throw new Error("Invalid post ID");
     }
 
-    // Check if post exists and get author info
+    // Fetch post to verify permissions and get associated media
     const existingPost = await prisma.post.findUnique({
       where: { id: postId },
       select: {
@@ -643,6 +603,17 @@ export async function deletePostAction(postId: string) {
         authorId: true,
         isPublished: true,
         status: true,
+        uploadPath: true,
+        uploadFileType: true,
+        previewPath: true,
+        media: {
+          select: {
+            id: true,
+            relativePath: true,
+            mimeType: true,
+            filename: true,
+          },
+        },
         _count: {
           select: {
             bookmarks: true,
@@ -680,26 +651,105 @@ export async function deletePostAction(postId: string) {
       throw new Error("Unauthorized: Invalid user role");
     }
 
-    // Delete post and all related data (cascading delete should handle this)
-    // The database schema should handle the cascade deletion of related records
+    // Delete associated media files from storage before deleting the post
+    const mediaDeletePromises: Promise<boolean>[] = [];
+
+    // Delete media from the Media table
+    for (const media of existingPost.media) {
+      try {
+        // Import storage functions dynamically to avoid circular imports
+        const { deleteImage, deleteVideo, getPublicUrl } = await import("@/lib/image/storage");
+        
+        // Get the full URL for deletion
+        const fullUrl = await getPublicUrl(media.relativePath);
+        
+        if (media.mimeType.startsWith("image/")) {
+          mediaDeletePromises.push(deleteImage(fullUrl));
+        } else if (media.mimeType.startsWith("video/")) {
+          mediaDeletePromises.push(deleteVideo(fullUrl));
+        }
+      } catch (error) {
+        console.error(`Failed to delete media file ${media.relativePath}:`, error);
+        // Continue with other deletions even if one fails
+      }
+    }
+
+    // Delete legacy media files if they exist (uploadPath from post)
+    if (existingPost.uploadPath) {
+      try {
+        const { deleteImage, deleteVideo, getPublicUrl } = await import("@/lib/image/storage");
+        const fullUrl = await getPublicUrl(existingPost.uploadPath);
+        
+        if (existingPost.uploadFileType === "IMAGE") {
+          mediaDeletePromises.push(deleteImage(fullUrl));
+        } else if (existingPost.uploadFileType === "VIDEO") {
+          mediaDeletePromises.push(deleteVideo(fullUrl));
+        }
+      } catch (error) {
+        console.error(`Failed to delete legacy upload file ${existingPost.uploadPath}:`, error);
+      }
+    }
+
+    // Delete preview file if it exists
+    if (existingPost.previewPath) {
+      try {
+        const { deleteImage, getPublicUrl } = await import("@/lib/image/storage");
+        const previewUrl = await getPublicUrl(existingPost.previewPath);
+        mediaDeletePromises.push(deleteImage(previewUrl));
+      } catch (error) {
+        console.error(`Failed to delete preview file ${existingPost.previewPath}:`, error);
+      }
+    }
+
+    // Wait for all media deletions to complete (with timeout)
+    if (mediaDeletePromises.length > 0) {
+      try {
+        const results = await Promise.allSettled(mediaDeletePromises);
+        const failedDeletions = results.filter(
+          (result) => result.status === "rejected" || result.value === false
+        ).length;
+
+        if (failedDeletions > 0) {
+          console.warn(
+            `${failedDeletions} out of ${mediaDeletePromises.length} media files failed to delete from storage`
+          );
+        } else {
+          console.log(
+            `Successfully deleted ${mediaDeletePromises.length} media files from storage`
+          );
+        }
+      } catch (error) {
+        console.error("Error during media file deletion:", error);
+        // Continue with post deletion even if media deletion fails
+      }
+    }
+
+    // Delete media records from database before deleting the post
+    if (existingPost.media.length > 0) {
+      await prisma.media.deleteMany({
+        where: { postId: postId },
+      });
+      console.log(`Deleted ${existingPost.media.length} media records from database`);
+    }
+
+    // Delete post and all related data (cascading delete should handle other relations)
     await prisma.post.delete({
       where: { id: postId },
     });
 
-    // Revalidate relevant paths and caches
     revalidatePath("/dashboard/posts");
-    revalidatePath("/"); // Home page might show this post
-    revalidatePath("/directory"); // Directory page might show this post
-
-    // Invalidate cache since post has been deleted
+    revalidatePath("/");
+    revalidatePath("/directory");
+    // Removed entry path revalidation to prevent modal performance issues
     revalidateCache([
       CACHE_TAGS.POSTS,
       CACHE_TAGS.POST_BY_ID,
       CACHE_TAGS.POST_BY_SLUG,
-      CACHE_TAGS.CATEGORIES, // Important: Invalidate categories cache when post deleted affects counts
+      CACHE_TAGS.CATEGORIES,
+      CACHE_TAGS.TAGS,
       CACHE_TAGS.SEARCH_RESULTS,
-      CACHE_TAGS.USER_POSTS, // Important: Invalidate user posts cache
-      CACHE_TAGS.ANALYTICS, // Important: Invalidate analytics for dashboard stats
+      CACHE_TAGS.USER_POSTS,
+      CACHE_TAGS.ANALYTICS,
     ]);
 
     return {
@@ -710,6 +760,195 @@ export async function deletePostAction(postId: string) {
     console.error("Error deleting post:", error);
     throw new Error(
       error instanceof Error ? error.message : "Failed to delete post"
+    );
+  }
+}
+
+// Toggle post publish action
+export async function togglePostPublishAction(postId: string) {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.userData) {
+      handleAuthRedirect();
+    }
+
+    // Only admins can publish/unpublish posts
+    if (currentUser.userData.role !== "ADMIN") {
+      throw new Error("Unauthorized: Admin access required");
+    }
+
+    if (!postId || typeof postId !== "string") {
+      throw new Error("Invalid post ID");
+    }
+
+    // Fetch the post to toggle
+    const existingPost = await prisma.post.findUnique({
+      where: { id: postId },
+      select: { id: true, isPublished: true, title: true },
+    });
+
+    if (!existingPost) {
+      throw new Error("Post not found");
+    }
+
+    // Toggle the published status and update status accordingly
+    const newPublishedState = !existingPost.isPublished;
+    const newStatus = newPublishedState
+      ? PostStatus.APPROVED
+      : PostStatus.DRAFT;
+
+    await prisma.post.update({
+      where: { id: postId },
+      data: {
+        isPublished: newPublishedState,
+        status: newStatus,
+        updatedAt: new Date(),
+      },
+    });
+
+    // Revalidate relevant paths and caches
+    revalidatePath("/dashboard/posts");
+    // Removed entry path revalidation to prevent modal performance issues
+    revalidatePath("/"); // Home page might show published posts
+
+    // Invalidate cache for this specific post so edit page shows updated status
+    revalidateCache([
+      CACHE_TAGS.POSTS,
+      CACHE_TAGS.POST_BY_ID,
+      CACHE_TAGS.POST_BY_SLUG,
+      CACHE_TAGS.CATEGORIES,
+      CACHE_TAGS.TAGS,
+      CACHE_TAGS.SEARCH_RESULTS,
+      CACHE_TAGS.USER_POSTS,
+      CACHE_TAGS.ANALYTICS,
+    ]);
+
+    return {
+      success: true,
+      message: `Post ${
+        existingPost.isPublished ? "unpublished" : "published"
+      } successfully`,
+    };
+  } catch (error) {
+    console.error("Error toggling post publish status:", error);
+    throw new Error(
+      error instanceof Error ? error.message : "Failed to update post status"
+    );
+  }
+}
+
+// Toggle post featured action
+export async function togglePostFeaturedAction(postId: string) {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.userData) {
+      handleAuthRedirect();
+    }
+
+    if (currentUser.userData.role !== "ADMIN") {
+      throw new Error("Unauthorized: Admin access required");
+    }
+
+    if (!postId || typeof postId !== "string") {
+      throw new Error("Invalid post ID");
+    }
+
+    const existingPost = await prisma.post.findUnique({
+      where: { id: postId },
+      select: { id: true, isFeatured: true, title: true },
+    });
+
+    if (!existingPost) {
+      throw new Error("Post not found");
+    }
+
+    const newFeaturedState = !existingPost.isFeatured;
+
+    await prisma.post.update({
+      where: { id: postId },
+      data: {
+        isFeatured: newFeaturedState,
+        updatedAt: new Date(),
+      },
+    });
+
+    revalidatePath("/dashboard/posts");
+    // Removed entry path revalidations to prevent modal performance issues
+    revalidatePath("/");
+    revalidateCache([
+      CACHE_TAGS.POSTS,
+      CACHE_TAGS.POST_BY_ID,
+      CACHE_TAGS.POST_BY_SLUG,
+      CACHE_TAGS.CATEGORIES,
+      CACHE_TAGS.TAGS,
+      CACHE_TAGS.SEARCH_RESULTS,
+      CACHE_TAGS.USER_POSTS,
+      CACHE_TAGS.ANALYTICS,
+    ]);
+
+    return {
+      success: true,
+      message: `Post ${
+        existingPost.isFeatured ? "unfeatured" : "featured"
+      } successfully`,
+    };
+  } catch (error) {
+    console.error("Error toggling post featured status:", error);
+    throw new Error(
+      error instanceof Error
+        ? error.message
+        : "Failed to update post featured status"
+    );
+  }
+}
+
+// Cleanup orphaned media action
+export async function cleanupOrphanedMediaAction(dryRun: boolean = true) {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.userData) {
+      handleAuthRedirect();
+    }
+
+    // Only admins can run cleanup
+    if (currentUser.userData.role !== "ADMIN") {
+      throw new Error("Unauthorized: Admin access required");
+    }
+
+    // Import cleanup function
+    const { cleanupOrphanedMedia } = await import("@/lib/image/storage");
+    
+    // Run cleanup
+    const result = await cleanupOrphanedMedia(dryRun);
+
+    const message = dryRun
+      ? `Found ${result.orphanedCount} orphaned media files that can be cleaned up`
+      : `Successfully cleaned up ${result.deletedCount} out of ${result.orphanedCount} orphaned media files`;
+
+    // Revalidate relevant paths if actual cleanup was performed
+    if (!dryRun && result.deletedCount > 0) {
+      revalidatePath("/dashboard/settings");
+      revalidateCache([
+        CACHE_TAGS.POSTS,
+        CACHE_TAGS.POST_BY_ID,
+        CACHE_TAGS.POST_BY_SLUG,
+      ]);
+    }
+
+    return {
+      success: true,
+      message,
+      data: {
+        orphanedCount: result.orphanedCount,
+        deletedCount: result.deletedCount,
+        errors: result.errors,
+        dryRun,
+      },
+    };
+  } catch (error) {
+    console.error("Error in cleanup orphaned media action:", error);
+    throw new Error(
+      error instanceof Error ? error.message : "Failed to cleanup orphaned media"
     );
   }
 }

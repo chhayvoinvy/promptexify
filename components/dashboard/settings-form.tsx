@@ -54,7 +54,7 @@ import {
   Settings2,
   Save,
   RotateCcw,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import {
   getSettingsAction,
   updateSettingsAction,
@@ -94,6 +94,8 @@ const settingsFormSchema = z.object({
   maxTagsPerPost: z.number().min(1).max(100),
   enableCaptcha: z.boolean(),
   requireApproval: z.boolean(),
+  postsPageSize: z.number().min(6).max(100),
+  featuredPostsLimit: z.number().min(1).max(50),
 
   // Security & Rate Limiting
   maxPostsPerDay: z.number().min(1).max(1000),
@@ -134,6 +136,8 @@ export function SettingsForm() {
       maxPostsPerDay: 10,
       maxUploadsPerHour: 20,
       enableAuditLogging: true,
+      postsPageSize: 12,
+      featuredPostsLimit: 12,
     },
   });
 
@@ -170,6 +174,8 @@ export function SettingsForm() {
             maxPostsPerDay: settings.maxPostsPerDay,
             maxUploadsPerHour: settings.maxUploadsPerHour,
             enableAuditLogging: settings.enableAuditLogging,
+            postsPageSize: settings.postsPageSize,
+            featuredPostsLimit: settings.featuredPostsLimit,
           });
         }
       } catch (error) {
@@ -684,7 +690,7 @@ export function SettingsForm() {
                               Enable Compression
                             </FormLabel>
                             <FormDescription>
-                              Automatically compress images to AVIF format
+                              Automatically compress images to WebP format
                             </FormDescription>
                           </div>
                           <FormControl>
@@ -743,29 +749,82 @@ export function SettingsForm() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="maxTagsPerPost"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Max Tags Per Post: {field.value}</FormLabel>
-                      <FormControl>
-                        <Slider
-                          value={[field.value]}
-                          onValueChange={(value) => field.onChange(value[0])}
-                          max={100}
-                          min={1}
-                          step={1}
-                          className="w-full"
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Maximum number of tags allowed per post
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid gap-6 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="maxTagsPerPost"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Max Tags Per Post: {field.value}</FormLabel>
+                        <FormControl>
+                          <Slider
+                            value={[field.value]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                            max={100}
+                            min={1}
+                            step={1}
+                            className="w-full"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Maximum tags allowed per post
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="postsPageSize"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Posts per page: {field.value}</FormLabel>
+                        <FormControl>
+                          <Slider
+                            value={[field.value]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                            max={100}
+                            min={6}
+                            step={1}
+                            className="w-full"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Number of posts to show per page in the directory
+                          (6-100)
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid gap-6 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="featuredPostsLimit"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Featured Posts Limit: {field.value}</FormLabel>
+                        <FormControl>
+                          <Slider
+                            value={[field.value]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                            max={50}
+                            min={1}
+                            step={1}
+                            className="w-full"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Number of featured posts to show on homepage (1-50)
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <FormField

@@ -1,10 +1,54 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { deleteImage, extractImageFilename } from "@/lib/storage";
+import { deleteImage, getStorageConfig } from "@/lib/image/storage";
+import { prisma } from "@/lib/prisma";
+import { z } from "zod";
+import { CSRFProtection } from "@/lib/csp";
+
+/**
+ * Enhanced filename extraction that handles different URL formats and storage types
+ * @param imageUrl - Full URL of the image
+ * @returns string - filename or empty string if invalid
+ */
+function extractImageFilename(imageUrl: string): string {
+  try {
+    if (!imageUrl) return "";
+
+    // Handle relative paths (local storage)
+    if (!imageUrl.startsWith("http")) {
+      const parts = imageUrl.split("/");
+      const filename = parts[parts.length - 1];
+          // Accept various image formats, prioritizing webp but supporting others  
+    if (filename && /\.(webp|avif|jpg|jpeg|png)$/i.test(filename)) {
+        return filename;
+      }
+      return "";
+    }
+
+    const url = new URL(imageUrl);
+    const pathname = url.pathname;
+    const filename = pathname.split("/").pop() || "";
+
+    // Accept images from images/ directory with various formats
+    // Also handle preview/ directory for preview images
+    if (
+      (pathname.includes("/images/") || pathname.includes("/preview/")) &&
+      filename &&
+              /\.(webp|avif|jpg|jpeg|png)$/i.test(filename)
+    ) {
+      return filename;
+    }
+
+    return "";
+  } catch (error) {
+    console.error("Error extracting filename from URL:", error);
+    return "";
+  }
+}
 
 /**
  * DELETE /api/upload/image/delete
- * Deletes an image from S3 storage
+ * Deletes an image from storage and removes the corresponding Media record
  */
 export async function DELETE(request: NextRequest) {
   try {
@@ -17,6 +61,15 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    const csrfToken = CSRFProtection.getTokenFromHeaders(request);
+    const isValidCSRF = await CSRFProtection.validateToken(csrfToken);
+    if (!isValidCSRF) {
+      return NextResponse.json(
+        { error: "Invalid CSRF token" },
+        { status: 403 }
+      );
+    }
+
     // Role check - allow both ADMIN and USER (users can delete their own images)
     if (user.userData?.role !== "ADMIN" && user.userData?.role !== "USER") {
       return NextResponse.json(
@@ -25,23 +78,49 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Parse request body
-    const body = await request.json();
-    const { imageUrl } = body;
+    // Parse & validate request body w/ Zod
+    const bodySchema = z.object({
+      imageUrl: z.string().min(1, "Image URL is required"),
+    });
 
-    // Input validation
-    if (!imageUrl || typeof imageUrl !== "string") {
+    let requestBody;
+    try {
+      requestBody = await request.json();
+    } catch {
       return NextResponse.json(
-        { error: "Image URL is required" },
+        { error: "Invalid JSON in request body" },
         { status: 400 }
       );
     }
 
-    // Validate that this is one of our uploaded images
+    const parsed = bodySchema.safeParse(requestBody);
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          error: "Invalid request body",
+          details: parsed.error.errors.map((e) => ({
+            field: e.path.join("."),
+            message: e.message,
+          })),
+        },
+        { status: 400 }
+      );
+    }
+
+    const { imageUrl } = parsed.data;
+
+    // Get storage configuration to understand URL format
+    const storageConfig = await getStorageConfig();
+    
+    // Validate that this looks like a valid image URL
     const filename = extractImageFilename(imageUrl);
     if (!filename) {
+      console.error("Failed to extract filename from URL:", imageUrl);
       return NextResponse.json(
-        { error: "Invalid image URL - not an uploaded image" },
+        { 
+          error: "Invalid image URL format", 
+          details: `Could not extract filename from: ${imageUrl}` 
+        },
         { status: 400 }
       );
     }
@@ -57,17 +136,78 @@ export async function DELETE(request: NextRequest) {
       }
     }
 
+    // Find the Media record in the database before deletion
+    // Use filename to find the record since it's unique
+    const mediaRecord = await prisma.media.findFirst({
+      where: {
+        filename: filename,
+        ...(user.userData?.role === "USER" && {
+          uploadedBy: user.userData.id, // Additional security check for regular users
+        }),
+      },
+    });
+
+    // Convert relative URL to full URL if needed for deletion
+    let urlToDelete = imageUrl;
+    if (!imageUrl.startsWith("http")) {
+      // For relative URLs, construct the full URL based on storage type
+      switch (storageConfig.storageType) {
+        case "LOCAL":
+          // For local storage, keep the relative path as is
+          urlToDelete = imageUrl;
+          break;
+        case "S3":
+          if (storageConfig.s3CloudfrontUrl) {
+            urlToDelete = `${storageConfig.s3CloudfrontUrl.replace(/\/$/, "")}/${imageUrl.replace(/^\//, "")}`;
+          } else {
+            urlToDelete = `https://${storageConfig.s3BucketName}.s3.${storageConfig.s3Region || "us-east-1"}.amazonaws.com/${imageUrl.replace(/^\//, "")}`;
+          }
+          break;
+        case "DOSPACE":
+          if (storageConfig.doCdnUrl) {
+            urlToDelete = `${storageConfig.doCdnUrl.replace(/\/$/, "")}/${imageUrl.replace(/^\//, "")}`;
+          } else {
+            urlToDelete = `https://${storageConfig.doSpaceName}.${storageConfig.doRegion}.digitaloceanspaces.com/${imageUrl.replace(/^\//, "")}`;
+          }
+          break;
+      }
+    }
+
+    console.log(`Attempting to delete image: ${urlToDelete} (filename: ${filename})`);
+
     // Delete from configured storage
-    const deleted = await deleteImage(imageUrl);
+    const deleted = await deleteImage(urlToDelete);
 
     if (deleted) {
+      // File deletion succeeded, now clean up the database record
+      let databaseCleanupResult = { success: false, recordFound: false };
+      
+      if (mediaRecord) {
+        try {
+          await prisma.media.delete({
+            where: { id: mediaRecord.id },
+          });
+          
+          databaseCleanupResult = { success: true, recordFound: true };
+          console.log(`Successfully deleted Media record for filename: ${filename}`);
+        } catch (dbError) {
+          console.error("Failed to delete Media record:", dbError);
+          // Log the error but don't fail the request since file deletion succeeded
+          databaseCleanupResult = { success: false, recordFound: true };
+        }
+      } else {
+        console.log(`No Media record found for filename: ${filename} (file may have been uploaded before database tracking)`);
+        databaseCleanupResult = { success: true, recordFound: false };
+      }
+
       return NextResponse.json({
         success: true,
         message: "Image deleted successfully",
+        database: databaseCleanupResult,
       });
     } else {
       return NextResponse.json(
-        { error: "Failed to delete image" },
+        { error: "Failed to delete image from storage" },
         { status: 500 }
       );
     }

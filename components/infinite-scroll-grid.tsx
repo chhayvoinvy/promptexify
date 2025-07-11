@@ -5,13 +5,14 @@ import { useSearchParams } from "next/navigation";
 import { PostMasonryGrid } from "@/components/post-masonry-grid";
 import { PostWithInteractions } from "@/lib/content";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2 } from "@/components/ui/icons";
 
 interface InfinitePostGridProps {
   initialPosts: PostWithInteractions[];
   totalCount: number;
   hasNextPage: boolean;
   userType?: "FREE" | "PREMIUM" | null;
+  pageSize: number;
 }
 
 interface PostsResponse {
@@ -25,11 +26,14 @@ interface PostsResponse {
   };
 }
 
+
+
 export function InfinitePostGrid({
   initialPosts,
   totalCount,
   hasNextPage: initialHasNextPage,
   userType,
+  pageSize,
 }: InfinitePostGridProps) {
   const [posts, setPosts] = useState<PostWithInteractions[]>(initialPosts);
   const [currentPage, setCurrentPage] = useState(1);
@@ -46,7 +50,10 @@ export function InfinitePostGrid({
   const currentPageRef = useRef(1);
 
   // Create a stable key for the search params to detect changes
+  // Only include actual filtering parameters, ignore modal/entry params
   const searchParamsKey = useMemo(() => {
+    if (!searchParams) return "";
+    
     const params = new URLSearchParams();
     const q = searchParams.get("q");
     const category = searchParams.get("category");
@@ -128,13 +135,13 @@ export function InfinitePostGrid({
     try {
       const params = new URLSearchParams();
       params.set("page", nextPage.toString());
-      params.set("limit", "12");
+      params.set("limit", pageSize.toString());
 
       // Add current search parameters
-      const q = searchParams.get("q");
-      const category = searchParams.get("category");
-      const subcategory = searchParams.get("subcategory");
-      const premium = searchParams.get("premium");
+      const q = searchParams?.get("q");
+      const category = searchParams?.get("category");
+      const subcategory = searchParams?.get("subcategory");
+      const premium = searchParams?.get("premium");
 
       if (q) params.set("q", q);
       if (category) params.set("category", category);
@@ -172,7 +179,7 @@ export function InfinitePostGrid({
       setIsLoading(false);
       isLoadingRequestRef.current = false;
     }
-  }, [searchParams]); // No state dependencies - all values accessed via refs
+  }, [searchParams, pageSize]);
 
   // Stable intersection observer with direct loading (no debouncing)
   useEffect(() => {
@@ -199,7 +206,7 @@ export function InfinitePostGrid({
 
     const observer = new IntersectionObserver(handleIntersection, {
       threshold: 0.1,
-      rootMargin: "0px 0px 1000px 0px", // Large bottom margin to trigger at ~80% scroll progress
+      rootMargin: "0px 0px 800px 0px", // Large bottom margin to trigger at ~80% scroll progress
     });
 
     const currentRef = loadingRef.current;
@@ -251,10 +258,8 @@ export function InfinitePostGrid({
 
   return (
     <div className="space-y-6">
-      {/* Posts Grid with stable key */}
-      <div key={`posts-${searchParamsKey}`}>
-        <PostMasonryGrid posts={memoizedPosts} userType={userType} />
-      </div>
+      {/* Posts Grid */}
+      <PostMasonryGrid posts={memoizedPosts} userType={userType} />
 
       {/* Loading indicator and load more button */}
       <div ref={loadingRef} className="flex flex-col items-center space-y-4">

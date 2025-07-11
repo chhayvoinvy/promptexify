@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { getSecurityStats } from "@/lib/audit";
-import { ENHANCED_SECURITY_HEADERS } from "@/lib/sanitize";
+import { SECURITY_HEADERS } from "@/lib/sanitize";
 
 /**
  * GET /api/admin/security/stats
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
         { error: "Admin access required" },
         {
           status: 403,
-          headers: ENHANCED_SECURITY_HEADERS,
+          headers: SECURITY_HEADERS,
         }
       );
     }
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
         timestamp: new Date().toISOString(),
       },
       {
-        headers: ENHANCED_SECURITY_HEADERS,
+        headers: SECURITY_HEADERS,
       }
     );
   } catch (error) {
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
       { error: "Failed to fetch security statistics" },
       {
         status: 500,
-        headers: ENHANCED_SECURITY_HEADERS,
+        headers: SECURITY_HEADERS,
       }
     );
   }

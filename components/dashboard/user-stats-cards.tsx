@@ -1,4 +1,4 @@
-import { Calendar, Heart, Bookmark } from "lucide-react";
+import { Calendar, Heart, Bookmark } from "@/components/ui/icons";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,

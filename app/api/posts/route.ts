@@ -4,9 +4,9 @@ import {
   rateLimits,
   getClientIdentifier,
   getRateLimitHeaders,
-} from "@/lib/rate-limit";
+} from "@/lib/limits";
 import { sanitizeSearchQuery, SECURITY_HEADERS } from "@/lib/sanitize";
-import { OptimizedQueries } from "@/lib/queries";
+import { Queries } from "@/lib/query";
 import { getAllCategories } from "@/lib/content";
 
 export async function GET(request: NextRequest) {
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     // Rate limiting
     const clientId = getClientIdentifier(request, userId);
-    const rateLimitResult = rateLimits.search(clientId);
+    const rateLimitResult = await rateLimits.search(clientId);
 
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
     // Use search or paginated query based on search query presence
     if (searchQuery && searchQuery.trim()) {
       // Use optimized search query
-      result = await OptimizedQueries.posts.search(searchQuery, {
+      result = await Queries.posts.search(searchQuery, {
         page,
         limit,
         userId,
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
       });
     } else {
       // Use optimized paginated query
-      result = await OptimizedQueries.posts.getPaginated({
+      result = await Queries.posts.getPaginated({
         page,
         limit,
         userId,
@@ -123,13 +123,24 @@ export async function GET(request: NextRequest) {
       pagination: result.pagination,
     };
 
+    // Determine cache strategy based on user authentication
+    const cacheHeaders = userId
+      ? {
+          // For authenticated users, use private cache with shorter duration
+          // to ensure bookmark/favorite state is fresh
+          "Cache-Control": "private, max-age=60, stale-while-revalidate=120",
+        }
+      : {
+          // For anonymous users, longer public cache is fine
+          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+        };
+
     return NextResponse.json(responseData, {
       status: 200,
       headers: {
         ...SECURITY_HEADERS,
         ...getRateLimitHeaders(rateLimitResult),
-        // Cache for 5 minutes with stale-while-revalidate
-        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+        ...cacheHeaders,
       },
     });
   } catch (error) {

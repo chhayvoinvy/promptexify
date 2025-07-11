@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Search, Filter, X } from "lucide-react";
+import { Search, Filter, X } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -37,8 +37,8 @@ export function TagFilters({
   const pageSizeOptions = [5, 10, 20, 50];
 
   const sortOptions = [
-    { value: "name", label: "Name A-Z" },
-    { value: "created", label: "Newest First" },
+    { value: "name", label: "Name a-Z" },
+    { value: "created", label: "Newest" },
     { value: "posts", label: "Most Posts" },
   ];
 

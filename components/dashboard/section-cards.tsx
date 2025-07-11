@@ -5,7 +5,7 @@ import {
   IconBookmark,
   IconHeart,
   IconCategory,
-} from "@tabler/icons-react";
+} from "@/components/ui/icons";
 
 import { Badge } from "@/components/ui/badge";
 import {

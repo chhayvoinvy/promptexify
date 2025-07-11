@@ -8,7 +8,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { RefreshCwIcon, HomeIcon, AlertTriangleIcon } from "lucide-react";
+import {
+  RefreshCwIcon,
+  HomeIcon,
+  AlertTriangleIcon,
+} from "@/components/ui/icons";
+import { useEffect } from "react";
+import Link from "next/link";
+import * as Sentry from "@sentry/nextjs";
 
 export default function GlobalError({
   error,
@@ -17,6 +24,16 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  // Report error to Sentry once on mount
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+      Sentry.captureException(error, {
+        tags: { scope: "global-error-boundary" },
+        extra: { digest: error.digest },
+      });
+    }
+  }, [error]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
       <div className="max-w-2xl w-full">
@@ -30,8 +47,8 @@ export default function GlobalError({
                 Something went wrong
               </CardTitle>
               <CardDescription className="text-lg text-muted-foreground max-w-md mx-auto">
-                We encountered an unexpected error. Our team has been
-                notified and is working on a fix. Please try again later.
+                We encountered an unexpected error. Our team has been notified
+                and is working on a fix. Please try again later.
               </CardDescription>
             </div>
           </CardHeader>
@@ -84,12 +101,12 @@ export default function GlobalError({
             <div className="bg-muted/30 rounded-lg p-4 text-center">
               <p className="text-sm text-muted-foreground">
                 If the problem persists, please{" "}
-                <a
+                <Link
                   href="/contact"
                   className="text-primary hover:underline font-medium"
                 >
                   contact our support team
-                </a>
+                </Link>
               </p>
             </div>
           </CardContent>

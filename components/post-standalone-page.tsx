@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
-import { MediaImage, MediaVideo } from "@/components/ui/media-display";
+import { MediaImage, MediaVideo } from "@/components/media-display";
 
 import {
   Copy,
@@ -23,7 +23,7 @@ import {
   Eye,
   FileText,
   Clock,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 import { PostWithInteractions } from "@/lib/content";
 import { BookmarkButton } from "@/components/bookmark-button";
@@ -40,14 +40,22 @@ export function PostStandalonePage({
   relatedPosts = [],
   userType,
 }: PostStandalonePageProps) {
+  const router = useRouter();
   const [isCopied, setIsCopied] = useState(false);
   const [isShared, setIsShared] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [playingVideo, setPlayingVideo] = useState<string | null>(null);
-  const viewTracked = useRef(false);
+  const [showVideo, setShowVideo] = useState(false);
+  const [videoLoaded, setVideoLoaded] = useState(false);
+
   const videoRefs = useRef<Record<string, HTMLVideoElement>>({});
-  const router = useRouter();
+  const viewTracked = useRef(false);
+
+  // Get video preview path from post
+  const videoPreviewPath = post.uploadPath && post.uploadFileType === "VIDEO" && post.previewPath
+    ? post.previewPath
+    : null;
 
   const copyToClipboard = async () => {
     const contentToCopy =
@@ -133,6 +141,12 @@ export function PostStandalonePage({
   };
 
   const handleVideoPlay = (videoId: string) => {
+    if (videoId === 'main' && !showVideo) {
+      // First click on main video: load the video
+      setShowVideo(true);
+      return;
+    }
+
     // Pause all other videos
     if (playingVideo && playingVideo !== videoId) {
       const currentVideo = videoRefs.current[playingVideo];
@@ -145,6 +159,16 @@ export function PostStandalonePage({
 
   const handleVideoPause = () => {
     setPlayingVideo(null);
+  };
+
+  const handleMainVideoLoadedMetadata = (event: React.SyntheticEvent<HTMLVideoElement>) => {
+    setVideoLoaded(true);
+    
+    // Auto-play if this video should be playing
+    if (playingVideo === 'main') {
+      const video = event.currentTarget as HTMLVideoElement;
+      video.play();
+    }
   };
 
   // Track view when page loads - only once
@@ -288,7 +312,7 @@ export function PostStandalonePage({
                   />
 
                   {/* Toggle Preview Button */}
-                  {(post.featuredImage || post.featuredVideo) && (
+                  {post.uploadPath && (
                     <Button
                       onClick={togglePreview}
                       variant="outline"
@@ -370,24 +394,72 @@ export function PostStandalonePage({
                     >
                       <div className="h-full overflow-y-auto">
                         <div className="px-8 pb-6">
-                          {post.featuredVideo ? (
-                            <div className="w-full rounded-lg overflow-hidden">
-                              <MediaVideo
-                                src={post.featuredVideo}
-                                controls
-                                className="w-full h-auto max-h-80 object-contain"
-                                preload="metadata"
-                              />
+                          {post.uploadPath && post.uploadFileType === "VIDEO" ? (
+                            <div className="relative w-full rounded-lg overflow-hidden">
+                              {/* Always show video preview image initially */}
+                              {videoPreviewPath && (
+                                <MediaImage
+                                  src={videoPreviewPath}
+                                  alt={post.title}
+                                  width={800}
+                                  height={400}
+                                  className={`w-full h-auto max-h-80 object-contain transition-opacity duration-300 ${
+                                    showVideo && videoLoaded ? "opacity-0" : "opacity-100"
+                                  }`}
+                                  priority
+                                  blurDataURL={post.blurData || undefined}
+                                />
+                              )}
+                              
+                              {/* Load and show video only when user requests it */}
+                              {showVideo && (
+                                <MediaVideo
+                                  ref={(el) => {
+                                    if (el) videoRefs.current['main'] = el;
+                                  }}
+                                  src={post.uploadPath}
+                                  controls
+                                  className={`w-full h-auto max-h-80 object-contain transition-opacity duration-300 ${
+                                    videoLoaded ? "opacity-100" : "opacity-0"
+                                  }`}
+                                  preload="metadata"
+                                  onLoadedMetadata={handleMainVideoLoadedMetadata}
+                                  onPlay={() => handleVideoPlay('main')}
+                                  onPause={handleVideoPause}
+                                />
+                              )}
+
+                              {/* Play button overlay for video preview */}
+                              {!showVideo && videoPreviewPath && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <button
+                                    className="bg-black/50 hover:bg-black/70 text-white rounded-full p-4 transition-colors"
+                                    onClick={() => handleVideoPlay('main')}
+                                  >
+                                    <Play className="w-8 h-8" />
+                                  </button>
+                                </div>
+                              )}
+
+                              {/* Loading indicator when video is being loaded */}
+                              {showVideo && !videoLoaded && (
+                                <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                                  <div className="bg-white rounded-full p-3">
+                                    <div className="w-6 h-6 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                          ) : post.featuredImage ? (
+                          ) : post.uploadPath && post.uploadFileType === "IMAGE" ? (
                             <div className="relative w-full rounded-lg overflow-hidden">
                               <MediaImage
-                                src={post.featuredImage}
+                                src={post.uploadPath}
                                 alt={post.title}
                                 width={800}
                                 height={400}
                                 className="w-full h-auto max-h-80 object-contain"
                                 priority
+                                blurDataURL={post.blurData || undefined}
                               />
                             </div>
                           ) : (
@@ -451,10 +523,9 @@ export function PostStandalonePage({
                       onClick={() => router.push(`/entry/${relatedPost.id}`)}
                     >
                       <div className="flex items-start gap-3">
-                        {(relatedPost.featuredImage ||
-                          relatedPost.featuredVideo) && (
+                                                  {relatedPost.uploadPath && (
                           <div className="w-12 h-12 rounded overflow-hidden flex-shrink-0 relative">
-                            {relatedPost.featuredVideo ? (
+                            {relatedPost.uploadPath && relatedPost.uploadFileType === "VIDEO" ? (
                               <>
                                 <MediaVideo
                                   ref={(el) => {
@@ -463,7 +534,7 @@ export function PostStandalonePage({
                                         `related-${relatedPost.id}`
                                       ] = el;
                                   }}
-                                  src={relatedPost.featuredVideo}
+                                  src={relatedPost.uploadPath}
                                   className="w-full h-full object-cover"
                                   preload="metadata"
                                   muted
@@ -501,7 +572,7 @@ export function PostStandalonePage({
                               </>
                             ) : (
                               <MediaImage
-                                src={relatedPost.featuredImage!}
+                                src={relatedPost.uploadPath!}
                                 alt={relatedPost.title}
                                 fill
                                 className="object-cover"

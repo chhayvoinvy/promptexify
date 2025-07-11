@@ -3,10 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { StorageType } from "@/lib/generated/prisma";
+import { StorageType } from "@/app/generated/prisma";
 import { z } from "zod";
 import { sanitizeInput } from "@/lib/sanitize";
-import { clearStorageConfigCache } from "@/lib/storage";
+import { clearStorageConfigCache } from "@/lib/image/storage";
 
 // Settings validation schema
 const settingsSchema = z.object({
@@ -52,6 +52,12 @@ const settingsSchema = z.object({
   maxPostsPerDay: z.number().min(1).max(1000),
   maxUploadsPerHour: z.number().min(1).max(1000),
   enableAuditLogging: z.boolean(),
+
+  // Add postsPageSize for infinite scroll/page size
+  postsPageSize: z.number().min(6).max(100),
+  
+  // Add featuredPostsLimit for homepage featured posts
+  featuredPostsLimit: z.number().min(1).max(50),
 });
 
 export type SettingsFormData = z.infer<typeof settingsSchema>;
@@ -366,6 +372,8 @@ export async function resetSettingsToDefaultAction() {
       maxPostsPerDay: 10,
       maxUploadsPerHour: 20,
       enableAuditLogging: true,
+      postsPageSize: 12,
+      featuredPostsLimit: 12,
       updatedBy: user.userData.id,
     };
 

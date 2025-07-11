@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { User, Mail, Calendar, Shield, Crown } from "lucide-react";
+import { User, Mail, Calendar, Shield, Crown } from "@/components/ui/icons";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface AccountFormProps {
@@ -147,8 +147,8 @@ export function AccountForm({ user }: AccountFormProps) {
                 {isPending
                   ? "Saving..."
                   : isReady
-                  ? "Save Changes"
-                  : "Initializing..."}
+                    ? "Save Changes"
+                    : "Initializing..."}
               </Button>
             </form>
           </CardContent>

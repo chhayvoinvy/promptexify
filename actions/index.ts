@@ -32,6 +32,7 @@ export {
   deletePostAction,
   approvePostAction,
   rejectPostAction,
+  cleanupOrphanedMediaAction,
 } from "./posts";
 
 // Category management actions

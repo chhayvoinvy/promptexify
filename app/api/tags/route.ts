@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getAllTags } from "@/lib/content";
 import { prisma } from "@/lib/prisma";
@@ -7,7 +7,7 @@ import {
   rateLimits,
   getClientIdentifier,
   getRateLimitHeaders,
-} from "@/lib/rate-limit";
+} from "@/lib/limits";
 import {
   sanitizeTagName,
   sanitizeTagSlug,
@@ -15,8 +15,9 @@ import {
   SECURITY_HEADERS,
 } from "@/lib/sanitize";
 import { revalidateCache, CACHE_TAGS } from "@/lib/cache";
+import { CSRFProtection } from "@/lib/csp";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
     // Authentication check
     const user = await getCurrentUser();
@@ -43,7 +44,7 @@ export async function GET(request: Request) {
 
     // Rate limiting
     const clientId = getClientIdentifier(request, user.userData?.id);
-    const rateLimitResult = rateLimits.api(clientId);
+    const rateLimitResult = await rateLimits.api(clientId);
 
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
@@ -90,8 +91,19 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const csrfToken = CSRFProtection.getTokenFromHeaders(request);
+    const isValidCSRF = await CSRFProtection.validateToken(csrfToken);
+    if (!isValidCSRF) {
+      return NextResponse.json(
+        { error: "Invalid CSRF token" },
+        {
+          status: 403,
+          headers: SECURITY_HEADERS,
+        }
+      );
+    }
     // Authentication check
     const user = await getCurrentUser();
     if (!user) {
@@ -117,7 +129,7 @@ export async function POST(request: Request) {
 
     // Rate limiting for tag creation
     const clientId = getClientIdentifier(request, user.userData?.id);
-    const rateLimitResult = rateLimits.createTag(clientId);
+    const rateLimitResult = await rateLimits.createTag(clientId);
 
     if (!rateLimitResult.allowed) {
       return NextResponse.json(

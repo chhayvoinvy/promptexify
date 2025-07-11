@@ -1,20 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { processAndUploadImageWithConfig } from "@/lib/storage";
+import { processAndUploadImageWithConfig } from "@/lib/image/storage";
 import { getCurrentUser } from "@/lib/auth";
-import { fileUploadSchema } from "@/lib/schemas";
 import {
   rateLimits,
   getClientIdentifier,
   getRateLimitHeaders,
-} from "@/lib/rate-limit";
+} from "@/lib/limits";
 import {
   sanitizeFilename,
   validateFileExtension,
   SECURITY_HEADERS,
   getFileUploadConfig,
-  ENHANCED_SECURITY_HEADERS,
 } from "@/lib/sanitize";
-import { SecurityEvents, getClientIP, sanitizeUserAgent } from "@/lib/audit";
+import { CSRFProtection } from "@/lib/csp";
+import { SecurityEvents, getClientIP } from "@/lib/audit";
+import { prisma } from "@/lib/prisma";
 
 // Get environment-aware upload configurations
 const uploadConfig = getFileUploadConfig();
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
 
     // Rate limiting for file uploads
     const clientId = getClientIdentifier(request, user.userData?.id);
-    const rateLimitResult = rateLimits.upload(clientId);
+    const rateLimitResult = await rateLimits.upload(clientId);
 
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
@@ -121,41 +121,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const csrfToken = CSRFProtection.getTokenFromFormData(formData);
+    const isValidCSRF = await CSRFProtection.validateToken(csrfToken);
+    if (!isValidCSRF) {
+      return NextResponse.json(
+        { error: "Invalid CSRF token" },
+        {
+          status: 403,
+          headers: SECURITY_HEADERS,
+        }
+      );
+    }
+
     const file = formData.get("image") as File;
-    const title = formData.get("title") as string;
 
     // Input validation
     if (!file) {
       return NextResponse.json(
         { error: "No image file provided" },
-        {
-          status: 400,
-          headers: SECURITY_HEADERS,
-        }
-      );
-    }
-
-    if (!title) {
-      return NextResponse.json(
-        { error: "Title is required for filename generation" },
-        {
-          status: 400,
-          headers: SECURITY_HEADERS,
-        }
-      );
-    }
-
-    // Validate file using schema
-    const validationResult = fileUploadSchema.safeParse({ title });
-    if (!validationResult.success) {
-      return NextResponse.json(
-        {
-          error: "Invalid title format",
-          details: validationResult.error.errors.map((err) => ({
-            field: err.path.join("."),
-            message: err.message,
-          })),
-        },
         {
           status: 400,
           headers: SECURITY_HEADERS,
@@ -229,7 +212,7 @@ export async function POST(request: NextRequest) {
           { error: "File signature doesn't match declared type" },
           {
             status: 400,
-            headers: ENHANCED_SECURITY_HEADERS,
+            headers: SECURITY_HEADERS,
           }
         );
       }
@@ -243,38 +226,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Sanitize title input to prevent injection attacks
-    const sanitizedTitle = sanitizeFilename(validationResult.data.title);
-    if (!sanitizedTitle || sanitizedTitle === "file") {
-      return NextResponse.json(
-        { error: "Invalid title provided" },
-        {
-          status: 400,
-          headers: SECURITY_HEADERS,
-        }
-      );
-    }
+    // No title sanitization needed - using actual filename from uploaded file
 
-    // Process and upload image with user ID for path organization
-    const imageUrl = await processAndUploadImageWithConfig(
+    // Process and upload the image with the new config-aware function
+    const uploadResult = await processAndUploadImageWithConfig(
       file,
-      sanitizedTitle,
-      user.userData.id
+      user.userData?.id
     );
 
+    // Create a Media record in the database
+    const newMedia = await prisma.media.create({
+      data: {
+        filename: uploadResult.filename,
+        relativePath: uploadResult.relativePath,
+        originalName: uploadResult.originalName,
+        mimeType: uploadResult.mimeType,
+        fileSize: uploadResult.fileSize,
+        width: uploadResult.width,
+        height: uploadResult.height,
+        storageType: uploadResult.storageType,
+        uploadedBy: user.userData!.id,
+        blurDataUrl: uploadResult.blurDataUrl,
+      },
+    });
+
+    // Return the upload result along with the new media ID
     return NextResponse.json(
       {
-        success: true,
-        imageUrl,
-        message: "Image uploaded successfully",
-        fileInfo: {
-          originalName: file.name,
-          size: file.size,
-          type: file.type,
-          sanitizedTitle: sanitizedTitle,
-        },
+        ...uploadResult,
+        id: newMedia.id,
+        previewPath: uploadResult.previewPath, // Explicitly include previewPath for frontend
       },
       {
+        status: 200,
         headers: {
           ...SECURITY_HEADERS,
           ...getRateLimitHeaders(rateLimitResult),

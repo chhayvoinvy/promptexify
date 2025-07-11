@@ -22,10 +22,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Play, Trash2, RefreshCw, Code, FileSpreadsheet } from "lucide-react";
+import {
+  Play,
+  Trash2,
+  RefreshCw,
+  Code,
+  FileSpreadsheet,
+} from "@/components/ui/icons";
 import { toast } from "sonner";
 import { useCSRFForm } from "@/hooks/use-csrf";
 import { getGenerationLogsAction, clearGenerationLogsAction } from "@/actions";
+
+// New type for presigned URL response
+interface PresignedUrlResponse {
+  url: string;
+  fileUrl: string; // The URL of the file after upload
+}
 
 interface GenerationLog {
   id: string;
@@ -59,7 +71,7 @@ export function AutomationDashboard() {
   const [jsonExecuting, setJsonExecuting] = useState(false);
   const [csvImporting, setCsvImporting] = useState(false);
 
-  const { isReady } = useCSRFForm();
+  const { isReady, getHeadersWithCSRF } = useCSRFForm();
 
   // Load generation logs
   const loadLogs = async () => {
@@ -103,17 +115,33 @@ export function AutomationDashboard() {
       // Send to API
       const response = await fetch("/api/admin/automation/execute-json", {
         method: "POST",
-        headers: {
+        headers: await getHeadersWithCSRF({
           "Content-Type": "application/json",
-        },
+        }),
         body: JSON.stringify(parsedContent),
+        credentials: "same-origin",
       });
 
       const result = await response.json();
 
       if (!response.ok) {
+        // Handle CSRF token refresh requirement
+        if (result.code === "CSRF_TOKEN_INVALID" && result.requiresRefresh) {
+          toast.error(
+            "Security token expired. Please refresh the page and try again."
+          );
+          // Optionally trigger a page refresh after a delay
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+          return;
+        }
+
         throw new Error(
-          result.details?.join(", ") || result.error || "Execution failed"
+          result.message ||
+            result.details?.join(", ") ||
+            result.error ||
+            "Execution failed"
         );
       }
 
@@ -134,61 +162,134 @@ export function AutomationDashboard() {
     }
   };
 
-  // Import CSV file
-  const importCsvFile = async (file: File, options: CsvImportOptions) => {
+  // New function to handle large file uploads
+  const importLargeCsvFile = async (file: File, options: CsvImportOptions) => {
     if (!isReady) {
       toast.error("Security verification in progress. Please wait.");
       return;
     }
 
+    setCsvImporting(true);
+    const toastId = toast.loading(
+      `Starting upload for ${file.name}. Please keep this browser tab open.`
+    );
+
     try {
-      setCsvImporting(true);
-      toast.info("Importing CSV file...");
-
-      // Create form data
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("delimiter", options.delimiter);
-      formData.append(
-        "skipEmptyLines",
-        options.skipEmptyLines ? "true" : "false"
-      );
-      formData.append("maxRows", String(options.maxRows));
-
-      // Send to API
-      const response = await fetch("/api/admin/automation/import-csv", {
+      // 1. Get a pre-signed URL from our server
+      toast.info("Requesting secure upload URL...");
+      const presignedUrlResponse = await fetch("/api/upload/presigned-url", {
         method: "POST",
-        body: formData,
+        headers: await getHeadersWithCSRF({
+          "Content-Type": "application/json",
+        }),
+        body: JSON.stringify({
+          fileName: file.name,
+          fileType: file.type,
+        }),
+        credentials: "same-origin",
       });
 
-      const result = await response.json();
+      const { url: presignedUrl, fileUrl } =
+        (await presignedUrlResponse.json()) as PresignedUrlResponse;
 
-      if (!response.ok) {
+      if (!presignedUrlResponse.ok) {
+        throw new Error("Could not get a secure upload URL.");
+      }
+
+      // 2. Upload the file directly to S3 using the pre-signed URL
+      toast.info(`Uploading ${file.name}...`);
+      const uploadResponse = await fetch(presignedUrl, {
+        method: "PUT",
+        body: file,
+        headers: {
+          "Content-Type": file.type,
+        },
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Failed to upload file to storage.`);
+      }
+
+      // 3. Notify the server to start processing the file
+      toast.success("Upload complete! Starting processing...");
+      const processResponse = await fetch(
+        "/api/admin/automation/start-processing",
+        {
+          method: "POST",
+          headers: await getHeadersWithCSRF({
+            "Content-Type": "application/json",
+          }),
+          body: JSON.stringify({
+            fileUrl,
+            fileName: file.name,
+            ...options,
+          }),
+          credentials: "same-origin",
+        }
+      );
+
+      const result = await processResponse.json();
+
+      if (!processResponse.ok) {
+        // Handle CSRF token refresh requirement for CSV processing
+        if (result.code === "CSRF_TOKEN_INVALID" && result.requiresRefresh) {
+          toast.error(
+            "Security token expired. Please refresh the page and try again."
+          );
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+          return;
+        }
+
         throw new Error(
-          result.details?.join(", ") || result.error || "Import failed"
+          result.message || result.error || "Failed to start processing."
         );
       }
 
-      // Show warnings if any
-      if (result.parseWarnings && result.parseWarnings.length > 0) {
-        result.parseWarnings.forEach((warning: string) => {
-          toast.warning(warning);
-        });
-      }
-
       toast.success(
-        `CSV import completed! ${result.filesProcessed || 0} items processed, ` +
-          `${result.postsCreated || 0} posts created in ${result.duration || 0}s`
+        `Job ${result.jobId} started successfully for ${file.name}. You can monitor its progress here.`
       );
 
       setIsCsvDialogOpen(false);
-      await loadLogs();
+      await loadLogs(); // To show the new job in the logs
     } catch (error) {
-      console.error("Error importing CSV:", error);
-      toast.error(error instanceof Error ? error.message : "CSV import failed");
+      console.error("Error importing large CSV:", error);
+      toast.error(
+        error instanceof Error ? error.message : "CSV import failed."
+      );
     } finally {
       setCsvImporting(false);
+      toast.dismiss(toastId);
     }
+  };
+
+  // Helper function to generate compact JSON example
+  const getCompactJsonExample = () => {
+    const example = {
+      category: "ai-prompts",
+      tags: [
+        { name: "AI", slug: "ai" },
+        { name: "Writing", slug: "writing" },
+      ],
+      posts: [
+        {
+          title: "Creative Writing Prompt",
+          slug: "creative-writing-prompt",
+          description: "A prompt for creative writing",
+          content: "Write a story about...",
+          isPremium: false,
+          isPublished: false,
+          status: "PENDING_APPROVAL",
+          isFeatured: false,
+          uploadPath: "/images/example-image.webp", // must be local image path
+          uploadFileType: "image", // "image" or "video"
+          uploadUrl: "/videos/example-video.mp4", // must be local video path
+        },
+      ],
+    };
+
+    return JSON.stringify(example, null, 2);
   };
 
   return (
@@ -247,7 +348,7 @@ export function AutomationDashboard() {
                 </DialogDescription>
               </DialogHeader>
               <CsvImportForm
-                onSubmit={importCsvFile}
+                onSubmit={importLargeCsvFile}
                 isImporting={csvImporting}
               />
             </DialogContent>
@@ -407,26 +508,7 @@ export function AutomationDashboard() {
                 <div>
                   <h4 className="font-medium mb-2">Format Example:</h4>
                   <pre className="text-xs bg-muted p-2 rounded overflow-x-auto">
-                    {`{
-  "category": "ai-prompts",
-  "tags": [
-    {"name": "AI", "slug": "ai"},
-    {"name": "Writing", "slug": "writing"}
-  ],
-  "posts": [
-    {
-      "title": "Creative Writing Prompt",
-      "slug": "creative-writing-prompt",
-      "description": "A prompt for creative writing",
-      "content": "Write a story about...",
-      "isPremium": false,
-      "isPublished": false,
-      "status": "PENDING_APPROVAL",
-      "isFeatured": false,
-      "featuredImage": ""
-    }
-  ]
-}`}
+                    {getCompactJsonExample()}
                   </pre>
                 </div>
                 <div>
@@ -474,9 +556,14 @@ export function AutomationDashboard() {
                       • <code>is_premium</code>, <code>is_published</code>
                     </li>
                     <li>
-                      • <code>status</code>, <code>featured_image</code>
+                      • <code>status</code>, <code>upload_path</code>, <code>upload_file_type</code>, <code>upload_url</code>
                     </li>
                   </ul>
+                  <div className="text-xs text-muted-foreground mt-2">
+                    <b>upload_path</b>: must be a local path like <code>/images/example.webp</code> (.webp, .jpg, .jpeg, .png, .avif)<br />
+                    <b>upload_file_type</b>: "image" or "video"<br />
+                    <b>upload_url</b>: must be a local path like <code>/videos/example.mp4</code> (.mp4 only)
+                  </div>
                 </div>
                 <div>
                   <h4 className="font-medium mb-2">Limits:</h4>
@@ -549,7 +636,7 @@ function JsonExecutionForm({
           value={jsonContent}
           onChange={(e) => handleJsonChange(e.target.value)}
           rows={15}
-          className={`font-mono ${!isValidJson ? "border-red-500" : ""}`}
+          className={`font-mono ${!isValidJson ? "border-red-500" : ""} max-h-[60vh] overflow-y-auto`}
           placeholder={`{\n  "category": "example",\n  "tags": [],\n  "posts": []\n}`}
         />
         {!isValidJson && (

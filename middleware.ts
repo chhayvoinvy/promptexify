@@ -1,7 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "./lib/supabase/middleware";
-import { getClientIP, sanitizeUserAgent } from "./lib/audit";
-import { CSPNonce, SecurityHeaders, CSRFProtection } from "./lib/security";
+import { CSPNonce, SecurityHeaders, CSRFProtection } from "./lib/csp";
+import {
+  rateLimits,
+  getClientIdentifier,
+  getRateLimitHeaders,
+  SecurityEvents,
+  getClientIP,
+  sanitizeUserAgent,
+} from "@/lib/edge";
 
 export async function middleware(request: NextRequest) {
   try {
@@ -61,21 +68,22 @@ export async function middleware(request: NextRequest) {
         pathname.startsWith(path)
       );
 
-      if (shouldValidateCSRF) {
-        // Check for CSRF token in headers or form data
-        const csrfTokenFromHeader = CSRFProtection.getTokenFromHeaders(request);
+      if (shouldValidateCSRF && pathname.startsWith("/api/")) {
+        // Always expect token in header for API routes
+        const csrfToken = CSRFProtection.getTokenFromHeaders(request);
 
-        // For API routes, expect CSRF token in headers
-        if (pathname.startsWith("/api/") && !csrfTokenFromHeader) {
+        if (!csrfToken) {
           return NextResponse.json(
-            {
-              error: "CSRF token required",
-              code: "CSRF_TOKEN_MISSING",
-            },
-            {
-              status: 403,
-              headers: securityHeaders,
-            }
+            { error: "CSRF token required", code: "CSRF_TOKEN_MISSING" },
+            { status: 403, headers: securityHeaders }
+          );
+        }
+
+        const isValid = await CSRFProtection.validateToken(csrfToken);
+        if (!isValid) {
+          return NextResponse.json(
+            { error: "Invalid CSRF token", code: "CSRF_TOKEN_INVALID" },
+            { status: 403, headers: securityHeaders }
           );
         }
       }
@@ -83,13 +91,61 @@ export async function middleware(request: NextRequest) {
       // Log successful state-changing requests for monitoring
       const skipLogging = ["/api/webhooks/", "/api/upload/"];
 
-      if (!skipLogging.some((path) => pathname.startsWith(path))) {
+      // Ignore logging for localhost IPs in development
+      const clientIp = getClientIP(request);
+      const isLocal =
+        !clientIp ||
+        clientIp === "127.0.0.1" ||
+        clientIp === "::1" ||
+        clientIp === "0:0:0:0:0:0:0:1";
+      if (
+        !skipLogging.some((path) => pathname.startsWith(path)) &&
+        (process.env.NODE_ENV === "production" || !isLocal)
+      ) {
         console.log(
-          `[SECURITY] ${request.method} ${pathname} - IP: ${getClientIP(
-            request
-          )} - User-Agent: ${sanitizeUserAgent(
+          `[SECURITY] ${request.method} ${pathname} - IP: ${clientIp} - User-Agent: ${sanitizeUserAgent(
             request.headers.get("user-agent")
           )}`
+        );
+      }
+    }
+
+    // ------------------
+    // GLOBAL API RATE LIMIT
+    // ------------------
+    if (request.nextUrl.pathname.startsWith("/api/")) {
+      const clientId = getClientIdentifier(request as unknown as Request);
+      const rateLimitResult = await rateLimits.api(clientId);
+      // Attach rate-limit headers so clients can introspect remaining quota
+      Object.entries(getRateLimitHeaders(rateLimitResult)).forEach(
+        ([key, value]) => response.headers.set(key, value)
+      );
+
+      if (!rateLimitResult.allowed) {
+        // Audit log
+        SecurityEvents.rateLimitExceeded(
+          clientId,
+          request.nextUrl.pathname,
+          getClientIP(request as unknown as Request)
+        );
+
+        return NextResponse.json(
+          {
+            error: "Too many requests. Please slow down.",
+            retryAfter: Math.ceil(
+              (rateLimitResult.resetTime - Date.now()) / 1000
+            ),
+          },
+          {
+            status: 429,
+            headers: {
+              ...securityHeaders,
+              ...getRateLimitHeaders(rateLimitResult),
+              "Retry-After": String(
+                Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)
+              ),
+            },
+          }
         );
       }
     }
@@ -146,7 +202,7 @@ export const config = {
      */
     {
       source:
-        "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+        "/((?!api|_next/static|_next/image|favicon.ico|uploads|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|mp4|mov|avi|webm)$).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },

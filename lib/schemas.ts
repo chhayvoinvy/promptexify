@@ -76,8 +76,8 @@ export const createPostSchema = z.object({
       (val) => val.length >= 10,
       "Content must be at least 10 characters after trimming"
     ),
-  featuredImage: z.string().url("Invalid image URL").optional().nullable(),
-  featuredVideo: z.string().url("Invalid video URL").optional().nullable(),
+  uploadPath: z.string().url("Invalid upload URL").optional().nullable(),
+  uploadFileType: z.enum(["IMAGE", "VIDEO"]).optional().nullable(),
   categoryId: z.string().uuid("Invalid category ID"),
   tagIds: z
     .array(z.string().uuid("Invalid tag ID"))

@@ -7,15 +7,18 @@ import { GridBackground } from "@/components/ui/grid-background";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Container } from "@/components/ui/container";
-import { Search } from "lucide-react";
+import { Search } from "@/components/ui/icons";
 import { motion, Variants } from "framer-motion";
 
 interface HeroSectionProps {
   searchQuery?: string;
-  sort: string;
+  sort?: string;
 }
 
-export function HeroSection({ searchQuery, sort }: HeroSectionProps) {
+export function HeroSection({
+  searchQuery,
+  sort = "latest",
+}: HeroSectionProps = {}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -100,6 +103,7 @@ export function HeroSection({ searchQuery, sort }: HeroSectionProps) {
           <motion.form
             variants={FADE_IN_ANIMATION_VARIANTS}
             method="GET"
+            action="/search"
             className="relative max-w-xl mx-auto"
           >
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />

@@ -17,7 +17,7 @@ import {
   Calendar,
   AlertCircle,
   AlertTriangle,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";

@@ -34,7 +34,9 @@ export interface PostData {
   isPublished: boolean;
   status: "APPROVED" | "PENDING_APPROVAL" | "REJECTED";
   isFeatured: boolean;
-  featuredImage?: string;
+  uploadPath?: string;
+  uploadFileType?: "IMAGE" | "VIDEO"; 
+  previewPath?: string; 
 }
 
 export interface GenerationResult {
@@ -68,16 +70,21 @@ export interface AutomationConfig {
     verbose: boolean;
   };
   security: {
+    maxFiles: number;
     maxFileSize: number;
     maxPostsPerFile: number;
     maxContentLength: number;
     allowedFileExtensions: string[];
     rateLimitPerHour: number;
+    maxSerializationSize: number;
+    maxBatchSize: number;
   };
   performance: {
     batchSize: number;
     maxConcurrentFiles: number;
     transactionTimeout: number;
+    chunkSize: number;
+    memoryLimit: number;
   };
 }
 

@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2 } from "@/components/ui/icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -162,8 +162,8 @@ export default function NewTagPage() {
                 {isSubmitting
                   ? "Creating..."
                   : isReady
-                  ? "Create Tag"
-                  : "Initializing..."}
+                    ? "Create Tag"
+                    : "Initializing..."}
               </Button>
               <Button type="button" variant="outline" asChild>
                 <Link href="/dashboard/tags">Cancel</Link>

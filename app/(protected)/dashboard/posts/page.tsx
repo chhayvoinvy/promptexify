@@ -1,6 +1,6 @@
 import React, { Suspense } from "react";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus } from "@/components/ui/icons";
 import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,8 @@ import {
 
 import { requireRole } from "@/lib/auth";
 import { PostActionsDropdown } from "@/components/dashboard/(actions)/post-actions-dropdown";
-import { getAllPosts, getUserPosts, getAllCategories } from "@/lib/content";
+import { getAllCategories } from "@/lib/content";
+import { Queries } from "@/lib/query";
 import { PostFilters } from "@/components/dashboard/post-filters";
 
 import {
@@ -44,10 +45,11 @@ import {
   IconCrown,
   IconLoader,
   IconX,
-} from "@tabler/icons-react";
+} from "@/components/ui/icons";
 
-// Force dynamic rendering for this page
-export const dynamic = "force-dynamic";
+// Enable caching for better performance
+// Use revalidate instead of force-dynamic for dashboard pages
+export const revalidate = 60; // Revalidate every 60 seconds
 
 // Dynamic metadata will be handled by the page component
 // since we need to check user role for appropriate title
@@ -65,42 +67,75 @@ interface PostsManagementPageProps {
   }>;
 }
 
-// Stats cards skeleton
-function StatsCardsSkeleton() {
-  return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <Card key={i}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <Skeleton className="h-4 w-20" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-8 w-16" />
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
-}
 
-// Table skeleton
+
+// Table skeleton with individual row skeletons
 function TableSkeleton() {
   return (
     <Card>
       <CardHeader>
-        <Skeleton className="h-6 w-32" />
-        <Skeleton className="h-4 w-64" />
+        <CardTitle>My Submissions</CardTitle>
+        <CardDescription>Manage your content posts.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between">
-          <Skeleton className="h-4 w-48" />
-          <Skeleton className="h-8 w-32" />
+          <div className="text-sm text-muted-foreground">
+            Showing 0 of 0 posts
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-8 w-32" />
+          </div>
         </div>
-        <div className="space-y-3">
-          {Array.from({ length: 10 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full" />
-          ))}
-        </div>
+        
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Title</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Featured</TableHead>
+              <TableHead>Views</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead className="w-[70px]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {Array.from({ length: 10 }).map((_, i) => (
+              <TableRow key={i}>
+                <TableCell>
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-48" />
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <Skeleton className="h-5 w-16" />
+                    <Skeleton className="h-5 w-12" />
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-5 w-20" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-5 w-12" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-5 w-8" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-8" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-16" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-8 w-8 rounded" />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </CardContent>
     </Card>
   );
@@ -108,12 +143,7 @@ function TableSkeleton() {
 
 // Combined loading skeleton
 function LoadingSkeleton() {
-  return (
-    <>
-      <StatsCardsSkeleton />
-      <TableSkeleton />
-    </>
-  );
+  return <TableSkeleton />;
 }
 
 // Filter option interface for the component
@@ -157,114 +187,84 @@ async function PostsManagementContent({
     const isAdmin = user.role === "ADMIN";
     const userId = user.id;
 
-    // Get categories for filter dropdown
-    const [allCategories, allPosts] = await Promise.all([
-      getAllCategories(),
-      isAdmin
-        ? getAllPosts(true) // Admin sees all posts for statistics
-        : getUserPosts(userId!), // Users see only their posts for statistics
-    ]);
+    // Get categories for filter dropdown (cached)
+    const allCategories = await getAllCategories();
 
     // Transform categories to filter options
-    const categoryOptions: FilterOption[] = allCategories.map((cat) => ({
+    const categoryOptions: FilterOption[] = allCategories.map((cat: any) => ({
       value: cat.slug,
       label: cat.parent ? `${cat.parent.name} > ${cat.name}` : cat.name,
     }));
 
-    // Apply filters to posts
-    let filteredPosts = [...allPosts];
-
-    // Category filter (prioritize subcategory over category)
+    // Convert filter parameters to database query parameters
+    let categoryId: string | undefined;
     if (filters.subcategory && filters.subcategory !== "all") {
-      // Filter by specific subcategory
-      filteredPosts = filteredPosts.filter(
-        (post) => post.category.slug === filters.subcategory
-      );
+      const subcategory = allCategories.find((c: any) => c.slug === filters.subcategory);
+      categoryId = subcategory?.id;
     } else if (filters.category && filters.category !== "all") {
-      // Filter by parent category (includes all its subcategories)
-      filteredPosts = filteredPosts.filter(
-        (post) =>
-          post.category.slug === filters.category ||
-          post.category.parent?.slug === filters.category
+      const category = allCategories.find((c: any) => c.slug === filters.category);
+      categoryId = category?.id;
+    }
+
+    let isPremium: boolean | undefined;
+    if (filters.type === "premium") isPremium = true;
+    else if (filters.type === "free") isPremium = false;
+
+    // Map sortBy to database sorting options
+    let sortBy: "latest" | "popular" | "trending" = "latest";
+    if (filters.sortBy === "views") sortBy = "popular";
+    else if (filters.sortBy === "oldest") sortBy = "latest"; // Will be handled differently
+
+    // Use optimized paginated query instead of loading all posts
+    const postsResult = await Queries.posts.getPaginated({
+      page: currentPage,
+      limit: validPageSize,
+      userId: user.id,
+      authorId: isAdmin ? undefined : user.id, // Users see only their posts
+      categoryId,
+      isPremium,
+      sortBy,
+      includeUnpublished: isAdmin, // Only admins see unpublished posts
+    });
+
+    // Apply client-side filters that can't be done at database level
+    let filteredPosts = postsResult.data;
+
+    // Status filtering (some status logic requires client-side filtering)
+    if (filters.status && filters.status !== "all") {
+      filteredPosts = filteredPosts.filter((post) => {
+        switch (filters.status) {
+          case "published": return post.isPublished;
+          case "pending": return post.status === "PENDING_APPROVAL";
+          case "draft": return post.status === "DRAFT";
+          case "rejected": return post.status === "REJECTED";
+          default: return true;
+        }
+      });
+    }
+
+    // Featured filtering for admins (client-side)
+    if (isAdmin && filters.featured && filters.featured !== "all") {
+      filteredPosts = filteredPosts.filter((post) =>
+        filters.featured === "featured" ? post.isFeatured : !post.isFeatured
       );
     }
 
-    // Status filter
-    if (filters.status && filters.status !== "all") {
-      switch (filters.status) {
-        case "published":
-          filteredPosts = filteredPosts.filter((post) => post.isPublished);
-          break;
-        case "pending":
-          filteredPosts = filteredPosts.filter(
-            (post) => post.status === "PENDING_APPROVAL"
-          );
-          break;
-        case "draft":
-          filteredPosts = filteredPosts.filter(
-            (post) => post.status === "DRAFT"
-          );
-          break;
-        case "rejected":
-          filteredPosts = filteredPosts.filter(
-            (post) => post.status === "REJECTED"
-          );
-          break;
-      }
+    // Apply client-side sorting for cases not handled by database
+    if (filters.sortBy === "oldest") {
+      filteredPosts.sort(
+        (a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+    } else if (filters.sortBy === "title") {
+      filteredPosts.sort((a, b) => a.title.localeCompare(b.title));
     }
 
-    // Type filter
-    if (filters.type && filters.type !== "all") {
-      if (filters.type === "premium") {
-        filteredPosts = filteredPosts.filter((post) => post.isPremium);
-      } else if (filters.type === "free") {
-        filteredPosts = filteredPosts.filter((post) => !post.isPremium);
-      }
-    }
-
-    // Featured filter (admin only)
-    if (isAdmin && filters.featured && filters.featured !== "all") {
-      if (filters.featured === "featured") {
-        filteredPosts = filteredPosts.filter((post) => post.isFeatured);
-      } else if (filters.featured === "not-featured") {
-        filteredPosts = filteredPosts.filter((post) => !post.isFeatured);
-      }
-    }
-
-    // Apply sorting
-    switch (filters.sortBy) {
-      case "oldest":
-        filteredPosts.sort(
-          (a, b) =>
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-        );
-        break;
-      case "views":
-        filteredPosts.sort(
-          (a, b) => (b._count?.views || 0) - (a._count?.views || 0)
-        );
-        break;
-      case "title":
-        filteredPosts.sort((a, b) => a.title.localeCompare(b.title));
-        break;
-      case "newest":
-      default:
-        filteredPosts.sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-        break;
-    }
-
-    // Apply pagination to filtered results
-    const totalCount = filteredPosts.length;
-    const totalPages = Math.ceil(totalCount / validPageSize);
-    const startIndex = (currentPage - 1) * validPageSize;
-    const endIndex = startIndex + validPageSize;
-    const posts = filteredPosts.slice(startIndex, endIndex);
-
-    const hasNextPage = currentPage < totalPages;
-    const hasPreviousPage = currentPage > 1;
+    // Use database pagination data
+    const totalCount = postsResult.pagination.totalCount;
+    const totalPages = postsResult.pagination.totalPages;
+    const hasNextPage = postsResult.pagination.hasNextPage;
+    const hasPreviousPage = postsResult.pagination.hasPreviousPage;
 
     // Generate pagination links
     const generatePageLink = (page: number) => {
@@ -273,77 +273,26 @@ async function PostsManagementContent({
         url.searchParams.set("page", page.toString());
       }
       if (validPageSize !== 10) {
-        // Only add if not default
         url.searchParams.set("pageSize", validPageSize.toString());
       }
+      // Preserve filters in pagination links
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value && value !== "all" && value !== "newest") {
+          url.searchParams.set(key, value);
+        }
+      });
       return url.pathname + url.search;
     };
 
     return (
       <>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Posts</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{allPosts.length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Published</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {allPosts.filter((p) => p.isPublished).length}
-              </div>
-            </CardContent>
-          </Card>
-          {isAdmin ? (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Featured Posts
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {allPosts.filter((p) => p.isFeatured).length}
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Premium</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {allPosts.filter((p) => p.isPremium).length}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Views</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {allPosts.reduce((sum, p) => sum + (p._count?.views || 0), 0)}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
         <Card>
           <CardHeader>
             <CardTitle>{isAdmin ? "All Posts" : "My Submissions"}</CardTitle>
             <CardDescription>
               {isAdmin
                 ? "Manage all content posts and organize your directory."
-                : "Manage your content submissions and track their approval status."}
+                : "Manage your content posts."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -370,7 +319,7 @@ async function PostsManagementContent({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {posts.map((post) => (
+                {filteredPosts.map((post) => (
                   <TableRow key={post.id}>
                     <TableCell>
                       <div>
@@ -394,8 +343,8 @@ async function PostsManagementContent({
                     <TableCell>
                       <div className="flex flex-row gap-1">
                         {post.status === "APPROVED" ||
-                          (post.isPublished &&
-                            post.status !== "PENDING_APPROVAL") ? (
+                        (post.isPublished &&
+                          post.status !== "PENDING_APPROVAL") ? (
                           <Badge
                             variant="outline"
                             className="text-xs border-green-500 text-green-700 dark:text-green-400"
@@ -535,15 +484,36 @@ async function PostsManagementContent({
     );
   } catch (error) {
     console.error("Error loading posts:", error);
+    
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Error Loading Posts</CardTitle>
-          <CardDescription>
-            There was an error loading the posts. Please try again later.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <>
+        {/* Error state card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <IconX className="h-5 w-5 text-destructive" />
+              Unable to Load Posts
+            </CardTitle>
+            <CardDescription>
+              We encountered an issue while loading your posts. This might be due to a temporary network issue or server problem.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-sm text-muted-foreground">
+              <p>• Check your internet connection</p>
+              <p>• Try refreshing the page</p>
+              <p>• If the problem persists, contact support</p>
+            </div>
+            <Button 
+              onClick={() => window.location.reload()} 
+              variant="outline"
+              className="w-full sm:w-auto"
+            >
+              Refresh Page
+            </Button>
+          </CardContent>
+        </Card>
+      </>
     );
   }
 }

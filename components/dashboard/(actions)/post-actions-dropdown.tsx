@@ -30,7 +30,7 @@ import {
   Loader2,
   Star,
   StarOff,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import {
   togglePostPublishAction,
   deletePostAction,
@@ -276,8 +276,8 @@ export function PostActionsDropdown({
                   {isToggling
                     ? "Processing..."
                     : post.isPublished
-                    ? "Unpublish"
-                    : "Publish"}
+                      ? "Unpublish"
+                      : "Publish"}
                 </DropdownMenuItem>
               )}
 
@@ -295,8 +295,8 @@ export function PostActionsDropdown({
                 {isTogglingFeatured
                   ? "Processing..."
                   : post.isFeatured
-                  ? "Unfeature"
-                  : "Feature"}
+                    ? "Unfeature"
+                    : "Feature"}
               </DropdownMenuItem>
             </>
           )}

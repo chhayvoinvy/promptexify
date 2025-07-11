@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { ArrowLeft, Info, Loader2 } from "lucide-react";
+import { ArrowLeft, Info, Loader2 } from "@/components/ui/icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -44,19 +44,34 @@ interface Tag {
   slug: string;
 }
 
+interface FeaturedMedia {
+  id: string;
+  url: string;
+  relativePath: string;
+  blurDataUrl?: string;
+}
+
 export default function NewPostPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const { createFormDataWithCSRF, isReady } = useCSRFForm();
+  const { createFormDataWithCSRF, getHeadersWithCSRF, isReady } = useCSRFForm();
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
-  const [featuredImageUrl, setFeaturedImageUrl] = useState("");
-  const [featuredVideoUrl, setFeaturedVideoUrl] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [postTitle, setPostTitle] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [uploadPath, setUploadPath] = useState<string | null>(null);
+  const [uploadFileType, setUploadFileType] = useState<"IMAGE" | "VIDEO" | null>(null);
+  const [uploadMediaId, setUploadMediaId] = useState<string | null>(null);
+  const [previewPath, setPreviewPath] = useState<string | null>(null);
+  const [blurData, setBlurData] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [pendingTags, setPendingTags] = useState<string[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [maxTagsPerPost, setMaxTagsPerPost] = useState<number>(15);
+
+
 
   // Redirect if not authenticated or not authorized
   useEffect(() => {
@@ -77,7 +92,9 @@ export default function NewPostPage() {
     async function fetchData() {
       try {
         // Fetch categories
-        const categoriesRes = await fetch("/api/categories");
+        const categoriesRes = await fetch("/api/categories", {
+          credentials: "same-origin",
+        });
         if (categoriesRes.ok) {
           const categoriesData = await categoriesRes.json();
           // Ensure categoriesData is an array
@@ -93,7 +110,9 @@ export default function NewPostPage() {
         }
 
         // Fetch tags
-        const tagsRes = await fetch("/api/tags");
+        const tagsRes = await fetch("/api/tags", {
+          credentials: "same-origin",
+        });
         if (tagsRes.ok) {
           const tagsData = await tagsRes.json();
           // Ensure tagsData is an array
@@ -120,6 +139,27 @@ export default function NewPostPage() {
     }
   }, [user]);
 
+  // Fetch content configuration (max tags per post)
+  useEffect(() => {
+    async function fetchContentConfig() {
+      try {
+        const res = await fetch("/api/settings/content-config", {
+          credentials: "same-origin",
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (typeof data.maxTagsPerPost === "number") {
+            setMaxTagsPerPost(data.maxTagsPerPost);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch content config", err);
+      }
+    }
+
+    fetchContentConfig();
+  }, []);
+
   // Handle form submission
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -128,6 +168,11 @@ export default function NewPostPage() {
 
     if (!isReady) {
       toast.error("Security verification in progress. Please wait.");
+      return;
+    }
+
+    if (isUploadingMedia) {
+      toast.error("Please wait for the media to finish uploading.");
       return;
     }
 
@@ -147,9 +192,9 @@ export default function NewPostPage() {
           try {
             const response = await fetch("/api/tags", {
               method: "POST",
-              headers: {
+              headers: await getHeadersWithCSRF({
                 "Content-Type": "application/json",
-              },
+              }),
               body: JSON.stringify({
                 name: tagName,
                 slug: tagName
@@ -157,6 +202,7 @@ export default function NewPostPage() {
                   .replace(/\s+/g, "-")
                   .replace(/[^a-z0-9-]/g, ""),
               }),
+              credentials: "same-origin",
             });
 
             if (response.ok) {
@@ -201,22 +247,23 @@ export default function NewPostPage() {
         }
 
         // If there were failed tags, show a warning but still continue
-        if (failedTags.length > 0) {
-          console.warn(
-            `Some tags could not be created: ${failedTags.join(", ")}`
-          );
-          toast.warning(
-            `Some tags could not be created: ${failedTags.join(", ")}`
-          );
-        }
+                  if (failedTags.length > 0) {
+            console.warn(
+              `Some tags could not be created: ${failedTags.join(", ")}`
+            );
+            toast.warning(
+              `Some tags could not be created: ${failedTags.join(", ")}`
+            );
+          }
       }
 
       // Add the featured media URLs to form data
-      if (featuredImageUrl) {
-        formData.set("featuredImage", featuredImageUrl);
-      }
-      if (featuredVideoUrl) {
-        formData.set("featuredVideo", featuredVideoUrl);
+      if (uploadMediaId) {
+        formData.set("uploadMediaId", uploadMediaId);
+        formData.set("uploadPath", uploadPath || "");
+        formData.set("uploadFileType", uploadFileType || "");
+        formData.set("previewPath", previewPath || "");
+        formData.set("blurData", blurData || "");
       }
 
       // Add the selected tags to form data
@@ -232,43 +279,62 @@ export default function NewPostPage() {
       const secureFormData = createFormDataWithCSRF(formObject);
       await createPostAction(secureFormData);
 
-      // Show success message - redirect is handled by server action
-      toast.success("Post submitted successfully!");
-    } catch (error) {
-      console.error("Error creating post:", error);
+              // Show success message - redirect is handled by server action
+        toast.success("Post submitted successfully!");
+      } catch (error) {
+        console.error("Error creating post:", error);
 
-      // Check if this is a Next.js redirect (expected behavior)
-      if (error && typeof error === "object" && "digest" in error) {
-        const errorDigest = (error as { digest?: string }).digest;
-        if (
-          typeof errorDigest === "string" &&
-          errorDigest.includes("NEXT_REDIRECT")
-        ) {
-          // This is a redirect - don't show error, redirect is working as expected
-          return;
+        // Check if this is a Next.js redirect (expected behavior)
+        if (error && typeof error === "object" && "digest" in error) {
+          const errorDigest = (error as { digest?: string }).digest;
+          if (
+            typeof errorDigest === "string" &&
+            errorDigest.includes("NEXT_REDIRECT")
+          ) {
+            // This is a redirect - don't show error, redirect is working as expected
+            return;
+          }
         }
-      }
 
-      // Show user-friendly error message for actual errors
-      if (error instanceof Error) {
-        toast.error(error.message);
-      } else {
-        toast.error("Failed to create post. Please try again.");
-      }
+        // Show user-friendly error message for actual errors
+        if (error instanceof Error) {
+          toast.error(error.message);
+        } else {
+          toast.error("Failed to create post. Please try again.");
+        }
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  // Handle media upload
-  function handleMediaUploaded(mediaUrl: string, mediaType: "image" | "video") {
-    if (mediaType === "image") {
-      setFeaturedImageUrl(mediaUrl);
-      setFeaturedVideoUrl(""); // Clear video when image is uploaded
+  // Handle successful media upload
+  function handleMediaUploaded(
+    result: {
+      id: string;
+      url: string;
+      relativePath: string;
+      mimeType: string;
+      blurDataUrl?: string;
+      previewPath?: string;
+    } | null
+  ) {
+    if (result) {
+      setUploadMediaId(result.id);
+      setUploadPath(result.relativePath);
+      setPreviewPath(result.previewPath || null); // Use preview path from upload response
+      setBlurData(result.blurDataUrl || null);
+      setUploadFileType(result.mimeType.startsWith("image/") ? "IMAGE" : "VIDEO");
     } else {
-      setFeaturedVideoUrl(mediaUrl);
-      setFeaturedImageUrl(""); // Clear image when video is uploaded
+      setUploadMediaId(null);
+      setUploadPath(null);
+      setPreviewPath(null);
+      setBlurData(null);
+      setUploadFileType(null);
     }
+  }
+
+  function handleUploadStateChange(uploading: boolean) {
+    setIsUploadingMedia(uploading);
   }
 
   // Handle tag changes
@@ -399,6 +465,7 @@ export default function NewPostPage() {
                 <div className="space-y-2">
                   <Label htmlFor="content">Content *</Label>
                   <Textarea
+                    className="max-h-[500px] min-h-[200px] overflow-y-auto"
                     id="content"
                     name="content"
                     placeholder="Enter the prompt content here..."
@@ -418,13 +485,21 @@ export default function NewPostPage() {
                   />
                 </div>
 
-                <MediaUpload
-                  onMediaUploaded={handleMediaUploaded}
-                  currentImageUrl={featuredImageUrl}
-                  currentVideoUrl={featuredVideoUrl}
-                  title={postTitle || "untitled"}
-                  disabled={isSubmitting}
-                />
+                <div className="space-y-2">
+                  <Label htmlFor="featured-media">Featured Media</Label>
+                  <MediaUpload
+                    onMediaUploaded={handleMediaUploaded}
+                    onUploadStateChange={handleUploadStateChange}
+                    currentUploadPath={uploadPath || undefined}
+                    currentUploadFileType={uploadFileType || undefined}
+                    currentUploadMediaId={uploadMediaId || undefined}
+                    currentPreviewPath={previewPath || undefined}
+                    title={postTitle || "untitled-post"}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Upload an image or video to be featured with your post.
+                  </p>
+                </div>
               </CardContent>
             </Card>
 
@@ -433,7 +508,7 @@ export default function NewPostPage() {
                 <CardTitle>Categorization</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="category">Category *</Label>
                     <Select
@@ -477,14 +552,13 @@ export default function NewPostPage() {
                   </div>
                 </div>
 
-                {/* Replace the old tags input with the new TagSelector */}
                 <TagSelector
                   availableTags={tags}
                   selectedTags={selectedTags}
                   onTagsChange={handleTagsChange}
                   onPendingTagsChange={handlePendingTagsChange}
                   pendingTags={pendingTags}
-                  maxTags={15}
+                  maxTags={maxTagsPerPost}
                   disabled={isSubmitting}
                 />
               </CardContent>
@@ -562,17 +636,27 @@ export default function NewPostPage() {
               </CardContent>
             </Card>
 
-            <div className="flex gap-4">
+            {/* Hidden form fields for media data */}
+            <input type="hidden" name="uploadPath" value={uploadPath || ""} />
+            <input type="hidden" name="uploadFileType" value={uploadFileType || ""} />
+            <input type="hidden" name="uploadMediaId" value={uploadMediaId || ""} />
+            <input type="hidden" name="previewPath" value={previewPath || ""} />
+            <input type="hidden" name="blurData" value={blurData || ""} />
+
+            <div className="flex justify-end gap-4">
               <Button
                 type="submit"
-                className="flex-1"
-                disabled={isSubmitting || !isReady}
+                className="w-full md:w-auto"
+                disabled={isSubmitting || isUploadingMedia}
               >
+                {isSubmitting || isUploadingMedia ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
                 {isSubmitting
-                  ? "Submitting..."
-                  : isReady
-                    ? "Submit Prompt"
-                    : "Initializing..."}
+                  ? "Creating Post..."
+                  : isUploadingMedia
+                    ? "Uploading..."
+                    : "Create Post"}
               </Button>
               <Button
                 type="button"

@@ -3,7 +3,12 @@ import { requireAdmin } from "@/lib/auth";
 import { AutomationService } from "@/lib/automation/service";
 import { convertCsvToContentFiles } from "@/lib/automation/csv-parser";
 import { validateCsvStructure } from "@/lib/automation/validation";
-import { SecurityMonitor, SecurityEventType } from "@/lib/security-monitor";
+import { SecurityMonitor, SecurityEventType } from "@/lib/monitor";
+import { CSRFProtection } from "@/lib/csp";
+
+// Explicit runtime configuration to ensure Node.js runtime
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 /**
  * POST - Import and execute CSV content
@@ -39,6 +44,41 @@ export async function POST(request: NextRequest) {
       formData = await request.formData();
     } catch {
       return NextResponse.json({ error: "Invalid form data" }, { status: 400 });
+    }
+
+    // Validate CSRF token (check both headers and form data)
+    const csrfTokenFromHeaders = CSRFProtection.getTokenFromHeaders(request);
+    const csrfTokenFromForm = CSRFProtection.getTokenFromFormData(formData);
+    const csrfToken = csrfTokenFromHeaders || csrfTokenFromForm;
+
+    const isValidCSRF = await CSRFProtection.validateToken(csrfToken);
+    if (!isValidCSRF) {
+      await SecurityMonitor.logSecurityEvent(
+        SecurityEventType.MALICIOUS_PAYLOAD,
+        {
+          userId: user.id,
+          context: "invalid_csrf_token",
+          endpoint: "import-csv",
+          hasToken: !!csrfToken,
+          tokenLength: csrfToken?.length || 0,
+        },
+        "high"
+      );
+      return NextResponse.json(
+        {
+          error: "Invalid CSRF token",
+          code: "CSRF_TOKEN_INVALID",
+          message:
+            "Your security token has expired or is invalid. Please refresh the page and try again.",
+          requiresRefresh: true,
+        },
+        { status: 403 }
+      );
+    }
+
+    // Remove CSRF token from form data if it exists
+    if (csrfTokenFromForm) {
+      formData.delete("csrf_token");
     }
 
     // Get CSV file from form data
@@ -212,7 +252,7 @@ export async function POST(request: NextRequest) {
 /**
  * GET - Get CSV import documentation
  *
- * Returns documentation about the CSV format and usage.
+ * Returns documentation about the expected CSV format and usage.
  */
 export async function GET() {
   try {
@@ -225,105 +265,8 @@ export async function GET() {
       );
     }
 
-    const documentation = {
-      title: "CSV Content Import API",
-      description:
-        "Import content from CSV files and execute content generation",
-      method: "POST",
-      endpoint: "/api/admin/automation/import-csv",
-      contentType: "multipart/form-data",
-      authentication: "Admin role required",
-      limits: {
-        maxFileSize: "10MB",
-        maxRows: 1000,
-        allowedExtensions: [".csv"],
-      },
-      formFields: {
-        file: {
-          type: "File",
-          required: true,
-          description: "CSV file to import",
-        },
-        delimiter: {
-          type: "string",
-          required: false,
-          default: ",",
-          description: "CSV delimiter character",
-        },
-        skipEmptyLines: {
-          type: "boolean",
-          required: false,
-          default: true,
-          description: "Whether to skip empty lines",
-        },
-        maxRows: {
-          type: "number",
-          required: false,
-          default: 1000,
-          description: "Maximum number of rows to process",
-        },
-      },
-      csvFormat: {
-        requiredColumns: ["category", "title"],
-        optionalColumns: [
-          "tag_name",
-          "tag_slug",
-          "slug",
-          "description",
-          "content",
-          "is_premium",
-          "is_published",
-          "status",
-          "is_featured",
-          "featured_image",
-        ],
-        columnAliases: {
-          category: ["category", "cat", "category_slug"],
-          title: ["title", "post_title", "name"],
-          tag_name: ["tag_name", "tag", "tags", "tag_names"],
-          tag_slug: ["tag_slug", "tag_slugs"],
-          slug: ["slug", "post_slug", "url_slug"],
-          description: ["description", "desc", "summary", "brief"],
-          content: ["content", "body", "text", "full_content"],
-          is_premium: ["is_premium", "premium", "paid"],
-          is_published: ["is_published", "published", "public"],
-          status: ["status", "post_status", "approval_status"],
-          is_featured: ["is_featured", "featured", "highlight"],
-          featured_image: ["featured_image", "image", "image_url", "thumbnail"],
-        },
-        statusValues: ["APPROVED", "PENDING_APPROVAL", "REJECTED"],
-        booleanValues: [
-          "true",
-          "1",
-          "yes",
-          "y",
-          "on",
-          "false",
-          "0",
-          "no",
-          "n",
-          "off",
-        ],
-      },
-      response: {
-        success: "boolean",
-        message: "string",
-        fileName: "string",
-        fileSize: "number",
-        parseWarnings: "string[]",
-        duration: "number (seconds)",
-        filesProcessed: "number",
-        postsCreated: "number",
-        statusMessages: "string[]",
-        output: "string",
-      },
-      example: {
-        csvSample: `category,title,description,content,tag_name,is_premium,status
-ai-prompts,Creative Writing Prompt,A prompt for creative writing,Write a story about...,AI;Writing,false,PENDING_APPROVAL
-ai-prompts,Marketing Copy Prompt,Generate marketing copy,Create compelling copy for...,AI;Marketing,true,APPROVED`,
-      },
-    };
-
+    // Return documentation directly
+    const documentation = getDocumentationObject();
     return NextResponse.json(documentation);
   } catch (error) {
     console.error("Documentation error:", error);
@@ -332,4 +275,106 @@ ai-prompts,Marketing Copy Prompt,Generate marketing copy,Create compelling copy 
       { status: 500 }
     );
   }
+}
+
+/**
+ * Get documentation object - separated to avoid large string serialization
+ */
+function getDocumentationObject() {
+  return {
+    title: "CSV Content Import API",
+    description: "Import content from CSV files and execute content generation",
+    method: "POST",
+    endpoint: "/api/admin/automation/import-csv",
+    contentType: "multipart/form-data",
+    authentication: "Admin role required",
+    limits: {
+      maxFileSize: "10MB",
+      maxRows: 1000,
+      allowedExtensions: [".csv"],
+    },
+    formFields: {
+      file: {
+        type: "File",
+        required: true,
+        description: "CSV file to import",
+      },
+      delimiter: {
+        type: "string",
+        required: false,
+        default: ",",
+        description: "CSV delimiter character",
+      },
+      skipEmptyLines: {
+        type: "boolean",
+        required: false,
+        default: true,
+        description: "Whether to skip empty lines",
+      },
+      maxRows: {
+        type: "number",
+        required: false,
+        default: 1000,
+        description: "Maximum number of rows to process",
+      },
+    },
+    csvFormat: {
+      requiredColumns: ["category", "title"],
+      optionalColumns: [
+        "tag_name",
+        "tag_slug",
+        "slug",
+        "description",
+        "content",
+        "is_premium",
+        "is_published",
+        "status",
+        "is_featured",
+        "featured_image",
+      ],
+      columnAliases: {
+        category: ["category", "cat", "category_slug"],
+        title: ["title", "post_title", "name"],
+        tag_name: ["tag_name", "tag", "tags", "tag_names"],
+        tag_slug: ["tag_slug", "tag_slugs"],
+        slug: ["slug", "post_slug", "url_slug"],
+        description: ["description", "desc", "summary", "brief"],
+        content: ["content", "body", "text", "full_content"],
+        is_premium: ["is_premium", "premium", "paid"],
+        is_published: ["is_published", "published", "public"],
+        status: ["status", "post_status", "approval_status"],
+        is_featured: ["is_featured", "featured", "highlight"],
+        featured_image: ["featured_image", "image", "image_url", "thumbnail"],
+      },
+      statusValues: ["APPROVED", "PENDING_APPROVAL", "REJECTED"],
+      booleanValues: [
+        "true",
+        "1",
+        "yes",
+        "y",
+        "on",
+        "false",
+        "0",
+        "no",
+        "n",
+        "off",
+      ],
+    },
+    response: {
+      success: "boolean",
+      message: "string",
+      fileName: "string",
+      fileSize: "number",
+      parseWarnings: "string[]",
+      duration: "number (seconds)",
+      filesProcessed: "number",
+      postsCreated: "number",
+      statusMessages: "string[]",
+      output: "string",
+    },
+    example: {
+      csvSample:
+        "category,title,description,content,tag_name,is_premium,status\nai-prompts,Creative Writing Prompt,A prompt for creative writing,Write a story about...,AI;Writing,false,PENDING_APPROVAL",
+    },
+  };
 }

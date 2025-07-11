@@ -5,7 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { HelpCircle, Search, User, Zap, Wrench } from "lucide-react";
+import { HelpCircle, Search, User, Zap, Wrench } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { Icons } from "@/components/ui/icons";
 import { sanityFetch, groq, cacheTags } from "@/lib/sanity";

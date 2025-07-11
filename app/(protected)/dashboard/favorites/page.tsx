@@ -1,27 +1,31 @@
 import { Suspense } from "react";
 import {
   Heart,
-  LockIcon,
-  UnlockIcon,
   Calendar,
   ExternalLink,
-} from "lucide-react";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+  Crown,
+  Lock,
+} from "@/components/ui/icons";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { getUserFavoritesAction, getUserBookmarksAction } from "@/actions";
 import { FavoriteButton } from "@/components/favorite-button";
-import { BookmarkButton } from "@/components/bookmark-button";
 import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { requireAuth } from "@/lib/auth";
-import Image from "next/image";
+import { Metadata } from "next";
 import Link from "next/link";
 
-// Force dynamic rendering for this page
-export const dynamic = "force-dynamic";
+// Enable caching for better performance  
+export const revalidate = 30; // Revalidate every 30 seconds for user-specific data
+
+export const metadata: Metadata = {
+  title: "Favorites",
+  description: "Posts you've liked, organized by date",
+};
 
 // Helper function to group favorites by date
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -81,9 +85,11 @@ async function FavoritesList({
 
   if (!favoritesResult.success) {
     return (
-      <div className="text-center py-8">
-        <p className="text-muted-foreground">Failed to load favorites</p>
-      </div>
+      <Card className="col-span-full">
+        <CardContent className="flex flex-col items-center justify-center py-8">
+          <p className="text-muted-foreground">Failed to load favorites</p>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -99,13 +105,15 @@ async function FavoritesList({
 
   if (favorites.length === 0) {
     return (
-      <div className="text-center py-8 space-y-3">
-        <Heart className="h-16 w-16 text-muted-foreground mx-auto" />
-        <h3 className="text-lg font-medium">No favorites yet</h3>
-        <p className="text-muted-foreground">
-          Start favoriting posts to see them here
-        </p>
-      </div>
+      <Card className="col-span-full">
+        <CardContent className="flex flex-col items-center justify-center py-8">
+          <Heart className="h-16 w-16 text-muted-foreground mx-auto" />
+          <h3 className="text-lg font-medium">No favorites yet</h3>
+          <p className="text-muted-foreground">
+            Start favoriting posts to see them here
+          </p>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -133,7 +141,9 @@ async function FavoritesList({
           <div className="space-y-3">
             {dayFavorites.map((favorite) => {
               const post = favorite.post;
-              const isBookmarked = bookmarkedPostIds.has(post.id);
+              const isPremiumPost = post.isPremium;
+              const isUserFree = userType === "FREE" || userType === null;
+              const shouldShowPricingLink = isPremiumPost && isUserFree;
 
               return (
                 <Card
@@ -142,42 +152,43 @@ async function FavoritesList({
                 >
                   <CardHeader className="pb-0">
                     <div className="flex items-start gap-4">
-                      {/* Thumbnail Image */}
-                      {post.featuredImage && (
-                        <div className="relative w-20 h-16 flex-shrink-0 rounded-md overflow-hidden">
-                          <Image
-                            src={post.featuredImage}
-                            alt={post.title}
-                            fill
-                            className="object-cover"
-                          />
-                          {post.isPremium && (
-                            <div className="absolute top-1 right-1">
-                              <Badge className="text-xs px-1 py-0.5 bg-gradient-to-r from-teal-500 to-sky-500 text-foreground">
-                                {userType === "PREMIUM" ? (
-                                  <UnlockIcon className="w-3 h-3" />
-                                ) : (
-                                  <LockIcon className="w-3 h-3" />
-                                )}
-                              </Badge>
-                            </div>
-                          )}
-                        </div>
-                      )}
 
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-3 mb-2">
                           <div className="flex-1 min-w-0">
                             <CardTitle className="text-base line-clamp-2 mb-2">
-                              <Link
-                                href={`/entry/${post.id}`}
-                                className="hover:underline flex items-center"
-                                target="_blank"
-                              >
-                                {post.title}
-                                <ExternalLink className="w-3 h-3 ml-3" />
-                              </Link>
+                              {shouldShowPricingLink ? (
+                                <Link
+                                  href="/pricing"
+                                  className="hover:underline flex items-center text-amber-600 dark:text-amber-400"
+                                >
+                                  <Badge 
+                                  variant="outline" 
+                                  className="text-xs mr-2 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950 dark:to-yellow-950 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300"
+                                >
+                                  <Lock className="w-3 h-3 mr-1" />
+                                </Badge>
+                                  {post.title}
+                                </Link>
+                              ) : (
+                                <Link
+                                  href={`/entry/${post.id}`}
+                                  className="hover:underline flex items-center"
+                                  target="_blank"
+                                >
+                                  {isPremiumPost && (
+                                  <Badge 
+                                    variant="outline" 
+                                    className="text-xs mr-2 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950 dark:to-yellow-950 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300"
+                                  >
+                                    <Crown className="w-3 h-3 mr-1" />
+                                  </Badge>
+                                  )}
+                                  {post.title}
+                                  <ExternalLink className="w-3 h-3 ml-3" />
+                                </Link>
+                              )}
                             </CardTitle>
                             <div className="flex items-center gap-2">
                               <Badge variant="secondary" className="text-xs">
@@ -200,53 +211,31 @@ async function FavoritesList({
                               variant="outline"
                               size="sm"
                             />
-                            <BookmarkButton
-                              postId={post.id}
-                              initialBookmarked={isBookmarked}
-                              variant="outline"
-                              size="sm"
-                            />
                           </div>
                         </div>
 
-                        {/* Description */}
-                        {/* {post.description && (
-                          <CardDescription className="line-clamp-2 text-sm mb-3">
-                            {post.description}
-                          </CardDescription>
-                        )} */}
-
-                        {/* Tags and metadata */}
-                        {/* <div className="flex items-center justify-between"> */}
-                        {/* <div className="flex flex-wrap gap-1">
-                            {post.tags.slice(0, 4).map((tag: any) => (
-                              <Badge
-                                key={tag.id}
-                                variant="outline"
-                                className="text-xs"
-                              >
-                                {tag.name}
-                              </Badge>
-                            ))}
-                            {post.tags.length > 4 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{post.tags.length - 4}
-                              </Badge>
-                            )}
-                          </div> */}
-
-                        {/* <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                            <span>
-                              {new Date(favorite.createdAt).toLocaleTimeString(
-                                "en-US",
-                                {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                }
-                              )}
-                            </span>
+                        {/* Show upgrade message for premium posts when user is free */}
+                        {shouldShowPricingLink && (
+                          <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                            <div className="flex items-start gap-2">
+                              <Crown className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5" />
+                              <div className="text-sm">
+                                <p className="font-medium text-amber-800 dark:text-amber-200">
+                                  Premium Content
+                                </p>
+                                <p className="text-amber-700 dark:text-amber-300">
+                                  This prompt requires a Premium subscription to access. 
+                                  <Link 
+                                    href="/pricing" 
+                                    className="underline font-medium hover:text-amber-900 dark:hover:text-amber-100"
+                                  >
+                                    Upgrade now
+                                  </Link> to unlock exclusive AI prompts.
+                                </p>
+                              </div>
+                            </div>
                           </div>
-                        </div> */}
+                        )}
                       </div>
                     </div>
                   </CardHeader>
@@ -338,7 +327,7 @@ export default async function FavoritesPage() {
         <div className="flex flex-1 flex-col gap-4 p-6 lg:p-6">
           <div className="space-y-6">
             <p className="text-muted-foreground">
-              Posts you&apos;ve marked as favorites, organized by date
+              Posts you&apos;ve liked, organized by date
             </p>
 
             <Suspense fallback={<FavoritesLoading />}>

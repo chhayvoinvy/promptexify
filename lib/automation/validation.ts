@@ -6,7 +6,8 @@
  */
 
 import { z } from "zod";
-import DOMPurify from "isomorphic-dompurify";
+import createDOMPurify from "dompurify";
+import { JSDOM } from "jsdom";
 import { automationConfig } from "./config";
 import type { TagData, PostData, ContentFile } from "./types";
 
@@ -72,15 +73,30 @@ export const PostDataSchema = z.object({
   status: z.enum(["APPROVED", "PENDING_APPROVAL", "REJECTED"]),
   isFeatured: z.boolean(),
 
-  featuredImage: z
+  uploadPath: z
     .string()
     .optional()
     .refine(
-      (url) =>
-        !url ||
-        url === "" ||
-        (z.string().url().safeParse(url).success && isAllowedImageUrl(url)),
-      "Invalid or suspicious image URL"
+      (path) =>
+        !path ||
+        path === "" ||
+        isAllowedLocalImagePath(path) ||
+        isAllowedLocalVideoPath(path),
+      "Invalid or suspicious upload path"
+    ),
+  uploadFileType: z
+    .enum(["IMAGE", "VIDEO"])
+    .optional(),
+  
+  previewPath: z
+    .string()
+    .optional()
+    .refine(
+      (path) =>
+        !path ||
+        path === "" ||
+        isAllowedPreviewPath(path),
+      "Invalid or suspicious preview path"
     ),
 });
 
@@ -143,37 +159,31 @@ function containsSuspiciousContent(content: string): boolean {
 }
 
 /**
- * Validates if an image URL is from an allowed domain
+ * Validates if a local image path is allowed
  */
-function isAllowedImageUrl(url: string): boolean {
-  try {
-    const parsedUrl = new URL(url);
+function isAllowedLocalImagePath(path: string): boolean {
+  // Must start with /images/ and end with .jpg, .jpeg, .webp, .avif, or .png
+  return (
+    /^\/images\/[a-zA-Z0-9_\-./]+\.(jpg|jpeg|webp|avif|png)$/i.test(path)
+  );
+}
 
-    // Only allow HTTPS URLs
-    if (parsedUrl.protocol !== "https:") {
-      return false;
-    }
+/**
+ * Validates if a local video path is allowed
+ */
+function isAllowedLocalVideoPath(path: string): boolean {
+  // Must start with /videos/ and end with .mp4
+  return /^\/videos\/[a-zA-Z0-9_\-./]+\.mp4$/i.test(path);
+}
 
-    // Allow common image hosting services
-    const allowedDomains = [
-      "images.unsplash.com",
-      "unsplash.com",
-      "picsum.photos", // Lorem Picsum for testing
-      "cdn.example.com", // Replace with your CDN
-      "s3.amazonaws.com",
-      "storage.googleapis.com",
-      "cdn.jsdelivr.net",
-      "raw.githubusercontent.com",
-    ];
-
-    return allowedDomains.some(
-      (domain) =>
-        parsedUrl.hostname === domain ||
-        parsedUrl.hostname.endsWith(`.${domain}`)
-    );
-  } catch {
-    return false;
-  }
+/**
+ * Validates if a preview path is allowed
+ */
+function isAllowedPreviewPath(path: string): boolean {
+  // Must start with /preview/ and end with allowed image extensions
+  return (
+    /^\/preview\/[a-zA-Z0-9_\-./]+\.(jpg|jpeg|webp|avif|png|gif)$/i.test(path)
+  );
 }
 
 /**
@@ -214,7 +224,9 @@ export function safeJsonParse(jsonString: string): unknown {
 /**
  * Sanitizes content using DOMPurify to prevent XSS attacks
  */
-export function sanitizeContent(content: string): string {
+export async function sanitizeContent(content: string): Promise<string> {
+  const window = new JSDOM("").window;
+  const DOMPurify = createDOMPurify(window as any);
   return DOMPurify.sanitize(content);
 }
 
@@ -246,58 +258,60 @@ export interface CsvValidationOptions {
 /**
  * Validates multiple ContentFile objects in bulk
  */
-export function validateContentFilesBulk(
+export async function validateContentFilesBulk(
   contentFiles: ContentFile[],
   options: {
     maxItems?: number;
     allowPartialSuccess?: boolean;
   } = {}
-): BulkValidationResult {
-  const { maxItems = 100, allowPartialSuccess = true } = options;
+): Promise<BulkValidationResult> {
+  const {
+    maxItems = automationConfig.security.maxFiles,
+    allowPartialSuccess = true,
+  } = options;
 
   const errors: string[] = [];
   const warnings: string[] = [];
   const validItems: ContentFile[] = [];
 
-  // Check total items limit
   if (contentFiles.length > maxItems) {
-    warnings.push(
-      `Input contains ${contentFiles.length} items, limiting to ${maxItems}`
-    );
-    contentFiles = contentFiles.slice(0, maxItems);
+    errors.push(`Exceeded maximum number of items (${maxItems})`);
+    return {
+      success: false,
+      validItems: [],
+      errors,
+      warnings,
+      totalItems: contentFiles.length,
+      validCount: 0,
+    };
   }
 
-  // Validate each content file
   for (let i = 0; i < contentFiles.length; i++) {
-    try {
-      const validatedFile = ContentFileSchema.parse(contentFiles[i]);
+    const file = contentFiles[i];
+    const result = ContentFileSchema.safeParse(file);
 
-      // Additional security sanitization
-      validatedFile.posts = validatedFile.posts.map((post) => ({
-        ...post,
-        title: sanitizeContent(post.title),
-        description: sanitizeContent(post.description),
-        content: sanitizeContent(post.content),
-      }));
+    if (result.success) {
+      const validatedFile = result.data;
+
+      // Sanitize post content after validation
+      validatedFile.posts = await Promise.all(
+        validatedFile.posts.map(async (post) => ({
+          ...post,
+          title: await sanitizeContent(post.title),
+          description: await sanitizeContent(post.description),
+          content: await sanitizeContent(post.content),
+        }))
+      );
 
       validItems.push(validatedFile);
-    } catch (error) {
-      const errorMessage =
-        error instanceof z.ZodError
-          ? `Item ${i + 1}: ${error.errors.map((e) => e.message).join(", ")}`
-          : `Item ${i + 1}: ${error instanceof Error ? error.message : "Unknown error"}`;
-
-      errors.push(errorMessage);
-
-      if (!allowPartialSuccess) {
-        break;
-      }
+    } else {
+      const errorMessages = result.error.errors.map((e) => e.message);
+      errors.push(`Item ${i + 1}: ${errorMessages.join(", ")}`);
     }
   }
 
-  const success = allowPartialSuccess
-    ? validItems.length > 0
-    : errors.length === 0;
+  const success =
+    errors.length === 0 || (allowPartialSuccess && validItems.length > 0);
 
   return {
     success,
@@ -310,87 +324,77 @@ export function validateContentFilesBulk(
 }
 
 /**
- * Validates JSON input for direct execution
+ * Validates JSON input, parsing it and checking against the ContentFile schema
  */
-export function validateJsonInput(
+export async function validateJsonInput(
   jsonData: unknown,
   options: {
     maxSize?: number;
     allowArray?: boolean;
   } = {}
-): { success: boolean; data?: ContentFile | ContentFile[]; errors: string[] } {
-  const { maxSize = automationConfig.security.maxFileSize, allowArray = true } =
-    options;
+): Promise<{
+  success: boolean;
+  data?: ContentFile | ContentFile[];
+  errors: string[];
+}> {
+  const { maxSize = 10 * 1024 * 1024, allowArray = true } = options;
 
-  try {
-    // Check data size
-    const jsonString = JSON.stringify(jsonData);
-    if (jsonString.length > maxSize) {
-      return {
-        success: false,
-        errors: [
-          `JSON data too large: ${jsonString.length} bytes (max ${maxSize})`,
-        ],
-      };
-    }
-
-    // Validate structure
-    if (Array.isArray(jsonData)) {
-      if (!allowArray) {
-        return {
-          success: false,
-          errors: ["Array input not allowed"],
-        };
-      }
-
-      // Validate each item in array
-      const bulkResult = validateContentFilesBulk(jsonData as ContentFile[]);
-
-      if (!bulkResult.success) {
-        return {
-          success: false,
-          errors: bulkResult.errors,
-        };
-      }
-
-      return {
-        success: true,
-        data: bulkResult.validItems,
-        errors: bulkResult.warnings,
-      };
-    } else {
-      // Validate single object
-      const validatedData = ContentFileSchema.parse(jsonData);
-
-      // Additional security sanitization
-      validatedData.posts = validatedData.posts.map((post) => ({
-        ...post,
-        title: sanitizeContent(post.title),
-        description: sanitizeContent(post.description),
-        content: sanitizeContent(post.content),
-      }));
-
-      return {
-        success: true,
-        data: validatedData,
-        errors: [],
-      };
-    }
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return {
-        success: false,
-        errors: error.errors.map((e) => `${e.path.join(".")}: ${e.message}`),
-      };
-    }
-
+  // Check overall size if jsonData is a string
+  if (typeof jsonData === "string" && jsonData.length > maxSize) {
     return {
       success: false,
-      errors: [
-        error instanceof Error ? error.message : "Unknown validation error",
-      ],
+      errors: [`JSON payload exceeds max size of ${maxSize} bytes`],
     };
   }
+
+  const schema = allowArray
+    ? z.union([ContentFileSchema, z.array(ContentFileSchema)])
+    : ContentFileSchema;
+
+  const result = schema.safeParse(jsonData);
+
+  if (!result.success) {
+    return {
+      success: false,
+      errors: result.error.errors.map((e) => e.message),
+    };
+  }
+
+  let validatedData = result.data;
+
+  // Sanitize content after validation
+  if (Array.isArray(validatedData)) {
+    validatedData = await Promise.all(
+      validatedData.map(async (file) => ({
+        ...file,
+        posts: await Promise.all(
+          file.posts.map(async (post) => ({
+            ...post,
+            title: await sanitizeContent(post.title),
+            description: await sanitizeContent(post.description),
+            content: await sanitizeContent(post.content),
+          }))
+        ),
+      }))
+    );
+  } else if (validatedData) {
+    const file = validatedData as ContentFile;
+    file.posts = await Promise.all(
+      file.posts.map(async (post) => ({
+        ...post,
+        title: await sanitizeContent(post.title),
+        description: await sanitizeContent(post.description),
+        content: await sanitizeContent(post.content),
+      }))
+    );
+    validatedData = file;
+  }
+
+  return {
+    success: true,
+    data: validatedData,
+    errors: [],
+  };
 }
 
 /**
@@ -492,36 +496,40 @@ export function validateCsvStructure(
 /**
  * Validates and sanitizes raw content input
  */
-export function validateRawContent(
+export async function validateRawContent(
   content: string,
   type: "title" | "description" | "content" | "category" | "tag" = "content"
-): { success: boolean; sanitized?: string; errors: string[] } {
-  // Type-specific validation
-  const limits = {
-    title: 200,
-    description: 500,
-    content: automationConfig.security.maxContentLength,
-    category: 50,
-    tag: 50,
-  };
+): Promise<{ success: boolean; sanitized?: string; errors: string[] }> {
+  const errors: string[] = [];
 
-  if (content.length > limits[type]) {
-    return {
-      success: false,
-      errors: [`${type} exceeds ${limits[type]} character limit`],
-    };
+  if (!content || typeof content !== "string") {
+    errors.push("Invalid content provided");
+    return { success: false, errors };
   }
 
-  // Check for suspicious content
+  // Basic length checks
+  const maxLength =
+    type === "content"
+      ? automationConfig.security.maxContentLength
+      : type === "title"
+        ? 200
+        : 500;
+
+  if (content.length > maxLength) {
+    errors.push(`Content exceeds maximum length of ${maxLength}`);
+  }
+
+  // Check for suspicious patterns
   if (containsSuspiciousContent(content)) {
-    return {
-      success: false,
-      errors: [`${type} contains suspicious content`],
-    };
+    errors.push("Content contains suspicious patterns");
+  }
+
+  if (errors.length > 0) {
+    return { success: false, errors };
   }
 
   // Sanitize content
-  const sanitized = sanitizeContent(content);
+  const sanitized = await sanitizeContent(content);
 
   return {
     success: true,

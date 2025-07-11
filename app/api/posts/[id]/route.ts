@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPostById } from "@/lib/content";
+import { getPublicUrl } from "@/lib/image/storage";
 
 interface RouteParams {
   params: Promise<{
@@ -8,11 +9,36 @@ interface RouteParams {
   }>;
 }
 
-export async function GET(request: NextRequest, { params }: RouteParams) {
+async function handlePostRequest(request: NextRequest, { params }: RouteParams, isHeadRequest = false) {
   try {
     const { id } = await params;
 
-    // Authentication check
+    // For HEAD requests (prefetching), use more permissive checks
+    if (isHeadRequest) {
+      // Basic validation - just check if post exists and is published
+      const post = await getPostById(id);
+      
+      if (!post) {
+        return NextResponse.json({ error: "Post not found" }, { status: 404 });
+      }
+      
+      // For HEAD requests, only check if post is published
+      // This allows prefetching for all published content regardless of auth state
+      if (!post.isPublished) {
+        return NextResponse.json({ error: "Post not found" }, { status: 404 });
+      }
+
+      // Return successful HEAD response for published posts
+      return new NextResponse(null, {
+        status: 200,
+        headers: {
+          'Cache-Control': 'public, max-age=300, stale-while-revalidate=600', // 5min cache, 10min stale
+          'Content-Type': 'application/json',
+        }
+      });
+    }
+
+    // For GET requests, maintain strict authentication and authorization
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json(
@@ -21,7 +47,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Role-based access control
+    // Role-based access control for GET requests
     if (user.userData?.role !== "ADMIN" && user.userData?.role !== "USER") {
       return NextResponse.json(
         { error: "Insufficient permissions" },
@@ -29,35 +55,46 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Fetch post
+    // Fetch post for GET requests
     const post = await getPostById(id);
 
     if (!post) {
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
 
-    // Authorization check: Users can only edit their own posts that haven't been approved
-    // Admins can edit any post regardless of status
-    if (user.userData?.role === "USER") {
-      if (post.authorId !== user.userData.id) {
-        return NextResponse.json(
-          { error: "You can only edit your own posts" },
-          { status: 403 }
-        );
+    // Check if post is published - unpublished posts can only be viewed by author and admin
+    if (!post.isPublished) {
+      const canViewUnpublished = post.authorId === user.userData?.id || user.userData?.role === "ADMIN";
+      if (!canViewUnpublished) {
+        return NextResponse.json({ error: "Post not found" }, { status: 404 });
       }
-      // Prevent editing approved posts
-      if (post.status === "APPROVED") {
+    }
+
+    // Check premium access control for published posts
+    if (post.isPremium && post.isPublished) {
+      const userType = user.userData?.type || null;
+      const isUserFree = userType === "FREE" || userType === null;
+      const isAdmin = user.userData?.role === "ADMIN";
+      const isAuthor = post.authorId === user.userData?.id;
+      
+      // Allow access for: premium users, admins, or the post author
+      if (isUserFree && !isAdmin && !isAuthor) {
         return NextResponse.json(
-          {
-            error:
-              "Cannot edit approved posts. Once your content has been approved by an admin, it cannot be modified.",
-          },
+          { error: "Premium subscription required to access this content" },
           { status: 403 }
         );
       }
     }
 
-    return NextResponse.json(post);
+    return NextResponse.json({
+      ...post,
+      uploadPath: post.uploadPath && post.uploadFileType === "IMAGE"
+        ? await getPublicUrl(post.uploadPath)
+        : null,
+      uploadVideo: post.uploadPath && post.uploadFileType === "VIDEO"
+        ? await getPublicUrl(post.uploadPath)
+        : null,
+    });
   } catch (error) {
     console.error("Post API error:", error);
     return NextResponse.json(
@@ -65,4 +102,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       { status: 500 }
     );
   }
+}
+
+export async function GET(request: NextRequest, context: RouteParams) {
+  return handlePostRequest(request, context, false);
+}
+
+export async function HEAD(request: NextRequest, context: RouteParams) {
+  return handlePostRequest(request, context, true);
 }

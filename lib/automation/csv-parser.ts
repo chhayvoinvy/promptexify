@@ -7,7 +7,7 @@
 
 import { ContentFile, TagData, PostData } from "./types";
 import { sanitizeContent } from "./validation";
-import { SecurityMonitor, SecurityEventType } from "@/lib/security-monitor";
+import { SecurityMonitor, SecurityEventType } from "@/lib/monitor";
 
 /**
  * CSV format interfaces
@@ -40,6 +40,7 @@ const EXPECTED_COLUMNS = {
   IS_FEATURED: ["is_featured", "featured", "highlight"],
   FEATURED_IMAGE: ["featured_image", "image", "image_url", "thumbnail"],
   FEATURED_VIDEO: ["featured_video", "video", "video_url"],
+  PREVIEW_PATH: ["preview_path", "preview", "preview_image", "preview_url"],
 };
 
 /**
@@ -63,8 +64,12 @@ export class CsvParser {
     const warnings: string[] = [];
 
     try {
+      // Use Buffer to avoid webpack serialization warnings for large CSV content
+      const csvBuffer = Buffer.from(csvContent);
+      const csvSize = csvBuffer.length;
+
       // Security check: validate CSV size
-      if (csvContent.length > 10 * 1024 * 1024) {
+      if (csvSize > 10 * 1024 * 1024) {
         // 10MB limit
         return {
           success: false,
@@ -73,26 +78,32 @@ export class CsvParser {
         };
       }
 
-      // Parse CSV content
-      const rows = this.parseCSV(csvContent, delimiter, skipEmptyLines);
+      // Process CSV content from buffer
+      const processedCsvContent = csvBuffer.toString();
 
-      if (rows.length === 0) {
+      // Optimize for webpack by avoiding large string serialization
+      // Process CSV in chunks to reduce memory usage
+      const processedResult = await this.processCSVInChunks(
+        processedCsvContent,
+        {
+          delimiter,
+          skipEmptyLines,
+          maxRows,
+        }
+      );
+
+      if (!processedResult.success) {
         return {
           success: false,
-          errors: ["No data found in CSV"],
-          warnings,
+          errors: processedResult.errors,
+          warnings: processedResult.warnings,
         };
       }
 
-      if (rows.length > maxRows) {
-        warnings.push(
-          `CSV contains ${rows.length} rows, limiting to ${maxRows}`
-        );
-        rows.splice(maxRows);
-      }
+      const rows = processedResult.rows;
 
       // Extract headers and validate
-      const headers = Object.keys(rows[0]);
+      const headers = Object.keys(rows[0] || {});
       const columnMapping = this.mapColumns(headers);
 
       if (!columnMapping.category || !columnMapping.title) {
@@ -168,6 +179,100 @@ export class CsvParser {
         warnings,
       };
     }
+  }
+
+  /**
+   * Process CSV in chunks to reduce memory usage and avoid webpack serialization issues
+   */
+  private static async processCSVInChunks(
+    csvContent: string,
+    options: {
+      delimiter: string;
+      skipEmptyLines: boolean;
+      maxRows: number;
+    }
+  ): Promise<{
+    success: boolean;
+    rows: CsvRow[];
+    errors: string[];
+    warnings: string[];
+  }> {
+    const { delimiter, skipEmptyLines, maxRows } = options;
+    const lines = csvContent.split("\n");
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    if (lines.length === 0) {
+      return {
+        success: false,
+        rows: [],
+        errors: ["No data found in CSV"],
+        warnings,
+      };
+    }
+
+    // Process headers
+    const headers = lines[0]
+      .split(delimiter)
+      .map((h) => h.trim().replace(/"/g, ""));
+
+    if (headers.length === 0) {
+      return {
+        success: false,
+        rows: [],
+        errors: ["Invalid CSV headers"],
+        warnings,
+      };
+    }
+
+    // Process data rows in chunks to avoid large memory usage
+    const chunkSize = 100; // Process 100 rows at a time
+    const rows: CsvRow[] = [];
+    let processedCount = 0;
+
+    for (
+      let i = 1;
+      i < lines.length && processedCount < maxRows;
+      i += chunkSize
+    ) {
+      const chunk = lines.slice(i, Math.min(i + chunkSize, lines.length));
+
+      for (const line of chunk) {
+        if (processedCount >= maxRows) break;
+
+        const trimmedLine = line.trim();
+        if (skipEmptyLines && !trimmedLine) continue;
+
+        const values = this.parseCSVLine(trimmedLine, delimiter);
+        if (values.length !== headers.length) {
+          warnings.push(
+            `Row ${i + 1} has ${values.length} columns, expected ${headers.length}`
+          );
+          continue;
+        }
+
+        const row: CsvRow = {};
+        headers.forEach((header, index) => {
+          row[header] = values[index] || "";
+        });
+
+        rows.push(row);
+        processedCount++;
+      }
+    }
+
+    if (processedCount === maxRows && lines.length > maxRows + 1) {
+      warnings.push(
+        `CSV contains ${lines.length - 1} rows, limited to ${maxRows}`
+      );
+    }
+
+    return {
+      success: true,
+      rows,
+      errors,
+      warnings,
+    };
   }
 
   /**
@@ -291,79 +396,87 @@ export class CsvParser {
     rows: CsvRow[],
     columnMapping: Record<string, string>
   ): Promise<ContentFile | null> {
-    if (rows.length === 0) return null;
-
-    // Extract unique tags from all rows
-    const tagSet = new Set<string>();
-    const tagSlugs = new Set<string>();
-
-    for (const row of rows) {
-      const tagNames =
-        row[columnMapping.tag_name]?.split(",").map((t) => t.trim()) || [];
-      const tagSlugList =
-        row[columnMapping.tag_slug]?.split(",").map((t) => t.trim()) || [];
-
-      tagNames.forEach((tag) => {
-        if (tag) tagSet.add(tag);
-      });
-
-      tagSlugList.forEach((slug) => {
-        if (slug) tagSlugs.add(slug);
-      });
+    if (rows.length === 0) {
+      return null;
     }
 
-    // Create tags array
-    const tags: TagData[] = [];
-    const tagNames = Array.from(tagSet);
-    const tagSlugArray = Array.from(tagSlugs);
+    // Extract unique tags from all rows in the category
+    const uniqueTags = new Map<string, TagData>();
+    rows.forEach((row) => {
+      const tagNames = row[columnMapping.tag_name]?.split(",") || [];
+      const tagSlugs = row[columnMapping.tag_slug]?.split(",") || [];
 
-    for (let i = 0; i < Math.max(tagNames.length, tagSlugArray.length); i++) {
-      const name = tagNames[i] || `Tag ${i + 1}`;
-      const slug = tagSlugArray[i] || this.generateSlug(name);
-
-      tags.push({
-        name: sanitizeContent(name),
-        slug: sanitizeContent(slug),
+      tagNames.forEach((name, index) => {
+        const slug = tagSlugs[index] || this.generateSlug(name);
+        if (name && slug && !uniqueTags.has(slug)) {
+          uniqueTags.set(slug, {
+            name: name.trim(),
+            slug: slug.trim(),
+          });
+        }
       });
-    }
+    });
 
-    // If no tags found, create a default one
-    if (tags.length === 0) {
-      tags.push({
-        name: "General",
-        slug: "general",
-      });
-    }
+    const tags = await Promise.all(
+      Array.from(uniqueTags.values()).map(async (tag) => ({
+        name: await sanitizeContent(tag.name),
+        slug: await sanitizeContent(tag.slug),
+      }))
+    );
 
-    // Create posts from rows
-    const posts: PostData[] = [];
-
-    for (const row of rows) {
-      const title = row[columnMapping.title]?.trim();
-
-      if (!title) continue; // Skip rows without title
-
-      const post: PostData = {
-        title: sanitizeContent(title),
-        slug: row[columnMapping.slug]?.trim() || this.generateSlug(title),
-        description: sanitizeContent(
-          row[columnMapping.description]?.trim() || ""
-        ),
-        content: sanitizeContent(row[columnMapping.content]?.trim() || ""),
-        isPremium: this.parseBoolean(row[columnMapping.is_premium]),
-        isPublished: this.parseBoolean(row[columnMapping.is_published]),
-        status: this.parseStatus(row[columnMapping.status]),
-        isFeatured: this.parseBoolean(row[columnMapping.is_featured]),
-        featuredImage: row[columnMapping.featured_image]?.trim() || "",
-      };
-
-      posts.push(post);
-    }
-
-    if (posts.length === 0) return null;
+    // Create posts
+    const posts = await Promise.all(
+      rows.map(async (row): Promise<PostData> => {
+        const title = row[columnMapping.title]?.trim() || "";
+        const previewPath = row[columnMapping["preview_path"]]?.trim();
+        
+        // Handle upload path from either featured_image or featured_video columns
+        let uploadPath: string | undefined;
+        let uploadFileType: "IMAGE" | "VIDEO" | undefined;
+        
+        const featuredImage = row[columnMapping["featured_image"]]?.trim();
+        const featuredVideo = row[columnMapping["featured_video"]]?.trim();
+        
+        if (featuredImage) {
+          uploadPath = featuredImage;
+          uploadFileType = "IMAGE";
+        } else if (featuredVideo) {
+          uploadPath = featuredVideo;
+          uploadFileType = "VIDEO";
+        }
+        
+        // If we have an uploadPath but no explicit type, determine from extension
+        if (uploadPath && !uploadFileType) {
+          const extension = uploadPath.split('.').pop()?.toLowerCase();
+          if (['webp', 'jpg', 'jpeg', 'png', 'avif', 'gif'].includes(extension || '')) {
+            uploadFileType = 'IMAGE';
+          } else if (['mp4', 'webm', 'mov', 'avi'].includes(extension || '')) {
+            uploadFileType = 'VIDEO';
+          }
+        }
+        
+        return {
+          title: await sanitizeContent(title),
+          slug: row[columnMapping.slug]?.trim() || this.generateSlug(title),
+          description: await sanitizeContent(
+            row[columnMapping.description]?.trim() || ""
+          ),
+          content: await sanitizeContent(
+            row[columnMapping.content]?.trim() || ""
+          ),
+          isPremium: this.parseBoolean(row[columnMapping.is_premium]),
+          isPublished: this.parseBoolean(row[columnMapping.is_published]),
+          status: this.parseStatus(row[columnMapping.status]),
+          isFeatured: this.parseBoolean(row[columnMapping.is_featured]),
+          uploadPath,
+          uploadFileType,
+          previewPath,
+        };
+      })
+    );
 
     return {
-      category: sanitizeContent(category),
+      category: await sanitizeContent(category),
       tags,
       posts,
     };

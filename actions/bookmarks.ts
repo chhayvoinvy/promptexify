@@ -3,8 +3,7 @@
 import { type BookmarkData, bookmarkSchema } from "@/lib/schemas";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
-import { handleAuthRedirect } from "./auth";
+import { revalidateCache, CACHE_TAGS } from "@/lib/cache";
 
 // Bookmark actions
 export async function toggleBookmarkAction(data: BookmarkData) {
@@ -15,7 +14,11 @@ export async function toggleBookmarkAction(data: BookmarkData) {
     // Get the current user
     const currentUser = await getCurrentUser();
     if (!currentUser?.userData) {
-      handleAuthRedirect();
+      // Return authentication error instead of redirecting to prevent modal navigation issues
+      return {
+        success: false,
+        error: "Authentication required. Please sign in.",
+      };
     }
     const user = currentUser.userData;
 
@@ -40,7 +43,17 @@ export async function toggleBookmarkAction(data: BookmarkData) {
         },
       });
 
-      revalidatePath("/");
+      // Invalidate caches for this post and listings
+      await revalidateCache([
+        CACHE_TAGS.POST_BY_ID,
+        CACHE_TAGS.POSTS,
+        CACHE_TAGS.USER_POSTS,
+        CACHE_TAGS.SEARCH_RESULTS,
+        CACHE_TAGS.RELATED_POSTS,
+        CACHE_TAGS.USER_BOOKMARKS,
+        CACHE_TAGS.USER_FAVORITES,
+        CACHE_TAGS.POPULAR_POSTS,
+      ]);
       return { success: true, bookmarked: false };
     } else {
       // Add bookmark
@@ -51,7 +64,16 @@ export async function toggleBookmarkAction(data: BookmarkData) {
         },
       });
 
-      revalidatePath("/");
+      await revalidateCache([
+        CACHE_TAGS.POST_BY_ID,
+        CACHE_TAGS.POSTS,
+        CACHE_TAGS.USER_POSTS,
+        CACHE_TAGS.SEARCH_RESULTS,
+        CACHE_TAGS.RELATED_POSTS,
+        CACHE_TAGS.USER_BOOKMARKS,
+        CACHE_TAGS.USER_FAVORITES,
+        CACHE_TAGS.POPULAR_POSTS,
+      ]);
       return { success: true, bookmarked: true };
     }
   } catch (error) {
@@ -77,7 +99,11 @@ export async function getUserBookmarksAction() {
     // Get the current user
     const currentUser = await getCurrentUser();
     if (!currentUser?.userData) {
-      handleAuthRedirect();
+      // Return authentication error instead of redirecting
+      return {
+        success: false,
+        error: "Authentication required. Please sign in.",
+      };
     }
     const user = currentUser.userData;
 
@@ -89,6 +115,13 @@ export async function getUserBookmarksAction() {
       include: {
         post: {
           include: {
+            media: {
+              select: {
+                id: true,
+                mimeType: true,
+                relativePath: true,
+              },
+            },
             author: {
               select: {
                 id: true,
@@ -140,7 +173,11 @@ export async function checkBookmarkStatusAction(postId: string) {
     // Get the current user
     const currentUser = await getCurrentUser();
     if (!currentUser?.userData) {
-      handleAuthRedirect();
+      // Return authentication error instead of redirecting
+      return {
+        success: false,
+        error: "Authentication required. Please sign in.",
+      };
     }
     const user = currentUser.userData;
 

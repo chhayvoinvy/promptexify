@@ -2,7 +2,7 @@
 
 import { useTransition, useCallback } from "react";
 import { toast } from "sonner";
-import { LogOut, Loader2 } from "lucide-react";
+import { LogOut, Loader2 } from "@/components/ui/icons";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";

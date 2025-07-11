@@ -122,8 +122,7 @@
   }
 }
 
-
-
+/* Line Clamp */
 .line-clamp-1 {
   overflow: hidden;
   display: -webkit-box;
@@ -143,4 +142,22 @@
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
+}
+
+/* Modal Styles - Prevent body scroll without layout shift */
+body.modal-open {
+  overflow: hidden;
+  /* Preserve scrollbar space to prevent layout shift */
+  padding-right: var(--scrollbar-width, 0px);
+}
+
+/* Calculate scrollbar width to prevent layout shift */
+@supports (scrollbar-gutter: stable) {
+  body {
+    scrollbar-gutter: stable;
+  }
+  body.modal-open {
+    padding-right: 0;
+    overflow: hidden;
+  }
 }

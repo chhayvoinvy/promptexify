@@ -5,13 +5,19 @@ import { PostMasonryGrid } from "@/components/post-masonry-grid";
 import { PostMasonrySkeleton } from "@/components/post-masonry-skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Bookmark, BookmarkX } from "lucide-react";
+import { Bookmark, BookmarkX } from "@/components/ui/icons";
 import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { Metadata } from "next";
 
-// Force dynamic rendering for this page
-export const dynamic = "force-dynamic";
+// Enable caching for better performance
+export const revalidate = 30; // Revalidate every 30 seconds for user-specific data
+
+export const metadata: Metadata = {
+  title: "Your Bookmarks",
+  description: "Your saved prompts and bookmarked content",
+};
 
 async function BookmarksContent() {
   // Get current user info
@@ -78,10 +84,6 @@ async function BookmarksContent() {
 
   return (
     <div className="space-y-6">
-      <p className="text-muted-foreground">
-        Posts you&apos;ve marked as bookmarks, organized by date
-      </p>
-
       <div className="flex items-center justify-between">
         <div>
           <p className="text-muted-foreground">
@@ -133,9 +135,14 @@ export default async function BookmarksPage() {
       <SidebarInset>
         <SiteHeader />
         <div className="flex flex-1 flex-col gap-4 p-6 lg:p-6">
-          <Suspense fallback={<BookmarksLoading />}>
-            <BookmarksContent />
-          </Suspense>
+          <div className="space-y-6">
+            <p className="text-muted-foreground">
+              Posts you&apos;ve added to your bookmarks.
+            </p>
+            <Suspense fallback={<BookmarksLoading />}>
+              <BookmarksContent />
+            </Suspense>
+          </div>
         </div>
       </SidebarInset>
     </SidebarProvider>

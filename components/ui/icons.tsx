@@ -12,6 +12,80 @@ import {
   Calendar,
 } from "lucide-react";
 
+// Tabler Icons
+import {
+  IconDashboard,
+  IconHelp,
+  IconSearch,
+  IconSettings,
+  IconEdit,
+  IconTags,
+  IconCategory,
+  IconBookmark,
+  IconHeart,
+  IconRobot,
+  IconFile,
+  IconExternalLink,
+  IconTrendingUp,
+  IconTrendingDown,
+  IconRefresh,
+  IconEye,
+  IconDots,
+  IconCreditCard,
+  IconDotsVertical,
+  IconNotification,
+  IconUserCircle,
+  IconChevronDown,
+  IconChevronLeft,
+  IconChevronRight,
+  IconChevronsLeft,
+  IconChevronsRight,
+  IconCircleCheckFilled,
+  IconLayoutColumns,
+  IconLoader,
+  IconCrown,
+  IconX,
+} from "@tabler/icons-react";
+
+// Re-export Tabler icons individually so callers can `import { IconExternalLink } from "@/components/ui/icons"` without touching the Tabler package.
+export {
+  IconDashboard,
+  IconHelp,
+  IconSearch,
+  IconSettings,
+  IconEdit,
+  IconTags,
+  IconCategory,
+  IconBookmark,
+  IconHeart,
+  IconRobot,
+  IconFile,
+  IconExternalLink,
+  IconTrendingUp,
+  IconTrendingDown,
+  IconRefresh,
+  IconEye,
+  IconDots,
+  IconCreditCard,
+  IconDotsVertical,
+  IconNotification,
+  IconUserCircle,
+  IconChevronDown,
+  IconChevronLeft,
+  IconChevronRight,
+  IconChevronsLeft,
+  IconChevronsRight,
+  IconCircleCheckFilled,
+  IconLayoutColumns,
+  IconLoader,
+  IconCrown,
+  IconX,
+};
+
+export type { Icon } from "@tabler/icons-react";
+// Re-export everything from lucide-react so callers can import any lucide icon from this file
+export * from "lucide-react";
+
 export const Icons = {
   spinner: Loader2,
   crown: Crown,

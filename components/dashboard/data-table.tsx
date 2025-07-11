@@ -12,7 +12,7 @@ import {
   IconLoader,
   IconEye,
   IconRefresh,
-} from "@tabler/icons-react";
+} from "@/components/ui/icons";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -56,7 +56,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar } from "lucide-react";
+import { Calendar } from "@/components/ui/icons";
 
 // User activity schema for the user activity data
 export const userActivitySchema = z.object({
@@ -160,8 +160,7 @@ const userActivityColumns: ColumnDef<z.infer<typeof userActivitySchema>>[] = [
         <Calendar className="h-3 w-3" />
         {row.original.lastLogin
           ? new Date(row.original.lastLogin).toLocaleString()
-          : ""
-        }
+          : ""}
       </div>
     ),
   },
@@ -232,6 +231,8 @@ export function DataTable() {
     error: analyticsError,
     refetch: refetchAnalytics,
   } = useAnalyticsTable({ range: "30d" });
+
+  const isDevelopment = process.env.NODE_ENV !== "production";
 
   // Convert analytics data to table format
   const analyticsData = React.useMemo(() => {
@@ -360,8 +361,9 @@ export function DataTable() {
               disabled={userActivityLoading}
             >
               <IconRefresh
-                className={`h-4 w-4 ${userActivityLoading ? "animate-spin" : ""
-                  }`}
+                className={`h-4 w-4 ${
+                  userActivityLoading ? "animate-spin" : ""
+                }`}
               />
               <span className="hidden lg:inline">Refresh Data</span>
               <span className="lg:hidden">Refresh</span>
@@ -454,9 +456,9 @@ export function DataTable() {
                           {header.isPlaceholder
                             ? null
                             : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
                         </TableHead>
                       ))}
                     </TableRow>
@@ -513,8 +515,9 @@ export function DataTable() {
                     Rows per page
                   </Label>
                   <Select
-                    value={`${userActivityTable.getState().pagination.pageSize
-                      }`}
+                    value={`${
+                      userActivityTable.getState().pagination.pageSize
+                    }`}
                     onValueChange={(value) => {
                       userActivityTable.setPageSize(Number(value));
                     }}
@@ -624,9 +627,17 @@ export function DataTable() {
           <>
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold">Page Analytics</h3>
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  Page Analytics
+                  {isDevelopment && (
+                    <Badge variant="secondary" className="text-xs">
+                      DEV
+                    </Badge>
+                  )}
+                </h3>
                 <p className="text-sm text-muted-foreground">
                   Top performing pages by total views (last 30 days)
+                  {isDevelopment && " (mock data)"}
                 </p>
               </div>
               <div className="text-right">
@@ -647,9 +658,9 @@ export function DataTable() {
                           {header.isPlaceholder
                             ? null
                             : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
                         </TableHead>
                       ))}
                     </TableRow>

@@ -17,10 +17,16 @@ import {
   getUserFavoritesCountAction,
   getAdminDashboardStatsAction,
 } from "@/actions/users";
-import { Shield, BarChart3 } from "lucide-react";
+import { Shield, BarChart3 } from "@/components/ui/icons";
+import { Metadata } from "next";
 
-// Force dynamic rendering for this page
-export const dynamic = "force-dynamic";
+// Enable caching for better performance
+export const revalidate = 120; // Revalidate every 2 minutes for dashboard stats
+
+export const metadata: Metadata = {
+  title: "Dashboard",
+  description: "Overview of your activity and saved content",
+};
 
 export default async function DashboardPage() {
   // Enforce authentication using standardized requireAuth function

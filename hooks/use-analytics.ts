@@ -25,7 +25,7 @@ interface AnalyticsData {
 interface UseAnalyticsOptions {
   range?: "7d" | "30d" | "90d";
   timezone?: string;
-  refreshInterval?: number; // in milliseconds
+  refreshInterval?: number;
 }
 
 interface UseAnalyticsReturn {
@@ -33,6 +33,65 @@ interface UseAnalyticsReturn {
   isLoading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
+}
+
+// Generate mock data for development
+function generateMockData(range: string): AnalyticsData {
+  const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
+  const chartData = [];
+  let totalViews = 0;
+  let totalVisitors = 0;
+
+  // Optimize for smaller data structures
+  const maxDataPoints = Math.min(days, 30); // Limit to 30 days max for mock data
+  const stepSize = Math.ceil(days / maxDataPoints);
+
+  // Generate data for the specified range with optimization
+  for (let i = maxDataPoints - 1; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i * stepSize);
+
+    // Generate realistic-looking data with some randomness
+    const baseViews = Math.floor(Math.random() * 500) + 100;
+    const desktop = Math.floor(baseViews * (0.5 + Math.random() * 0.3)); // 50-80% desktop
+    const mobile = baseViews - desktop;
+    const visitors = Math.floor(baseViews * (0.6 + Math.random() * 0.2)); // 60-80% of views
+
+    totalViews += baseViews;
+    totalVisitors += visitors;
+
+    chartData.push({
+      date: date.toISOString().split("T")[0],
+      desktop,
+      mobile,
+      total: baseViews,
+    });
+  }
+
+  // Use smaller, more efficient data structures
+  const topPages = [
+    { page: "/", views: Math.floor(totalViews * 0.3) },
+    { page: "/directory", views: Math.floor(totalViews * 0.2) },
+    { page: "/entry/prompts", views: Math.floor(totalViews * 0.15) },
+    { page: "/pricing", views: Math.floor(totalViews * 0.1) },
+    { page: "/about", views: Math.floor(totalViews * 0.05) },
+  ];
+
+  const topReferrers = [
+    { referrer: "google.com", views: Math.floor(totalViews * 0.4) },
+    { referrer: "direct", views: Math.floor(totalViews * 0.2) },
+    { referrer: "twitter.com", views: Math.floor(totalViews * 0.15) },
+    { referrer: "github.com", views: Math.floor(totalViews * 0.1) },
+    { referrer: "reddit.com", views: Math.floor(totalViews * 0.05) },
+  ];
+
+  return {
+    chartData,
+    totalViews,
+    totalVisitors,
+    topPages,
+    topReferrers,
+  };
 }
 
 export function useAnalytics({
@@ -49,6 +108,18 @@ export function useAnalytics({
       setIsLoading(true);
       setError(null);
 
+      // Check if we're in production
+      const isProduction = process.env.NODE_ENV === "production";
+
+      // In development, return mock data immediately
+      if (!isProduction) {
+        console.log("Development mode: Using mock analytics data");
+        const mockData = generateMockData(range);
+        setData(mockData);
+        return;
+      }
+
+      // Production: Fetch from API
       const params = new URLSearchParams({
         range,
         timezone,
@@ -90,9 +161,9 @@ export function useAnalytics({
     fetchAnalytics();
   }, [range, timezone]);
 
-  // Set up automatic refresh if specified
+  // Set up automatic refresh if specified (only in production)
   useEffect(() => {
-    if (!refreshInterval) return;
+    if (!refreshInterval || process.env.NODE_ENV !== "production") return;
 
     const interval = setInterval(fetchAnalytics, refreshInterval);
     return () => clearInterval(interval);

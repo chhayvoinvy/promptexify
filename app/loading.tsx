@@ -1,5 +1,5 @@
 import { Container } from "@/components/ui/container";
-import { Loader2 } from "lucide-react";
+import { Loader2 } from "@/components/ui/icons";
 
 export default function Loading() {
   return (

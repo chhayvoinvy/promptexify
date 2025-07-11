@@ -1,5 +1,11 @@
 import Link from "next/link";
-import { Github, Twitter, Instagram, Youtube, Facebook } from "lucide-react";
+import {
+  Github,
+  Twitter,
+  Instagram,
+  Youtube,
+  Facebook,
+} from "@/components/ui/icons";
 import { Logo } from "@/components/ui/logo";
 import { Container } from "@/components/ui/container";
 

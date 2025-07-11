@@ -7,7 +7,7 @@ import { ThemeProvider } from "@/components/ui/theme";
 import { Toaster } from "@/components/ui/sonner";
 import { GoogleOneTap } from "@/components/google-one-tap";
 import { getBaseUrl } from "@/lib/utils";
-import { CSPNonce } from "@/lib/security";
+import { CSPNonce } from "@/lib/csp";
 
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseUrl()),
@@ -117,12 +117,16 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({
   children,
+  modal,
 }: Readonly<{
   children: React.ReactNode;
+  modal: React.ReactNode;
 }>) {
   // Get CSP nonce for inline scripts/styles (only in production)
   const nonce = await CSPNonce.getFromHeaders();
   const isProduction = process.env.NODE_ENV === "production";
+
+  // console.log("🌐 Root layout rendered, modal:", !!modal);
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -182,8 +186,10 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          {modal}
           <GoogleOneTap />
-          <Analytics />
+          {/* Only render Vercel Analytics in production */}
+          {isProduction && <Analytics />}
           <Toaster />
         </ThemeProvider>
       </body>

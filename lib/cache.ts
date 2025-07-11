@@ -96,11 +96,19 @@ class RedisCache implements CacheStore {
       return this.redis;
     }
 
+    // Skip Redis initialization in Edge Runtime
+    if (typeof process !== "undefined" && process.env.NEXT_RUNTIME === "edge") {
+      console.log(
+        "🔄 Cache: Skipping Redis in Edge Runtime, using memory cache"
+      );
+      return null;
+    }
+
     if (typeof window === "undefined") {
       this.isInitializing = true;
       try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const { Redis } = require("ioredis");
+        // Dynamic import to prevent bundling in Edge Runtime
+        const { Redis } = await import("ioredis");
         const redisConfig = this.getRedisConfig();
 
         if (redisConfig) {
@@ -113,6 +121,14 @@ class RedisCache implements CacheStore {
 
           this.redis.on("connect", () => {
             console.log("Redis client connected successfully.");
+
+            // Graceful shutdown to avoid memory leaks
+            const close = () => {
+              this.redis?.quit().catch(() => {});
+            };
+            process.on("beforeExit", close);
+            process.on("SIGINT", close);
+            process.on("SIGTERM", close);
           });
         } else {
           console.warn(
@@ -136,65 +152,37 @@ class RedisCache implements CacheStore {
    * Get Redis configuration with proper authentication handling
    */
   private getRedisConfig() {
-    const redisUrl = process.env.REDIS_URL;
+    // For local development, default to a standard local Redis instance
+    // if REDIS_URL is not explicitly provided.
+    const redisUrl =
+      process.env.REDIS_URL ||
+      (process.env.NODE_ENV === "development"
+        ? "redis://localhost:6379"
+        : undefined);
+
     console.log(
-      `[Cache] Attempting to configure Redis. REDIS_URL found: ${!!redisUrl}`
+      `[Cache] Attempting to configure Redis. Final URL used: ${
+        redisUrl ? new URL(redisUrl).host : "N/A"
+      }`
     );
 
-    // Option 1: Use REDIS_URL if provided and not empty
-    if (redisUrl && redisUrl.trim() !== "") {
+    if (redisUrl) {
+      // console.log("🔄 Cache: Using Redis for caching");
       return {
         url: redisUrl,
-        retryDelayOnFailover: 100,
+        // Recommended options for robustness
+        retryStrategy: (times: number) => Math.min(times * 50, 2000),
         maxRetriesPerRequest: 3,
-        lazyConnect: true,
+        lazyConnect: true, // Important: delays connection until first command
         connectTimeout: 10000,
-        commandTimeout: 5000,
-        enableReadyCheck: true,
-        maxLoadingTimeout: 2000,
+        enableReadyCheck: false, // Avoids waiting for full readiness
       };
     }
 
-    // Option 2: Use individual environment variables
-    const redisHost = process.env.REDIS_HOST;
-    console.log(
-      `[Cache] REDIS_URL not provided or empty. REDIS_HOST found: ${!!redisHost}`
-    );
-
-    if (!redisHost) {
-      console.warn("[Cache] REDIS_HOST not set. Cannot configure Redis.");
-      return null;
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const config: Record<string, any> = {
-      host: redisHost,
-      port: parseInt(process.env.REDIS_PORT || "6379", 10),
-      retryDelayOnFailover: 100,
-      maxRetriesPerRequest: 3,
-      lazyConnect: true,
-      connectTimeout: 10000,
-      commandTimeout: 5000,
-      enableReadyCheck: true,
-      maxLoadingTimeout: 2000,
-    };
-
-    if (process.env.REDIS_PASSWORD) {
-      config.password = process.env.REDIS_PASSWORD;
-    }
-    if (process.env.REDIS_USERNAME) {
-      config.username = process.env.REDIS_USERNAME;
-    }
-    if (process.env.REDIS_DB) {
-      config.db = parseInt(process.env.REDIS_DB, 10);
-    }
-    if (process.env.REDIS_TLS === "true") {
-      config.tls = {
-        rejectUnauthorized:
-          process.env.REDIS_TLS_REJECT_UNAUTHORIZED !== "false",
-      };
-    }
-    return config;
+    // If no Redis URL is available (e.g., during build or in a test environment),
+    // return null to signal a fallback to memory cache.
+    //  console.log("🔄 Cache: Using in-memory cache (development)");
+    return null;
   }
 
   async get(key: string): Promise<string | null> {
@@ -220,7 +208,7 @@ class RedisCache implements CacheStore {
     try {
       await redis.setex(key, ttl, value);
       if (process.env.NODE_ENV === "development") {
-        console.log(`🔄 Redis SET: ${key} (TTL: ${ttl}s) ✅`);
+        console.log(`🔄 Redis SET: ${key} (TTL: ${ttl}s)`);
       }
     } catch (error) {
       console.warn("Redis set error:", error);
@@ -273,20 +261,16 @@ class RedisCache implements CacheStore {
   }
 }
 
-// Cache store singleton
+// Decide whether to use Redis or in-memory cache.
+// We will use Redis when:
+//   1. A REDIS_URL is explicitly provided (e.g., production or staging), OR
+//   2. We are running in development mode – in that case we implicitly fall
+//      back to a local Redis instance running on the default port.
+// Otherwise we fall back to the in-memory cache implementation.
 const cacheStore: CacheStore =
-  process.env.NODE_ENV === "production" && process.env.REDIS_URL
+  process.env.REDIS_URL || process.env.NODE_ENV === "development"
     ? new RedisCache()
     : new MemoryCache();
-
-// Log cache configuration
-if (process.env.REDIS_URL) {
-  console.log("🔄 Cache: Using Redis for caching");
-} else {
-  console.log("🔄 Cache: Using in-memory cache (development)");
-}
-
-// Export cache store for testing
 export { cacheStore };
 
 /**
@@ -372,9 +356,7 @@ export async function warmCache() {
     console.log("Starting cache warming...");
 
     // Import functions dynamically to avoid circular dependencies
-    const { getCachedCategories, getCachedTags } = await import(
-      "@/lib/queries"
-    );
+    const { getCachedCategories, getCachedTags } = await import("@/lib/query");
     const { getAllPosts } = await import("@/lib/content");
 
     // Warm critical caches
