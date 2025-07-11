@@ -5,9 +5,9 @@ import { requireAuth, getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { handleAuthRedirect } from "./auth";
-import { withCSRFProtection, handleSecureActionError } from "@/lib/csp";
+import { withCSRFProtection, handleSecureActionError } from "@/lib/security/csp";
 import { updateUserProfileSchema } from "@/lib/schemas";
-import { sanitizeInput } from "@/lib/sanitize";
+import { sanitizeInput } from "@/lib/security/sanitize";
 
 export const updateUserProfileAction = withCSRFProtection(
   async (formData: FormData) => {
@@ -74,7 +74,7 @@ export const updateUserProfileAction = withCSRFProtection(
           );
 
           // Log suspicious activity
-          import("@/lib/monitor").then(({ SecurityAlert }) => {
+          import("@/lib/security/monitor").then(({ SecurityAlert }) => {
             SecurityAlert.suspiciousRequest(
               "Suspicious name pattern in profile update",
               { name, pattern: pattern.toString() },

@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "./lib/supabase/middleware";
-import { CSPNonce, SecurityHeaders, CSRFProtection } from "./lib/csp";
+import { CSPNonce, SecurityHeaders, CSRFProtection } from "./lib/security/csp";
 import {
   rateLimits,
   getClientIdentifier,

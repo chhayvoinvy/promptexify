@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { requireAdmin } from "@/lib/auth";
-import { CSRFProtection } from "@/lib/csp";
-import { SecurityMonitor, SecurityEventType } from "@/lib/monitor";
+import { CSRFProtection } from "@/lib/security/csp";
+import { SecurityMonitor, SecurityEventType } from "@/lib/security/monitor";
 import { z } from "zod";
 
 // Initialize S3 client from lib/s3.ts conventions

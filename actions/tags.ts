@@ -9,8 +9,8 @@ import {
   sanitizeTagName,
   sanitizeTagSlug,
   validateTagSlug,
-} from "@/lib/sanitize";
-import { withCSRFProtection } from "@/lib/csp";
+} from "@/lib/security/sanitize";
+import { withCSRFProtection } from "@/lib/security/csp";
 import { revalidateCache, CACHE_TAGS } from "@/lib/cache";
 
 // Define return types for consistent error handling

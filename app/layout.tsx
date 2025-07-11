@@ -7,7 +7,7 @@ import { ThemeProvider } from "@/components/ui/theme";
 import { Toaster } from "@/components/ui/sonner";
 import { GoogleOneTap } from "@/components/google-one-tap";
 import { getBaseUrl } from "@/lib/utils";
-import { CSPNonce } from "@/lib/csp";
+import { CSPNonce } from "@/lib/security/csp";
 
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseUrl()),
@@ -123,7 +123,8 @@ export default async function RootLayout({
   modal: React.ReactNode;
 }>) {
   // Get CSP nonce for inline scripts/styles (only in production)
-  const nonce = await CSPNonce.getFromHeaders();
+  // Use safe method that handles static rendering gracefully
+  const nonce = await CSPNonce.getFromHeadersSafe();
   const isProduction = process.env.NODE_ENV === "production";
 
   // console.log("🌐 Root layout rendered, modal:", !!modal);

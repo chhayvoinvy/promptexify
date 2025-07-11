@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { StorageType } from "@/app/generated/prisma";
 import { z } from "zod";
-import { sanitizeInput } from "@/lib/sanitize";
+import { sanitizeInput } from "@/lib/security/sanitize";
 import { clearStorageConfigCache } from "@/lib/image/storage";
 
 // Settings validation schema

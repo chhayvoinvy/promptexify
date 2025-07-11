@@ -10,6 +10,20 @@ const nextConfig: NextConfig = {
         bufferutil: "bufferutil",
         "utf-8-validate": "utf-8-validate",
         "supports-color": "supports-color",
+        // Externalize OpenTelemetry packages
+        "@opentelemetry/instrumentation": "@opentelemetry/instrumentation",
+        "@opentelemetry/instrumentation-connect": "@opentelemetry/instrumentation-connect",
+        "@opentelemetry/instrumentation-express": "@opentelemetry/instrumentation-express",
+        "@opentelemetry/instrumentation-generic-pool": "@opentelemetry/instrumentation-generic-pool",
+        "@opentelemetry/instrumentation-hapi": "@opentelemetry/instrumentation-hapi",
+        "@opentelemetry/instrumentation-ioredis": "@opentelemetry/instrumentation-ioredis",
+        "@opentelemetry/instrumentation-knex": "@opentelemetry/instrumentation-knex",
+        "@opentelemetry/instrumentation-lru-memoizer": "@opentelemetry/instrumentation-lru-memoizer",
+        "@opentelemetry/instrumentation-mongoose": "@opentelemetry/instrumentation-mongoose",
+        "@opentelemetry/instrumentation-mysql2": "@opentelemetry/instrumentation-mysql2",
+        "@opentelemetry/instrumentation-redis-4": "@opentelemetry/instrumentation-redis-4",
+        "@opentelemetry/instrumentation-undici": "@opentelemetry/instrumentation-undici",
+        "@prisma/instrumentation": "@prisma/instrumentation",
       });
     }
 
@@ -23,6 +37,15 @@ const nextConfig: NextConfig = {
       { module: /node_modules\/node-gyp-build/ },
       { module: /node_modules\/bufferutil/ },
       { module: /node_modules\/utf-8-validate/ },
+      // Suppress OpenTelemetry instrumentation warnings from Sentry
+      { module: /node_modules\/@opentelemetry\/instrumentation/ },
+      { module: /node_modules\/@opentelemetry\/instrumentation-.*/ },
+      { module: /node_modules\/@prisma\/instrumentation/ },
+      // Suppress Sentry telemetry warnings
+      { module: /node_modules\/@sentry\/node/ },
+      { module: /node_modules\/@sentry\/nextjs/ },
+      // Suppress critical dependency warnings for dynamic imports
+      { message: /Critical dependency: the request of a dependency is an expression/ },
     ];
 
     config.optimization = {
@@ -59,6 +82,20 @@ const nextConfig: NextConfig = {
     "@supabase/realtime-js",
     "bufferutil",
     "utf-8-validate",
+    // Externalize OpenTelemetry packages to prevent bundling issues
+    "@opentelemetry/instrumentation",
+    "@opentelemetry/instrumentation-connect",
+    "@opentelemetry/instrumentation-express",
+    "@opentelemetry/instrumentation-generic-pool",
+    "@opentelemetry/instrumentation-hapi",
+    "@opentelemetry/instrumentation-ioredis",
+    "@opentelemetry/instrumentation-knex",
+    "@opentelemetry/instrumentation-lru-memoizer",
+    "@opentelemetry/instrumentation-mongoose",
+    "@opentelemetry/instrumentation-mysql2",
+    "@opentelemetry/instrumentation-redis-4",
+    "@opentelemetry/instrumentation-undici",
+    "@prisma/instrumentation",
   ],
 
   images: {
@@ -242,5 +279,8 @@ export default shouldEnableSentryBuildFeatures
       
       // Tunnel route for Sentry requests
       tunnelRoute: "/monitoring",
+      
+      // Disable telemetry to prevent OpenTelemetry instrumentation warnings
+      telemetry: false,
     })
   : nextConfig;

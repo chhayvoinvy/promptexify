@@ -7,15 +7,15 @@ import {
   rateLimits,
   getClientIdentifier,
   getRateLimitHeaders,
-} from "@/lib/limits";
+} from "@/lib/security/limits";
 import {
   sanitizeTagName,
   sanitizeTagSlug,
   validateTagSlug,
   SECURITY_HEADERS,
-} from "@/lib/sanitize";
+} from "@/lib/security/sanitize";
 import { revalidateCache, CACHE_TAGS } from "@/lib/cache";
-import { CSRFProtection } from "@/lib/csp";
+import { CSRFProtection } from "@/lib/security/csp";
 
 export async function GET(request: NextRequest) {
   try {

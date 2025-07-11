@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { AutomationService } from "@/lib/automation/service";
 import { validateJsonInput } from "@/lib/automation/validation";
-import { SecurityMonitor, SecurityEventType } from "@/lib/monitor";
+import { SecurityMonitor, SecurityEventType } from "@/lib/security/monitor";
 import { ContentFile } from "@/lib/automation/types";
-import { CSRFProtection } from "@/lib/csp";
+import { CSRFProtection } from "@/lib/security/csp";
 
 // Explicit runtime configuration to ensure Node.js runtime
 export const runtime = "nodejs";

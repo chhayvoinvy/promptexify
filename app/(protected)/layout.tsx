@@ -1,5 +1,5 @@
 import { requireAuth } from "@/lib/auth";
-import { SecurityEvents } from "@/lib/audit";
+import { SecurityEvents } from "@/lib/security/audit";
 import { headers } from "next/headers";
 
 // Force dynamic rendering for authentication-dependent routes

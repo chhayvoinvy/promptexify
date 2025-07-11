@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { CSRFProtection, SecurityHeaders } from "@/lib/csp";
+import { CSRFProtection, SecurityHeaders } from "@/lib/security/csp";
 
 /**
  * GET /api/csrf

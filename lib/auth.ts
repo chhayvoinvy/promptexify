@@ -14,7 +14,7 @@ import {
   type MagicLinkData,
 } from "@/lib/schemas";
 import { stripe } from "@/lib/stripe";
-import { SecurityEvents, getClientIP } from "@/lib/audit";
+import { SecurityEvents, getClientIP } from "@/lib/security/audit";
 
 // Primary Magic Link Authentication Function
 export async function signInWithMagicLink(

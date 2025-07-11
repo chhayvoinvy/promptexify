@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { handleAuthRedirect } from "./auth";
-import { withCSRFProtection } from "@/lib/csp";
+import { withCSRFProtection } from "@/lib/security/csp";
 
 // Category management actions
 export const createCategoryAction = withCSRFProtection(

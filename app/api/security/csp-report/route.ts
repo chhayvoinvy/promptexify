@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { SECURITY_HEADERS } from "@/lib/sanitize";
+import { SECURITY_HEADERS } from "@/lib/security/sanitize";
 
 interface CSPViolationReport {
   "csp-report": {

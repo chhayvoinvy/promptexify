@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveMediaUrl, resolveMediaUrls } from "@/lib/image/path";
 import { z } from "zod";
-import { rateLimits, getClientIdentifier, getRateLimitHeaders } from "@/lib/limits";
-import { SECURITY_HEADERS } from "@/lib/sanitize";
+import { rateLimits, getClientIdentifier, getRateLimitHeaders } from "@/lib/security/limits";
+import { SECURITY_HEADERS } from "@/lib/security/sanitize";
 
 export async function POST(request: NextRequest) {
   try {

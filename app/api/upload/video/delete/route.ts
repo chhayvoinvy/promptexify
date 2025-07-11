@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { deleteVideo, getStorageConfig } from "@/lib/image/storage";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import { CSRFProtection } from "@/lib/csp";
+import { CSRFProtection } from "@/lib/security/csp";
 
 /**
  * Enhanced filename extraction that handles different URL formats and storage types

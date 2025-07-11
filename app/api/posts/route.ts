@@ -4,8 +4,8 @@ import {
   rateLimits,
   getClientIdentifier,
   getRateLimitHeaders,
-} from "@/lib/limits";
-import { sanitizeSearchQuery, SECURITY_HEADERS } from "@/lib/sanitize";
+} from "@/lib/security/limits";
+import { sanitizeSearchQuery, SECURITY_HEADERS } from "@/lib/security/sanitize";
 import { Queries } from "@/lib/query";
 import { getAllCategories } from "@/lib/content";
 

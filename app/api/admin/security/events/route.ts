@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
-import { getRecentSecurityEvents } from "@/lib/audit";
-import { SECURITY_HEADERS } from "@/lib/sanitize";
+import { getRecentSecurityEvents } from "@/lib/security/audit";
+import { SECURITY_HEADERS } from "@/lib/security/sanitize";
 
 /**
  * GET /api/admin/security/events

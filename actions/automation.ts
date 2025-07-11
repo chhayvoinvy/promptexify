@@ -3,7 +3,7 @@
 import { getCurrentUser } from "@/lib/auth";
 import { handleAuthRedirect } from "./auth";
 import { revalidatePath } from "next/cache";
-import { SecurityMonitor, SecurityEventType } from "@/lib/monitor";
+import { SecurityMonitor, SecurityEventType } from "@/lib/security/monitor";
 import { prisma } from "@/lib/prisma";
 
 // Define types for automation actions

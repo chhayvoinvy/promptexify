@@ -5,15 +5,15 @@ import {
   rateLimits,
   getClientIdentifier,
   getRateLimitHeaders,
-} from "@/lib/limits";
+} from "@/lib/security/limits";
 import {
   sanitizeFilename,
   validateFileExtension,
   SECURITY_HEADERS,
   getFileUploadConfig,
-} from "@/lib/sanitize";
-import { CSRFProtection } from "@/lib/csp";
-import { SecurityEvents, getClientIP } from "@/lib/audit";
+} from "@/lib/security/sanitize";
+import { CSRFProtection } from "@/lib/security/csp";
+import { SecurityEvents, getClientIP } from "@/lib/security/audit";
 import { prisma } from "@/lib/prisma";
 
 // Get environment-aware upload configurations

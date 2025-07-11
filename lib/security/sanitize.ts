@@ -390,7 +390,7 @@ export function sanitizeSearchQuery(
         process.env.NEXT_RUNTIME !== "edge"
       ) {
         // Dynamically import to avoid circular dependencies
-        import("@/lib/monitor")
+        import("@/lib/security/monitor")
           .then(({ SecurityAlert }) => {
             SecurityAlert.suspiciousSearchPattern(
               query,

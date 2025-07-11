@@ -1,5 +1,5 @@
 import { type RateLimitData } from "@/lib/schemas";
-import { getRateLimitConfig } from "@/lib/sanitize";
+import { getRateLimitConfig } from "@/lib/security/sanitize";
 
 interface RateLimitStore {
   [key: string]: {

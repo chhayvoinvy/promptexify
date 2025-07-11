@@ -5,15 +5,15 @@ import {
   rateLimits,
   getClientIdentifier,
   getRateLimitHeaders,
-} from "@/lib/limits";
+} from "@/lib/security/limits";
 import {
   validateFileExtension,
   SECURITY_HEADERS,
   getFileUploadConfig,
-} from "@/lib/sanitize";
+} from "@/lib/security/sanitize";
 import { prisma } from "@/lib/prisma";
-import { CSRFProtection } from "@/lib/csp";
-import { SecurityEvents, getClientIP } from "@/lib/audit";
+import { CSRFProtection } from "@/lib/security/csp";
+import { SecurityEvents, getClientIP } from "@/lib/security/audit";
 
 // Get environment-aware upload configurations
 const uploadConfig = getFileUploadConfig();

@@ -404,6 +404,8 @@ const CSP_HASHES = {
 const CSP_REPORT_URI = "/api/security/csp-report";
 
 export class CSPNonce {
+
+
   /**
    * Generate a cryptographically secure nonce using Web Crypto API
    * Compatible with Edge Runtime - using only Web APIs
@@ -433,6 +435,7 @@ export class CSPNonce {
   /**
    * Get nonce from request headers (for Server Components)
    * Note: This method should be imported and used only in Server Components
+   * Gracefully handles static rendering contexts where headers are not available
    */
   static async getFromHeaders(): Promise<string | null> {
     try {
@@ -449,6 +452,18 @@ export class CSPNonce {
       
       return nonce;
     } catch (error) {
+      // Check if this is a static rendering error (expected during build)
+      const isStaticRenderingError = error instanceof Error && 
+        (error.message.includes("Dynamic server usage") || 
+         error.message.includes("couldn't be rendered statically") ||
+         error.message.includes("used `headers`"));
+      
+      if (isStaticRenderingError) {
+        // This is expected during static generation - don't log as error
+        return null;
+      }
+      
+      // Log unexpected errors only
       console.error("[CSP] Failed to get nonce from headers:", error);
       return null;
     }
@@ -498,6 +513,42 @@ export class CSPNonce {
       return nonce;
     } catch (error) {
       console.error("[CSP] Failed to get nonce from window:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Get nonce safely - handles both static and dynamic contexts
+   * Returns null during static rendering without errors
+   * Use this in layouts and components that might be statically rendered
+   */
+  static async getFromHeadersSafe(): Promise<string | null> {
+    try {
+      // Try to get headers - this will fail during static generation
+      const { headers } = await import("next/headers");
+      const headersList = await headers();
+      const nonce = headersList.get("x-nonce");
+      
+      // Validate nonce if present
+      if (nonce && (nonce.length < 16 || nonce.length > 64)) {
+        return null;
+      }
+      
+      return nonce;
+    } catch (error) {
+      // Check if this is a static rendering error (expected during build)
+      const isStaticRenderingError = error instanceof Error && 
+        (error.message.includes("Dynamic server usage") || 
+         error.message.includes("couldn't be rendered statically") ||
+         error.message.includes("used `headers`"));
+      
+      if (isStaticRenderingError) {
+        // This is expected during static generation - return null silently
+        return null;
+      }
+      
+      // Log unexpected errors
+      console.error("[CSP] Unexpected error getting nonce:", error);
       return null;
     }
   }

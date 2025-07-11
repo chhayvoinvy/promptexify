@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { CSPNonce } from "@/lib/csp";
+import { CSPNonce } from "@/lib/security/csp";
 
 interface CSRFHookReturn {
   token: string | null;

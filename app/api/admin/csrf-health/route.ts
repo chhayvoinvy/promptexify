@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
-import { CSRFProtection } from "@/lib/csp";
+import { CSRFProtection } from "@/lib/security/csp";
 
 /**
  * GET - CSRF Health Check Endpoint (Admin Only)

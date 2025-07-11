@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
-import { CSRFProtection } from "@/lib/csp";
-import { SecurityMonitor, SecurityEventType } from "@/lib/monitor";
+import { CSRFProtection } from "@/lib/security/csp";
+import { SecurityMonitor, SecurityEventType } from "@/lib/security/monitor";
 import { getContentAutomationQueue } from "@/lib/queue";
 import { z } from "zod";
 

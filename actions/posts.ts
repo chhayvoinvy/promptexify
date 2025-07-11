@@ -7,13 +7,13 @@ import { redirect } from "next/navigation";
 import { handleAuthRedirect } from "./auth";
 import { revalidateCache, CACHE_TAGS } from "@/lib/cache";
 import { PostStatus } from "@/app/generated/prisma";
-import { withCSRFProtection } from "@/lib/csp";
+import { withCSRFProtection } from "@/lib/security/csp";
 
 import {
   sanitizeInput,
   sanitizeContent,
   sanitizeTagSlug,
-} from "@/lib/sanitize";
+} from "@/lib/security/sanitize";
 
 // Post management actions
 export const createPostAction = withCSRFProtection(

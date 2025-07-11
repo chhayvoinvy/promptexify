@@ -45,7 +45,6 @@ next-env.d.ts
 # local files
 /backup
 /templates
-/docs
 
 # images
 /public/uploads

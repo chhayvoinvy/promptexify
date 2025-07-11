@@ -6,7 +6,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { SecurityMonitor, SecurityEventType } from "@/lib/monitor";
+import { SecurityMonitor, SecurityEventType } from "@/lib/security/monitor";
 import { automationConfig } from "./config";
 import { ContentFileSchema, sanitizeContent } from "./validation";
 import {

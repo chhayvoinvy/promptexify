@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { SecurityMonitor } from "@/lib/monitor";
+import { SecurityMonitor } from "@/lib/security/monitor";
 import { getCurrentUser } from "@/lib/auth";
-import { SecurityAlert } from "@/lib/monitor";
+import { SecurityAlert } from "@/lib/security/monitor";
 
 export async function GET() {
   try {

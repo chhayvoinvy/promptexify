@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStorageConfig } from "@/lib/image/storage";
 import { getCurrentUser } from "@/lib/auth";
-import { rateLimits, getClientIdentifier, getRateLimitHeaders } from "@/lib/limits";
-import { SECURITY_HEADERS } from "@/lib/sanitize";
-import { SecurityEvents, getClientIP } from "@/lib/audit";
+import { rateLimits, getClientIdentifier, getRateLimitHeaders } from "@/lib/security/limits";
+import { SECURITY_HEADERS } from "@/lib/security/sanitize";
+import { SecurityEvents, getClientIP } from "@/lib/security/audit";
 
 interface RouteParams {
   params: Promise<{
