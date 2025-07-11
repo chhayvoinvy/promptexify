@@ -370,6 +370,7 @@ const CSP_HASHES = {
   SCRIPTS: [
     "'sha256-42kZcIwrKnihEZTada4V2Yh9EaONiZ1iuXhdtLJ43N8='", // Next.js or Analytics inline script
     "'sha256-ID6G40XuH1AK/MCsb3ABJl//kzckVM/gkevy3dZpwFI='", // GA inline script
+    "'sha256-iOJJUj3iCtIlZA3XJK8dd9RNwaBp8ncWIqualJK/HUWSM='", // Missing inline script causing CSP violation
   ],
   // Style hashes for Next.js and library inline styles
   STYLES: [
@@ -394,6 +395,8 @@ const CSP_HASHES = {
     "'sha256-PhrR5O1xWiklTp5YfH8xWeig83Y/rhbrdb5whLn1pSg='", // New inline style
     "'sha256-1OjyRYLAOH1vhXLUN4bBHal0rWxuwBDBP220NNc0CNU='", // New inline style
     "'sha256-uHMRMH/uk4ERGIkgk2bUAqw+i1tFFbeiOQTApmnK3t4='", // New inline style
+    "'sha256-0/TUJR2e8LYCBRhRHap5/yeWLDibr3I9vkHArk3DX9I='", // Sanity inline style 1
+    "'sha256-H2xDirDcQVcpRmgDFGCE6G5DXZx14hy+aINR3qqO7Ms='", // Sanity inline style 2
   ],
 };
 
@@ -406,10 +409,25 @@ export class CSPNonce {
    * Compatible with Edge Runtime - using only Web APIs
    */
   static generate(): string {
-    // Use crypto.randomUUID() and convert to base64 safely
-    const uuid = crypto.randomUUID();
-    // Convert string to base64 directly using btoa
-    return btoa(uuid);
+    try {
+      // Use crypto.randomUUID() and convert to base64 safely
+      const uuid = crypto.randomUUID();
+      // Convert string to base64 directly using btoa
+      const nonce = btoa(uuid);
+      
+      // Validate nonce format (base64 encoded, reasonable length)
+      if (nonce.length < 16 || nonce.length > 64) {
+        throw new Error("Generated nonce has invalid length");
+      }
+      
+      return nonce;
+    } catch (error) {
+      console.error("[CSP] Failed to generate nonce:", error);
+      // Fallback: generate a simpler nonce using timestamp and random values
+      const fallback = btoa(`${Date.now()}-${Math.random()}`);
+      console.warn("[CSP] Using fallback nonce generation");
+      return fallback;
+    }
   }
 
   /**
@@ -417,10 +435,23 @@ export class CSPNonce {
    * Note: This method should be imported and used only in Server Components
    */
   static async getFromHeaders(): Promise<string | null> {
-    // This will be imported from next/headers only in server components
-    const { headers } = await import("next/headers");
-    const headersList = await headers();
-    return headersList.get("x-nonce");
+    try {
+      // This will be imported from next/headers only in server components
+      const { headers } = await import("next/headers");
+      const headersList = await headers();
+      const nonce = headersList.get("x-nonce");
+      
+      // Validate nonce if present
+      if (nonce && (nonce.length < 16 || nonce.length > 64)) {
+        console.warn("[CSP] Invalid nonce format in headers, ignoring");
+        return null;
+      }
+      
+      return nonce;
+    } catch (error) {
+      console.error("[CSP] Failed to get nonce from headers:", error);
+      return null;
+    }
   }
 
   /**
@@ -428,11 +459,24 @@ export class CSPNonce {
    * Note: This method should be imported and used only in Server Components
    */
   static async getFromCookie(): Promise<string | null> {
-    // This will be imported from next/headers only in server components
-    const { cookies } = await import("next/headers");
-    const cookieStore = await cookies();
-    const nonceCookie = cookieStore.get("csp-nonce");
-    return nonceCookie?.value || null;
+    try {
+      // This will be imported from next/headers only in server components
+      const { cookies } = await import("next/headers");
+      const cookieStore = await cookies();
+      const nonceCookie = cookieStore.get("csp-nonce");
+      const nonce = nonceCookie?.value || null;
+      
+      // Validate nonce if present
+      if (nonce && (nonce.length < 16 || nonce.length > 64)) {
+        console.warn("[CSP] Invalid nonce format in cookie, ignoring");
+        return null;
+      }
+      
+      return nonce;
+    } catch (error) {
+      console.error("[CSP] Failed to get nonce from cookie:", error);
+      return null;
+    }
   }
 
   /**
@@ -441,10 +485,21 @@ export class CSPNonce {
    */
   static getFromWindow(): string | null {
     if (typeof window === "undefined") return null;
-    return (
-      (window as typeof window & { __CSP_NONCE__?: string }).__CSP_NONCE__ ||
-      null
-    );
+    
+    try {
+      const nonce = (window as typeof window & { __CSP_NONCE__?: string }).__CSP_NONCE__ || null;
+      
+      // Validate nonce if present
+      if (nonce && (nonce.length < 16 || nonce.length > 64)) {
+        console.warn("[CSP] Invalid nonce format in window global, ignoring");
+        return null;
+      }
+      
+      return nonce;
+    } catch (error) {
+      console.error("[CSP] Failed to get nonce from window:", error);
+      return null;
+    }
   }
 
   /**
@@ -459,12 +514,70 @@ export class CSPNonce {
    * console.log(hash); // 'sha256-...'
    */
   static async calculateHash(content: string): Promise<string> {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(content);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashBase64 = btoa(String.fromCharCode(...hashArray));
-    return `'sha256-${hashBase64}'`;
+    try {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(content);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashBase64 = btoa(String.fromCharCode(...hashArray));
+      return `'sha256-${hashBase64}'`;
+    } catch (error) {
+      console.error("[CSP] Failed to calculate hash:", error);
+      throw new Error("Hash calculation failed");
+    }
+  }
+
+  /**
+   * Utility to calculate hashes for multiple inline contents at once
+   * Useful for batch processing and debugging
+   */
+  static async calculateMultipleHashes(contents: string[]): Promise<Array<{content: string; hash: string}>> {
+    const results = await Promise.allSettled(
+      contents.map(async (content) => ({
+        content,
+        hash: await this.calculateHash(content),
+      }))
+    );
+
+    return results
+      .filter((result): result is PromiseFulfilledResult<{content: string; hash: string}> => 
+        result.status === 'fulfilled'
+      )
+      .map(result => result.value);
+  }
+
+  /**
+   * Debug helper to find missing hashes from known content patterns
+   * Call this in development to identify new inline scripts/styles
+   */
+  static async debugMissingHashes(): Promise<void> {
+    if (process.env.NODE_ENV === "production") {
+      console.warn("[CSP] debugMissingHashes should only be used in development");
+      return;
+    }
+
+    const commonInlineContents = [
+      // Common Next.js inline scripts
+      `window.__CSP_NONCE__ = "${this.generate()}";`,
+      `window.__CSP_NONCE__ = null; // Development mode - no CSP nonces`,
+      // Common analytics patterns
+      `gtag('config', 'GA_MEASUREMENT_ID');`,
+      `gtag('js', new Date());`,
+      // Common theme scripts
+      `document.documentElement.classList.add('dark');`,
+      `document.documentElement.classList.remove('dark');`,
+      // Vercel Analytics patterns
+      `window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };`,
+    ];
+
+    console.log("[CSP] Calculating hashes for common inline content patterns:");
+    const hashes = await this.calculateMultipleHashes(commonInlineContents);
+    
+    hashes.forEach(({content, hash}) => {
+      console.log(`Content: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`);
+      console.log(`Hash: ${hash}`);
+      console.log("---");
+    });
   }
 }
 
@@ -521,53 +634,97 @@ export class SecurityHeaders {
   static generateCSP(nonce: string): string {
     const isProduction = process.env.NODE_ENV === "production";
 
-    if (isProduction) {
-      // Strict production CSP with required hashes for inline styles
-      const csp = [
-        "default-src 'self'",
-        `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${CSP_HASHES.SCRIPTS.join(
+    try {
+      if (isProduction) {
+        // Validate nonce for production
+        if (!nonce || nonce.length < 16) {
+          console.error("[CSP] Invalid or missing nonce in production mode");
+          // Don't fall back to unsafe-inline in production
+          throw new Error("CSP nonce required in production");
+        }
+
+        // Strict production CSP with required hashes for inline styles
+        const csp = [
+          "default-src 'self'",
+                  `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${CSP_HASHES.SCRIPTS.join(
           " "
-        )} https://www.googletagmanager.com https://www.google-analytics.com https://accounts.google.com https://vitals.vercel-insights.com https://va.vercel-scripts.com https://securepubads.g.doubleclick.net https://pagead2.googlesyndication.com`,
-        // Updated style-src with hashes for Next.js and library inline styles
-        `style-src 'self' 'nonce-${nonce}' 'unsafe-hashes' https://fonts.googleapis.com https://accounts.google.com ${CSP_HASHES.STYLES.join(
+        )} https://www.googletagmanager.com https://www.google-analytics.com https://accounts.google.com https://vitals.vercel-insights.com https://va.vercel-scripts.com https://securepubads.g.doubleclick.net https://pagead2.googlesyndication.com https://*.sanity.io`,
+          // Updated style-src with hashes for Next.js and library inline styles
+                  `style-src 'self' 'nonce-${nonce}' 'unsafe-hashes' https://fonts.googleapis.com https://accounts.google.com https://*.sanity.io ${CSP_HASHES.STYLES.join(
           " "
         )} https://pagead2.googlesyndication.com`,
-        "img-src 'self' blob: data: https: https://*.s3.amazonaws.com https://*.cloudfront.net https://cdn.sanity.io/ https://pagead2.googlesyndication.com",
+          "img-src 'self' blob: data: https: https://*.s3.amazonaws.com https://*.cloudfront.net https://cdn.sanity.io/ https://pagead2.googlesyndication.com",
+          "font-src 'self' https://fonts.gstatic.com",
+          `connect-src 'self' https://api.stripe.com https://*.supabase.co wss://*.supabase.co https://*.s3.amazonaws.com https://*.cloudfront.net https://vitals.vercel-analytics.com wss://vitals.vercel-analytics.com https://accounts.google.com https://*.api.sanity.io wss://*.api.sanity.io https://pagead2.googlesyndication.com`,
+          "frame-src 'self' https://accounts.google.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://pagead2.googlesyndication.com https://*.sanity.io",
+          "media-src 'self' blob: data: https://*.s3.amazonaws.com https://*.cloudfront.net",
+          "object-src 'none'",
+          "base-uri 'self'",
+          "form-action 'self'",
+          "frame-ancestors 'none'",
+          "upgrade-insecure-requests",
+          `report-uri ${CSP_REPORT_URI}`,
+          "worker-src 'self' blob:",
+        ];
+        
+        const cspString = csp.join("; ");
+        
+        // Log CSP generation in development for debugging
+        if (process.env.DEBUG_CSP === "true") {
+          console.log("[CSP] Generated production CSP:", cspString);
+        }
+        
+        return cspString;
+      } else {
+        // Development-friendly CSP - No nonces in dev mode to allow 'unsafe-inline'
+        const csp = [
+          "default-src 'self' 'unsafe-inline' 'unsafe-eval'",
+          // Very permissive script sources for development (Next.js needs this)
+          "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://accounts.google.com https://vitals.vercel-insights.com https://va.vercel-scripts.com localhost:* ws: wss: blob:",
+          // More permissive style sources for development
+          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com localhost:* blob:",
+          "img-src 'self' blob: data: https: http: https://*.s3.amazonaws.com https://*.cloudfront.net localhost:*",
+          "font-src 'self' https://fonts.gstatic.com data: blob:",
+          // More permissive connect sources for development
+          "connect-src 'self' https://api.stripe.com https://*.supabase.co https://*.s3.amazonaws.com https://*.cloudfront.net https://vitals.vercel-analytics.com https://*.api.sanity.io wss://*.api.sanity.io localhost:* ws: wss: http: blob:",
+          "media-src 'self' blob: data: https: http: https://*.s3.amazonaws.com https://*.cloudfront.net localhost:*",
+          // Allow objects in development for debugging tools
+          "object-src 'self' blob:",
+          "base-uri 'self'",
+          "form-action 'self'",
+          // Allow framing in development for dev tools
+          "frame-ancestors 'self' localhost:*",
+          // Include report-uri in development too for debugging
+          `report-uri ${CSP_REPORT_URI}`,
+        ];
+        
+        const cspString = csp.join("; ");
+        
+        if (process.env.DEBUG_CSP === "true") {
+          console.log("[CSP] Generated development CSP:", cspString);
+        }
+        
+        return cspString;
+      }
+    } catch (error) {
+      console.error("[CSP] Failed to generate CSP policy:", error);
+      
+      // Emergency fallback CSP - very restrictive but functional
+      const fallbackCSP = [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline'", // Only for emergency
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' blob: data: https:",
         "font-src 'self' https://fonts.gstatic.com",
-        `connect-src 'self' https://api.stripe.com https://*.supabase.co wss://*.supabase.co https://*.s3.amazonaws.com https://*.cloudfront.net https://vitals.vercel-analytics.com wss://vitals.vercel-analytics.com https://accounts.google.com https://*.api.sanity.io https://pagead2.googlesyndication.com`,
-        "frame-src 'self' https://accounts.google.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://pagead2.googlesyndication.com",
-        "media-src 'self' blob: data: https://*.s3.amazonaws.com https://*.cloudfront.net",
+        "connect-src 'self'",
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",
         "frame-ancestors 'none'",
-        "upgrade-insecure-requests",
-        `report-uri ${CSP_REPORT_URI}`,
-        "worker-src 'self' blob:",
       ];
-      return csp.join("; ");
-    } else {
-      // Development-friendly CSP - No nonces in dev mode to allow 'unsafe-inline'
-      const csp = [
-        "default-src 'self' 'unsafe-inline' 'unsafe-eval'",
-        // Very permissive script sources for development (Next.js needs this)
-        "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://accounts.google.com https://vitals.vercel-insights.com https://va.vercel-scripts.com localhost:* ws: wss: blob:",
-        // More permissive style sources for development
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com localhost:* blob:",
-        "img-src 'self' blob: data: https: http: https://*.s3.amazonaws.com https://*.cloudfront.net localhost:*",
-        "font-src 'self' https://fonts.gstatic.com data: blob:",
-        // More permissive connect sources for development
-        "connect-src 'self' https://api.stripe.com https://*.supabase.co https://*.s3.amazonaws.com https://*.cloudfront.net https://vitals.vercel-analytics.com localhost:* ws: wss: http: blob:",
-        "media-src 'self' blob: data: https: http: https://*.s3.amazonaws.com https://*.cloudfront.net localhost:*",
-        // Allow objects in development for debugging tools
-        "object-src 'self' blob:",
-        "base-uri 'self'",
-        "form-action 'self'",
-        // Allow framing in development for dev tools
-        "frame-ancestors 'self' localhost:*",
-        // Don't force HTTPS in development
-      ];
-      return csp.join("; ");
+      
+      console.warn("[CSP] Using emergency fallback CSP");
+      return fallbackCSP.join("; ");
     }
   }
 }

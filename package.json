@@ -14,6 +14,7 @@
     "db:reset": "prisma migrate reset",
     "db:push": "prisma db push",
     "content:generate": "tsx -e \"import('./lib/automation/service.ts').then(m => m.AutomationService.executeContentGeneration()).catch(console.error)\"",
+    "sanity:setup": "tsx scripts/setup-sanity-production.ts",
     "lint:fix": "eslint . --fix",
     "lint:format": "prettier --write .",
     "worker": "node -r dotenv/config -r ts-node/register scripts/worker.ts"
