@@ -75,6 +75,23 @@ export function usePrefetchPosts(options: UsePrefetchPostsOptions = {}) {
             await fetch(`/api/posts/${postId}`, {
               cache: "force-cache", // Cache the result
             });
+          } else {
+            // Log specific error details for debugging
+            console.warn(`Prefetch HEAD failed for post ${postId}:`, {
+              status: response.status,
+              statusText: response.statusText,
+              url: response.url
+            });
+            
+            // For non-critical errors (403, 401), don't throw - just skip prefetch
+            if (response.status === 403 || response.status === 401) {
+              console.debug(`Skipping prefetch for post ${postId} due to access restrictions`);
+            } else if (response.status === 404) {
+              console.debug(`Post ${postId} not found for prefetch`);
+            } else {
+              // For other errors, log but don't fail
+              console.warn(`Unexpected prefetch error for post ${postId}:`, response.status);
+            }
           }
         }
 

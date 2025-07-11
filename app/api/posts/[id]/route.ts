@@ -13,7 +13,32 @@ async function handlePostRequest(request: NextRequest, { params }: RouteParams, 
   try {
     const { id } = await params;
 
-    // Authentication check
+    // For HEAD requests (prefetching), use more permissive checks
+    if (isHeadRequest) {
+      // Basic validation - just check if post exists and is published
+      const post = await getPostById(id);
+      
+      if (!post) {
+        return NextResponse.json({ error: "Post not found" }, { status: 404 });
+      }
+      
+      // For HEAD requests, only check if post is published
+      // This allows prefetching for all published content regardless of auth state
+      if (!post.isPublished) {
+        return NextResponse.json({ error: "Post not found" }, { status: 404 });
+      }
+
+      // Return successful HEAD response for published posts
+      return new NextResponse(null, {
+        status: 200,
+        headers: {
+          'Cache-Control': 'public, max-age=300, stale-while-revalidate=600', // 5min cache, 10min stale
+          'Content-Type': 'application/json',
+        }
+      });
+    }
+
+    // For GET requests, maintain strict authentication and authorization
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json(
@@ -22,7 +47,7 @@ async function handlePostRequest(request: NextRequest, { params }: RouteParams, 
       );
     }
 
-    // Role-based access control
+    // Role-based access control for GET requests
     if (user.userData?.role !== "ADMIN" && user.userData?.role !== "USER") {
       return NextResponse.json(
         { error: "Insufficient permissions" },
@@ -30,63 +55,35 @@ async function handlePostRequest(request: NextRequest, { params }: RouteParams, 
       );
     }
 
-    // Fetch post
+    // Fetch post for GET requests
     const post = await getPostById(id);
 
     if (!post) {
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
 
-    // Check if this is for editing or viewing
-    const isEditingRequest = post.authorId === user.userData?.id || user.userData?.role === "ADMIN";
-    
-    if (isEditingRequest) {
-      // Authorization check for editing: Users can only edit their own posts that haven't been approved
-      // Admins can edit any post regardless of status
-      if (user.userData?.role === "USER") {
-        if (post.authorId !== user.userData.id) {
-          return NextResponse.json(
-            { error: "You can only edit your own posts" },
-            { status: 403 }
-          );
-        }
-        // Prevent editing approved posts
-        if (post.status === "APPROVED") {
-          return NextResponse.json(
-            {
-              error:
-                "Cannot edit approved posts. Once your content has been approved by an admin, it cannot be modified.",
-            },
-            { status: 403 }
-          );
-        }
-      }
-    } else {
-      // This is for viewing - check premium access control
-      if (post.isPremium) {
-        const userType = user.userData?.type || null;
-        const isUserFree = userType === "FREE" || userType === null;
-        const isAdmin = user.userData?.role === "ADMIN";
-        
-        // Only allow access for premium users and admins
-        if (isUserFree && !isAdmin) {
-          return NextResponse.json(
-            { error: "Premium subscription required to access this content" },
-            { status: 403 }
-          );
-        }
+    // Check if post is published - unpublished posts can only be viewed by author and admin
+    if (!post.isPublished) {
+      const canViewUnpublished = post.authorId === user.userData?.id || user.userData?.role === "ADMIN";
+      if (!canViewUnpublished) {
+        return NextResponse.json({ error: "Post not found" }, { status: 404 });
       }
     }
 
-    // For HEAD requests, just return 200 with cache headers
-    if (isHeadRequest) {
-      return new NextResponse(null, {
-        status: 200,
-        headers: {
-          'Cache-Control': 'public, max-age=300, stale-while-revalidate=600', // 5min cache, 10min stale
-          'Content-Type': 'application/json',
-        }
-      });
+    // Check premium access control for published posts
+    if (post.isPremium && post.isPublished) {
+      const userType = user.userData?.type || null;
+      const isUserFree = userType === "FREE" || userType === null;
+      const isAdmin = user.userData?.role === "ADMIN";
+      const isAuthor = post.authorId === user.userData?.id;
+      
+      // Allow access for: premium users, admins, or the post author
+      if (isUserFree && !isAdmin && !isAuthor) {
+        return NextResponse.json(
+          { error: "Premium subscription required to access this content" },
+          { status: 403 }
+        );
+      }
     }
 
     return NextResponse.json({
