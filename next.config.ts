@@ -199,15 +199,25 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
-  // Sentry configuration
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
+// Conditionally apply Sentry configuration based on available environment variables
+const shouldEnableSentryBuildFeatures = !!(
+  process.env.SENTRY_AUTH_TOKEN &&
+  process.env.SENTRY_ORG &&
+  process.env.SENTRY_PROJECT
+);
 
-  // Only print logs for uploading source maps in CI
-  silent: !process.env.CI,
-  widenClientFileUpload: false,
-  tunnelRoute: "/monitoring",
-  disableLogger: true,
-  automaticVercelMonitors: true,
-});
+export default shouldEnableSentryBuildFeatures
+  ? withSentryConfig(nextConfig, {
+      // Sentry configuration
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+
+      // Only print logs for uploading source maps in CI
+      silent: !process.env.CI,
+      widenClientFileUpload: false,
+      tunnelRoute: "/monitoring",
+      disableLogger: true,
+      automaticVercelMonitors: true,
+    })
+  : nextConfig;
