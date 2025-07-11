@@ -1,12 +1,8 @@
 <svg width="288" height="288" viewBox="0 0 288 288" fill="none" xmlns="http://www.w3.org/2000/svg">
-<g clip-path="url(#clip0_51_2)" filter="url(#filter0_d_51_2)">
-<rect x="4" width="277.586" height="280" rx="53" fill="black"/>
-<rect x="41.1783" y="164.738" width="28.7519" height="28.7519" fill="white"/>
-<rect x="69.9302" y="136.944" width="28.7519" height="28.7519" fill="white"/>
-<rect x="98.6821" y="108.192" width="28.7519" height="28.7519" fill="white"/>
-<rect x="69.9302" y="79.4398" width="28.7519" height="28.7519" fill="white"/>
-<rect x="41.1783" y="50.6896" width="28.7519" height="28.7519" fill="white"/>
-<rect x="40.2069" y="224.553" width="127.931" height="28.9655" fill="white"/>
+<g filter="url(#filter0_d_51_2)">
+<rect x="4" width="277.586" height="280" rx="138.793" fill="black"/>
+<rect x="139.749" y="100.884" width="111.073" height="70.8575" transform="rotate(72.666 139.749 100.884)" fill="#E6E6E6" stroke="black"/>
+<rect x="196.843" y="51.4217" width="58.8406" height="56.2222" transform="rotate(72.666 196.843 51.4217)" fill="#E6E6E6" stroke="black"/>
 </g>
 <defs>
 <filter id="filter0_d_51_2" x="0" y="0" width="288" height="288" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
@@ -19,8 +15,5 @@
 <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_51_2"/>
 <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_51_2" result="shape"/>
 </filter>
-<clipPath id="clip0_51_2">
-<rect width="280" height="280" fill="white" transform="translate(4)"/>
-</clipPath>
 </defs>
 </svg>

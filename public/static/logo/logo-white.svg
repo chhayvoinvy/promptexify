@@ -13,13 +13,9 @@
 <path d="M141 8.75V98.75H159.453V64.9097H170.096C179.794 64.9097 187.956 62.603 193.662 57.2291C199.166 52.0707 202 44.8717 202 36.8869C202 28.826 199.116 21.5637 193.523 16.4053C187.818 11.0567 179.706 8.75 170.096 8.75H141ZM159.453 26.0631H170.096C175.827 26.0631 179.139 27.3558 180.625 28.75C182.326 30.3216 183.321 32.5523 183.321 36.8869C183.321 41.1708 182.338 43.2367 180.55 44.7829C178.799 46.2912 175.512 47.4826 170.096 47.4826H159.453V26.0631Z" fill="white"/>
 <rect x="722" y="24.75" width="56" height="18" fill="white"/>
 <rect x="660" y="24.75" width="59" height="18" fill="white"/>
-<rect width="115" height="116" rx="19" fill="white"/>
-<rect x="15.4025" y="68.2484" width="11.9115" height="11.9115" fill="black"/>
-<rect x="27.314" y="56.7341" width="11.9115" height="11.9115" fill="black"/>
-<rect x="39.2255" y="44.8223" width="11.9115" height="11.9115" fill="black"/>
-<rect x="27.314" y="32.9108" width="11.9115" height="11.9115" fill="black"/>
-<rect x="15.4025" y="20.9999" width="11.9115" height="11.9115" fill="black"/>
-<rect x="15" y="93.0293" width="53" height="12" fill="black"/>
+<rect width="115" height="116" rx="57.5" fill="white"/>
+<rect x="56.2606" y="40.6834" width="48.9782" height="31.0443" transform="rotate(72.666 56.2606 40.6834)" fill="black" stroke="black"/>
+<rect x="81.7209" y="18.6263" width="25.6854" height="24.5178" transform="rotate(72.666 81.7209 18.6263)" fill="black" stroke="black"/>
 </g>
 <defs>
 <clipPath id="clip0_33_529">

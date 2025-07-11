@@ -1,12 +1,8 @@
 <svg width="288" height="288" viewBox="0 0 288 288" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g filter="url(#filter0_d_40_11)">
-<rect x="6" width="277.586" height="280" rx="53" fill="#E6E6E6"/>
-<rect x="43.1783" y="164.738" width="28.7519" height="28.7519" fill="black"/>
-<rect x="71.9303" y="136.944" width="28.7519" height="28.7519" fill="black"/>
-<rect x="100.682" y="108.192" width="28.7519" height="28.7519" fill="black"/>
-<rect x="71.9303" y="79.4398" width="28.7519" height="28.7519" fill="black"/>
-<rect x="43.1783" y="50.6896" width="28.7519" height="28.7519" fill="black"/>
-<rect x="42.2069" y="224.553" width="127.931" height="28.9655" fill="black"/>
+<rect x="6" width="277.586" height="280" rx="138.793" fill="#E6E6E6"/>
+<rect x="141.596" y="104.489" width="116.514" height="74.3458" transform="rotate(72.666 141.596 104.489)" fill="black" stroke="black"/>
+<rect x="201.46" y="52.6263" width="61.7455" height="59" transform="rotate(72.666 201.46 52.6263)" fill="black" stroke="black"/>
 </g>
 <defs>
 <filter id="filter0_d_40_11" x="0" y="0" width="288" height="288" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
