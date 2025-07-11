@@ -247,8 +247,8 @@ export function DirectoryFilters({ categories }: DirectoryFiltersProps) {
             </Select>
           )}
 
-          {/* Premium Filter */}
-          <Select value={premiumFilter} onValueChange={handlePremiumChange}>
+          {/* Premium Filter (Hidden for now) */}
+          {/* <Select value={premiumFilter} onValueChange={handlePremiumChange}>
             <SelectTrigger className="w-full sm:w-32">
               <SelectValue placeholder="All Types" />
             </SelectTrigger>
@@ -257,7 +257,7 @@ export function DirectoryFilters({ categories }: DirectoryFiltersProps) {
               <SelectItem value="free">Free</SelectItem>
               <SelectItem value="premium">Premium</SelectItem>
             </SelectContent>
-          </Select>
+          </Select> */}
         </div>
 
         {/* Active filters display */}

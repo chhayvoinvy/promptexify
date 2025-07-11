@@ -37,8 +37,8 @@ export function TagFilters({
   const pageSizeOptions = [5, 10, 20, 50];
 
   const sortOptions = [
-    { value: "name", label: "Name A-Z" },
-    { value: "created", label: "Newest First" },
+    { value: "name", label: "Name a-Z" },
+    { value: "created", label: "Newest" },
     { value: "posts", label: "Most Posts" },
   ];
 

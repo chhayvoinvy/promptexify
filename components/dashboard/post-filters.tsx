@@ -65,8 +65,8 @@ export function PostFilters({
   ];
 
   const sortOptions: FilterOption[] = [
-    { value: "newest", label: "Newest First" },
-    { value: "oldest", label: "Oldest First" },
+    { value: "newest", label: "Newest" },
+    { value: "oldest", label: "Oldest" },
     { value: "views", label: "Most Views" },
     { value: "title", label: "Title A-Z" },
   ];
@@ -258,8 +258,8 @@ export function PostFilters({
           </SelectContent>
         </Select>
 
-        {/* Type Filter */}
-        <Select
+        {/* Type Filter (Hidden for now) */}
+        {/* <Select
           value={filters.type || "all"}
           onValueChange={(value) => handleFilterChange("type", value)}
         >
@@ -273,7 +273,7 @@ export function PostFilters({
               </SelectItem>
             ))}
           </SelectContent>
-        </Select>
+        </Select> */}
 
         {/* Featured Filter - Only for Admin */}
         {isAdmin && (

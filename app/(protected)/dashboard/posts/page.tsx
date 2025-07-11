@@ -69,24 +69,73 @@ interface PostsManagementPageProps {
 
 
 
-// Table skeleton
+// Table skeleton with individual row skeletons
 function TableSkeleton() {
   return (
     <Card>
       <CardHeader>
-        <Skeleton className="h-6 w-32" />
-        <Skeleton className="h-4 w-64" />
+        <CardTitle>My Submissions</CardTitle>
+        <CardDescription>Manage your content posts.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between">
-          <Skeleton className="h-4 w-48" />
-          <Skeleton className="h-8 w-32" />
+          <div className="text-sm text-muted-foreground">
+            Showing 0 of 0 posts
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-8 w-32" />
+          </div>
         </div>
-        <div className="space-y-3">
-          {Array.from({ length: 10 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full" />
-          ))}
-        </div>
+        
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Title</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Featured</TableHead>
+              <TableHead>Views</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead className="w-[70px]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {Array.from({ length: 10 }).map((_, i) => (
+              <TableRow key={i}>
+                <TableCell>
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-48" />
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <Skeleton className="h-5 w-16" />
+                    <Skeleton className="h-5 w-12" />
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-5 w-20" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-5 w-12" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-5 w-8" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-8" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-16" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-8 w-8 rounded" />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </CardContent>
     </Card>
   );
@@ -243,7 +292,7 @@ async function PostsManagementContent({
             <CardDescription>
               {isAdmin
                 ? "Manage all content posts and organize your directory."
-                : "Manage your content submissions and track their approval status."}
+                : "Manage your content posts."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
