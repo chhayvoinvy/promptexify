@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // Fix Supabase realtime-js webpack warnings
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, dev }) => {
     if (isServer) {
       config.externals = config.externals || [];
       config.externals.push({
@@ -11,6 +11,11 @@ const nextConfig: NextConfig = {
         "utf-8-validate": "utf-8-validate",
         "supports-color": "supports-color",
       });
+    }
+
+    // Configure source map generation for Sentry
+    if (!dev && !isServer) {
+      config.devtool = "hidden-source-map";
     }
 
     config.ignoreWarnings = [
@@ -213,11 +218,29 @@ export default shouldEnableSentryBuildFeatures
       project: process.env.SENTRY_PROJECT,
       authToken: process.env.SENTRY_AUTH_TOKEN,
 
+      // Source map upload configuration
+      sourcemaps: {
+        // Upload all source maps in the .next folder
+        assets: [".next/static/chunks/**/*.js", ".next/static/chunks/**/*.js.map"],
+        // Ignore node_modules and server files
+        ignore: ["node_modules/**", ".next/server/**"],
+        // Delete source maps after upload to avoid exposing them in production
+        deleteSourcemapsAfterUpload: true,
+      },
+
+      // Allow wider file upload to include all necessary source maps
+      widenClientFileUpload: true,
+
       // Only print logs for uploading source maps in CI
       silent: !process.env.CI,
-      widenClientFileUpload: false,
-      tunnelRoute: "/monitoring",
+      
+      // Disable logger to reduce build noise
       disableLogger: true,
+      
+      // Enable automatic Vercel monitoring integration
       automaticVercelMonitors: true,
+      
+      // Tunnel route for Sentry requests
+      tunnelRoute: "/monitoring",
     })
   : nextConfig;

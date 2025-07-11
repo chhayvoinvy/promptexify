@@ -50,5 +50,6 @@ next-env.d.ts
 # images
 /public/uploads
 /public/images
-# Sentry Config File
+# Sentry Config Files
 .env.sentry-build-plugin
+sentry.properties
