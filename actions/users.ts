@@ -74,13 +74,12 @@ export const updateUserProfileAction = withCSRFProtection(
           );
 
           // Log suspicious activity
-          import("@/lib/security/monitor").then(({ SecurityAlert }) => {
-            SecurityAlert.suspiciousRequest(
-              "Suspicious name pattern in profile update",
-              { name, pattern: pattern.toString() },
-              user.id
-            ).catch(console.error);
-          });
+          const { SecurityAlert } = await import("@/lib/security/monitor");
+          await SecurityAlert.suspiciousRequest(
+            "Suspicious name pattern in profile update",
+            { name, pattern: pattern.toString() },
+            user.id
+          );
 
           return {
             success: false,

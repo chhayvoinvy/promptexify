@@ -320,14 +320,14 @@ export function sanitizeRichContent(content: string): string {
  * Sanitize search query to prevent injection attacks
  * Enhanced security version with additional pattern detection
  */
-export function sanitizeSearchQuery(
+export async function sanitizeSearchQuery(
   query: string,
   options?: {
     userId?: string;
     ip?: string;
     logSuspicious?: boolean;
   }
-): string {
+): Promise<string> {
   if (typeof query !== "string") {
     return "";
   }
@@ -390,21 +390,19 @@ export function sanitizeSearchQuery(
         process.env.NEXT_RUNTIME !== "edge"
       ) {
         // Dynamically import to avoid circular dependencies
-        import("@/lib/security/monitor")
-          .then(({ SecurityAlert }) => {
-            SecurityAlert.suspiciousSearchPattern(
-              query,
-              name,
-              userId,
-              ip
-            ).catch(console.error);
-          })
-          .catch(() => {
-            // Fallback to console logging if monitor is unavailable
-            console.warn(
-              `[SECURITY] Suspicious search pattern: ${name} - User: ${userId} - IP: ${ip}`
-            );
-          });
+        try {
+          const { SecurityAlert } = await import("@/lib/security/monitor");
+          await SecurityAlert.suspiciousSearchPattern(
+            query,
+            { userId, ip },
+            userId
+          );
+        } catch (error) {
+          // Fallback to console logging if monitor is unavailable
+          console.warn(
+            `[SECURITY] Suspicious search pattern: ${name} - User: ${userId} - IP: ${ip}`
+          );
+        }
       }
 
       return "";

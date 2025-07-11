@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
       1,
       Math.min(50, parseInt(rawParams.limit, 10) || 12)
     );
-    const searchQuery = sanitizeSearchQuery(rawParams.q);
+    const searchQuery = await sanitizeSearchQuery(rawParams.q);
     const categoryFilter = rawParams.category;
     const subcategoryFilter = rawParams.subcategory;
     const premiumFilter = rawParams.premium;

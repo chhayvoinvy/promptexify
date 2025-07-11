@@ -430,6 +430,221 @@ export class SecurityMonitor {
 }
 
 /**
+ * Security Alert System
+ * Provides convenient methods for logging common security events
+ */
+export class SecurityAlert {
+  /**
+   * Log unauthorized access attempts
+   */
+  static async unauthorizedAccess(
+    resource: string,
+    userId?: string,
+    details?: Record<string, unknown>
+  ): Promise<void> {
+    await SecurityMonitor.logSecurityEvent(
+      SecurityEventType.UNAUTHORIZED_ACCESS,
+      {
+        resource,
+        ...details,
+      },
+      "high",
+      userId
+    );
+  }
+
+  /**
+   * Log suspicious request patterns
+   */
+  static async suspiciousRequest(
+    description: string,
+    details: Record<string, unknown> = {},
+    userId?: string
+  ): Promise<void> {
+    await SecurityMonitor.logSecurityEvent(
+      SecurityEventType.SUSPICIOUS_REQUEST,
+      {
+        description,
+        ...details,
+      },
+      "medium",
+      userId
+    );
+  }
+
+  /**
+   * Log suspicious search patterns
+   */
+  static async suspiciousSearchPattern(
+    pattern: string,
+    details: Record<string, unknown> = {},
+    userId?: string
+  ): Promise<void> {
+    await SecurityMonitor.logSecurityEvent(
+      SecurityEventType.SUSPICIOUS_SEARCH_PATTERN,
+      {
+        pattern,
+        ...details,
+      },
+      "medium",
+      userId
+    );
+  }
+
+  /**
+   * Log failed login attempts
+   */
+  static async failedLogin(
+    email: string,
+    reason: string,
+    details?: Record<string, unknown>
+  ): Promise<void> {
+    await SecurityMonitor.logSecurityEvent(
+      SecurityEventType.FAILED_LOGIN,
+      {
+        email,
+        reason,
+        ...details,
+      },
+      "medium"
+    );
+  }
+
+  /**
+   * Log CSRF validation failures
+   */
+  static async csrfValidationFailed(
+    endpoint: string,
+    details?: Record<string, unknown>
+  ): Promise<void> {
+    await SecurityMonitor.logSecurityEvent(
+      SecurityEventType.CSRF_VALIDATION_FAILED,
+      {
+        endpoint,
+        ...details,
+      },
+      "high"
+    );
+  }
+
+  /**
+   * Log rate limit exceeded events
+   */
+  static async rateLimitExceeded(
+    endpoint: string,
+    identifier: string,
+    details?: Record<string, unknown>
+  ): Promise<void> {
+    await SecurityMonitor.logSecurityEvent(
+      SecurityEventType.RATE_LIMIT_EXCEEDED,
+      {
+        endpoint,
+        identifier,
+        ...details,
+      },
+      "medium"
+    );
+  }
+
+  /**
+   * Log malicious payload detection
+   */
+  static async maliciousPayload(
+    payload: string,
+    type: string,
+    details?: Record<string, unknown>
+  ): Promise<void> {
+    await SecurityMonitor.logSecurityEvent(
+      SecurityEventType.MALICIOUS_PAYLOAD,
+      {
+        payload: payload.substring(0, 100), // Truncate for logging
+        type,
+        ...details,
+      },
+      "high"
+    );
+  }
+
+  /**
+   * Log file upload abuse
+   */
+  static async fileUploadAbuse(
+    filename: string,
+    fileType: string,
+    userId?: string,
+    details?: Record<string, unknown>
+  ): Promise<void> {
+    await SecurityMonitor.logSecurityEvent(
+      SecurityEventType.FILE_UPLOAD_ABUSE,
+      {
+        filename,
+        fileType,
+        ...details,
+      },
+      "high",
+      userId
+    );
+  }
+
+  /**
+   * Log search abuse
+   */
+  static async searchAbuse(
+    query: string,
+    userId?: string,
+    details?: Record<string, unknown>
+  ): Promise<void> {
+    await SecurityMonitor.logSecurityEvent(
+      SecurityEventType.SEARCH_ABUSE,
+      {
+        query: query.substring(0, 100), // Truncate for logging
+        ...details,
+      },
+      "medium",
+      userId
+    );
+  }
+
+  /**
+   * Log CSP violations
+   */
+  static async cspViolation(
+    directive: string,
+    blockedUri?: string,
+    details?: Record<string, unknown>
+  ): Promise<void> {
+    await SecurityMonitor.logSecurityEvent(
+      SecurityEventType.CSP_VIOLATION,
+      {
+        directive,
+        blockedUri,
+        ...details,
+      },
+      "medium"
+    );
+  }
+
+  /**
+   * Log internal server errors
+   */
+  static async internalServerError(
+    error: string,
+    endpoint: string,
+    details?: Record<string, unknown>
+  ): Promise<void> {
+    await SecurityMonitor.logSecurityEvent(
+      SecurityEventType.INTERNAL_SERVER_ERROR,
+      {
+        error,
+        endpoint,
+        ...details,
+      },
+      "critical"
+    );
+  }
+}
+
+/**
  * Utility function to verify Redis eviction policy
  * Logs a console warning and sends a monitoring message if the policy differs.
  */
