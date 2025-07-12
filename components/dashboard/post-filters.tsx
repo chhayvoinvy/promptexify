@@ -52,11 +52,12 @@ export function PostFilters({
     { value: "rejected", label: "Rejected" },
   ];
 
-  const typeOptions: FilterOption[] = [
-    { value: "all", label: "All Types" },
-    { value: "free", label: "Free" },
-    { value: "premium", label: "Premium" },
-  ];
+  // Note: Type filtering not yet implemented in UI
+  // const typeOptions: FilterOption[] = [
+  //   { value: "all", label: "All Types" },
+  //   { value: "free", label: "Free" },
+  //   { value: "premium", label: "Premium" },
+  // ];
 
   const featuredOptions: FilterOption[] = [
     { value: "all", label: "All Posts" },

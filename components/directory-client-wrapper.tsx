@@ -29,14 +29,11 @@ interface DirectoryClientWrapperProps {
 export function DirectoryClientWrapper({
   categories,
   initialPosts,
-  hasNextPage,
-  totalCount,
   userType,
   pageSize,
   searchQuery,
   categoryFilter,
   subcategoryFilter,
-  premiumFilter,
   pagination,
 }: DirectoryClientWrapperProps) {
   return (

@@ -47,8 +47,12 @@ export function AccountForm({ user }: AccountFormProps) {
     startTransition(async () => {
       try {
         // Add CSRF protection to form data
-        const name = formData.get("name") as string;
-        const secureFormData = createFormDataWithCSRF({ name });
+        const secureFormData = createFormDataWithCSRF();
+        
+        // Add all form data to the secure form data
+        for (const [key, value] of formData.entries()) {
+          secureFormData.set(key, value);
+        }
 
         const result = await updateUserProfileAction(secureFormData);
 

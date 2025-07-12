@@ -44,12 +44,6 @@ interface Tag {
   slug: string;
 }
 
-interface FeaturedMedia {
-  id: string;
-  url: string;
-  relativePath: string;
-  blurDataUrl?: string;
-}
 
 export default function NewPostPage() {
   const { user, loading } = useAuth();
@@ -58,7 +52,6 @@ export default function NewPostPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [postTitle, setPostTitle] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
@@ -269,14 +262,13 @@ export default function NewPostPage() {
       // Add the selected tags to form data
       formData.set("tags", selectedTags.join(", "));
 
-      // Convert FormData to plain object for CSRF protection
-      const formObject: Record<string, FormDataEntryValue> = {};
+      // Create secure form data with CSRF protection
+      const secureFormData = createFormDataWithCSRF();
+      
+      // Add all form data to the secure form data
       for (const [key, value] of formData.entries()) {
-        formObject[key] = value;
+        secureFormData.set(key, value);
       }
-
-      // Create form data with CSRF protection
-      const secureFormData = createFormDataWithCSRF(formObject);
       await createPostAction(secureFormData);
 
               // Show success message - redirect is handled by server action

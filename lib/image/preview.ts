@@ -1,6 +1,5 @@
 import sharp from "sharp";
 import { spawn } from "child_process";
-import { promisify } from "util";
 import { writeFile, unlink } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
@@ -64,8 +63,7 @@ export async function generateImagePreview(
       .resize(width, height, {
         fit: "inside", // Maintain aspect ratio, don't crop
         withoutEnlargement: true, // Don't upscale if image is smaller
-      })
-      [format]({
+      })[format]({
         quality,
         ...(format === "avif" && { effort: 4 }),
         ...(format === "webp" && { effort: 6 }),

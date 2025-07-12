@@ -47,12 +47,6 @@ interface Tag {
   slug: string;
 }
 
-interface FeaturedMedia {
-  id: string;
-  url: string;
-  relativePath: string;
-  blurDataUrl?: string;
-}
 
 interface Post {
   id: string;
@@ -81,7 +75,7 @@ interface Post {
 export default function EditPostPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const { createFormDataWithCSRF, getHeadersWithCSRF, isReady } = useCSRFForm();
+  const { createFormDataWithCSRF, isReady } = useCSRFForm();
   const params = useParams();
   const postId = params.id as string;
 
@@ -349,14 +343,13 @@ export default function EditPostPage() {
       formData.set("tags", selectedTags.join(","));
       formData.set("id", post.id);
 
-      // Convert FormData to plain object for CSRF protection
-      const formObject: Record<string, FormDataEntryValue> = {};
+      // Create secure form data with CSRF protection
+      const secureFormData = createFormDataWithCSRF();
+      
+      // Add all form data to the secure form data
       for (const [key, value] of formData.entries()) {
-        formObject[key] = value;
+        secureFormData.set(key, value);
       }
-
-      // Create form data with CSRF protection
-      const secureFormData = createFormDataWithCSRF(formObject);
 
       // Update the post first
       await updatePostAction(secureFormData);

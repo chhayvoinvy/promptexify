@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { headers } from "next/headers";
 import { NextRequest } from "next/server";
 
@@ -11,7 +12,7 @@ import { stripe } from "@/lib/stripe";
  * @param timestamp Unix timestamp in seconds
  * @returns Valid Date object or null if invalid
  */
-function safeConvertToDate(timestamp: any): Date | null {
+function safeConvertToDate(timestamp: number | null | undefined): Date | null {
   try {
     // Validate input
     if (!timestamp || typeof timestamp !== "number" || timestamp <= 0) {
@@ -85,8 +86,11 @@ export async function POST(req: NextRequest) {
         if (session.subscription && session.metadata?.userId) {
           try {
             // Retrieve subscription with expanded fields
+            const subscriptionId = typeof session.subscription === 'string' 
+              ? session.subscription 
+              : session.subscription.id;
             const subscription = await stripe.subscriptions.retrieve(
-              session.subscription,
+              subscriptionId,
               {
                 expand: ["items.data.price", "customer", "latest_invoice"],
               }
@@ -645,7 +649,7 @@ export async function POST(req: NextRequest) {
         break;
       }
 
-      default:
+      default: {
         console.log("Unhandled Stripe webhook event type:", event.type);
 
         // Log additional details for debugging unhandled events
@@ -657,6 +661,8 @@ export async function POST(req: NextRequest) {
           objectId: eventData.id,
           created: new Date(event.created * 1000).toISOString(),
         });
+        break;
+      }
 
       // Optional: Store unhandled events for analysis
       // You could add a database table to track these for review

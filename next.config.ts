@@ -60,105 +60,66 @@ const nextConfig: NextConfig = {
     "@supabase/realtime-js",
     "bufferutil",
     "utf-8-validate",
+    "ioredis",
   ],
 
+  // TypeScript configuration
+  typescript: {
+    // !! WARN !!
+    // Dangerously allow production builds to successfully complete even if
+    // your project has type errors.
+    // !! WARN !!
+    ignoreBuildErrors: false,
+  },
+
+  // ESLint configuration
+  eslint: {
+    // Warning: This allows production builds to successfully complete even if
+    // your project has ESLint errors.
+    ignoreDuringBuilds: false,
+  },
+  
+  turbopack: {
+    resolveAlias: {
+      "sanity/structure": "./node_modules/sanity/structure",
+    },
+  },
+
+  // Image optimization
   images: {
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    formats: ["image/webp", "image/avif"],
+    minimumCacheTTL: 60,
+    dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "localprompt.s3.us-west-1.amazonaws.com",
+        hostname: "cdn.sanity.io",
+        port: "",
+        pathname: "/images/**",
+      },
+      {
+        protocol: "https",
+        hostname: "**.s3.amazonaws.com",
         port: "",
         pathname: "/**",
       },
       {
         protocol: "https",
-        hostname: "*.s3.amazonaws.com",
-        port: "",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "s3.amazonaws.com",
-        port: "",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "*.cloudfront.net",
-        port: "",
-        pathname: "/**",
-      },
-      // DigitalOcean Spaces patterns
-      {
-        protocol: "https",
-        hostname: "*.digitaloceanspaces.com",
-        port: "",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "*.nyc3.digitaloceanspaces.com",
-        port: "",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "*.sfo3.digitaloceanspaces.com",
-        port: "",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "*.ams3.digitaloceanspaces.com",
-        port: "",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "*.sgp1.digitaloceanspaces.com",
-        port: "",
-        pathname: "/**",
-      },
-      // Generic CDN patterns
-      {
-        protocol: "https",
-        hostname: "*.cdn.digitalocean.com",
-        port: "",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "*.cloudflare.com",
+        hostname: "**.cloudfront.net",
         port: "",
         pathname: "/**",
       },
     ],
-    formats: ["image/webp", "image/avif"],
-    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
-    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-  },
-  // Generate robots.txt and sitemap.xml, and handle local uploads
-  async rewrites() {
-    return [
-      {
-        source: "/preview/:path*",
-        destination: "/api/media/preview/:path*",
-      },
-      {
-        source: "/robots.txt",
-        destination: "/robots.txt",
-      },
-      {
-        source: "/sitemap.xml",
-        destination: "/sitemap.xml",
-      },
-    ];
   },
 
-  // Serve static files from uploads directory when using local storage
+  // Security headers for static files following csp.md approach
   async headers() {
     return [
       {
+        // Static uploads - strict CSP for uploaded files
         source: "/uploads/:path*",
         headers: [
           {
@@ -171,8 +132,8 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      // Global CORS headers for API routes
       {
+        // API routes - basic CORS headers
         source: "/api/:path*",
         headers: [
           {
@@ -195,14 +156,28 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  eslint: {
-    ignoreDuringBuilds: true,
+
+  // Redirects
+  async redirects() {
+    return [
+      {
+        source: "/auth",
+        destination: "/signin",
+        permanent: true,
+      },
+      {
+        source: "/login",
+        destination: "/signin",
+        permanent: true,
+      },
+      {
+        source: "/register",
+        destination: "/signup",
+        permanent: true,
+      },
+    ];
   },
-  turbopack: {
-    resolveAlias: {
-      "sanity/structure": "./node_modules/sanity/structure",
-    },
-  },
+
 };
 
 export default nextConfig;

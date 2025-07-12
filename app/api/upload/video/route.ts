@@ -195,7 +195,7 @@ export async function POST(request: NextRequest) {
 
     // Enhanced file signature validation for additional security
     let videoBuffer: Buffer;
-    let detectedType: any;
+    let detectedType: {ext: string; mime: string} | undefined;
     
     try {
       const arrayBuffer = await file.arrayBuffer();

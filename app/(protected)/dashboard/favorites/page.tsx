@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { getUserFavoritesAction, getUserBookmarksAction } from "@/actions";
+import { getUserFavoritesAction } from "@/actions";
 import { FavoriteButton } from "@/components/favorite-button";
 import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
@@ -78,9 +78,10 @@ async function FavoritesList({
 }: {
   userType?: "FREE" | "PREMIUM" | null;
 }) {
-  const [favoritesResult, bookmarksResult] = await Promise.all([
+  const [favoritesResult] = await Promise.all([
     getUserFavoritesAction(),
-    getUserBookmarksAction(),
+    // Note: Bookmarks functionality temporarily disabled
+    // getUserBookmarksAction(),
   ]);
 
   if (!favoritesResult.success) {
@@ -94,14 +95,7 @@ async function FavoritesList({
   }
 
   const favorites = favoritesResult.favorites || [];
-  const bookmarks = bookmarksResult.success
-    ? bookmarksResult.bookmarks || []
-    : [];
 
-  // Create a set of bookmarked post IDs for quick lookup
-  const bookmarkedPostIds = new Set(
-    bookmarks.map((bookmark) => bookmark.postId)
-  );
 
   if (favorites.length === 0) {
     return (

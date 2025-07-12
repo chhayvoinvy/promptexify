@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -61,12 +61,12 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
     debounceMs: 100, // Quick response for better UX
   });
 
-  // Get all video post IDs for video state management
-  const videoPostIds = useMemo(
-    () =>
-      new Set(posts.filter((post) => post.uploadPath && post.uploadFileType === "VIDEO").map((post) => post.id)),
-    [posts]
-  );
+  // Note: Video post tracking removed as not currently used
+  // const videoPostIds = useMemo(
+  //   () =>
+  //     new Set(posts.filter((post) => post.uploadPath && post.uploadFileType === "VIDEO").map((post) => post.id)),
+  //   [posts]
+  // );
 
   // Handle video play/pause
   const handleVideoPlay = useCallback(
@@ -297,7 +297,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
         setPreviousPostCount(posts.length);
       }
     }
-  }, [posts.length, previousPostCount]);
+  }, [posts, previousPostCount]);
 
   // Observer for image loads to trigger recalculation
   useEffect(() => {

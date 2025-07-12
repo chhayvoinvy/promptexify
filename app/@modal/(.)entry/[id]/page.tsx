@@ -31,7 +31,7 @@ export default function GlobalInterceptedModalPage() {
   }, [loading, authLoading, progress]);
 
   useEffect(() => {
-    console.log("🌐 Global intercepting route activated for post:", id);
+    // console.log("🌐 Global intercepting route activated for post:", id);
 
     async function fetchPostData() {
       try {
@@ -62,7 +62,7 @@ export default function GlobalInterceptedModalPage() {
         const postData = await response.json();
 
         setPost(postData);
-        console.log("✅ Global modal for post:", postData.title);
+        // console.log("✅ Global modal for post:", postData.title);
       } catch (error) {
         console.error("Error fetching post data:", error);
         // Redirect to pricing page on access error

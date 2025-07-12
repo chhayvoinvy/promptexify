@@ -48,8 +48,7 @@ export async function generateBlurPlaceholder(
       .modulate({
         brightness: 1,
         saturation: 1.2, // Slightly increase saturation for better visual effect
-      })
-      [format]({
+      })[format]({
         quality,
         ...(format === "jpeg" && { progressive: true }),
         ...(format === "webp" && { effort: 6 }),

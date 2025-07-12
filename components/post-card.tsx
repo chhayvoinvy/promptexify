@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,10 +29,6 @@ interface PostCardProps {
   // Prefetch utilities
   observePost?: (element: HTMLElement, postId: string) => void;
   unobservePost?: (element: HTMLElement) => void;
-  getPrefetchStatus?: (postId: string) => {
-    isPrefetching: boolean;
-    isPrefetched: boolean;
-  };
 }
 
 export function PostCard({
@@ -45,7 +41,6 @@ export function PostCard({
   playingVideo,
   observePost,
   unobservePost,
-  getPrefetchStatus,
 }: PostCardProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -53,11 +48,6 @@ export function PostCard({
   // Calculate aspect ratio based on media type and dimensions
   const getDynamicAspectRatio = () => {
     if (post.uploadPath) {
-      // Try to get actual media dimensions from database
-      const mediaItem = post.media?.find(
-        (m) => m.relativePath === post.uploadPath
-      );
-
       // Default aspect ratio calculation based on width
       const baseRatio = width < 300 ? 0.75 : width < 400 ? 0.8 : 0.85;
       const randomOffset = (parseFloat(post.id.slice(-3)) / 1000) * 0.3;
@@ -69,12 +59,9 @@ export function PostCard({
   };
 
   // Handle media load for dimensions tracking
-  const handleMediaLoad = useCallback(
-    (event: React.SyntheticEvent<HTMLImageElement | HTMLVideoElement>) => {
-      // Media loaded successfully - could track dimensions here if needed
-    },
-    []
-  );
+  const handleMediaLoad = useCallback(() => {
+    // Media loaded successfully - could track dimensions here if needed
+  }, []);
 
   // Handle video play/pause
   const handleVideoPlay = useCallback(() => {
@@ -98,8 +85,8 @@ export function PostCard({
   }, [post.id, playingVideo, onVideoStateChange]);
 
   // Handle video loaded metadata
-  const handleVideoLoadedMetadata = useCallback((event: React.SyntheticEvent<HTMLVideoElement>) => {
-    handleMediaLoad(event);
+  const handleVideoLoadedMetadata = useCallback(() => {
+    handleMediaLoad();
     
     // Auto-play if this video should be playing
     if (playingVideo === post.id) {
@@ -169,7 +156,7 @@ export function PostCard({
                   loading="lazy"
                   blurDataURL={post.blurData || undefined}
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  onLoad={handleMediaLoad}
+                  onLoad={() => handleMediaLoad()}
                 />
               ) : (
                 <MediaVideoLazy
@@ -183,7 +170,7 @@ export function PostCard({
                   loop
                   playsInline
                   preload="metadata"
-                  onLoadedMetadata={handleVideoLoadedMetadata}
+                  onLoadedMetadata={() => handleVideoLoadedMetadata()}
                   onPlay={handleVideoPlay}
                   onEnded={handleVideoEnded}
                   blurDataURL={post.blurData || undefined}

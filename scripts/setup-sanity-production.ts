@@ -10,6 +10,7 @@
 import { execSync } from 'child_process';
 import { readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
+import { nanoid } from 'nanoid';
 
 interface SetupConfig {
   projectId: string;
@@ -39,8 +40,8 @@ function generateWebhookSecret(): string {
   try {
     return execSync('openssl rand -hex 32', { encoding: 'utf8' }).trim();
   } catch {
-    // Fallback if openssl is not available
-    return require('crypto').randomBytes(32).toString('hex');
+    // Fallback if openssl is not available - using nanoid for production-ready secure IDs
+    return nanoid(64); // Generate a 64-character secure random string
   }
 }
 
@@ -58,9 +59,9 @@ function installSanityCLI(): void {
   try {
     execSync('npm install -g @sanity/cli', { stdio: 'inherit' });
     log('✅ Sanity CLI installed successfully', colors.green);
-  } catch (error) {
+  } catch (err) {
     log('❌ Failed to install Sanity CLI', colors.red);
-    throw error;
+    throw err;
   }
 }
 
@@ -71,7 +72,7 @@ function createDataset(projectId: string, dataset: string): void {
       stdio: 'inherit' 
     });
     log(`✅ Dataset ${dataset} created successfully`, colors.green);
-  } catch (error) {
+  } catch {
     log(`ℹ️  Dataset ${dataset} may already exist`, colors.cyan);
   }
 }
@@ -83,8 +84,8 @@ function setDatasetVisibility(projectId: string, dataset: string, visibility: 'p
       stdio: 'inherit' 
     });
     log(`✅ Dataset visibility set to ${visibility}`, colors.green);
-  } catch (error) {
-    log(`⚠️  Could not set dataset visibility: ${error}`, colors.yellow);
+  } catch (err) {
+    log(`⚠️  Could not set dataset visibility: ${err}`, colors.yellow);
   }
 }
 
@@ -207,16 +208,16 @@ async function main(): Promise<void> {
     // Show setup summary
     console.log(generateSetupSummary(config));
     
-  } catch (error) {
-    log(`❌ Setup failed: ${error}`, colors.red);
+  } catch (err) {
+    log(`❌ Setup failed: ${err}`, colors.red);
     process.exit(1);
   }
 }
 
 // Run the setup
 if (require.main === module) {
-  main().catch((error) => {
-    console.error('Setup failed:', error);
+  main().catch((err) => {
+    console.error('Setup failed:', err);
     process.exit(1);
   });
 } 

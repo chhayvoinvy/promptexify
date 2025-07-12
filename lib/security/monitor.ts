@@ -1,18 +1,19 @@
 // Console log level union for security monitoring
-type LocalSeverityLevel =
-  | "error"
-  | "warn"
-  | "log"
-  | "info"
-  | "debug";
+// Note: LocalSeverityLevel type removed as not currently used
+// type LocalSeverityLevel =
+//   | "error"
+//   | "warn" 
+//   | "log"
+//   | "info"
+//   | "debug";
 
-// Map internal severity strings to console log levels
-const severityLevelMap: Record<SecurityEvent["severity"], LocalSeverityLevel> = {
-  low: "info",
-  medium: "warn",
-  high: "error",
-  critical: "error",
-};
+// Note: Severity level map removed as not currently used
+// const severityLevelMap: Record<SecurityEvent["severity"], LocalSeverityLevel> = {
+//   low: "info",
+//   medium: "warn",
+//   high: "error",
+//   critical: "error",
+// };
 
 function isEdgeRuntime(): boolean {
   return (

@@ -347,7 +347,7 @@ export async function deleteImageFromLocal(imageUrl: string): Promise<boolean> {
     // Check if file exists before attempting deletion
     try {
       await fs.access(filePath);
-    } catch (accessError) {
+    } catch {
       console.log(`File not found, skipping deletion: ${filePath}`);
       return true; // Consider this a success since the file is already gone
     }
@@ -386,7 +386,7 @@ export async function deleteVideoFromLocal(videoUrl: string): Promise<boolean> {
     // Check if file exists before attempting deletion
     try {
       await fs.access(filePath);
-    } catch (accessError) {
+    } catch {
       console.log(`File not found, skipping deletion: ${filePath}`);
       return true; // Consider this a success since the file is already gone
     }
@@ -1117,7 +1117,7 @@ export async function processAndUploadImageWithConfig(
           config
         );
         break;
-      case "LOCAL":
+      case "LOCAL": {
         const uploadedPreviewPath = await uploadPreviewToLocal(
           previewBuffer,
           previewFilename,
@@ -1125,6 +1125,7 @@ export async function processAndUploadImageWithConfig(
         );
         previewPath = uploadedPreviewPath;
         break;
+      }
     }
   } catch (error) {
     console.error("Failed to generate and upload preview:", error);
@@ -1141,27 +1142,30 @@ export async function processAndUploadImageWithConfig(
 
   // Upload original image based on storage type
   switch (storageType) {
-    case "S3":
+    case "S3": {
       uploadedPath = await uploadImageToS3WithConfig(
         imageBuffer,
         filename,
         config
       );
       break;
-    case "DOSPACE":
+    }
+    case "DOSPACE": {
       uploadedPath = await uploadImageToDOSpacesWithConfig(
         imageBuffer,
         filename,
         config
       );
       break;
-    case "LOCAL":
+    }
+    case "LOCAL": {
       uploadedPath = await uploadImageToLocal(
         imageBuffer,
         filename,
         config.localBasePath || "/uploads"
       );
       break;
+    }
     default:
       throw new Error(`Unsupported storage type: ${storageType}`);
   }
@@ -1224,21 +1228,23 @@ export async function processAndUploadVideoWithConfig(
 
     // Upload thumbnail based on storage type
     switch (storageType) {
-      case "S3":
+      case "S3": {
         await uploadPreviewToS3WithConfig(
           thumbnailBuffer,
           previewFilename,
           config
         );
         break;
-      case "DOSPACE":
+      }
+      case "DOSPACE": {
         await uploadPreviewToDOSpacesWithConfig(
           thumbnailBuffer,
           previewFilename,
           config
         );
         break;
-      case "LOCAL":
+      }
+      case "LOCAL": {
         const uploadedPreviewPath = await uploadPreviewToLocal(
           thumbnailBuffer,
           previewFilename,
@@ -1246,6 +1252,7 @@ export async function processAndUploadVideoWithConfig(
         );
         previewPath = uploadedPreviewPath;
         break;
+      }
     }
 
     // Generate blur placeholder from thumbnail
@@ -1264,27 +1271,30 @@ export async function processAndUploadVideoWithConfig(
 
   // Upload original video based on storage type
   switch (storageType) {
-    case "S3":
+    case "S3": {
       uploadedPath = await uploadVideoToS3WithConfig(
         videoBuffer,
         filename,
         config
       );
       break;
-    case "DOSPACE":
+    }
+    case "DOSPACE": {
       uploadedPath = await uploadVideoToDOSpacesWithConfig(
         videoBuffer,
         filename,
         config
       );
       break;
-    case "LOCAL":
+    }
+    case "LOCAL": {
       uploadedPath = await uploadVideoToLocal(
         videoBuffer,
         filename,
         config.localBasePath || "/uploads"
       );
       break;
+    }
     default:
       throw new Error(`Unsupported storage type: ${storageType}`);
   }
@@ -1321,7 +1331,12 @@ export async function testStorageConfiguration(): Promise<{
   };
 }> {
   const testPath = "images/test-image.webp";
-  const results: { [key: string]: any } = {};
+  const results: { [key: string]: {
+    isValid: boolean;
+    testUrl: string;
+    issues: string[];
+    storageType?: StorageConfig["storageType"];
+  } } = {};
 
   // Test current configuration
   const currentConfig = await getStorageConfig();

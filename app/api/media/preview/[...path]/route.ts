@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStorageConfig } from "@/lib/image/storage";
-import { getCurrentUser } from "@/lib/auth";
 import { rateLimits, getClientIdentifier, getRateLimitHeaders } from "@/lib/security/limits";
 import { SECURITY_HEADERS } from "@/lib/security/sanitize";
 import { SecurityEvents, getClientIP } from "@/lib/security/audit";
@@ -83,7 +82,7 @@ export async function GET(
 
     // Handle different storage types
     switch (storageType) {
-      case "S3":
+      case "S3": {
         // For S3, construct the CloudFront URL
         if (!config.s3CloudfrontUrl) {
           return NextResponse.json(
@@ -96,8 +95,9 @@ export async function GET(
         }
         previewUrl = `${config.s3CloudfrontUrl}/${previewPath}`;
         break;
+      }
 
-      case "DOSPACE":
+      case "DOSPACE": {
         // For DigitalOcean Spaces, use CDN URL if available
         if (config.doCdnUrl) {
           previewUrl = `${config.doCdnUrl}/${previewPath}`;
@@ -105,12 +105,14 @@ export async function GET(
           previewUrl = `https://${config.doSpaceName}.${config.doRegion}.digitaloceanspaces.com/${previewPath}`;
         }
         break;
+      }
 
-      case "LOCAL":
+      case "LOCAL": {
         // For local storage, serve from public directory
         const basePath = config.localBasePath || "/uploads/preview";
         previewUrl = `${basePath}/${previewPath}`;
         break;
+      }
 
       default:
         return NextResponse.json(

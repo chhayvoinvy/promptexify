@@ -182,6 +182,8 @@ export function usePrefetchPosts(options: UsePrefetchPostsOptions = {}) {
 
   // Cleanup on unmount
   useEffect(() => {
+    const debounceTimers = debounceTimersRef.current;
+    
     return () => {
       // Clean up observer
       if (observerRef.current) {
@@ -189,10 +191,10 @@ export function usePrefetchPosts(options: UsePrefetchPostsOptions = {}) {
       }
 
       // Clean up debounce timers
-      debounceTimersRef.current.forEach((timer) => {
+      debounceTimers.forEach((timer) => {
         clearTimeout(timer);
       });
-      debounceTimersRef.current.clear();
+      debounceTimers.clear();
     };
   }, []);
 

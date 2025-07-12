@@ -221,7 +221,7 @@ export function MediaImage({
     if (src.startsWith("preview/")) {
       // For preview images, use the preview API route
       const previewUrl = `/api/media/preview/${src.replace("preview/", "")}`;
-      console.log("Using preview API for:", src, "→", previewUrl);
+      // console.log("Using preview API for:", src, "→", previewUrl);
       setResolvedUrl(previewUrl);
       setIsLoading(false);
       return;

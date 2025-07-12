@@ -7,7 +7,6 @@ import {
   getRateLimitHeaders,
 } from "@/lib/security/limits";
 import {
-  sanitizeFilename,
   validateFileExtension,
   SECURITY_HEADERS,
   getFileUploadConfig,

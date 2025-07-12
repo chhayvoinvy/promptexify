@@ -61,9 +61,8 @@ export function SignInForm() {
     startMagicLinkTransition(async () => {
       try {
         // Create form data with CSRF protection
-        const formData = createFormDataWithCSRF({
-          email: data.email,
-        });
+        const formData = createFormDataWithCSRF();
+        formData.set("email", data.email);
 
         // Call server action
         const result = await magicLinkAction(formData);

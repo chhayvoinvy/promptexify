@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
  * GET /api/admin/cleanup-orphaned-media
  * Get information about orphaned media files (dry run only)
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Authentication check - only admins can view cleanup info
     const user = await getCurrentUser();

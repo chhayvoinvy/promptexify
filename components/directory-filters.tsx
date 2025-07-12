@@ -121,19 +121,20 @@ export function DirectoryFilters({ categories }: DirectoryFiltersProps) {
     [searchQuery, categoryFilter, premiumFilter, updateURL]
   );
 
-  const handlePremiumChange = useCallback(
-    (value: string) => {
-      setPremiumFilter(value);
-      // Immediately update URL
-      updateURL({
-        q: searchQuery,
-        category: categoryFilter,
-        subcategory: subcategoryFilter,
-        premium: value,
-      });
-    },
-    [searchQuery, categoryFilter, subcategoryFilter, updateURL]
-  );
+  // Note: Premium filter is hidden for now, but callback preserved for future use
+  // const handlePremiumChange = useCallback(
+  //   (value: string) => {
+  //     setPremiumFilter(value);
+  //     // Immediately update URL
+  //     updateURL({
+  //       q: searchQuery,
+  //       category: categoryFilter,
+  //       subcategory: subcategoryFilter,
+  //       premium: value,
+  //     });
+  //   },
+  //   [searchQuery, categoryFilter, subcategoryFilter, updateURL]
+  // );
 
   const handleSearchSubmit = useCallback(
     (e: React.FormEvent) => {
