@@ -14,13 +14,17 @@ interface PreviewOptions {
   maxHeight?: number;
   quality?: number;
   format?: "avif" | "webp" | "jpeg";
+  enableCompression?: boolean;  // New parameter to control compression
 }
 
 interface VideoThumbnailOptions {
   time?: string; // Time position for thumbnail (e.g., "00:00:01")
-  width?: number;
-  height?: number;
+  width?: number;  // Legacy parameter - will be calculated from maxWidth/maxHeight
+  height?: number; // Legacy parameter - will be calculated from maxWidth/maxHeight
+  maxWidth?: number;  // New parameter for smart dimension calculation
+  maxHeight?: number; // New parameter for smart dimension calculation
   quality?: number;
+  enableCompression?: boolean;  // New parameter to control compression
 }
 
 interface VideoPreviewOptions {
@@ -49,6 +53,7 @@ export async function generateImagePreview(
     maxHeight = 720,
     quality = 80,
     format = "webp",
+    enableCompression = true,  // Default to true for backward compatibility
   } = options;
 
   try {
@@ -68,16 +73,20 @@ export async function generateImagePreview(
       maxHeight
     );
 
+    // Apply compression settings
+    const finalQuality = enableCompression ? Math.round(quality) : 100;
+    const finalFormat = enableCompression ? format : "jpeg";
+
     // Generate preview
     const previewBuffer = await sharp(imageBuffer)
       .resize(width, height, {
         fit: "inside", // Maintain aspect ratio, don't crop
         withoutEnlargement: true, // Don't upscale if image is smaller
-      })[format]({
-        quality,
-        ...(format === "avif" && { effort: 4 }),
-        ...(format === "webp" && { effort: 6 }),
-        ...(format === "jpeg" && { progressive: true }),
+      })[finalFormat]({
+        quality: finalQuality,
+        ...(finalFormat === "avif" && { effort: 4 }),
+        ...(finalFormat === "webp" && { effort: 6 }),
+        ...(finalFormat === "jpeg" && { progressive: true }),
       })
       .toBuffer();
 
@@ -103,6 +112,7 @@ export async function generateVideoThumbnail(
     width = 1280,
     height = 720,
     quality = 80,
+    enableCompression = true,  // Default to true for backward compatibility
   } = options;
 
   try {
@@ -114,17 +124,35 @@ export async function generateVideoThumbnail(
     // Write video buffer to temporary file
     await writeFile(videoPath, videoBuffer);
 
-    // Generate thumbnail using FFmpeg
+    // Extract video metadata to get dimensions
+    const metadata = await extractVideoMetadata(videoBuffer);
+    const { width: videoWidth, height: videoHeight } = metadata;
+
+    // Calculate optimal thumbnail dimensions based on video orientation
+    const { width: optimalWidth, height: optimalHeight, isPortrait } = calculateOptimalThumbnailDimensions(
+      videoWidth,
+      videoHeight,
+      width,
+      height
+    );
+
+    console.log(`Video: ${videoWidth}x${videoHeight} (${isPortrait ? 'Portrait' : 'Landscape'})`);
+    console.log(`Thumbnail: ${optimalWidth}x${optimalHeight}`);
+
+    // Generate thumbnail using FFmpeg with calculated dimensions
     await generateThumbnailWithFFmpeg(videoPath, thumbnailPath, {
       time,
-      width,
-      height,
-      quality,
+      width: optimalWidth,
+      height: optimalHeight,
+      quality: enableCompression ? Math.round(quality) : 100,
     });
 
-    // Read thumbnail file
+    // Convert to WebP with compression settings
     const thumbnailBuffer = await sharp(thumbnailPath)
-      .webp({ quality, effort: 6 })
+      .webp({ 
+        quality: enableCompression ? Math.round(quality) : 100,
+        effort: 6 
+      })
       .toBuffer();
 
     // Clean up temporary files
@@ -263,7 +291,47 @@ function calculateAspectRatioFit(
 }
 
 /**
- * Generate thumbnail using FFmpeg
+ * Calculate optimal thumbnail dimensions based on video orientation
+ * @param videoWidth - Original video width
+ * @param videoHeight - Original video height
+ * @param maxWidth - Maximum allowed width
+ * @param maxHeight - Maximum allowed height
+ * @returns Object with calculated dimensions and orientation info
+ */
+function calculateOptimalThumbnailDimensions(
+  videoWidth: number,
+  videoHeight: number,
+  maxWidth: number = 1280,
+  maxHeight: number = 720
+): { width: number; height: number; isPortrait: boolean } {
+  const aspectRatio = videoWidth / videoHeight;
+  const isPortrait = aspectRatio < 1;
+  
+  if (isPortrait) {
+    // For portrait videos, prioritize height
+    const targetHeight = maxHeight;
+    const targetWidth = Math.round(targetHeight * aspectRatio);
+    
+    return {
+      width: targetWidth,
+      height: targetHeight,
+      isPortrait: true
+    };
+  } else {
+    // For landscape videos, prioritize width
+    const targetWidth = maxWidth;
+    const targetHeight = Math.round(targetWidth / aspectRatio);
+    
+    return {
+      width: targetWidth,
+      height: targetHeight,
+      isPortrait: false
+    };
+  }
+}
+
+/**
+ * Generate a video thumbnail using FFmpeg
  * @param inputPath - Path to input video file
  * @param outputPath - Path to output thumbnail file
  * @param options - Thumbnail generation options

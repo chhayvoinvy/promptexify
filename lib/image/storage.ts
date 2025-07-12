@@ -1259,7 +1259,7 @@ export async function processAndUploadImageWithConfig(
   const { storageType } = config;
 
   // Import functions dynamically to avoid circular dependencies
-  const { convertToWebp, generateImageFilename } = await import("./s3");
+  const { generateImageFilename } = await import("./s3");
   const { generateOptimizedBlurPlaceholder } = await import("./blur");
   const { generateImagePreview, generatePreviewFilename } = await import("./preview");
 
@@ -1267,11 +1267,11 @@ export async function processAndUploadImageWithConfig(
   const filename = generateImageFilename(file.name, userId);
   const relativePath = `images/${filename}`;
 
-  // Process the image
+  // Process the image - KEEP ORIGINAL FORMAT
   const sharp = (await import("sharp")).default;
   const buffer: Buffer = Buffer.from(new Uint8Array(await file.arrayBuffer()));
-  let imageBuffer: Buffer = buffer;
-  let finalMimeType = file.type;
+  const imageBuffer: Buffer = buffer;  // Keep original format
+  const finalMimeType = file.type;  // Keep original MIME type
 
   const image = sharp(buffer);
   const metadata = await image.metadata();
@@ -1280,19 +1280,23 @@ export async function processAndUploadImageWithConfig(
   // Generate blur placeholder from original buffer (before compression)
   let blurDataUrl: string | undefined;
   try {
-    blurDataUrl = await generateOptimizedBlurPlaceholder(buffer, file.type);
+    blurDataUrl = await generateOptimizedBlurPlaceholder(buffer, file.type, {
+      enableCompression: config.enableCompression,
+      quality: config.compressionQuality,
+    });
   } catch (error) {
     console.error("Failed to generate blur placeholder:", error);
   }
 
-  // Generate preview image
+  // Generate preview image with compression settings
   let previewPath: string | undefined;
   try {
     const previewBuffer = await generateImagePreview(buffer, {
       maxWidth: 1280,
       maxHeight: 720,
-      quality: 80,
-      format: "webp",
+      quality: config.compressionQuality,  // Use dashboard setting
+      format: "webp",  // Always WebP for previews
+      enableCompression: config.enableCompression,  // Respect compression toggle
     });
 
     const previewFilename = generatePreviewFilename(filename);
@@ -1329,12 +1333,7 @@ export async function processAndUploadImageWithConfig(
     // Continue without preview - it's not critical
   }
 
-  // Convert to WebP if enabled and not already WebP
-  if (config.enableCompression && file.type !== "image/webp") {
-    imageBuffer = await convertToWebp(buffer);
-    finalMimeType = "image/webp";
-  }
-
+  // Upload original image (original format, no WebP conversion)
   let uploadedPath: string;
 
   // Upload original image based on storage type
@@ -1378,13 +1377,13 @@ export async function processAndUploadImageWithConfig(
     filename,
     relativePath: storageType === "LOCAL" ? uploadedPath : relativePath,
     originalName: file.name,
-    mimeType: finalMimeType,
+    mimeType: finalMimeType,  // Original MIME type
     fileSize: imageBuffer.length,
     width,
     height,
     storageType: storageType as StorageType,
     blurDataUrl,
-    previewPath,
+    previewPath,  // WebP preview path
   };
 }
 
@@ -1401,39 +1400,32 @@ export async function processAndUploadVideoWithConfig(
 
   // Import functions dynamically to avoid circular dependencies
   const { generateVideoFilename } = await import("./s3");
-  const { generateVideoThumbnail, generateVideoPreview, generatePreviewFilename, extractVideoMetadata } = await import("./preview");
+  const { generateVideoThumbnail, generateVideoPreview, generatePreviewFilename } = await import("./preview");
+  const { extractVideoMetadata } = await import("./preview");
 
   // Generate filename
   const filename = generateVideoFilename(file.name, userId);
   const relativePath = `videos/${filename}`;
-  const videoBuffer = Buffer.from(new Uint8Array(await file.arrayBuffer()));
 
+  // Process the video
+  const videoBuffer: Buffer = Buffer.from(new Uint8Array(await file.arrayBuffer()));
+  
   // Extract video metadata
-  let videoMetadata: { width?: number; height?: number; duration?: number } = {};
-  try {
-    const metadata = await extractVideoMetadata(videoBuffer);
-    videoMetadata = {
-      width: metadata.width,
-      height: metadata.height,
-      duration: metadata.duration,
-    };
-  } catch (error) {
-    console.error("Failed to extract video metadata:", error);
-    // Continue without metadata - it's not critical
-  }
+  const videoMetadata = await extractVideoMetadata(videoBuffer);
 
-  // Generate video thumbnail and preview video
+  // Generate thumbnail and preview with compression settings
   let previewPath: string | undefined;
   let previewVideoPath: string | undefined;
   let blurDataUrl: string | undefined;
   
   try {
-    // Generate thumbnail image
+    // Generate thumbnail image with smart dimensions for portrait videos
     const thumbnailBuffer = await generateVideoThumbnail(videoBuffer, {
       time: "00:00:01",
-      width: 1280,
-      height: 720,
-      quality: 80,
+      maxWidth: 1280,
+      maxHeight: 720,
+      quality: config.compressionQuality,  // Use dashboard setting
+      enableCompression: config.enableCompression,  // Respect compression toggle
     });
 
     // Generate compressed video preview
@@ -1491,7 +1483,10 @@ export async function processAndUploadVideoWithConfig(
     // Generate blur placeholder from thumbnail
     try {
       const { generateOptimizedBlurPlaceholder } = await import("./blur");
-      blurDataUrl = await generateOptimizedBlurPlaceholder(thumbnailBuffer, "image/webp");
+      blurDataUrl = await generateOptimizedBlurPlaceholder(thumbnailBuffer, "image/webp", {
+        enableCompression: config.enableCompression,
+        quality: config.compressionQuality,
+      });
     } catch (error) {
       console.error("Failed to generate blur placeholder for video thumbnail:", error);
     }
@@ -1543,14 +1538,14 @@ export async function processAndUploadVideoWithConfig(
     filename,
     relativePath: storageType === "LOCAL" ? uploadedPath : relativePath,
     originalName: file.name,
-    mimeType: file.type,
+    mimeType: file.type,  // Original video MIME type
     fileSize: file.size,
     width: videoMetadata.width,
     height: videoMetadata.height,
     duration: videoMetadata.duration,
     storageType: storageType as StorageType,
-    previewPath,
-    previewVideoPath,
+    previewPath,  // WebP thumbnail path
+    previewVideoPath,  // Compressed video preview path
     blurDataUrl,
   };
 }

@@ -12,6 +12,7 @@ interface BlurOptions {
   quality?: number;
   blur?: number;
   format?: "jpeg" | "webp";
+  enableCompression?: boolean;  // New parameter to control compression
 }
 
 /**
@@ -29,7 +30,8 @@ export async function generateBlurPlaceholder(
     height = 10,
     quality = 20,
     blur = 3,
-    format = "jpeg",
+    format = "webp",  // Default to webp for better compression
+    enableCompression = true,  // Default to true for backward compatibility
   } = options;
 
   try {
@@ -37,6 +39,9 @@ export async function generateBlurPlaceholder(
     if (!imageBuffer || imageBuffer.length === 0) {
       throw new Error("Invalid image buffer provided");
     }
+
+    // Calculate blur quality (20-30% of dashboard setting if compression is enabled)
+    const blurQuality = enableCompression ? Math.round(Math.max(20, Math.min(30, quality * 0.25))) : 100;
 
     // Create a tiny, blurred version of the image
     const tinyBuffer = await sharp(imageBuffer)
@@ -49,7 +54,7 @@ export async function generateBlurPlaceholder(
         brightness: 1,
         saturation: 1.2, // Slightly increase saturation for better visual effect
       })[format]({
-        quality,
+        quality: blurQuality,
         ...(format === "jpeg" && { progressive: true }),
         ...(format === "webp" && { effort: 6 }),
       })
@@ -70,11 +75,16 @@ export async function generateBlurPlaceholder(
  * Generate a blur placeholder optimized for different image types
  * @param imageBuffer - The source image buffer  
  * @param originalMimeType - The original image MIME type
+ * @param compressionOptions - Optional compression settings
  * @returns Promise<string> - Base64 data URL
  */
 export async function generateOptimizedBlurPlaceholder(
   imageBuffer: Buffer,
-  originalMimeType?: string
+  originalMimeType?: string,
+  compressionOptions?: {
+    enableCompression?: boolean;
+    quality?: number;
+  }
 ): Promise<string> {
   // Choose optimal settings based on original image type
   const isPhoto = originalMimeType?.includes("jpeg") || originalMimeType?.includes("jpg");
@@ -82,9 +92,10 @@ export async function generateOptimizedBlurPlaceholder(
   const options: BlurOptions = {
     width: isPhoto ? 12 : 8, // Slightly larger for photos
     height: isPhoto ? 12 : 8,
-    quality: isPhoto ? 25 : 15,
+    quality: compressionOptions?.quality ? Math.round(compressionOptions.quality) : (isPhoto ? 25 : 15),
     blur: isPhoto ? 2.5 : 3,
-    format: "jpeg", // JPEG is more efficient for blur placeholders
+    format: "webp", // WebP for better compression
+    enableCompression: compressionOptions?.enableCompression ?? true,
   };
 
   return generateBlurPlaceholder(imageBuffer, options);

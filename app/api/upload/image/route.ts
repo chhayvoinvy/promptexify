@@ -9,14 +9,11 @@ import {
 import {
   validateFileExtension,
   SECURITY_HEADERS,
-  getFileUploadConfig,
 } from "@/lib/security/sanitize";
 import { CSRFProtection } from "@/lib/security/csp";
 import { SecurityEvents, getClientIP } from "@/lib/security/audit";
 import { prisma } from "@/lib/prisma";
-
-// Get environment-aware upload configurations
-const uploadConfig = getFileUploadConfig();
+import { getStorageConfig } from "@/lib/image/storage";
 
 // File magic number validation for additional security
 const FILE_SIGNATURES: Record<string, number[]> = {
@@ -145,6 +142,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get storage configuration from database
+    const uploadConfig = await getStorageConfig();
+    const allowedImageTypes = [
+      "image/jpeg",
+      "image/jpg", 
+      "image/png",
+      "image/webp",
+      "image/avif",
+    ];
+
     // File size validation
     if (file.size > uploadConfig.maxImageSize) {
       return NextResponse.json(
@@ -172,12 +179,12 @@ export async function POST(request: NextRequest) {
     }
 
     // File type validation
-    if (!uploadConfig.allowedImageTypes.includes(file.type)) {
+    if (!allowedImageTypes.includes(file.type)) {
       return NextResponse.json(
         {
           error:
             "Invalid file type. Only JPEG, PNG, WebP, and AVIF images are allowed",
-          allowedTypes: uploadConfig.allowedImageTypes,
+          allowedTypes: allowedImageTypes,
         },
         {
           status: 400,
