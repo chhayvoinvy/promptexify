@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { PostWithInteractions } from "@/lib/content";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { FavoriteButton } from "@/components/favorite-button";
-import { MediaImage, MediaVideoLazy } from "@/components/media-display";
+import { MediaImage, MediaVideo } from "@/components/media-display";
 import {
   LockIcon,
   UnlockIcon,
@@ -159,7 +159,7 @@ export function PostCard({
                   onLoad={() => handleMediaLoad()}
                 />
               ) : (
-                <MediaVideoLazy
+                <MediaVideo
                   ref={videoRef}
                   src={post.uploadPath}
                   previewSrc={post.previewPath || undefined}
