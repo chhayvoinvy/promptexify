@@ -12,6 +12,7 @@ export interface PostWithDetails {
   uploadPath: string | null;
   uploadFileType: "IMAGE" | "VIDEO" | null;
   previewPath: string | null;
+  previewVideoPath?: string | null;
   blurData?: string | null; // Optional for now, will be filled in gradually
   isPremium: boolean;
   isFeatured: boolean;

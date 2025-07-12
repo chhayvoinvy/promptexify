@@ -59,6 +59,7 @@ export default function NewPostPage() {
   const [uploadFileType, setUploadFileType] = useState<"IMAGE" | "VIDEO" | null>(null);
   const [uploadMediaId, setUploadMediaId] = useState<string | null>(null);
   const [previewPath, setPreviewPath] = useState<string | null>(null);
+  const [previewVideoPath, setPreviewVideoPath] = useState<string | null>(null);
   const [blurData, setBlurData] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [pendingTags, setPendingTags] = useState<string[]>([]);
@@ -256,6 +257,7 @@ export default function NewPostPage() {
         formData.set("uploadPath", uploadPath || "");
         formData.set("uploadFileType", uploadFileType || "");
         formData.set("previewPath", previewPath || "");
+        formData.set("previewVideoPath", previewVideoPath || "");
         formData.set("blurData", blurData || "");
       }
 
@@ -313,18 +315,21 @@ export default function NewPostPage() {
       mimeType: string;
       blurDataUrl?: string;
       previewPath?: string;
+      previewVideoPath?: string;
     } | null
   ) {
     if (result) {
       setUploadMediaId(result.id);
       setUploadPath(result.relativePath);
       setPreviewPath(result.previewPath || null); // Use preview path from upload response
+      setPreviewVideoPath(result.previewVideoPath || null); // Use preview video path from upload response
       setBlurData(result.blurDataUrl || null);
       setUploadFileType(result.mimeType.startsWith("image/") ? "IMAGE" : "VIDEO");
     } else {
       setUploadMediaId(null);
       setUploadPath(null);
       setPreviewPath(null);
+      setPreviewVideoPath(null);
       setBlurData(null);
       setUploadFileType(null);
     }
@@ -638,6 +643,7 @@ export default function NewPostPage() {
             <input type="hidden" name="uploadFileType" value={uploadFileType || ""} />
             <input type="hidden" name="uploadMediaId" value={uploadMediaId || ""} />
             <input type="hidden" name="previewPath" value={previewPath || ""} />
+            <input type="hidden" name="previewVideoPath" value={previewVideoPath || ""} />
             <input type="hidden" name="blurData" value={blurData || ""} />
 
             <div className="flex justify-end gap-4">

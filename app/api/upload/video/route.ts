@@ -299,6 +299,7 @@ export async function POST(request: NextRequest) {
         ...uploadResult,
         id: newMedia.id,
         previewPath: uploadResult.previewPath, // Explicitly include previewPath for frontend
+        previewVideoPath: uploadResult.previewVideoPath, // Explicitly include previewVideoPath for frontend
       },
       {
         status: 200,

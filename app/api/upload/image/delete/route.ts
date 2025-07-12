@@ -81,6 +81,7 @@ export async function DELETE(request: NextRequest) {
     // Parse & validate request body w/ Zod
     const bodySchema = z.object({
       imageUrl: z.string().min(1, "Image URL is required"),
+      previewPath: z.string().optional(), // Optional preview image path
     });
 
     let requestBody;
@@ -107,7 +108,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const { imageUrl } = parsed.data;
+    const { imageUrl, previewPath } = parsed.data;
 
     // Get storage configuration to understand URL format
     const storageConfig = await getStorageConfig();
@@ -178,6 +179,19 @@ export async function DELETE(request: NextRequest) {
     // Delete from configured storage
     const deleted = await deleteImage(urlToDelete);
 
+    // Also delete preview file if it was provided
+    let previewDeleted = false;
+    if (previewPath) {
+      try {
+        const { deleteImage: deleteImageFile, getPublicUrl } = await import("@/lib/image/storage");
+        const previewImageUrl = await getPublicUrl(previewPath);
+        previewDeleted = await deleteImageFile(previewImageUrl);
+        console.log(`Preview image deletion ${previewDeleted ? 'succeeded' : 'failed'}: ${previewPath}`);
+      } catch (error) {
+        console.error(`Failed to delete preview image ${previewPath}:`, error);
+      }
+    }
+
     if (deleted) {
       // File deletion succeeded, now clean up the database record
       let databaseCleanupResult = { success: false, recordFound: false };
@@ -204,6 +218,9 @@ export async function DELETE(request: NextRequest) {
         success: true,
         message: "Image deleted successfully",
         database: databaseCleanupResult,
+        previewFiles: {
+          image: previewDeleted,
+        },
       });
     } else {
       return NextResponse.json(

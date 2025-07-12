@@ -134,7 +134,10 @@ interface MediaImageProps {
 }
 
 interface MediaVideoProps {
-  src: string; // Relative path like "videos/user123-video-xyz789.mp4"
+  src: string; // Video path like "videos/user123-video-xyz789.mp4"
+  previewSrc?: string; // Preview image path like "preview/user123abc123456789.webp"
+  previewVideoSrc?: string; // Preview video path like "preview/user123abc123456789.mp4"
+  alt?: string; // For accessibility
   className?: string;
   controls?: boolean;
   autoPlay?: boolean;
@@ -142,10 +145,21 @@ interface MediaVideoProps {
   muted?: boolean;
   playsInline?: boolean;
   preload?: "none" | "metadata" | "auto";
+  fill?: boolean;
+  width?: number;
+  height?: number;
+  sizes?: string;
+  loading?: "lazy" | "eager";
+  priority?: boolean;
+  blurDataURL?: string; // For video thumbnail blur placeholder
   onLoadedMetadata?: (event: React.SyntheticEvent<HTMLVideoElement>) => void;
   onPlay?: () => void;
   onPause?: () => void;
   onEnded?: () => void;
+  onPreviewLoad?: (event: React.SyntheticEvent<HTMLImageElement>) => void;
+  // Video loading strategy
+  usePreviewVideo?: boolean; // Use compressed video for initial playback
+  fallbackToOriginal?: boolean; // Fallback to original if preview fails
 }
 
 /**
@@ -387,13 +401,16 @@ export function MediaImage({
 }
 
 /**
- * MediaVideo - Automatically resolves relative paths to full URLs
- * Usage: <MediaVideo src="videos/user123-video-xyz789.mp4" controls />
+ * MediaVideo - Automatically resolves relative paths to full URLs with preview support
+ * Usage: <MediaVideo src="videos/user123-video-xyz789.mp4" previewVideoSrc="preview/user123abc123456789.mp4" controls />
  */
 export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
   function MediaVideo(
     {
       src,
+      previewSrc,
+      previewVideoSrc,
+      alt,
       className,
       controls = false,
       autoPlay = false,
@@ -401,36 +418,68 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
       muted = false,
       playsInline = false,
       preload = "metadata",
+      fill = false,
+      width,
+      height,
+      blurDataURL,
       onLoadedMetadata,
       onPlay,
       onPause,
       onEnded,
+      onPreviewLoad,
+      usePreviewVideo = false,
+      fallbackToOriginal = true,
     },
     ref
   ) {
+    const [currentVideoSrc, setCurrentVideoSrc] = useState<string>("");
+    const [isUsingPreview, setIsUsingPreview] = useState(false);
     const [resolvedUrl, setResolvedUrl] = useState<string>("");
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [showPreviewImage, setShowPreviewImage] = useState(true);
+    const [videoLoaded, setVideoLoaded] = useState(false);
 
+    // Determine which video source to use
     useEffect(() => {
-      if (!src) {
+      // Priority order: previewVideoSrc → src
+      if (usePreviewVideo && previewVideoSrc) {
+        setCurrentVideoSrc(previewVideoSrc);
+        setIsUsingPreview(true);
+      } else {
+        setCurrentVideoSrc(src);
+        setIsUsingPreview(false);
+      }
+    }, [src, previewVideoSrc, usePreviewVideo]);
+
+    // Resolve video URL
+    useEffect(() => {
+      if (!currentVideoSrc) {
         setIsLoading(false);
         return;
       }
 
       // If src is already a full URL or a blob URL, use it directly
       if (
-        src.startsWith("http://") ||
-        src.startsWith("https://") ||
-        src.startsWith("blob:")
+        currentVideoSrc.startsWith("http://") ||
+        currentVideoSrc.startsWith("https://") ||
+        currentVideoSrc.startsWith("blob:")
       ) {
-        setResolvedUrl(src);
+        setResolvedUrl(currentVideoSrc);
+        setIsLoading(false);
+        return;
+      }
+
+      // Handle preview paths - they should go through the preview API
+      if (currentVideoSrc.startsWith("preview/")) {
+        const previewUrl = `/api/media/preview/${currentVideoSrc.replace("preview/", "")}`;
+        setResolvedUrl(previewUrl);
         setIsLoading(false);
         return;
       }
 
       // Resolve relative path to full URL
-      resolveMediaUrl(src)
+      resolveMediaUrl(currentVideoSrc)
         .then((url: string) => {
           setResolvedUrl(url);
           setIsLoading(false);
@@ -440,7 +489,32 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
           setError("Failed to load video");
           setIsLoading(false);
         });
-    }, [src]);
+    }, [currentVideoSrc]);
+
+    // Handle video error - fallback to original
+    const handleVideoError = () => {
+      if (isUsingPreview && fallbackToOriginal && src !== currentVideoSrc) {
+        console.log("Preview video failed, falling back to original");
+        setCurrentVideoSrc(src);
+        setIsUsingPreview(false);
+        setError(null);
+        setIsLoading(true);
+      } else {
+        setError("Failed to load video");
+      }
+    };
+
+    // Handle video loaded metadata
+    const handleVideoLoadedMetadata = (event: React.SyntheticEvent<HTMLVideoElement>) => {
+      setVideoLoaded(true);
+      setShowPreviewImage(false);
+      onLoadedMetadata?.(event);
+    };
+
+    // Handle preview image load
+    const handlePreviewImageLoad = (event: React.SyntheticEvent<HTMLImageElement>) => {
+      onPreviewLoad?.(event);
+    };
 
     if (isLoading) {
       return (
@@ -464,24 +538,62 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
       );
     }
 
+    // Container styling for fill mode
+    const containerStyle = fill 
+      ? { 
+          width: width || "100%", 
+          height: height || "100%",
+          minHeight: height || "200px",
+          position: "relative" as const
+        }
+      : { width, height };
+
+    const containerClassName = fill 
+      ? `relative overflow-hidden ${className || ""}` + (
+          (!height && !className?.includes('h-')) ? ' min-h-[200px]' : ''
+        )
+      : `relative overflow-hidden ${className || ""}`;
+
     return (
-      <video
-        ref={ref}
-        src={resolvedUrl}
-        className={className}
-        controls={controls}
-        autoPlay={autoPlay}
-        loop={loop}
-        muted={muted}
-        playsInline={playsInline}
-        preload={preload}
-        onLoadedMetadata={onLoadedMetadata}
-        onPlay={onPlay}
-        onPause={onPause}
-        onEnded={onEnded}
-      >
-        Your browser does not support the video tag.
-      </video>
+      <div className={containerClassName} style={containerStyle}>
+        {/* Preview image overlay */}
+        {previewSrc && showPreviewImage && (
+          <MediaImage
+            src={previewSrc}
+            alt={alt || "Video preview"}
+            fill={fill}
+            width={!fill ? width : undefined}
+            height={!fill ? height : undefined}
+            className={`absolute inset-0 object-cover transition-opacity duration-300 ${
+              videoLoaded ? "opacity-0" : "opacity-100"
+            }`}
+            loading="eager"
+            priority={true}
+            blurDataURL={blurDataURL}
+            onLoad={handlePreviewImageLoad}
+          />
+        )}
+        
+        {/* Video element */}
+        <video
+          ref={ref}
+          src={resolvedUrl}
+          className={`${fill ? 'absolute inset-0 w-full h-full' : ''} ${className || ''}`}
+          controls={controls}
+          autoPlay={autoPlay}
+          loop={loop}
+          muted={muted}
+          playsInline={playsInline}
+          preload={preload}
+          onLoadedMetadata={handleVideoLoadedMetadata}
+          onPlay={onPlay}
+          onPause={onPause}
+          onEnded={onEnded}
+          onError={handleVideoError}
+        >
+          Your browser does not support the video tag.
+        </video>
+      </div>
     );
   }
 );

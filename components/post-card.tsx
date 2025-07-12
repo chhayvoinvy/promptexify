@@ -163,6 +163,7 @@ export function PostCard({
                   ref={videoRef}
                   src={post.uploadPath}
                   previewSrc={post.previewPath || undefined}
+                  previewVideoSrc={post.previewVideoPath || undefined}
                   alt={post.title}
                   fill
                   className="rounded-b-lg"
@@ -174,10 +175,8 @@ export function PostCard({
                   onPlay={handleVideoPlay}
                   onEnded={handleVideoEnded}
                   blurDataURL={post.blurData || undefined}
-                  loading="lazy"
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  autoShowVideo={playingVideo === post.id}
-                  showPlayButton={false} // We'll use custom controls
+                  usePreviewVideo={true}
+                  fallbackToOriginal={true}
                 />
               )
             ) : (

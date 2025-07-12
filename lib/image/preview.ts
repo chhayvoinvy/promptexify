@@ -1,6 +1,6 @@
 import sharp from "sharp";
 import { spawn } from "child_process";
-import { writeFile, unlink } from "fs/promises";
+import { writeFile, unlink, readFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 
@@ -21,6 +21,16 @@ interface VideoThumbnailOptions {
   width?: number;
   height?: number;
   quality?: number;
+}
+
+interface VideoPreviewOptions {
+  maxWidth?: number;
+  maxHeight?: number;
+  bitrate?: string;
+  fps?: number;
+  quality?: number;
+  duration?: number;
+  format?: "mp4" | "webm";
 }
 
 /**
@@ -131,6 +141,62 @@ export async function generateVideoThumbnail(
 }
 
 /**
+ * Generate a compressed video preview using FFmpeg
+ * @param videoBuffer - The source video buffer
+ * @param options - Configuration options for video preview generation
+ * @returns Promise<Buffer> - Compressed video buffer
+ */
+export async function generateVideoPreview(
+  videoBuffer: Buffer,
+  options: VideoPreviewOptions = {}
+): Promise<Buffer> {
+  const {
+    maxWidth = 1280,
+    maxHeight = 720,
+    bitrate = "500k",
+    fps = 24,
+    quality = 60,
+    duration = 10,
+    format = "mp4",
+  } = options;
+
+  try {
+    // Create temporary files
+    const tempDir = tmpdir();
+    const inputPath = join(tempDir, `temp-input-${Date.now()}.mp4`);
+    const outputPath = join(tempDir, `temp-preview-${Date.now()}.mp4`);
+
+    // Write input video to temp file
+    await writeFile(inputPath, videoBuffer);
+
+    // Generate compressed preview using FFmpeg
+    await generateCompressedVideoWithFFmpeg(inputPath, outputPath, {
+      maxWidth,
+      maxHeight,
+      bitrate,
+      fps,
+      quality,
+      duration,
+      format,
+    });
+
+    // Read compressed video
+    const previewBuffer = await readFile(outputPath);
+
+    // Clean up temp files
+    await Promise.all([
+      unlink(inputPath).catch(() => {}),
+      unlink(outputPath).catch(() => {}),
+    ]);
+
+    return previewBuffer;
+  } catch (error) {
+    console.error("Error generating video preview:", error);
+    throw new Error("Failed to generate video preview");
+  }
+}
+
+/**
  * Generate preview filename with random pattern
  * @param originalFilename - The original filename (used to extract userPrefix)
  * @returns string - Preview filename in format: {userPrefix}{randomId15chars}.webp
@@ -218,6 +284,56 @@ async function generateThumbnailWithFFmpeg(
       "-vf", `scale=${width}:${height}:force_original_aspect_ratio=decrease`,
       "-q:v", String(Math.round(31 - (quality / 100) * 31)), // Convert quality to FFmpeg scale
       "-y", // Overwrite output file
+      outputPath,
+    ]);
+
+    let stderr = "";
+
+    ffmpeg.stderr?.on("data", (data: Buffer) => {
+      stderr += data.toString();
+    });
+
+    ffmpeg.on("close", (code: number | null) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`FFmpeg failed with code ${code}: ${stderr}`));
+      }
+    });
+
+    ffmpeg.on("error", (error: Error) => {
+      reject(new Error(`FFmpeg error: ${error.message}`));
+    });
+  });
+}
+
+/**
+ * Generate compressed video using FFmpeg
+ * @param inputPath - Path to input video file
+ * @param outputPath - Path to output compressed video file
+ * @param options - Video compression options
+ * @returns Promise<void>
+ */
+async function generateCompressedVideoWithFFmpeg(
+  inputPath: string,
+  outputPath: string,
+  options: VideoPreviewOptions
+): Promise<void> {
+  const { maxWidth = 640, maxHeight = 360, bitrate = "300k", fps = 15, duration = 10 } = options;
+
+  return new Promise((resolve, reject) => {
+    const ffmpeg = spawn("ffmpeg", [
+      "-i", inputPath,
+      "-t", String(duration), // Limit duration
+      "-vf", `scale=${maxWidth}:${maxHeight}:force_original_aspect_ratio=decrease`,
+      "-r", String(fps), // Set frame rate (lower for smaller files)
+      "-b:v", bitrate, // Set bitrate (lower for smaller files)
+      "-c:v", "libx264", // Use H.264 codec
+      "-preset", "veryfast", // Faster encoding
+      "-crf", "28", // More aggressive compression (higher CRF = smaller file)
+      "-an", // Remove audio for preview videos
+      "-movflags", "+faststart", // Optimize for web
+      "-y", // Overwrite output
       outputPath,
     ]);
 

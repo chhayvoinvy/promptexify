@@ -70,30 +70,31 @@ model Tag {
 }
 
 model Post {
-  id             String          @id @default(uuid())
-  title          String
-  slug           String          @unique
-  description    String?
-  content        String
-  isPremium      Boolean         @default(false)
-  isFeatured     Boolean         @default(false)
-  isPublished    Boolean         @default(false)
-  status         PostStatus      @default(DRAFT)
-  authorId       String
-  categoryId     String
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  blurData       String?
-  uploadFileType UploadFileType?
-  uploadPath     String?
-  previewPath    String?         // Preview image path for public serving
-  bookmarks      Bookmark[]
-  favorites      Favorite[]
-  media          Media[]
-  author         User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  category       Category        @relation(fields: [categoryId], references: [id])
-  views          View[]
-  tags           Tag[]           @relation("PostToTag")
+  id               String          @id @default(uuid())
+  title            String
+  slug             String          @unique
+  description      String?
+  content          String
+  isPremium        Boolean         @default(false)
+  isFeatured       Boolean         @default(false)
+  isPublished      Boolean         @default(false)
+  status           PostStatus      @default(DRAFT)
+  authorId         String
+  categoryId       String
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  blurData         String?
+  uploadFileType   UploadFileType?
+  uploadPath       String?
+  previewPath      String?
+  previewVideoPath String?
+  bookmarks        Bookmark[]
+  favorites        Favorite[]
+  media            Media[]
+  author           User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  category         Category        @relation(fields: [categoryId], references: [id])
+  views            View[]
+  tags             Tag[]           @relation("PostToTag")
 
   @@index([isPublished, createdAt(sort: Desc)])
   @@index([categoryId, isPublished, createdAt(sort: Desc)])
@@ -109,7 +110,8 @@ model Post {
   @@index([authorId, isPublished, status])
   @@index([isFeatured, isPremium, isPublished, createdAt(sort: Desc)])
   @@index([authorId, status, createdAt(sort: Desc)])
-  @@index([previewPath]) // Index for preview path queries
+  @@index([previewPath])
+  @@index([previewVideoPath])
   @@map("posts")
 }
 
@@ -181,22 +183,22 @@ model Log {
 }
 
 model Media {
-  id                  String      @id @default(uuid())
-  filename            String      @unique
-  relativePath        String
-  originalName        String
-  mimeType            String
-  fileSize            Int
-  width               Int?
-  height              Int?
-  duration            Float?
-  storageType         StorageType @default(S3)
-  uploadedBy          String
-  postId              String?
-  createdAt           DateTime    @default(now())
-  updatedAt           DateTime    @updatedAt
-  blurDataUrl         String?
-  post                Post?       @relation(fields: [postId], references: [id], onDelete: SetNull)
+  id           String      @id @default(uuid())
+  filename     String      @unique
+  relativePath String
+  originalName String
+  mimeType     String
+  fileSize     Int
+  width        Int?
+  height       Int?
+  duration     Float?
+  storageType  StorageType @default(S3)
+  uploadedBy   String
+  postId       String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  blurDataUrl  String?
+  post         Post?       @relation(fields: [postId], references: [id])
 
   @@index([filename])
   @@index([relativePath])

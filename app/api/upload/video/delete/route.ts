@@ -80,6 +80,8 @@ export async function DELETE(request: NextRequest) {
     // Parse & validate request body via Zod
     const bodySchema = z.object({
       videoUrl: z.string().min(1, "Video URL is required"),
+      previewPath: z.string().optional(), // Optional preview image path
+      previewVideoPath: z.string().optional(), // Optional preview video path
     });
 
     let requestBody;
@@ -106,7 +108,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const { videoUrl } = parsed.data;
+    const { videoUrl, previewPath, previewVideoPath } = parsed.data;
 
     // Get storage configuration to understand URL format
     const storageConfig = await getStorageConfig();
@@ -177,6 +179,32 @@ export async function DELETE(request: NextRequest) {
     // Delete from configured storage
     const deleted = await deleteVideo(urlToDelete);
 
+    // Also delete preview files if they were provided
+    let previewImageDeleted = false;
+    let previewVideoDeleted = false;
+
+    if (previewPath) {
+      try {
+        const { deleteImage, getPublicUrl } = await import("@/lib/image/storage");
+        const previewImageUrl = await getPublicUrl(previewPath);
+        previewImageDeleted = await deleteImage(previewImageUrl);
+        console.log(`Preview image deletion ${previewImageDeleted ? 'succeeded' : 'failed'}: ${previewPath}`);
+      } catch (error) {
+        console.error(`Failed to delete preview image ${previewPath}:`, error);
+      }
+    }
+
+    if (previewVideoPath) {
+      try {
+        const { deleteVideo: deleteVideoFile, getPublicUrl } = await import("@/lib/image/storage");
+        const previewVideoUrl = await getPublicUrl(previewVideoPath);
+        previewVideoDeleted = await deleteVideoFile(previewVideoUrl);
+        console.log(`Preview video deletion ${previewVideoDeleted ? 'succeeded' : 'failed'}: ${previewVideoPath}`);
+      } catch (error) {
+        console.error(`Failed to delete preview video ${previewVideoPath}:`, error);
+      }
+    }
+
     if (deleted) {
       // File deletion succeeded, now clean up the database record
       let databaseCleanupResult = { success: false, recordFound: false };
@@ -203,6 +231,10 @@ export async function DELETE(request: NextRequest) {
         success: true,
         message: "Video deleted successfully",
         database: databaseCleanupResult,
+        previewFiles: {
+          image: previewImageDeleted,
+          video: previewVideoDeleted,
+        },
       });
     } else {
       return NextResponse.json(

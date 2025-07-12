@@ -41,6 +41,7 @@ export const createPostAction = withCSRFProtection(
       const blurData = formData.get("blurData") as string;
       const uploadMediaId = formData.get("uploadMediaId") as string;
       const previewPath = formData.get("previewPath") as string;
+      const previewVideoPath = formData.get("previewVideoPath") as string;
       const category = formData.get("category") as string;
       const subcategory = formData.get("subcategory") as string;
       const tags = formData.get("tags") as string;
@@ -160,6 +161,7 @@ export const createPostAction = withCSRFProtection(
           uploadPath: uploadPath || null,
           uploadFileType: uploadFileType || null,
           previewPath: previewPath || null,
+          previewVideoPath: previewVideoPath || null,
           blurData: blurData || null,
           isPremium,
           isPublished,
@@ -255,6 +257,7 @@ export const updatePostAction = withCSRFProtection(
       const blurData = formData.get("blurData") as string;
       const uploadMediaId = formData.get("uploadMediaId") as string;
       const previewPath = formData.get("previewPath") as string;
+      const previewVideoPath = formData.get("previewVideoPath") as string;
       const category = formData.get("category") as string;
       const subcategory = formData.get("subcategory") as string;
       const tags = formData.get("tags") as string;
@@ -437,6 +440,7 @@ export const updatePostAction = withCSRFProtection(
           uploadPath: uploadPath || null,
           uploadFileType: uploadFileType || null,
           previewPath: previewPath || null,
+          previewVideoPath: previewVideoPath || null,
           blurData: blurData || null,
           isPremium,
           isPublished,
@@ -687,6 +691,7 @@ export async function deletePostAction(postId: string) {
         uploadPath: true,
         uploadFileType: true,
         previewPath: true,
+        previewVideoPath: true,
         media: {
           select: {
             id: true,
@@ -779,6 +784,17 @@ export async function deletePostAction(postId: string) {
         mediaDeletePromises.push(deleteImage(previewUrl));
       } catch (error) {
         console.error(`Failed to delete preview file ${existingPost.previewPath}:`, error);
+      }
+    }
+
+    // Delete preview video file if it exists
+    if (existingPost.previewVideoPath) {
+      try {
+        const { deleteVideo, getPublicUrl } = await import("@/lib/image/storage");
+        const previewVideoUrl = await getPublicUrl(existingPost.previewVideoPath);
+        mediaDeletePromises.push(deleteVideo(previewVideoUrl));
+      } catch (error) {
+        console.error(`Failed to delete preview video file ${existingPost.previewVideoPath}:`, error);
       }
     }
 
@@ -1030,6 +1046,58 @@ export async function cleanupOrphanedMediaAction(dryRun: boolean = true) {
     console.error("Error in cleanup orphaned media action:", error);
     throw new Error(
       error instanceof Error ? error.message : "Failed to cleanup orphaned media"
+    );
+  }
+}
+
+// Cleanup orphaned preview files action
+export async function cleanupOrphanedPreviewFilesAction(dryRun: boolean = true) {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.userData) {
+      handleAuthRedirect();
+    }
+
+    // Only admins can run cleanup
+    if (currentUser.userData.role !== "ADMIN") {
+      throw new Error("Unauthorized: Admin access required");
+    }
+
+    // Import cleanup function
+    const { cleanupOrphanedPreviewFiles } = await import("@/lib/image/storage");
+    
+    // Run cleanup
+    const result = await cleanupOrphanedPreviewFiles(dryRun);
+
+    const message = dryRun
+      ? `Found ${result.orphanedCount} orphaned preview files that can be cleaned up`
+      : `Successfully cleaned up ${result.deletedCount} out of ${result.orphanedCount} orphaned preview files`;
+
+    // Revalidate relevant paths if actual cleanup was performed
+    if (!dryRun && result.deletedCount > 0) {
+      revalidatePath("/dashboard/settings");
+      revalidateCache([
+        CACHE_TAGS.POSTS,
+        CACHE_TAGS.POST_BY_ID,
+        CACHE_TAGS.POST_BY_SLUG,
+      ]);
+    }
+
+    return {
+      success: true,
+      message,
+      data: {
+        orphanedCount: result.orphanedCount,
+        deletedCount: result.deletedCount,
+        errors: result.errors,
+        orphanedFiles: result.orphanedFiles,
+        dryRun,
+      },
+    };
+  } catch (error) {
+    console.error("Error in cleanup orphaned preview files action:", error);
+    throw new Error(
+      error instanceof Error ? error.message : "Failed to cleanup orphaned preview files"
     );
   }
 }
