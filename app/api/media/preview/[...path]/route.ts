@@ -134,11 +134,9 @@ export async function GET(
 
       // Construct the correct file path for local storage
       const basePath = config.localBasePath || "/uploads";
-      // Ensure preview path includes the preview/ subdirectory
-      const normalizedPreviewPath = previewPath.startsWith("preview/")
-        ? previewPath
-        : `preview/${previewPath}`;
-      const filePath = join(process.cwd(), "public", basePath.replace(/^\//, ""), normalizedPreviewPath);
+      // The previewPath from the URL params should not include "preview/" prefix
+      // since we're serving from the preview directory
+      const filePath = join(process.cwd(), "public", basePath.replace(/^\//, ""), "preview", previewPath);
       
       if (!existsSync(filePath)) {
         console.error("Preview file not found at:", filePath);
@@ -180,7 +178,7 @@ export async function GET(
         
         const contentType = getContentType(filePath);
         
-        return new NextResponse(fileBuffer, {
+        return new NextResponse(fileBuffer as BodyInit, {
           headers: {
             "Content-Type": contentType,
             "Cache-Control": "public, max-age=31536000, immutable",

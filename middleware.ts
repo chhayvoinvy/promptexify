@@ -60,6 +60,7 @@ export async function middleware(request: NextRequest) {
       const skipCSRF = [
         "/api/webhooks/",
         "/api/upload/",
+        "/api/media/resolve", // Read-only media URL resolution
         "/auth/callback",
         "/api/auth/",
         // Allow CSP violation reports (no CSRF token sent by browsers)
@@ -69,7 +70,7 @@ export async function middleware(request: NextRequest) {
       // Special handling for dynamic routes that should skip CSRF
       const shouldSkipCSRF = skipCSRF.some((path) =>
         pathname.startsWith(path)
-      ) || pathname.match(/^\/api\/posts\/[^\/]+\/view$/);
+      ) || pathname.match(/^\/api\/posts\/[^/]+\/view$/);
 
       const shouldValidateCSRF = !shouldSkipCSRF;
 

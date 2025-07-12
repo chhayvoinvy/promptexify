@@ -8,7 +8,7 @@ import { PostWithInteractions } from "@/lib/content";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { FavoriteButton } from "@/components/favorite-button";
 import { MediaImage, MediaVideo } from "@/components/media-display";
-import { useImageDisplay, useVideoDisplay } from "@/hooks/use-media-display";
+
 import {
   LockIcon,
   UnlockIcon,
@@ -46,19 +46,7 @@ export function PostCard({
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Use media display hooks for preview-aware rendering
-  const imageDisplay = useImageDisplay(
-    post.uploadPath,
-    post.previewPath,
-    { preferPreview: true, fallbackToOriginal: false }
-  );
-
-  const videoDisplay = useVideoDisplay(
-    post.uploadPath,
-    post.previewPath,
-    post.previewVideoPath,
-    { preferPreview: true, fallbackToOriginal: false, usePreviewVideo: true }
-  );
+  // We now directly use previewPath for images, no need for the hook
 
   // Calculate aspect ratio based on media type and dimensions
   const getDynamicAspectRatio = () => {
@@ -164,7 +152,7 @@ export function PostCard({
             {post.previewPath ? (
               post.uploadFileType === "IMAGE" ? (
                 <MediaImage
-                  src={imageDisplay.displayUrl || post.previewPath}
+                  src={post.previewPath}
                   alt={post.title}
                   fill
                   className="object-cover rounded-b-lg absolute"
@@ -176,9 +164,9 @@ export function PostCard({
               ) : (
                 <MediaVideo
                   ref={videoRef}
-                  src={videoDisplay.displayUrl || post.previewVideoPath || post.previewPath}
-                  previewSrc={videoDisplay.displayUrl || post.previewPath || undefined}
-                  previewVideoSrc={videoDisplay.previewVideoUrl || post.previewVideoPath || undefined}
+                  src={post.previewVideoPath || ""}
+                  previewSrc={post.previewPath || undefined}
+                  previewVideoSrc={post.previewVideoPath || undefined}
                   alt={post.title}
                   fill
                   className="rounded-b-lg"

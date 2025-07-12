@@ -55,10 +55,11 @@ export function useMediaDisplay(
       return;
     }
 
-    // Handle preview paths - they should go through the preview API
+    // Handle preview paths - use API route for proper serving
     if (pathToUse.startsWith("preview/")) {
-      const previewUrl = `/api/media/preview/${pathToUse.replace("preview/", "")}`;
-      setDisplayUrl(previewUrl);
+      // Use API route for preview media to ensure proper content-type and security
+      const previewApiUrl = `/api/media/preview/${pathToUse.replace("preview/", "")}`;
+      setDisplayUrl(previewApiUrl);
       setIsPreview(true);
       setIsLoading(false);
       setError(null);

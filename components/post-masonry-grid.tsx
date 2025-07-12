@@ -39,7 +39,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
   const [previousPostCount, setPreviousPostCount] = useState(0);
   const [playingVideo, setPlayingVideo] = useState<string | null>(null);
   const [mutedVideos, setMutedVideos] = useState<Set<string>>(
-    new Set(posts.filter((post) => post.uploadPath && post.uploadFileType === "VIDEO").map((post) => post.id))
+    new Set(posts.filter((post) => post.previewVideoPath && post.uploadFileType === "VIDEO").map((post) => post.id))
   );
   
   // State to track which videos should be loaded and their loading status
@@ -54,7 +54,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
   >({});
 
   // Initialize prefetch hook for viewport-based prefetching
-  const { observePost, unobservePost, getPrefetchStatus } = usePrefetchPosts({
+  const { observePost, unobservePost } = usePrefetchPosts({
     rootMargin: "0px 0px 800px 0px", // Start prefetching 800px before entering viewport
     threshold: 0.1,
     prefetchData: true, // Prefetch both route and API data
@@ -277,7 +277,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
       if (newPosts.length > 0) {
         // Add new videos to muted list by default
         const newVideoPostIds = newPosts
-          .filter((post) => post.uploadPath && post.uploadFileType === "VIDEO")
+          .filter((post) => post.previewVideoPath && post.uploadFileType === "VIDEO")
           .map((post) => post.id);
 
         if (newVideoPostIds.length > 0) {
@@ -337,7 +337,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
       >
         {posts.map((post) => {
           const position = postPositions.find((p) => p.id === post.id);
-          const isVideo = post.uploadPath && post.uploadFileType === "VIDEO";
+          const isVideo = post.previewVideoPath && post.uploadFileType === "VIDEO";
           const showVideo = isVideo && videosToShow.has(post.id);
           const videoLoaded = isVideo && videosLoaded.has(post.id);
 
@@ -374,12 +374,13 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                   <div
                     className="relative"
                     style={
-                      post.uploadPath
+                      post.previewPath
                          ? getDynamicAspectRatio(post.id)
                          : { height: "auto", minHeight: "120px" }
                     }
                   >
-                    {post.uploadPath && post.uploadFileType === "IMAGE" ? (
+                    {post.previewPath && post.uploadFileType === "IMAGE" ? (
+                      // For images: Always use previewPath if available, fallback to previewPath
                       <MediaImage
                         src={post.previewPath || ""}
                         alt={post.title}
@@ -392,40 +393,60 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                       />
                     ) : isVideo ? (
                       <div className="relative w-full h-full">
-                        {/* Show thumbnail image initially */}
-                        {post.previewPath && !showVideo && (
-                          <MediaImage
-                            src={post.previewPath}
-                            alt={post.title}
-                            fill
-                            className="object-cover rounded-b-lg absolute"
-                            loading="lazy"
-                            blurDataURL={post.blurData || undefined}
-                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                            onLoad={(e) => handleMediaLoad(post.id, e)}
-                          />
+                        {/* Show thumbnail with play button when video is not loaded */}
+                        {!showVideo && post.previewPath && (
+                          <>
+                            <MediaImage
+                              src={post.previewPath}
+                              alt={post.title}
+                              fill
+                              className="object-cover rounded-b-lg absolute"
+                              loading="lazy"
+                              blurDataURL={post.blurData || undefined}
+                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                              onLoad={(e) => handleMediaLoad(post.id, e)}
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <button
+                                className="bg-black/50 hover:bg-black/70 text-white rounded-full p-3 transition-colors"
+                                onClick={(e) => handleVideoPlay(post.id, e)}
+                              >
+                                <Play className="w-6 h-6" />
+                              </button>
+                            </div>
+                          </>
                         )}
                         
-                        {/* Load and show video only when user requests it */}
+                        {/* Show video when user clicks play */}
                         {showVideo && (
                           <MediaVideo
                             ref={(el) => {
                               if (el) videoRefs.current[post.id] = el;
                             }}
-                            src={post.previewVideoPath || post.previewPath || ""}
+                            // Always use previewVideoPath as the primary source when available
+                            src={post.previewVideoPath || ""}
                             previewSrc={post.previewPath || undefined}
                             previewVideoSrc={post.previewVideoPath || undefined}
                             alt={post.title}
                             fill
-                            className={`rounded-b-lg transition-opacity duration-300 ${
-                              videoLoaded ? "opacity-100" : "opacity-0"
-                            }`}
+                            className="rounded-b-lg"
                             muted={mutedVideos.has(post.id)}
                             loop
                             playsInline
                             preload="metadata"
-                            onLoadedMetadata={(e) => handleVideoLoadedMetadata(post.id, e)}
-                            onPlay={() => handleVideoPlay(post.id)}
+                            onLoadedMetadata={(e) => {
+                              console.log(`Video loaded for post ${post.id}:`, {
+                                previewPath: post.previewPath,
+                                previewVideoPath: post.previewVideoPath,
+                                hasPreviewVideo: !!post.previewVideoPath,
+                                usingPreviewVideo: !!post.previewVideoPath,
+                                actualSrc: post.previewVideoPath || ""
+                              });
+                              handleVideoLoadedMetadata(post.id, e);
+                            }}
+                            onPlay={() => {
+                              handleVideoPlay(post.id);
+                            }}
                             onEnded={() => handleVideoEnded(post.id)}
                             blurDataURL={post.blurData || undefined}
                             usePreviewVideo={true}
@@ -433,21 +454,9 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                           />
                         )}
 
-                        {/* Play button overlay for video thumbnail */}
-                        {!showVideo && post.previewPath && (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <button
-                              className="bg-black/50 hover:bg-black/70 text-white rounded-full p-3 transition-colors"
-                              onClick={(e) => handleVideoPlay(post.id, e)}
-                            >
-                              <Play className="w-6 h-6" />
-                            </button>
-                          </div>
-                        )}
-
                         {/* Loading indicator when video is being loaded */}
                         {showVideo && !videoLoaded && (
-                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center z-10">
                             <div className="bg-white rounded-full p-2">
                               <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
                             </div>
@@ -482,6 +491,15 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                             </button>
                           </div>
                         )}
+
+                        {/* Debug indicator - show video source info */}
+                        {process.env.NODE_ENV === "development" && showVideo && (
+                          <div className="absolute bottom-3 left-3 z-20">
+                            <Badge variant="outline" className="text-xs bg-blue-500/90 text-white border-blue-400">
+                              {post.previewVideoPath ? "Preview Video" : "Original Video"}
+                            </Badge>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       // Text base post with shiny hover effect
@@ -500,24 +518,6 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                         </Badge>
                       </div>
                     )}
-
-                    {/* Prefetch status indicator (development only) */}
-                    {process.env.NODE_ENV === "development" && getPrefetchStatus && (() => {
-                      const prefetchStatus = getPrefetchStatus(post.id);
-                      return prefetchStatus.isPrefetching ? (
-                        <div className="absolute top-3 left-3 z-20">
-                          <Badge variant="outline" className="text-xs bg-blue-500/90 text-white border-blue-400">
-                            ⚡ Prefetching...
-                          </Badge>
-                        </div>
-                      ) : prefetchStatus.isPrefetched ? (
-                        <div className="absolute top-3 left-3 z-20">
-                          <Badge variant="outline" className="text-xs bg-green-500/90 text-white border-green-400">
-                            ✅ Ready
-                          </Badge>
-                        </div>
-                      ) : null;
-                    })()}
 
                     {/* Action buttons overlay */}
                     <div className="absolute bottom-3 left-0 right-0 px-3 flex gap-2 items-end justify-between z-20">

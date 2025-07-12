@@ -202,11 +202,12 @@ export function MediaImage({
       return;
     }
 
-    // Handle preview paths - they should always go through the preview API
+    // Handle preview paths - use API route for proper serving
     if (src.startsWith("preview/")) {
-      const previewUrl = `/api/media/preview/${src.replace("preview/", "")}`;
-      console.log("Using preview API for:", src, "→", previewUrl);
-      setResolvedUrl(previewUrl);
+      // Use API route for preview images to ensure proper content-type and security
+      const previewApiUrl = `/api/media/preview/${src.replace("preview/", "")}`;
+      console.log("Using preview API URL for:", src, "→", previewApiUrl);
+      setResolvedUrl(previewApiUrl);
       setIsLoading(false);
       return;
     }
@@ -428,7 +429,7 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
       onEnded,
       onPreviewLoad,
       usePreviewVideo = false,
-      fallbackToOriginal = true,
+      fallbackToOriginal = false,
     },
     ref
   ) {
@@ -442,19 +443,36 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
 
     // Determine which video source to use
     useEffect(() => {
-      // Priority order: previewVideoSrc → src
+      console.log(`MediaVideo source determination for post:`, {
+        src,
+        previewVideoSrc,
+        usePreviewVideo,
+        hasPreviewVideo: !!previewVideoSrc,
+        willUsePreview: usePreviewVideo && !!previewVideoSrc
+      });
+      
+      // Priority order: previewVideoSrc → src (only if src is not empty)
       if (usePreviewVideo && previewVideoSrc) {
+        console.log(`✅ Using preview video: ${previewVideoSrc}`);
         setCurrentVideoSrc(previewVideoSrc);
         setIsUsingPreview(true);
-      } else {
+      } else if (src && src.trim() !== '') {
+        console.log(`❌ Using original video: ${src} (usePreviewVideo: ${usePreviewVideo}, hasPreviewVideo: ${!!previewVideoSrc})`);
         setCurrentVideoSrc(src);
+        setIsUsingPreview(false);
+      } else {
+        console.log(`❌ No video source available`);
+        setCurrentVideoSrc("");
         setIsUsingPreview(false);
       }
     }, [src, previewVideoSrc, usePreviewVideo]);
 
     // Resolve video URL
     useEffect(() => {
+      console.log(`Resolving video URL for: ${currentVideoSrc}`);
+      
       if (!currentVideoSrc) {
+        console.log(`No currentVideoSrc, setting loading to false`);
         setIsLoading(false);
         return;
       }
@@ -465,23 +483,32 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
         currentVideoSrc.startsWith("https://") ||
         currentVideoSrc.startsWith("blob:")
       ) {
+        console.log(`Using direct URL: ${currentVideoSrc}`);
         setResolvedUrl(currentVideoSrc);
         setIsLoading(false);
         return;
       }
 
-      // Handle preview paths - they should go through the preview API
+      // Handle preview paths - use API route for proper serving
       if (currentVideoSrc.startsWith("preview/")) {
-        const previewUrl = `/api/media/preview/${currentVideoSrc.replace("preview/", "")}`;
-        setResolvedUrl(previewUrl);
+        // Use API route for preview videos to ensure proper content-type and security
+        const previewApiUrl = `/api/media/preview/${currentVideoSrc.replace("preview/", "")}`;
+        console.log(`Using preview API URL: ${previewApiUrl}`);
+        setResolvedUrl(previewApiUrl);
         setIsLoading(false);
         return;
       }
 
-      // Resolve relative path to full URL
+      // Resolve relative path to full URL for regular media
+      console.log(`Resolving relative path: ${currentVideoSrc}`);
       resolveMediaUrl(currentVideoSrc)
         .then((url: string) => {
-          setResolvedUrl(url);
+          console.log(`Resolved URL: ${url}`);
+          if (url && url.trim() !== '') {
+            setResolvedUrl(url);
+          } else {
+            setError("Invalid resolved URL");
+          }
           setIsLoading(false);
         })
         .catch((err: Error) => {
@@ -489,10 +516,12 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
           setError("Failed to load video");
           setIsLoading(false);
         });
-    }, [currentVideoSrc]);
+    }, [currentVideoSrc, usePreviewVideo, previewVideoSrc]);
 
-    // Handle video error - fallback to original
+    // Handle video error - fallback to original or show preview image
     const handleVideoError = () => {
+      console.error("Video failed to load:", resolvedUrl);
+      
       if (isUsingPreview && fallbackToOriginal && src !== currentVideoSrc) {
         console.log("Preview video failed, falling back to original");
         setCurrentVideoSrc(src);
@@ -500,14 +529,19 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
         setError(null);
         setIsLoading(true);
       } else {
-        setError("Failed to load video");
+        console.log("Video failed to load, keeping preview image visible");
+        setError("Video not available");
+        setShowPreviewImage(true); // Keep preview image visible
+        setVideoLoaded(false);
       }
     };
 
     // Handle video loaded metadata
     const handleVideoLoadedMetadata = (event: React.SyntheticEvent<HTMLVideoElement>) => {
+      console.log("Video loaded successfully:", resolvedUrl);
       setVideoLoaded(true);
       setShowPreviewImage(false);
+      setError(null); // Clear any previous errors
       onLoadedMetadata?.(event);
     };
 
@@ -526,13 +560,25 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
       );
     }
 
-    if (error || !resolvedUrl) {
+    if (error && !previewSrc) {
       return (
         <div
           className={`bg-muted border-2 border-dashed border-muted-foreground/25 ${className}`}
         >
           <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-            {error || "Video not available"}
+            {error}
+          </div>
+        </div>
+      );
+    }
+
+    if (!resolvedUrl && !previewSrc) {
+      return (
+        <div
+          className={`bg-muted border-2 border-dashed border-muted-foreground/25 ${className}`}
+        >
+          <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+            Video not available
           </div>
         </div>
       );
@@ -573,26 +619,37 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
             onLoad={handlePreviewImageLoad}
           />
         )}
+
+        {/* Error indicator overlay when video fails but preview is available */}
+        {error && previewSrc && showPreviewImage && (
+          <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+            <div className="bg-red-500/90 text-white px-2 py-1 rounded text-xs">
+              {error}
+            </div>
+          </div>
+        )}
         
-        {/* Video element */}
-        <video
-          ref={ref}
-          src={resolvedUrl}
-          className={`${fill ? 'absolute inset-0 w-full h-full' : ''} ${className || ''}`}
-          controls={controls}
-          autoPlay={autoPlay}
-          loop={loop}
-          muted={muted}
-          playsInline={playsInline}
-          preload={preload}
-          onLoadedMetadata={handleVideoLoadedMetadata}
-          onPlay={onPlay}
-          onPause={onPause}
-          onEnded={onEnded}
-          onError={handleVideoError}
-        >
-          Your browser does not support the video tag.
-        </video>
+        {/* Video element - only render if we have a resolved URL */}
+        {resolvedUrl && (
+          <video
+            ref={ref}
+            src={resolvedUrl}
+            className={`${fill ? 'absolute inset-0 w-full h-full' : ''} ${className || ''}`}
+            controls={controls}
+            autoPlay={autoPlay}
+            loop={loop}
+            muted={muted}
+            playsInline={playsInline}
+            preload={preload}
+            onLoadedMetadata={handleVideoLoadedMetadata}
+            onPlay={onPlay}
+            onPause={onPause}
+            onEnded={onEnded}
+            onError={handleVideoError}
+          >
+            Your browser does not support the video tag.
+          </video>
+        )}
       </div>
     );
   }
