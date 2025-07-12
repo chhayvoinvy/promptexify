@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { PostWithInteractions } from "@/lib/content";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { FavoriteButton } from "@/components/favorite-button";
-import { MediaImage, MediaVideo } from "@/components/media-display";
+import { MediaImage, MediaVideoLazy } from "@/components/media-display";
 import {
   LockIcon,
   UnlockIcon,
@@ -401,41 +401,28 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                         onLoad={(e) => handleMediaLoad(post.id, e)}
                       />
                     ) : post.uploadPath && post.uploadFileType === "VIDEO" ? (
-                      <>
-                        {/* Always show video preview image initially */}
-                        {videoPreviewPath && (
-                          <MediaImage
-                            src={videoPreviewPath}
-                            alt={post.title}
-                            fill
-                            className={`object-cover rounded-b-lg absolute transition-opacity duration-300 ${
-                              shouldShowVideo && isVideoLoaded ? "opacity-0" : "opacity-100"
-                            }`}
-                            loading="lazy"
-                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                            onLoad={(e) => handleMediaLoad(post.id, e)}
-                            blurDataURL={videoPreviewBlurData || undefined}
-                          />
-                        )}
-                        
-                        {/* Load and show video only when user requests it */}
-                        {shouldShowVideo && (
-                          <MediaVideo
-                            ref={(el) => {
-                              if (el) videoRefs.current[post.id] = el;
-                            }}
-                            src={post.uploadPath}
-                            className={`w-full h-full object-cover rounded-b-lg absolute scale-150 transition-opacity duration-300 ${
-                              isVideoLoaded ? "opacity-100" : "opacity-0"
-                            }`}
-                            muted={mutedVideos.has(post.id)}
-                            loop
-                            playsInline
-                            preload="metadata"
-                            onLoadedMetadata={(e) => handleVideoLoadedMetadata(post.id, e)}
-                            onEnded={() => handleVideoEnded(post.id)}
-                          />
-                        )}
+                      <MediaVideoLazy
+                        ref={(el) => {
+                          if (el) videoRefs.current[post.id] = el;
+                        }}
+                        src={post.uploadPath}
+                        previewSrc={videoPreviewPath || undefined}
+                        alt={post.title}
+                        fill
+                        className="object-cover rounded-b-lg absolute"
+                        muted={mutedVideos.has(post.id)}
+                        loop
+                        playsInline
+                        preload="metadata"
+                        onLoadedMetadata={(e) => handleVideoLoadedMetadata(post.id, e)}
+                        onEnded={() => handleVideoEnded(post.id)}
+                        autoShowVideo={shouldShowVideo}
+                        showPlayButton={!shouldShowVideo}
+                        blurDataURL={videoPreviewBlurData || undefined}
+                        loading="lazy"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        onLoad={(e) => handleMediaLoad(post.id, e)}
+                      />
 
                         {/* Video controls */}
                         <div className="absolute inset-0 top-3 left-3 pointer-events-none z-10">

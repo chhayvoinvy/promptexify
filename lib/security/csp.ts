@@ -749,6 +749,18 @@ export function withCSRFProtection<T extends unknown[], R>(
       // Execute the action if CSRF validation passes
       return await action(...args);
     } catch (error) {
+      // Check if this is a Next.js redirect (expected behavior)
+      if (error && typeof error === "object" && "digest" in error) {
+        const errorDigest = (error as { digest?: string }).digest;
+        if (
+          typeof errorDigest === "string" &&
+          errorDigest.includes("NEXT_REDIRECT")
+        ) {
+          // This is a redirect - re-throw it to allow the redirect to proceed
+          throw error;
+        }
+      }
+
       if (error instanceof SecureActionError) {
         throw error;
       }

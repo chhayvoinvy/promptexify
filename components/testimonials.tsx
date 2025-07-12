@@ -5,42 +5,42 @@ const testimonials = [
   {
     name: "Sarah Chen",
     job: "Content Creator",
-    image: "/avatars/1.webp",
+    image: "/static/avatars/1.webp",
     review:
       "Promptexify has completely transformed my content creation workflow. The premium AI prompts are incredibly well-crafted and save me hours of brainstorming. The quality and variety are unmatched!",
   },
   {
     name: "Marcus Rodriguez",
     job: "Digital Marketing Manager",
-    image: "/avatars/2.webp",
+    image: "/static/avatars/2.webp",
     review:
       "The AI prompts on Promptexify have elevated our marketing campaigns to a whole new level. The results are consistently impressive, and the time savings are incredible.",
   },
   {
     name: "Elena Petrov",
     job: "Freelance Writer",
-    image: "/avatars/3.webp",
+    image: "/static/avatars/3.webp",
     review:
       "As a freelance writer, I need reliable and creative prompts. Promptexify delivers exactly that. The premium features are worth every penny!",
   },
   {
     name: "James Thompson",
     job: "Startup Founder",
-    image: "/avatars/4.webp",
+    image: "/static/avatars/4.webp",
     review:
       "Promptexify has been instrumental in helping our startup create compelling content. The AI prompts are professional-grade and the platform is incredibly user-friendly.",
   },
   {
     name: "Lisa Wang",
     job: "AI Researcher",
-    image: "/avatars/5.webp",
+    image: "/static/avatars/5.webp",
     review:
       "The quality of prompts on Promptexify is exceptional. As someone who works with AI daily, I can appreciate the thoughtfulness that goes into each prompt. Highly recommended!",
   },
   {
     name: "Alex Kumar",
     job: "Creative Director",
-    image: "/avatars/6.webp",
+    image: "/static/avatars/6.webp",
     review:
       "Promptexify has become an essential tool in our creative process. The diverse range of high-quality prompts sparks innovation and helps us deliver outstanding results for our clients.",
   },

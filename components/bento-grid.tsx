@@ -795,7 +795,7 @@ export function BentoGrid() {
                       width={100}
                       height={100}
                       className="size-full rounded-full border"
-                      src="/avatars/4.webp"
+                      src="/static/avatars/4.webp"
                       alt="fake-avatar"
                     />
                   </div>
@@ -806,7 +806,7 @@ export function BentoGrid() {
                       width={100}
                       height={100}
                       className="size-full rounded-full border"
-                      src="/avatars/6.webp"
+                      src="/static/avatars/6.webp"
                       alt="fake-avatar"
                     />
                   </div>
@@ -823,7 +823,7 @@ export function BentoGrid() {
                       width={100}
                       height={100}
                       className="size-full rounded-full border"
-                      src="/avatars/2.webp"
+                      src="/static/avatars/2.webp"
                       alt="fake-avatar"
                     />
                   </div>

@@ -290,7 +290,12 @@ export default function NewPostPage() {
 
         // Show user-friendly error message for actual errors
         if (error instanceof Error) {
-          toast.error(error.message);
+          // Check for specific error types
+          if (error.message.includes("slug") || error.message.includes("unique")) {
+            toast.error("A post with this title already exists. Please choose a different title.");
+          } else {
+            toast.error(error.message);
+          }
         } else {
           toast.error("Failed to create post. Please try again.");
         }

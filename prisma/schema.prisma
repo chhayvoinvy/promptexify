@@ -72,7 +72,7 @@ model Tag {
 model Post {
   id             String          @id @default(uuid())
   title          String
-  slug           String
+  slug           String          @unique
   description    String?
   content        String
   isPremium      Boolean         @default(false)

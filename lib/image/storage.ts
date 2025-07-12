@@ -1204,12 +1204,26 @@ export async function processAndUploadVideoWithConfig(
 
   // Import functions dynamically to avoid circular dependencies
   const { generateVideoFilename } = await import("./s3");
-  const { generateVideoThumbnail, generatePreviewFilename } = await import("./preview");
+  const { generateVideoThumbnail, generatePreviewFilename, extractVideoMetadata } = await import("./preview");
 
   // Generate filename
   const filename = generateVideoFilename(file.name, userId);
   const relativePath = `videos/${filename}`;
   const videoBuffer = Buffer.from(new Uint8Array(await file.arrayBuffer()));
+
+  // Extract video metadata
+  let videoMetadata: { width?: number; height?: number; duration?: number } = {};
+  try {
+    const metadata = await extractVideoMetadata(videoBuffer);
+    videoMetadata = {
+      width: metadata.width,
+      height: metadata.height,
+      duration: metadata.duration,
+    };
+  } catch (error) {
+    console.error("Failed to extract video metadata:", error);
+    // Continue without metadata - it's not critical
+  }
 
   // Generate video thumbnail
   let previewPath: string | undefined;
@@ -1312,6 +1326,9 @@ export async function processAndUploadVideoWithConfig(
     originalName: file.name,
     mimeType: file.type,
     fileSize: file.size,
+    width: videoMetadata.width,
+    height: videoMetadata.height,
+    duration: videoMetadata.duration,
     storageType: storageType as StorageType,
     previewPath,
     blurDataUrl,

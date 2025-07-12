@@ -51,12 +51,36 @@ export const createPostAction = withCSRFProtection(
       const content = sanitizeContent(rawContent);
 
       // Generate slug if not provided
-      const slug =
+      const baseSlug =
         rawSlug ||
         title
           .toLowerCase()
           .replace(/\s+/g, "-")
           .replace(/[^\w-]/g, "");
+
+      // Ensure slug uniqueness
+      let slug = baseSlug;
+      let counter = 1;
+      
+      while (true) {
+        const existingPost = await prisma.post.findFirst({
+          where: { slug },
+          select: { id: true },
+        });
+        
+        if (!existingPost) {
+          break; // Slug is unique
+        }
+        
+        // Generate new slug with counter
+        slug = `${baseSlug}-${counter}`;
+        counter++;
+        
+        // Prevent infinite loop
+        if (counter > 1000) {
+          throw new Error("Unable to generate unique slug");
+        }
+      }
 
       // Handle publish/status logic based on user role
       let isPublished = false;
@@ -193,6 +217,17 @@ export const createPostAction = withCSRFProtection(
       }
 
       console.error("Error creating post:", error);
+      
+      // Handle specific database errors
+      if (error && typeof error === "object" && "code" in error) {
+        const dbError = error as { code: string; meta?: unknown };
+        
+        if (dbError.code === "P2002") {
+          // Unique constraint violation
+          throw new Error("A post with this title already exists. Please choose a different title.");
+        }
+      }
+      
       throw new Error("Failed to create post");
     }
   }
@@ -212,7 +247,7 @@ export const updatePostAction = withCSRFProtection(
       // Extract form data
       const id = formData.get("id") as string;
       const title = formData.get("title") as string;
-      const slug = formData.get("slug") as string;
+      const rawSlug = formData.get("slug") as string;
       const description = formData.get("description") as string;
       const content = formData.get("content") as string;
       const uploadPath = formData.get("uploadPath") as string;
@@ -228,6 +263,41 @@ export const updatePostAction = withCSRFProtection(
       // Validate required fields
       if (!id || !title || !content || !category) {
         throw new Error("Missing required fields");
+      }
+
+      // Generate slug if not provided and ensure uniqueness
+      const baseSlug =
+        rawSlug ||
+        title
+          .toLowerCase()
+          .replace(/\s+/g, "-")
+          .replace(/[^\w-]/g, "");
+
+      // Ensure slug uniqueness (excluding current post)
+      let slug = baseSlug;
+      let counter = 1;
+      
+      while (true) {
+        const existingPost = await prisma.post.findFirst({
+          where: { 
+            slug,
+            NOT: { id } // Exclude current post from uniqueness check
+          },
+          select: { id: true },
+        });
+        
+        if (!existingPost) {
+          break; // Slug is unique
+        }
+        
+        // Generate new slug with counter
+        slug = `${baseSlug}-${counter}`;
+        counter++;
+        
+        // Prevent infinite loop
+        if (counter > 1000) {
+          throw new Error("Unable to generate unique slug");
+        }
       }
 
       // Check if post exists and user has permission
@@ -438,6 +508,17 @@ export const updatePostAction = withCSRFProtection(
       }
 
       console.error("Error updating post:", error);
+      
+      // Handle specific database errors
+      if (error && typeof error === "object" && "code" in error) {
+        const dbError = error as { code: string; meta?: unknown };
+        
+        if (dbError.code === "P2002") {
+          // Unique constraint violation
+          throw new Error("A post with this title already exists. Please choose a different title.");
+        }
+      }
+      
       throw new Error("Failed to update post");
     }
   }
