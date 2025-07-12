@@ -596,26 +596,28 @@ export function MediaUpload({
   };
 
   const renderPreview = () => {
-    if (!uploadPath) return null;
+    if (!previewPath) return null;
 
     const isDeleting = deletionState.deleting;
 
     return (
       <div className="relative w-full flex items-center justify-center">
-        {uploadPath ? (
+        {previewPath ? (
           uploadFileType === "VIDEO" ? (
             <div className="w-full h-96">
               <MediaVideo
-                src={uploadPath}
+                src={previewVideoPath || previewPath}
                 className="w-full h-full rounded-lg object-contain"
                 controls
                 preload="metadata"
+                usePreviewVideo={true}
+                fallbackToOriginal={false}
               />
             </div>
           ) : (
             <div className="relative w-full h-96">
               <MediaImage
-                src={previewPath ?? uploadPath}
+                src={previewPath}
                 alt="Image preview"
                 fill
                 className="object-contain rounded-lg"

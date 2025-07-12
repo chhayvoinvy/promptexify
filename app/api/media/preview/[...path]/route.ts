@@ -5,11 +5,13 @@ import { SECURITY_HEADERS } from "@/lib/security/sanitize";
 import { SecurityEvents, getClientIP } from "@/lib/security/audit";
 
 interface RouteParams {
-  params: Promise<{
-    path: string[];
-  }>;
+  params: Promise<{ path: string[] }>;
 }
 
+/**
+ * GET /api/media/preview/[...path]
+ * Serves preview files with proper content type detection and security
+ */
 export async function GET(
   request: NextRequest,
   { params }: RouteParams
@@ -141,7 +143,7 @@ export async function GET(
       if (!existsSync(filePath)) {
         console.error("Preview file not found at:", filePath);
         return NextResponse.json(
-          { error: "Preview image not found" },
+          { error: "Preview file not found" },
           {
             status: 404,
             headers: SECURITY_HEADERS,
@@ -152,9 +154,35 @@ export async function GET(
       try {
         const fileBuffer = await readFile(filePath);
         
+        // Detect content type based on file extension
+        const getContentType = (filePath: string): string => {
+          const ext = filePath.toLowerCase().split('.').pop();
+          switch (ext) {
+            case 'webp':
+              return 'image/webp';
+            case 'jpg':
+            case 'jpeg':
+              return 'image/jpeg';
+            case 'png':
+              return 'image/png';
+            case 'avif':
+              return 'image/avif';
+            case 'mp4':
+              return 'video/mp4';
+            case 'webm':
+              return 'video/webm';
+            case 'gif':
+              return 'image/gif';
+            default:
+              return 'application/octet-stream';
+          }
+        };
+        
+        const contentType = getContentType(filePath);
+        
         return new NextResponse(fileBuffer, {
           headers: {
-            "Content-Type": "image/webp",
+            "Content-Type": contentType,
             "Cache-Control": "public, max-age=31536000, immutable",
             "Content-Length": fileBuffer.length.toString(),
             ...SECURITY_HEADERS,
@@ -181,9 +209,9 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error("Preview serving error:", error);
+    console.error("Preview API error:", error);
     return NextResponse.json(
-      { error: "Failed to serve preview" },
+      { error: "Internal server error" },
       {
         status: 500,
         headers: SECURITY_HEADERS,

@@ -8,6 +8,7 @@ import { PostWithInteractions } from "@/lib/content";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { FavoriteButton } from "@/components/favorite-button";
 import { MediaImage, MediaVideo } from "@/components/media-display";
+import { useImageDisplay, useVideoDisplay } from "@/hooks/use-media-display";
 import {
   LockIcon,
   UnlockIcon,
@@ -44,6 +45,20 @@ export function PostCard({
 }: PostCardProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Use media display hooks for preview-aware rendering
+  const imageDisplay = useImageDisplay(
+    post.uploadPath,
+    post.previewPath,
+    { preferPreview: true, fallbackToOriginal: false }
+  );
+
+  const videoDisplay = useVideoDisplay(
+    post.uploadPath,
+    post.previewPath,
+    post.previewVideoPath,
+    { preferPreview: true, fallbackToOriginal: false, usePreviewVideo: true }
+  );
 
   // Calculate aspect ratio based on media type and dimensions
   const getDynamicAspectRatio = () => {
@@ -146,10 +161,10 @@ export function PostCard({
                 : { height: "auto", minHeight: "120px" }
             }
           >
-            {post.uploadPath ? (
+            {post.previewPath ? (
               post.uploadFileType === "IMAGE" ? (
                 <MediaImage
-                  src={post.previewPath ?? post.uploadPath}
+                  src={imageDisplay.displayUrl || post.previewPath}
                   alt={post.title}
                   fill
                   className="object-cover rounded-b-lg absolute"
@@ -161,9 +176,9 @@ export function PostCard({
               ) : (
                 <MediaVideo
                   ref={videoRef}
-                  src={post.uploadPath}
-                  previewSrc={post.previewPath || undefined}
-                  previewVideoSrc={post.previewVideoPath || undefined}
+                  src={videoDisplay.displayUrl || post.previewVideoPath || post.previewPath}
+                  previewSrc={videoDisplay.displayUrl || post.previewPath || undefined}
+                  previewVideoSrc={videoDisplay.previewVideoUrl || post.previewVideoPath || undefined}
                   alt={post.title}
                   fill
                   className="rounded-b-lg"
@@ -176,7 +191,7 @@ export function PostCard({
                   onEnded={handleVideoEnded}
                   blurDataURL={post.blurData || undefined}
                   usePreviewVideo={true}
-                  fallbackToOriginal={true}
+                  fallbackToOriginal={false}
                 />
               )
             ) : (

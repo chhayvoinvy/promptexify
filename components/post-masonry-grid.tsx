@@ -61,18 +61,13 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
     debounceMs: 100, // Quick response for better UX
   });
 
-  // Note: Video post tracking removed as not currently used
-  // const videoPostIds = useMemo(
-  //   () =>
-  //     new Set(posts.filter((post) => post.uploadPath && post.uploadFileType === "VIDEO").map((post) => post.id)),
-  //   [posts]
-  // );
-
   // Handle video play/pause
   const handleVideoPlay = useCallback(
-    (postId: string, event: React.MouseEvent) => {
-      event.stopPropagation();
-      event.preventDefault();
+    (postId: string, event?: React.MouseEvent) => {
+      if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+      }
       
       if (!videosToShow.has(postId)) {
         // First click: show video and start loading
@@ -342,14 +337,9 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
       >
         {posts.map((post) => {
           const position = postPositions.find((p) => p.id === post.id);
-          const videoPreviewPath = post.uploadPath && post.uploadFileType === "VIDEO"
-            ? post.previewPath 
-            : null;
-          const videoPreviewBlurData = post.uploadPath && post.uploadFileType === "VIDEO"
-            ? post.media?.find(m => m.relativePath === post.uploadPath)?.blurDataUrl
-            : null;
-          const shouldShowVideo = videosToShow.has(post.id);
-          const isVideoLoaded = videosLoaded.has(post.id);
+          const isVideo = post.uploadPath && post.uploadFileType === "VIDEO";
+          const showVideo = isVideo && videosToShow.has(post.id);
+          const videoLoaded = isVideo && videosLoaded.has(post.id);
 
           return (
             <div
@@ -383,15 +373,15 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                 <Card className="overflow-hidden hover:shadow-lg cursor-zoom-in py-0 shadow-lg">
                   <div
                     className="relative"
-                                          style={
-                        post.uploadPath
-                           ? getDynamicAspectRatio(post.id)
-                           : { height: "auto", minHeight: "120px" }
-                      }
+                    style={
+                      post.uploadPath
+                         ? getDynamicAspectRatio(post.id)
+                         : { height: "auto", minHeight: "120px" }
+                    }
                   >
                     {post.uploadPath && post.uploadFileType === "IMAGE" ? (
                       <MediaImage
-                        src={post.previewPath ?? post.uploadPath}
+                        src={post.previewPath || ""}
                         alt={post.title}
                         fill
                         className="object-cover rounded-b-lg absolute"
@@ -400,87 +390,99 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         onLoad={(e) => handleMediaLoad(post.id, e)}
                       />
-                    ) : post.uploadPath && post.uploadFileType === "VIDEO" ? (
-                      <>
-                        {/* Always show video preview image initially */}
-                        {videoPreviewPath && (
+                    ) : isVideo ? (
+                      <div className="relative w-full h-full">
+                        {/* Show thumbnail image initially */}
+                        {post.previewPath && !showVideo && (
                           <MediaImage
-                            src={videoPreviewPath}
+                            src={post.previewPath}
                             alt={post.title}
                             fill
-                            className={`object-cover rounded-b-lg absolute transition-opacity duration-300 ${
-                              shouldShowVideo && isVideoLoaded ? "opacity-0" : "opacity-100"
-                            }`}
+                            className="object-cover rounded-b-lg absolute"
                             loading="lazy"
+                            blurDataURL={post.blurData || undefined}
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                             onLoad={(e) => handleMediaLoad(post.id, e)}
-                            blurDataURL={videoPreviewBlurData || undefined}
                           />
                         )}
                         
                         {/* Load and show video only when user requests it */}
-                        {shouldShowVideo && (
+                        {showVideo && (
                           <MediaVideo
                             ref={(el) => {
                               if (el) videoRefs.current[post.id] = el;
                             }}
-                            src={post.uploadPath}
-                            className={`w-full h-full object-cover rounded-b-lg absolute scale-150 transition-opacity duration-300 ${
-                              isVideoLoaded ? "opacity-100" : "opacity-0"
+                            src={post.previewVideoPath || post.previewPath || ""}
+                            previewSrc={post.previewPath || undefined}
+                            previewVideoSrc={post.previewVideoPath || undefined}
+                            alt={post.title}
+                            fill
+                            className={`rounded-b-lg transition-opacity duration-300 ${
+                              videoLoaded ? "opacity-100" : "opacity-0"
                             }`}
                             muted={mutedVideos.has(post.id)}
                             loop
                             playsInline
                             preload="metadata"
                             onLoadedMetadata={(e) => handleVideoLoadedMetadata(post.id, e)}
+                            onPlay={() => handleVideoPlay(post.id)}
                             onEnded={() => handleVideoEnded(post.id)}
+                            blurDataURL={post.blurData || undefined}
+                            usePreviewVideo={true}
+                            fallbackToOriginal={false}
                           />
                         )}
 
-                        {/* Video controls */}
-                        <div className="absolute inset-0 top-3 left-3 pointer-events-none z-10">
-                          <div className="flex gap-2">
-                            {/* Play/pause button */}
+                        {/* Play button overlay for video thumbnail */}
+                        {!showVideo && post.previewPath && (
+                          <div className="absolute inset-0 flex items-center justify-center">
                             <button
-                              className="bg-background/90 hover:bg-background rounded-full p-1.5 transition-colors pointer-events-auto"
-                              onClick={(e) => {
-                                handleVideoPlay(post.id, e);
-                              }}
+                              className="bg-black/50 hover:bg-black/70 text-white rounded-full p-3 transition-colors"
+                              onClick={(e) => handleVideoPlay(post.id, e)}
                             >
-                              {playingVideo === post.id && isVideoLoaded ? (
-                                <Pause className="w-5 h-5 text-foreground" />
-                              ) : (
-                                <Play className="w-5 h-5 text-foreground" />
-                              )}
+                              <Play className="w-6 h-6" />
                             </button>
-
-                            {/* Mute/unmute button - only show when video is loaded */}
-                            {shouldShowVideo && isVideoLoaded && (
-                              <button
-                                className="bg-background/90 hover:bg-background rounded-full p-1.5 transition-colors pointer-events-auto"
-                                onClick={(e) => {
-                                  handleVideoMute(post.id, e);
-                                }}
-                              >
-                                {mutedVideos.has(post.id) ? (
-                                  <VolumeX className="w-5 h-5 text-foreground" />
-                                ) : (
-                                  <Volume2 className="w-5 h-5 text-foreground" />
-                                )}
-                              </button>
-                            )}
                           </div>
-                        </div>
+                        )}
 
                         {/* Loading indicator when video is being loaded */}
-                        {shouldShowVideo && !isVideoLoaded && (
-                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center z-5">
-                            <div className="bg-background/90 rounded-full p-2">
-                              <div className="w-4 h-4 border-2 border-foreground border-t-transparent rounded-full animate-spin"></div>
+                        {showVideo && !videoLoaded && (
+                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                            <div className="bg-white rounded-full p-2">
+                              <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
                             </div>
                           </div>
                         )}
-                      </>
+
+                        {/* Video controls overlay - only show when video is playing */}
+                        {showVideo && playingVideo === post.id && (
+                          <div className="absolute top-3 left-3 flex items-center gap-2 z-20">
+                            {/* Play/Pause button */}
+                            <button
+                              className="bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
+                              onClick={(e) => handleVideoPlay(post.id, e)}
+                            >
+                              {playingVideo === post.id ? (
+                                <Pause className="w-4 h-4" />
+                              ) : (
+                                <Play className="w-4 h-4" />
+                              )}
+                            </button>
+                            
+                            {/* Mute/Unmute button */}
+                            <button
+                              className="bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
+                              onClick={(e) => handleVideoMute(post.id, e)}
+                            >
+                              {mutedVideos.has(post.id) ? (
+                                <VolumeX className="w-4 h-4" />
+                              ) : (
+                                <Volume2 className="w-4 h-4" />
+                              )}
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       // Text base post with shiny hover effect
                       <PostTextBaseCard title={post.title} />

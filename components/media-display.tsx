@@ -163,8 +163,9 @@ interface MediaVideoProps {
 }
 
 /**
- * MediaImage - Automatically resolves relative paths to full URLs
+ * MediaImage - Automatically resolves relative paths to full URLs with preview priority
  * Usage: <MediaImage src="images/user123-prompt-abc123.avif" alt="Prompt" />
+ *        <MediaImage src="preview/user123abc123456789.webp" alt="Preview" />
  */
 export function MediaImage({
   src,
@@ -201,9 +202,8 @@ export function MediaImage({
       return;
     }
 
-    // Handle preview paths differently - they should go through the preview API
+    // Handle preview paths - they should always go through the preview API
     if (src.startsWith("preview/")) {
-      // For preview images, use the preview API route
       const previewUrl = `/api/media/preview/${src.replace("preview/", "")}`;
       console.log("Using preview API for:", src, "→", previewUrl);
       setResolvedUrl(previewUrl);
