@@ -70,13 +70,24 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
       }
       
       if (!videosToShow.has(postId)) {
-        // First click: show video and start loading
+        // First click: show video, mark as playing, and it will auto-play when loaded
         setVideosToShow(prev => new Set([...prev, postId]));
+        setPlayingVideo(postId);
         return;
       }
 
       const video = videoRefs.current[postId];
-      if (!video) return;
+      if (!video) {
+        // Video not ready yet, just mark as playing for auto-play
+        setPlayingVideo(postId);
+        return;
+      }
+
+      // Prevent rapid clicking during video state changes
+      if (video.readyState < 2) {
+        console.log("Video not ready for playback yet");
+        return;
+      }
 
       if (playingVideo === postId) {
         video.pause();
@@ -85,11 +96,15 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
         // Pause any currently playing video
         if (playingVideo) {
           const currentVideo = videoRefs.current[playingVideo];
-          if (currentVideo) {
+          if (currentVideo && !currentVideo.paused) {
             currentVideo.pause();
           }
         }
-        video.play();
+        // Start playing this video
+        video.play().catch(err => {
+          console.error("Failed to play video:", err);
+          // Don't change state if play failed
+        });
         setPlayingVideo(postId);
       }
     },
@@ -434,13 +449,15 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                             loop
                             playsInline
                             preload="metadata"
+                            autoPlay={playingVideo === post.id} // Auto-play if this video should be playing
                             onLoadedMetadata={(e) => {
                               console.log(`Video loaded for post ${post.id}:`, {
                                 previewPath: post.previewPath,
                                 previewVideoPath: post.previewVideoPath,
                                 hasPreviewVideo: !!post.previewVideoPath,
                                 usingPreviewVideo: !!post.previewVideoPath,
-                                actualSrc: post.previewVideoPath || ""
+                                actualSrc: post.previewVideoPath || "",
+                                shouldAutoPlay: playingVideo === post.id
                               });
                               handleVideoLoadedMetadata(post.id, e);
                             }}

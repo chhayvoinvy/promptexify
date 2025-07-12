@@ -147,13 +147,32 @@ export function PostStandalonePage({
       return;
     }
 
+    const video = videoRefs.current[videoId];
+    if (!video) {
+      // Video not loaded yet, just mark as playing
+      setPlayingVideo(videoId);
+      return;
+    }
+
+    // Prevent rapid clicking during video state changes
+    if (video.readyState < 2) {
+      console.log("Video not ready for playback yet");
+      return;
+    }
+
     // Pause all other videos
     if (playingVideo && playingVideo !== videoId) {
       const currentVideo = videoRefs.current[playingVideo];
-      if (currentVideo) {
+      if (currentVideo && !currentVideo.paused) {
         currentVideo.pause();
       }
     }
+    
+    // Start playing this video
+    video.play().catch(err => {
+      console.error("Failed to play video:", err);
+      // Don't change state if play failed
+    });
     setPlayingVideo(videoId);
   };
 
@@ -431,6 +450,7 @@ export function PostStandalonePage({
                                   controls
                                   className="w-full h-auto max-h-80 object-contain"
                                   preload="metadata"
+                                  autoPlay={playingVideo === 'main'} // Auto-play if this video should be playing
                                   onLoadedMetadata={handleMainVideoLoadedMetadata}
                                   onPlay={() => handleVideoPlay('main')}
                                   onPause={handleVideoPause}
@@ -538,6 +558,7 @@ export function PostStandalonePage({
                                   className="w-full h-full object-cover"
                                   preload="metadata"
                                   muted
+                                  autoPlay={playingVideo === `related-${relatedPost.id}`} // Auto-play if this video should be playing
                                   onPlay={() =>
                                     handleVideoPlay(`related-${relatedPost.id}`)
                                   }

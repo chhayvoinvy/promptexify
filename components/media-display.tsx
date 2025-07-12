@@ -440,6 +440,7 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
     const [error, setError] = useState<string | null>(null);
     const [showPreviewImage, setShowPreviewImage] = useState(true);
     const [videoLoaded, setVideoLoaded] = useState(false);
+    const [isPlayPending, setIsPlayPending] = useState(false); // Track pending play operations
 
     // Determine which video source to use
     useEffect(() => {
@@ -521,6 +522,7 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
     // Handle video error - fallback to original or show preview image
     const handleVideoError = () => {
       console.error("Video failed to load:", resolvedUrl);
+      setIsPlayPending(false); // Clear pending state on error
       
       if (isUsingPreview && fallbackToOriginal && src !== currentVideoSrc) {
         console.log("Preview video failed, falling back to original");
@@ -539,10 +541,50 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
     // Handle video loaded metadata
     const handleVideoLoadedMetadata = (event: React.SyntheticEvent<HTMLVideoElement>) => {
       console.log("Video loaded successfully:", resolvedUrl);
+      const video = event.currentTarget as HTMLVideoElement;
+      
       setVideoLoaded(true);
-      setShowPreviewImage(false);
       setError(null); // Clear any previous errors
+      
+      // Auto-play if this video should be playing (when user clicked play before video was loaded)
+      if (autoPlay && !isPlayPending) {
+        console.log("Auto-playing video due to autoPlay prop");
+        setIsPlayPending(true);
+        video.play()
+          .then(() => {
+            console.log("Auto-play succeeded");
+            setIsPlayPending(false);
+            setShowPreviewImage(false);
+          })
+          .catch(err => {
+            console.error("Auto-play failed:", err);
+            setIsPlayPending(false);
+            // Don't set error for autoplay failure, just show preview image with play button
+            setShowPreviewImage(true);
+            console.log("Auto-play blocked by browser - user needs to click play");
+          });
+      } else {
+        // If not auto-playing, keep preview image visible
+        setShowPreviewImage(true);
+      }
+      
       onLoadedMetadata?.(event);
+    };
+
+    // Handle video play event
+    const handleVideoPlay = () => {
+      console.log("Video started playing:", resolvedUrl);
+      setShowPreviewImage(false); // Hide preview image when video starts playing
+      setIsPlayPending(false); // Clear pending state when video actually starts playing
+      onPlay?.();
+    };
+
+    // Handle video pause event
+    const handleVideoPause = () => {
+      console.log("Video paused:", resolvedUrl);
+      setIsPlayPending(false); // Clear pending state when video is paused
+      // Don't show preview image on pause, keep video visible
+      onPause?.();
     };
 
     // Handle preview image load
@@ -616,6 +658,7 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
             loading="eager"
             priority={true}
             blurDataURL={blurDataURL}
+            sizes={fill ? "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" : undefined}
             onLoad={handlePreviewImageLoad}
           />
         )}
@@ -642,8 +685,8 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
             playsInline={playsInline}
             preload={preload}
             onLoadedMetadata={handleVideoLoadedMetadata}
-            onPlay={onPlay}
-            onPause={onPause}
+            onPlay={handleVideoPlay}
+            onPause={handleVideoPause}
             onEnded={onEnded}
             onError={handleVideoError}
           >

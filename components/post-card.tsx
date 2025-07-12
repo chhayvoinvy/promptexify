@@ -71,11 +71,20 @@ export function PostCard({
     const video = videoRef.current;
     if (!video) return;
 
+    // Prevent rapid clicking during video state changes
+    if (video.readyState < 2) {
+      console.log("Video not ready for playback yet");
+      return;
+    }
+
     if (playingVideo === post.id) {
       video.pause();
       onVideoStateChange?.(post.id, false);
     } else {
-      video.play();
+      video.play().catch(err => {
+        console.error("Failed to play video:", err);
+        // Don't change state if play failed
+      });
       onVideoStateChange?.(post.id, true);
     }
   }, [post.id, playingVideo, onVideoStateChange]);
@@ -174,6 +183,7 @@ export function PostCard({
                   loop
                   playsInline
                   preload="metadata"
+                  autoPlay={playingVideo === post.id} // Auto-play if this video should be playing
                   onLoadedMetadata={() => handleVideoLoadedMetadata()}
                   onPlay={handleVideoPlay}
                   onEnded={handleVideoEnded}
