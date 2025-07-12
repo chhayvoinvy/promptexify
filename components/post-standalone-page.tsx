@@ -140,10 +140,12 @@ export function PostStandalonePage({
     }
   };
 
+  // Handle video play/pause from button clicks
   const handleVideoPlay = (videoId: string) => {
     if (videoId === 'main' && !showVideo) {
       // First click on main video: load the video
       setShowVideo(true);
+      setPlayingVideo(videoId);
       return;
     }
 
@@ -160,24 +162,43 @@ export function PostStandalonePage({
       return;
     }
 
-    // Pause all other videos
-    if (playingVideo && playingVideo !== videoId) {
-      const currentVideo = videoRefs.current[playingVideo];
-      if (currentVideo && !currentVideo.paused) {
-        currentVideo.pause();
+    if (playingVideo === videoId) {
+      video.pause();
+      setPlayingVideo(null);
+    } else {
+      // Pause all other videos
+      if (playingVideo) {
+        const currentVideo = videoRefs.current[playingVideo];
+        if (currentVideo && !currentVideo.paused) {
+          currentVideo.pause();
+        }
       }
+      
+      // Start playing this video
+      video.play().catch(err => {
+        console.error("Failed to play video:", err);
+        // Don't change state if play failed
+      });
+      setPlayingVideo(videoId);
     }
-    
-    // Start playing this video
-    video.play().catch(err => {
-      console.error("Failed to play video:", err);
-      // Don't change state if play failed
-    });
-    setPlayingVideo(videoId);
   };
 
-  const handleVideoPause = () => {
-    setPlayingVideo(null);
+  // Handle video play event (from video element, not button)
+  const handleVideoPlayEvent = (videoId: string) => {
+    console.log(`Video started playing: ${videoId}`);
+    // Just ensure state is in sync - don't toggle
+    if (playingVideo !== videoId) {
+      setPlayingVideo(videoId);
+    }
+  };
+
+  // Handle video pause event (from video element, not button)
+  const handleVideoPauseEvent = (videoId: string) => {
+    console.log(`Video paused: ${videoId}`);
+    // Clear playing state when video pauses
+    if (playingVideo === videoId) {
+      setPlayingVideo(null);
+    }
   };
 
   const handleMainVideoLoadedMetadata = (event: React.SyntheticEvent<HTMLVideoElement>) => {
@@ -417,25 +438,15 @@ export function PostStandalonePage({
                             <div className="relative w-full rounded-lg overflow-hidden">
                               {/* Show thumbnail with play button when video is not loaded */}
                               {!showVideo && videoPreviewPath && (
-                                <>
-                                  <MediaImage
-                                    src={videoPreviewPath}
-                                    alt={post.title}
-                                    width={800}
-                                    height={400}
-                                    className="w-full h-auto max-h-80 object-contain"
-                                    priority
-                                    blurDataURL={post.blurData || undefined}
-                                  />
-                                  <div className="absolute inset-0 flex items-center justify-center">
-                                    <button
-                                      className="bg-black/50 hover:bg-black/70 text-white rounded-full p-4 transition-colors"
-                                      onClick={() => handleVideoPlay('main')}
-                                    >
-                                      <Play className="w-8 h-8" />
-                                    </button>
-                                  </div>
-                                </>
+                                <MediaImage
+                                  src={videoPreviewPath}
+                                  alt={post.title}
+                                  width={800}
+                                  height={400}
+                                  className="w-full h-auto max-h-80 object-contain"
+                                  priority
+                                  blurDataURL={post.blurData || undefined}
+                                />
                               )}
                               
                               {/* Show video when user clicks play */}
@@ -452,8 +463,8 @@ export function PostStandalonePage({
                                   preload="metadata"
                                   autoPlay={playingVideo === 'main'} // Auto-play if this video should be playing
                                   onLoadedMetadata={handleMainVideoLoadedMetadata}
-                                  onPlay={() => handleVideoPlay('main')}
-                                  onPause={handleVideoPause}
+                                  onPlay={() => handleVideoPlayEvent('main')}
+                                  onPause={() => handleVideoPauseEvent('main')}
                                   usePreviewVideo={true}
                                   fallbackToOriginal={false}
                                 />
@@ -467,6 +478,21 @@ export function PostStandalonePage({
                                   </div>
                                 </div>
                               )}
+
+                              {/* Video controls overlay - always visible on top left */}
+                              <div className="absolute top-3 left-3 flex items-center gap-2 z-20">
+                                {/* Play/Pause button */}
+                                <button
+                                  className="bg-black/50 hover:bg-black/70 text-white rounded-full p-3 transition-colors"
+                                  onClick={() => handleVideoPlay('main')}
+                                >
+                                  {playingVideo === 'main' ? (
+                                    <Pause className="w-6 h-6" />
+                                  ) : (
+                                    <Play className="w-6 h-6" />
+                                  )}
+                                </button>
+                              </div>
                             </div>
                           ) : post.uploadPath && post.uploadFileType === "IMAGE" ? (
                             <div className="relative w-full rounded-lg overflow-hidden">
@@ -560,35 +586,28 @@ export function PostStandalonePage({
                                   muted
                                   autoPlay={playingVideo === `related-${relatedPost.id}`} // Auto-play if this video should be playing
                                   onPlay={() =>
-                                    handleVideoPlay(`related-${relatedPost.id}`)
+                                    handleVideoPlayEvent(`related-${relatedPost.id}`)
                                   }
-                                  onPause={handleVideoPause}
+                                  onPause={() =>
+                                    handleVideoPauseEvent(`related-${relatedPost.id}`)
+                                  }
                                   usePreviewVideo={true}
                                   fallbackToOriginal={false}
                                 />
-                                <div className="absolute inset-0 top-1 left-1 pointer-events-none z-10">
+                                {/* Video controls overlay - always visible on top left */}
+                                <div className="absolute top-1 left-1 flex items-center gap-1 z-10">
                                   <button
-                                    className="bg-white/90 hover:bg-white rounded-full p-1 transition-colors pointer-events-auto"
+                                    className="bg-black/50 hover:bg-black/70 text-white rounded-full p-1 transition-colors pointer-events-auto"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      const video =
-                                        videoRefs.current[
-                                          `related-${relatedPost.id}`
-                                        ];
-                                      if (video) {
-                                        if (video.paused) {
-                                          video.play();
-                                        } else {
-                                          video.pause();
-                                        }
-                                      }
+                                      handleVideoPlay(`related-${relatedPost.id}`);
                                     }}
                                   >
                                     {playingVideo ===
                                     `related-${relatedPost.id}` ? (
-                                      <Pause className="h-2 w-2 text-gray-800" />
+                                      <Pause className="h-2 w-2 text-white" />
                                     ) : (
-                                      <Play className="h-2 w-2 text-gray-800" />
+                                      <Play className="h-2 w-2 text-white" />
                                     )}
                                   </button>
                                 </div>

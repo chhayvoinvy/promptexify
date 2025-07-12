@@ -66,7 +66,7 @@ export function PostCard({
     // Media loaded successfully - could track dimensions here if needed
   }, []);
 
-  // Handle video play/pause
+  // Handle video play/pause from button clicks
   const handleVideoPlay = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -86,6 +86,24 @@ export function PostCard({
         // Don't change state if play failed
       });
       onVideoStateChange?.(post.id, true);
+    }
+  }, [post.id, playingVideo, onVideoStateChange]);
+
+  // Handle video play event (from video element, not button)
+  const handleVideoPlayEvent = useCallback(() => {
+    console.log(`Video started playing: ${post.id}`);
+    // Just ensure state is in sync - don't toggle
+    if (playingVideo !== post.id) {
+      onVideoStateChange?.(post.id, true);
+    }
+  }, [post.id, playingVideo, onVideoStateChange]);
+
+  // Handle video pause event (from video element, not button)
+  const handleVideoPauseEvent = useCallback(() => {
+    console.log(`Video paused: ${post.id}`);
+    // Clear playing state when video pauses
+    if (playingVideo === post.id) {
+      onVideoStateChange?.(post.id, false);
     }
   }, [post.id, playingVideo, onVideoStateChange]);
 
@@ -185,8 +203,9 @@ export function PostCard({
                   preload="metadata"
                   autoPlay={playingVideo === post.id} // Auto-play if this video should be playing
                   onLoadedMetadata={() => handleVideoLoadedMetadata()}
-                  onPlay={handleVideoPlay}
+                  onPlay={handleVideoPlayEvent}
                   onEnded={handleVideoEnded}
+                  onPause={handleVideoPauseEvent}
                   blurDataURL={post.blurData || undefined}
                   usePreviewVideo={true}
                   fallbackToOriginal={false}
@@ -201,11 +220,11 @@ export function PostCard({
 
             {/* Custom video controls overlay for videos */}
             {post.uploadFileType === "VIDEO" && (
-              <div className="absolute inset-0 top-3 left-3 pointer-events-none z-10">
+              <div className="absolute top-3 left-3 flex items-center gap-2 z-10 pointer-events-none">
                 <div className="flex gap-2">
                   {/* Play/pause button */}
                   <button
-                    className="bg-background/90 hover:bg-background rounded-full p-1.5 transition-colors pointer-events-auto"
+                    className="bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors pointer-events-auto"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -213,15 +232,15 @@ export function PostCard({
                     }}
                   >
                     {playingVideo === post.id ? (
-                      <Pause className="w-5 h-5 text-foreground" />
+                      <Pause className="w-4 h-4 text-white" />
                     ) : (
-                      <Play className="w-5 h-5 text-foreground" />
+                      <Play className="w-4 h-4 text-white" />
                     )}
                   </button>
 
                   {/* Mute/unmute button */}
                   <button
-                    className="bg-background/90 hover:bg-background rounded-full p-1.5 transition-colors pointer-events-auto"
+                    className="bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors pointer-events-auto"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -229,9 +248,9 @@ export function PostCard({
                     }}
                   >
                     {isVideoMuted ? (
-                      <VolumeX className="w-5 h-5 text-foreground" />
+                      <VolumeX className="w-4 h-4 text-white" />
                     ) : (
-                      <Volume2 className="w-5 h-5 text-foreground" />
+                      <Volume2 className="w-4 h-4 text-white" />
                     )}
                   </button>
                 </div>

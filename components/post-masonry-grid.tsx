@@ -61,7 +61,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
     debounceMs: 100, // Quick response for better UX
   });
 
-  // Handle video play/pause
+  // Handle video play/pause from button clicks
   const handleVideoPlay = useCallback(
     (postId: string, event?: React.MouseEvent) => {
       if (event) {
@@ -110,6 +110,24 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
     },
     [playingVideo, videosToShow]
   );
+
+  // Handle video play event (from video element, not button)
+  const handleVideoPlayEvent = useCallback((postId: string) => {
+    console.log(`Video started playing: ${postId}`);
+    // Just ensure state is in sync - don't toggle
+    if (playingVideo !== postId) {
+      setPlayingVideo(postId);
+    }
+  }, [playingVideo]);
+
+  // Handle video pause event (from video element, not button)
+  const handleVideoPauseEvent = useCallback((postId: string) => {
+    console.log(`Video paused: ${postId}`);
+    // Clear playing state when video pauses
+    if (playingVideo === postId) {
+      setPlayingVideo(null);
+    }
+  }, [playingVideo]);
 
   // Handle video mute/unmute
   const handleVideoMute = useCallback(
@@ -410,26 +428,16 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                       <div className="relative w-full h-full">
                         {/* Show thumbnail with play button when video is not loaded */}
                         {!showVideo && post.previewPath && (
-                          <>
-                            <MediaImage
-                              src={post.previewPath}
-                              alt={post.title}
-                              fill
-                              className="object-cover rounded-b-lg absolute"
-                              loading="lazy"
-                              blurDataURL={post.blurData || undefined}
-                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                              onLoad={(e) => handleMediaLoad(post.id, e)}
-                            />
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <button
-                                className="bg-black/50 hover:bg-black/70 text-white rounded-full p-3 transition-colors"
-                                onClick={(e) => handleVideoPlay(post.id, e)}
-                              >
-                                <Play className="w-6 h-6" />
-                              </button>
-                            </div>
-                          </>
+                          <MediaImage
+                            src={post.previewPath}
+                            alt={post.title}
+                            fill
+                            className="object-cover rounded-b-lg absolute"
+                            loading="lazy"
+                            blurDataURL={post.blurData || undefined}
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            onLoad={(e) => handleMediaLoad(post.id, e)}
+                          />
                         )}
                         
                         {/* Show video when user clicks play */}
@@ -462,7 +470,10 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                               handleVideoLoadedMetadata(post.id, e);
                             }}
                             onPlay={() => {
-                              handleVideoPlay(post.id);
+                              handleVideoPlayEvent(post.id);
+                            }}
+                            onPause={() => {
+                              handleVideoPauseEvent(post.id);
                             }}
                             onEnded={() => handleVideoEnded(post.id)}
                             blurDataURL={post.blurData || undefined}
@@ -480,34 +491,32 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                           </div>
                         )}
 
-                        {/* Video controls overlay - only show when video is playing */}
-                        {showVideo && playingVideo === post.id && (
-                          <div className="absolute top-3 left-3 flex items-center gap-2 z-20">
-                            {/* Play/Pause button */}
-                            <button
-                              className="bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
-                              onClick={(e) => handleVideoPlay(post.id, e)}
-                            >
-                              {playingVideo === post.id ? (
-                                <Pause className="w-4 h-4" />
-                              ) : (
-                                <Play className="w-4 h-4" />
-                              )}
-                            </button>
-                            
-                            {/* Mute/Unmute button */}
-                            <button
-                              className="bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
-                              onClick={(e) => handleVideoMute(post.id, e)}
-                            >
-                              {mutedVideos.has(post.id) ? (
-                                <VolumeX className="w-4 h-4" />
-                              ) : (
-                                <Volume2 className="w-4 h-4" />
-                              )}
-                            </button>
-                          </div>
-                        )}
+                        {/* Video controls overlay - always visible on top left */}
+                        <div className="absolute top-3 left-3 flex items-center gap-2 z-20">
+                          {/* Play/Pause button */}
+                          <button
+                            className="bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
+                            onClick={(e) => handleVideoPlay(post.id, e)}
+                          >
+                            {playingVideo === post.id ? (
+                              <Pause className="w-4 h-4" />
+                            ) : (
+                              <Play className="w-4 h-4" />
+                            )}
+                          </button>
+                          
+                          {/* Mute/Unmute button */}
+                          <button
+                            className="bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
+                            onClick={(e) => handleVideoMute(post.id, e)}
+                          >
+                            {mutedVideos.has(post.id) ? (
+                              <VolumeX className="w-4 h-4" />
+                            ) : (
+                              <Volume2 className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
 
                         {/* Debug indicator - show video source info */}
                         {process.env.NODE_ENV === "development" && showVideo && (
