@@ -30,20 +30,20 @@ export function PostTextBaseCard({ title, className }: PostTextBaseCardProps) {
     <div
       ref={containerRef}
       className={cn(
-        "group relative bg-gradient-to-br from-muted/50 to-muted/80 flex flex-col items-center justify-center gap-2 pt-12 pb-17 rounded-lg overflow-hidden",
+        "group relative bg-gradient-to-br from-muted/50 to-muted/80 flex flex-col items-center justify-center gap-2 pt-12 pb-18 rounded-lg overflow-hidden",
         className
       )}
     >
       <div
         ref={overlayRef}
-        className="absolute h-64 w-64 rounded-full bg-white/30 opacity-0 bg-blend-soft-light blur-3xl transition-opacity group-hover:opacity-10 dark:group-hover:opacity-20 pointer-events-none"
+        className="absolute h-48 w-48 rounded-full bg-white/30 opacity-0 bg-blend-soft-light blur-3xl transition-opacity group-hover:opacity-10 dark:group-hover:opacity-20 pointer-events-none"
         style={{
           transform: "translate(var(--x), var(--y))",
           zIndex: 1,
         }}
       />
 
-      <p className="relative text-muted-foreground text-lg font-medium text-center leading-relaxed line-clamp-7 px-7 z-10">
+      <p className="relative text-muted-foreground text-lg font-medium text-center leading-relaxed line-clamp-3 px-8 pb-5 z-10">
         {title}
       </p>
     </div>

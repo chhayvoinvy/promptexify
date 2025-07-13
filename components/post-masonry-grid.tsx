@@ -407,9 +407,10 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                   <div
                     className="relative"
                     style={
-                      post.previewPath
-                         ? getDynamicAspectRatio(post.id)
-                         : { height: "auto", minHeight: "120px" }
+                      // Apply dynamic aspect ratio to images preview and videos preview only
+                      post.previewPath && post.uploadFileType === "IMAGE" || post.previewVideoPath && post.uploadFileType === "VIDEO"
+                        ? getDynamicAspectRatio(post.id)
+                        : { height: "auto", minHeight: "120px", maxHeight: "200px" }
                     }
                   >
                     {post.previewPath && post.uploadFileType === "IMAGE" ? (
@@ -514,7 +515,14 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                       </div>
                     ) : (
                       // Text base post with shiny hover effect
-                      <PostTextBaseCard title={post.title} />
+                      <div
+                        className="relative"
+                        style={{
+                          height: "auto",
+                        }}
+                      >
+                        <PostTextBaseCard title={post.title} />
+                      </div>
                     )}
 
                     {post.isPremium && (
