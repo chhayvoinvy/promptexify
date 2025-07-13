@@ -32,7 +32,7 @@ interface PostPrefetchInfo {
 
 export function usePrefetchPosts(options: UsePrefetchPostsOptions = {}) {
   const {
-    rootMargin = "100px 0px 800px 0px", // Prefetch when 500px away from viewport
+    rootMargin = "100px 0px 950px 0px", // Prefetch when 500px away from viewport
     threshold = 0.1,
     prefetchData = true,
     debounceMs = 150,

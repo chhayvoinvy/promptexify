@@ -33,7 +33,7 @@ interface VideoPreviewOptions {
   bitrate?: string;
   fps?: number;
   quality?: number;
-  duration?: number;
+  duration?: number | undefined; // Make duration optional to allow full video length
   format?: "mp4" | "webm";
 }
 
@@ -183,8 +183,8 @@ export async function generateVideoPreview(
     maxHeight = 720,
     bitrate = "500k",
     fps = 24,
-    quality = 60,
-    duration = 10,
+    quality = 80, // Increased default quality
+    duration = undefined, // Remove duration limit to use original length
     format = "mp4",
   } = options;
 
@@ -387,23 +387,31 @@ async function generateCompressedVideoWithFFmpeg(
   outputPath: string,
   options: VideoPreviewOptions
 ): Promise<void> {
-  const { maxWidth = 640, maxHeight = 360, bitrate = "300k", fps = 15, duration = 10 } = options;
+  const { maxWidth = 640, maxHeight = 360, bitrate = "300k", fps = 15, quality = 80, duration } = options;
+
+    // Build FFmpeg arguments
+  const ffmpegArgs = [
+    "-i", inputPath,
+    "-vf", `scale=${maxWidth}:${maxHeight}:force_original_aspect_ratio=decrease`,
+    "-r", String(fps), // Set frame rate (lower for smaller files)
+    "-b:v", bitrate, // Set bitrate (lower for smaller files)
+    "-c:v", "libx264", // Use H.264 codec
+    "-c:a", "aac", // Keep audio with AAC codec
+    "-b:a", "128k", // Audio bitrate for preview
+    "-preset", "veryfast", // Faster encoding
+    "-crf", String(Math.max(18, 28 - Math.round(quality / 10))), // Adjust CRF based on quality (18-28 range)
+    "-movflags", "+faststart", // Optimize for web playback
+    "-y", // Overwrite output
+    outputPath,
+  ];
+
+  // Only add duration limit if specified
+  if (duration) {
+    ffmpegArgs.splice(2, 0, "-t", String(duration));
+  }
 
   return new Promise((resolve, reject) => {
-    const ffmpeg = spawn("ffmpeg", [
-      "-i", inputPath,
-      "-t", String(duration), // Limit duration
-      "-vf", `scale=${maxWidth}:${maxHeight}:force_original_aspect_ratio=decrease`,
-      "-r", String(fps), // Set frame rate (lower for smaller files)
-      "-b:v", bitrate, // Set bitrate (lower for smaller files)
-      "-c:v", "libx264", // Use H.264 codec
-      "-preset", "veryfast", // Faster encoding
-      "-crf", "28", // More aggressive compression (higher CRF = smaller file)
-      "-an", // Remove audio for preview videos
-      "-movflags", "+faststart", // Optimize for web
-      "-y", // Overwrite output
-      outputPath,
-    ]);
+    const ffmpeg = spawn("ffmpeg", ffmpegArgs);
 
     let stderr = "";
 

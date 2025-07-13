@@ -1428,14 +1428,14 @@ export async function processAndUploadVideoWithConfig(
       enableCompression: config.enableCompression,  // Respect compression toggle
     });
 
-    // Generate compressed video preview
+    // Generate compressed video preview with full duration and audio
     const previewVideoBuffer = await generateVideoPreview(videoBuffer, {
       maxWidth: 640, // Reduced from 1280
       maxHeight: 360, // Reduced from 720
       bitrate: "300k", // Reduced from 500k
       fps: 15, // Reduced from 24
-      quality: 60,
-      duration: 10, // 10 seconds max
+      quality: 80,
+      // duration: undefined, // Use original video length (no limit)
       format: "mp4",
     });
 

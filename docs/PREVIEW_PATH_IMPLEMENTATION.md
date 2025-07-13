@@ -151,7 +151,7 @@ Preview generation respects dashboard settings:
 ### **Preview Settings**
 - **Image Previews**: 1280x720 max, WebP format
 - **Video Thumbnails**: 1280x720 max, WebP format  
-- **Video Previews**: 640x360 max, 300kbps, 15fps, 10s duration
+- **Video Previews**: 640x360 max, 300kbps, 15fps, quality 80, full original duration with audio
 
 ## Migration Notes
 
@@ -169,6 +169,7 @@ Preview generation respects dashboard settings:
 
 ### **Potential Improvements**
 1. **Progressive Loading**: Load preview videos in background when user hovers
+2. **Audio Controls**: Add volume controls for preview videos with audio
 2. **Quality Selection**: Allow users to choose video quality
 3. **Analytics**: Track preview vs original video usage
 4. **Batch Processing**: Generate previews for existing posts

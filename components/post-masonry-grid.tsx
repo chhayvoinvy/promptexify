@@ -55,7 +55,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
 
   // Initialize prefetch hook for viewport-based prefetching
   const { observePost, unobservePost } = usePrefetchPosts({
-    rootMargin: "0px 0px 800px 0px", // Start prefetching 800px before entering viewport
+    rootMargin: "0px 0px 950px 0px", // Start prefetching 950px before entering viewport
     threshold: 0.1,
     prefetchData: true, // Prefetch both route and API data
     debounceMs: 100, // Quick response for better UX

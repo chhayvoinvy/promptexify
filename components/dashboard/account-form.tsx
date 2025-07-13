@@ -187,8 +187,8 @@ export function AccountForm({ user }: AccountFormProps) {
                 <Badge variant="outline">
                   <svg
                     className="h-3 w-3 mr-1 fill-current"
-                    height="800px"
-                    width="800px"
+                    height="950px"
+                    width="950px"
                     version="1.1"
                     id="Capa_1"
                     xmlns="http://www.w3.org/2000/svg"
