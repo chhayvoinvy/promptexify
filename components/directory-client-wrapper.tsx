@@ -54,7 +54,7 @@ export function DirectoryClientWrapper({
 
       {/* Results Summary */}
       <div className="mb-6 flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {searchQuery ? (
             <>
               Found {pagination.totalCount} result
@@ -87,13 +87,6 @@ export function DirectoryClientWrapper({
             </>
           )}
         </p>
-        {pagination.totalCount > 0 && (
-          <p className="text-xs text-muted-foreground">
-            {pagination.hasNextPage
-              ? `Showing first ${initialPosts.length} of ${pagination.totalCount}`
-              : `All ${pagination.totalCount} results`}
-          </p>
-        )}
       </div>
 
       {/* Posts Grid with Infinite Scroll */}
