@@ -797,6 +797,7 @@ export function BentoGrid() {
                       className="size-full rounded-full border"
                       src="/static/avatars/4.webp"
                       alt="fake-avatar"
+                      priority
                     />
                   </div>
                 </div>
@@ -808,6 +809,7 @@ export function BentoGrid() {
                       className="size-full rounded-full border"
                       src="/static/avatars/6.webp"
                       alt="fake-avatar"
+                      priority
                     />
                   </div>
                   <span className="block h-fit rounded-md border bg-muted/50 px-2 py-1 text-xs">
@@ -825,6 +827,7 @@ export function BentoGrid() {
                       className="size-full rounded-full border"
                       src="/static/avatars/2.webp"
                       alt="fake-avatar"
+                      priority
                     />
                   </div>
                 </div>

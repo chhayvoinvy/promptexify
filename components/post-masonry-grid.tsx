@@ -420,6 +420,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                         fill
                         className="object-cover rounded-b-lg absolute"
                         loading="lazy"
+                        priority={posts.indexOf(post) < 4} // Prioritize first 4 images for LCP
                         blurDataURL={post.blurData || undefined}
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         onLoad={(e) => handleMediaLoad(post.id, e)}
@@ -434,6 +435,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                             fill
                             className="object-cover rounded-b-lg absolute"
                             loading="lazy"
+                            priority={posts.indexOf(post) < 4} // Prioritize first 4 images for LCP
                             blurDataURL={post.blurData || undefined}
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                             onLoad={(e) => handleMediaLoad(post.id, e)}
@@ -517,15 +519,6 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                             )}
                           </button>
                         </div>
-
-                        {/* Debug indicator - show video source info */}
-                        {process.env.NODE_ENV === "development" && showVideo && (
-                          <div className="absolute bottom-3 left-3 z-20">
-                            <Badge variant="outline" className="text-xs bg-blue-500/90 text-white border-blue-400">
-                              {post.previewVideoPath ? "Preview Video" : "Original Video"}
-                            </Badge>
-                          </div>
-                        )}
                       </div>
                     ) : (
                       // Text base post with shiny hover effect

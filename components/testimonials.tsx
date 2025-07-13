@@ -94,6 +94,7 @@ export default function Testimonials() {
                           className="size-full rounded-full border"
                           src={item.image}
                           alt={item.name}
+                          priority={testimonials.indexOf(item) < 3} // Prioritize first 3 avatars for LCP
                         />
                       </span>
                       <div>
