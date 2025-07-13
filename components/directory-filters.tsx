@@ -33,20 +33,19 @@ export function DirectoryFilters({ categories }: DirectoryFiltersProps) {
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
-  // Get current values from URL with safety checks
-  const currentQuery = searchParams?.get("q") || "";
-  const currentCategory = searchParams?.get("category") || "all";
-  const currentSubcategory = searchParams?.get("subcategory") || "all";
-  const currentPremium = searchParams?.get("premium") || "all";
+  // Get current values from URL with safety checks and default values
+  const currentQuery = searchParams?.get("q") ?? "";
+  const currentCategory = searchParams?.get("category") ?? "all";
+  const currentSubcategory = searchParams?.get("subcategory") ?? "all";
+  const currentPremium = searchParams?.get("premium") ?? "all";
 
-  // Local state for form inputs
-  const [searchQuery, setSearchQuery] = useState(currentQuery);
-  const [categoryFilter, setCategoryFilter] = useState(currentCategory);
-  const [subcategoryFilter, setSubcategoryFilter] =
-    useState(currentSubcategory);
-  const [premiumFilter, setPremiumFilter] = useState(currentPremium);
+  // Local state for form inputs - always initialize with default values
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [subcategoryFilter, setSubcategoryFilter] = useState("all");
+  const [premiumFilter, setPremiumFilter] = useState("all");
 
-  // Sync local state with URL changes (when user navigates back/forward)
+  // Sync local state with URL changes (when user navigates back/forward or initial load)
   useEffect(() => {
     setSearchQuery(currentQuery);
     setCategoryFilter(currentCategory);
