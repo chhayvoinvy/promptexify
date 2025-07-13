@@ -15,6 +15,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
+  SheetDescription,
 } from "@/components/ui/sheet";
 import {
   Collapsible,
@@ -344,6 +345,9 @@ export function Header() {
                   <SheetTitle>
                     <DarkModeToggle />
                   </SheetTitle>
+                  <SheetDescription>
+                    Navigation menu for browsing prompts and accessing account features
+                  </SheetDescription>
                 </SheetHeader>
                 <div className="mt-6">
                   <MobileNav />

@@ -363,7 +363,7 @@ export function MediaImage({
   return (
     <div className={containerClassName} style={containerStyle}>
       {/* Blur placeholder that stays visible until the sharp image loads */}
-      {blurDataURL && (
+      {blurDataURL && !imageLoaded && (
         <Image
           src={blurDataURL}
           alt={alt}

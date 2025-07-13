@@ -797,20 +797,20 @@ export default function EditPostPage() {
                 className="w-full md:w-auto"
                 disabled={isSubmitting || isUploadingMedia}
               >
-                {isSubmitting || isUploadingMedia ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : null}
-                {isSubmitting
-                  ? "Updating Post..."
-                  : isUploadingMedia
-                    ? "Uploading..."
-                    : "Update Post"}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <span>Updating Post...</span>
+                  </>
+                ) : (
+                  <span>Update Post</span>
+                )}
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 asChild
-                disabled={isSubmitting}
+                disabled={isSubmitting || isUploadingMedia}
               >
                 <Link href="/dashboard/posts">Cancel</Link>
               </Button>
