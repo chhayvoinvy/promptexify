@@ -461,14 +461,6 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                             preload="metadata"
                             autoPlay={playingVideo === post.id} // Auto-play if this video should be playing
                             onLoadedMetadata={(e) => {
-                              console.log(`Video loaded for post ${post.id}:`, {
-                                previewPath: post.previewPath,
-                                previewVideoPath: post.previewVideoPath,
-                                hasPreviewVideo: !!post.previewVideoPath,
-                                usingPreviewVideo: !!post.previewVideoPath,
-                                actualSrc: post.previewVideoPath || "",
-                                shouldAutoPlay: playingVideo === post.id
-                              });
                               handleVideoLoadedMetadata(post.id, e);
                             }}
                             onPlay={() => {
