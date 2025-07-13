@@ -106,18 +106,21 @@ export default function NewCategoryPage() {
     setIsSubmitting(true);
     startTransition(async () => {
       try {
-        // Add CSRF protection to form data
-        const name = formData.get("name") as string;
-        const slug = formData.get("slug") as string;
-        const description = formData.get("description") as string;
+        // Process form data
         const parentId = formData.get("parentId") as string;
-
-        const secureFormData = createFormDataWithCSRF({
-          name,
-          slug: slug || "",
-          description: description || "",
-          parentId: parentId === "none" ? "" : parentId || "",
-        });
+        
+        // Create secure form data with CSRF protection
+        const secureFormData = createFormDataWithCSRF();
+        
+        // Add all form data to the secure form data
+        for (const [key, value] of formData.entries()) {
+          if (key !== "parentId") { // We'll handle parentId separately
+            secureFormData.set(key, value);
+          }
+        }
+        
+        // Process parentId
+        secureFormData.set("parentId", parentId === "none" ? "" : parentId || "");
 
         const result = await createCategoryAction(secureFormData);
 

@@ -67,8 +67,6 @@ interface PostsManagementPageProps {
   }>;
 }
 
-
-
 // Table skeleton with individual row skeletons
 function TableSkeleton() {
   return (
@@ -159,6 +157,35 @@ interface UserData {
   name: string | null;
 }
 
+// Category interface based on the getAllCategories return type
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  parent: {
+    id: string;
+    name: string;
+    slug: string;
+    _count: {
+      posts: number;
+    };
+  } | null;
+  children: {
+    id: string;
+    name: string;
+    slug: string;
+    _count: {
+      posts: number;
+    };
+  }[];
+  _count: {
+    posts: number;
+  };
+}
+
 // Main content component
 async function PostsManagementContent({
   searchParams,
@@ -185,13 +212,12 @@ async function PostsManagementContent({
 
     // Use passed user information
     const isAdmin = user.role === "ADMIN";
-    const userId = user.id;
 
     // Get categories for filter dropdown (cached)
     const allCategories = await getAllCategories();
 
     // Transform categories to filter options
-    const categoryOptions: FilterOption[] = allCategories.map((cat: any) => ({
+    const categoryOptions: FilterOption[] = allCategories.map((cat: Category) => ({
       value: cat.slug,
       label: cat.parent ? `${cat.parent.name} > ${cat.name}` : cat.name,
     }));
@@ -199,10 +225,10 @@ async function PostsManagementContent({
     // Convert filter parameters to database query parameters
     let categoryId: string | undefined;
     if (filters.subcategory && filters.subcategory !== "all") {
-      const subcategory = allCategories.find((c: any) => c.slug === filters.subcategory);
+      const subcategory = allCategories.find((c: Category) => c.slug === filters.subcategory);
       categoryId = subcategory?.id;
     } else if (filters.category && filters.category !== "all") {
-      const category = allCategories.find((c: any) => c.slug === filters.category);
+      const category = allCategories.find((c: Category) => c.slug === filters.category);
       categoryId = category?.id;
     }
 

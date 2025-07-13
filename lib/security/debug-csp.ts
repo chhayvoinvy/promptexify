@@ -15,7 +15,7 @@
  * npx tsx lib/security/debug-csp.ts "your inline script content here"
  */
 
-import { CSPNonce } from "./csp";
+// import { CSPNonce } from "./csp"; // Not currently used
 
 async function calculateHash(content: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -96,13 +96,8 @@ async function main() {
     // Run debug analysis for common content
     await debugCommonInlineContent();
     
-    // Also run the built-in debug method if available
-    try {
-      console.log("\n🔧 Running built-in CSP debug analysis...\n");
-      await CSPNonce.debugMissingHashes();
-    } catch (error) {
-      console.error("Warning: Could not run built-in debug analysis:", error);
-    }
+    // Built-in debug analysis would go here if implemented
+    console.log("\n🔧 CSP Debug analysis complete.");
   }
 }
 

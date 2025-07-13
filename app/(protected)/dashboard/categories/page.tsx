@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Folder } from "@/components/ui/icons";
+import { Plus } from "@/components/ui/icons";
 import Link from "next/link";
 import { AppSidebar } from "@/components/dashboard/admin-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";

@@ -215,7 +215,7 @@ export function InfinitePostGrid({
     return () => {
       observer.unobserve(currentRef);
     };
-  }, []); // Empty dependencies - create observer once and never recreate
+  }, [loadMorePosts]); // Include loadMorePosts dependency
 
   // Simple scroll detection to mark user interaction
   useEffect(() => {

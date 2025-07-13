@@ -52,9 +52,10 @@ export interface CSPNonceContext {
 
 /**
  * Get complete CSP context for a component
+ * Note: This is not a React Hook despite using the word "use" in its name
  */
 export async function getCSPContext(): Promise<CSPNonceContext> {
-  const nonce = await useSafeCSPNonce();
+  const nonce = await CSPNonce.getFromHeadersSafe();
   const isProduction = process.env.NODE_ENV === "production";
   
   return {
@@ -66,11 +67,12 @@ export async function getCSPContext(): Promise<CSPNonceContext> {
 
 /**
  * Utility for components that need to render different content based on CSP context
+ * Note: This is not a React Hook despite using the word "use" in its name
  */
 export async function withCSPNonce<T>(
   callback: (nonce: string | null) => T
 ): Promise<T> {
-  const nonce = await useSafeCSPNonce();
+  const nonce = await CSPNonce.getFromHeadersSafe();
   return callback(nonce);
 }
 

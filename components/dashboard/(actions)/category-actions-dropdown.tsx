@@ -59,7 +59,8 @@ export function CategoryActionsDropdown({
     startTransition(async () => {
       try {
         // Add CSRF protection to form data
-        const secureFormData = createFormDataWithCSRF({ id: category.id });
+        const secureFormData = createFormDataWithCSRF();
+        secureFormData.set("id", category.id);
         const result = await deleteCategoryAction(secureFormData);
 
         if (result.success) {

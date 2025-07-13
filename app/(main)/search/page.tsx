@@ -2,14 +2,9 @@ import { getAllCategories, type SortOption } from "@/lib/content";
 import { getCurrentUser } from "@/lib/auth";
 import { Suspense } from "react";
 import { PostMasonrySkeleton } from "@/components/post-masonry-skeleton";
-import { DirectoryFilters } from "@/components/directory-filters";
-import { Container } from "@/components/ui/container";
+import { SearchClientWrapper } from "@/components/search-client-wrapper";
 import { Queries } from "@/lib/query";
 import { getSettingsAction } from "@/actions/settings";
-import { PostMasonryGrid } from "@/components/post-masonry-grid";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { Search } from "@/components/ui/icons";
 
 export const dynamic = "force-dynamic"; // Required because we use getCurrentUser() which accesses cookies
 
@@ -102,137 +97,23 @@ async function SearchResults({
   const { data: posts, pagination } = result;
 
   return (
-    <>
-      {/* Results Summary */}
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          {searchQuery ? (
-            <h1 className="text-2xl font-bold mb-2">
-              Search Results for &ldquo;{searchQuery}&rdquo;
-            </h1>
-          ) : (
-            <h1 className="text-2xl font-bold mb-2">All Prompts</h1>
-          )}
-          <p className="text-sm text-muted-foreground">
-            {searchQuery ? (
-              <>
-                Found {pagination.totalCount} result
-                {pagination.totalCount !== 1 ? "s" : ""}
-              </>
-            ) : (
-              <>
-                Showing {pagination.totalCount} prompt
-                {pagination.totalCount !== 1 ? "s" : ""}
-              </>
-            )}
-            {((categoryFilter && categoryFilter !== "all") ||
-              (subcategoryFilter && subcategoryFilter !== "all")) && (
-              <>
-                {" "}
-                {subcategoryFilter && subcategoryFilter !== "all" ? (
-                  <>
-                    in{" "}
-                    {categories.find((c) => c.slug === subcategoryFilter)
-                      ?.name || subcategoryFilter}
-                  </>
-                ) : (
-                  <>
-                    in{" "}
-                    {categories.find((c) => c.slug === categoryFilter)?.name ||
-                      categoryFilter}
-                  </>
-                )}
-              </>
-            )}
-          </p>
-        </div>
-      </div>
-
-      {/* Search Results */}
-      {posts.length > 0 ? (
-        <div className="space-y-8">
-          <PostMasonryGrid posts={posts} userType={userType} />
-
-          {/* Pagination */}
-          {pagination.totalPages > 1 && (
-            <div className="flex justify-center items-center gap-2 mt-8">
-              {pagination.hasPreviousPage && (
-                <Button variant="outline" asChild>
-                  <Link
-                    href={{
-                      pathname: "/search",
-                      query: {
-                        ...params,
-                        page: page - 1,
-                      },
-                    }}
-                  >
-                    Previous
-                  </Link>
-                </Button>
-              )}
-
-              <span className="px-4 py-2 text-sm text-muted-foreground">
-                Page {pagination.currentPage} of {pagination.totalPages}
-              </span>
-
-              {pagination.hasNextPage && (
-                <Button variant="outline" asChild>
-                  <Link
-                    href={{
-                      pathname: "/search",
-                      query: {
-                        ...params,
-                        page: page + 1,
-                      },
-                    }}
-                  >
-                    Next
-                  </Link>
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="text-center py-12">
-          <Search className="mx-auto h-16 w-16 text-muted-foreground/50 mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No results found</h3>
-          <p className="text-muted-foreground mb-6">
-            {searchQuery ? (
-              <>
-                No prompts found matching &ldquo;{searchQuery}&rdquo;. <br />
-                Try adjusting your search terms or filters.
-              </>
-            ) : (
-              <>
-                No prompts match your current filters. <br />
-                Try adjusting your filter criteria.
-              </>
-            )}
-          </p>
-          <Button variant="outline" asChild>
-            <Link href="/directory">Browse All Prompts</Link>
-          </Button>
-        </div>
-      )}
-    </>
+    <SearchClientWrapper
+      categories={categories}
+      posts={posts}
+      userType={userType}
+      searchQuery={searchQuery}
+      categoryFilter={categoryFilter}
+      subcategoryFilter={subcategoryFilter}
+      pagination={pagination}
+      searchParams={params}
+    />
   );
 }
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
-  const categories = await getAllCategories();
-
   return (
-    <Container className="py-8">
-      {/* Filters */}
-      <div className="mb-8">
-        <DirectoryFilters categories={categories} />
-      </div>
-
-      <Suspense fallback={<PostMasonrySkeleton />}>
-        <SearchResults searchParams={searchParams} />
-      </Suspense>
-    </Container>
+    <Suspense fallback={<PostMasonrySkeleton />}>
+      <SearchResults searchParams={searchParams} />
+    </Suspense>
   );
 }

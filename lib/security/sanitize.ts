@@ -3,6 +3,9 @@
  * and ensure safe content handling
  */
 
+import DOMPurify from "dompurify";
+import { JSDOM } from "jsdom";
+
 // HTML entity mapping for basic sanitization
 const HTML_ENTITIES: Record<string, string> = {
   "&": "&amp;",
@@ -13,6 +16,92 @@ const HTML_ENTITIES: Record<string, string> = {
   "/": "&#x2F;",
   "`": "&#x60;",
   "=": "&#x3D;",
+};
+
+/**
+ * Initialize DOMPurify for server-side usage
+ */
+function createDOMPurify() {
+  if (typeof window === "undefined") {
+    // Server-side: use JSDOM
+    const dom = new JSDOM("<!DOCTYPE html>");
+    return DOMPurify(dom.window as unknown as Window & typeof globalThis);
+  } else {
+    // Client-side: use browser window
+    return DOMPurify;
+  }
+}
+
+/**
+ * DOMPurify configuration for different content types
+ */
+const DOMPURIFY_CONFIGS = {
+  // Strict configuration for general content
+  strict: {
+    ALLOWED_TAGS: [],
+    ALLOWED_ATTR: [],
+    KEEP_CONTENT: true,
+    RETURN_DOM: false,
+    RETURN_DOM_FRAGMENT: false,
+    RETURN_TRUSTED_TYPE: false,
+  },
+  
+  // Configuration for rich content (comments, user-generated HTML)
+  rich: {
+    ALLOWED_TAGS: [
+      "p", "br", "strong", "em", "u", "b", "i", "s", "del", "ins",
+      "h1", "h2", "h3", "h4", "h5", "h6",
+      "ul", "ol", "li", "dl", "dt", "dd",
+      "blockquote", "pre", "code", "kbd", "samp", "var",
+      "a", "img", "figure", "figcaption",
+      "table", "thead", "tbody", "tfoot", "tr", "td", "th",
+      "div", "span", "section", "article", "aside", "header", "footer",
+      "nav", "main", "address", "time", "mark", "small", "sub", "sup",
+      "cite", "q", "abbr", "acronym", "dfn", "em", "strong"
+    ],
+    ALLOWED_ATTR: [
+      "href", "title", "alt", "src", "width", "height", "class", "id",
+      "target", "rel", "download", "hreflang", "type", "cite", "datetime",
+      "lang", "dir", "accesskey", "tabindex", "style"
+    ],
+    ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i,
+    KEEP_CONTENT: true,
+    RETURN_DOM: false,
+    RETURN_DOM_FRAGMENT: false,
+    RETURN_TRUSTED_TYPE: false,
+    // Custom hooks for additional sanitization
+    HOOKS: {
+      uponSanitizeElement: (node: Element, data: { tagName: string }) => {
+        // Remove any remaining dangerous attributes
+        const dangerousAttrs = ["onerror", "onload", "onclick", "onmouseover", "onfocus", "onblur"];
+        dangerousAttrs.forEach(attr => {
+          if (node.hasAttribute(attr)) {
+            node.removeAttribute(attr);
+          }
+        });
+        
+        // Ensure external links open in new tab
+        if (data.tagName === "a" && node.hasAttribute("href")) {
+          const href = node.getAttribute("href");
+          if (href && (href.startsWith("http://") || href.startsWith("https://"))) {
+            node.setAttribute("target", "_blank");
+            node.setAttribute("rel", "noopener noreferrer");
+          }
+        }
+      }
+    }
+  },
+  
+  // Configuration for basic HTML content
+  basic: {
+    ALLOWED_TAGS: ["p", "br", "strong", "em", "u", "a", "ul", "ol", "li"],
+    ALLOWED_ATTR: ["href", "title"],
+    ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i,
+    KEEP_CONTENT: true,
+    RETURN_DOM: false,
+    RETURN_DOM_FRAGMENT: false,
+    RETURN_TRUSTED_TYPE: false,
+  }
 };
 
 /**
@@ -37,36 +126,47 @@ export function escapeHtml(text: string): string {
     return String(text);
   }
 
-  return text.replace(/[&<>"'`=\/]/g, (char) => HTML_ENTITIES[char] || char);
+  return text.replace(/[&<>"'`=/]/g, (char) => HTML_ENTITIES[char] || char);
 }
 
 /**
  * Sanitize user input for safe database storage and display
+ * Enhanced with DOMPurify for better XSS protection
  */
 export function sanitizeInput(input: string): string {
   if (typeof input !== "string") {
     return String(input);
   }
 
-  return (
-    input
-      .trim()
-      // Remove null bytes
-      .replace(/\0/g, "")
-      // Remove potential script tags
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-      // Remove javascript: URLs
-      .replace(/javascript:/gi, "")
-      // Remove on* event handlers
-      .replace(/\bon\w+\s*=/gi, "")
-      // Remove data: URLs (except images)
-      .replace(/data:(?!image\/)/gi, "data-blocked:")
-      // Remove vbscript: URLs
-      .replace(/vbscript:/gi, "")
-      // Normalize whitespace
-      .replace(/\s+/g, " ")
-      .trim()
-  );
+  // First apply basic sanitization
+  let sanitized = input
+    .trim()
+    // Remove null bytes
+    .replace(/\0/g, "")
+    // Remove potential script tags
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    // Remove javascript: URLs
+    .replace(/javascript:/gi, "")
+    // Remove on* event handlers
+    .replace(/\bon\w+\s*=/gi, "")
+    // Remove data: URLs (except images)
+    .replace(/data:(?!image\/)/gi, "data-blocked:")
+    // Remove vbscript: URLs
+    .replace(/vbscript:/gi, "")
+    // Normalize whitespace
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // Then use DOMPurify for additional protection
+  try {
+    const purify = createDOMPurify();
+    sanitized = purify.sanitize(sanitized, DOMPURIFY_CONFIGS.strict);
+  } catch (error) {
+    // Fallback to original sanitization if DOMPurify fails
+    console.warn("[SECURITY] DOMPurify failed, using fallback sanitization:", error);
+  }
+
+  return sanitized;
 }
 
 /**
@@ -129,11 +229,11 @@ export function sanitizeFilename(filename: string): string {
       .trim()
       // Remove path traversal attempts
       .replace(/\.{2,}/g, "")
-      .replace(/[\/\\]/g, "")
+      .replace(/[/\\]/g, "")
       // Remove null bytes
       .replace(/\0/g, "")
       // Keep only safe characters
-      .replace(/[^a-zA-Z0-9\-_\.]/g, "_")
+      .replace(/[^a-zA-Z0-9\-_.]/g, "_")
       // Prevent hidden files
       .replace(/^\./, "_")
       // Limit length
@@ -144,18 +244,30 @@ export function sanitizeFilename(filename: string): string {
 
 /**
  * Sanitize content for markdown/rich text
- * Enhanced to handle more XSS vectors and malicious content
+ * Enhanced with DOMPurify for better XSS protection
  */
 export function sanitizeContent(content: string): string {
   if (typeof content !== "string") {
     return String(content);
   }
 
-  return (
-    content
-      .trim()
-      // Remove null bytes and control characters
-      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+  // First apply basic sanitization
+  let sanitized = content
+    .trim()
+    // Remove null bytes and control characters
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "")
+    // Limit extremely long content
+    .substring(0, 100000);
+
+  // Then use DOMPurify for comprehensive HTML sanitization
+  try {
+    const purify = createDOMPurify();
+    sanitized = purify.sanitize(sanitized, DOMPURIFY_CONFIGS.strict);
+  } catch (error) {
+    // Fallback to original regex-based sanitization if DOMPurify fails
+    console.warn("[SECURITY] DOMPurify failed, using fallback sanitization:", error);
+    sanitized = sanitized
       // Remove script tags and their content
       .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
       // Remove iframe tags
@@ -180,10 +292,10 @@ export function sanitizeContent(content: string): string {
       // Remove meta refresh
       .replace(/<meta\b[^>]*http-equiv\s*=\s*["']?refresh["']?[^>]*>/gi, "")
       // Remove base tags
-      .replace(/<base\b[^>]*>/gi, "")
-      // Limit extremely long content
-      .substring(0, 100000)
-  );
+      .replace(/<base\b[^>]*>/gi, "");
+  }
+
+  return sanitized;
 }
 
 /**
@@ -199,7 +311,8 @@ export function sanitizeTagName(tagName: string): string {
     tagName
       .trim()
       // Remove null bytes and control characters
-      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+      // eslint-disable-next-line no-control-regex
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "")
       // Only allow alphanumeric, spaces, hyphens, and underscores
       .replace(/[^a-zA-Z0-9\s\-_]/g, "")
       // Normalize whitespace
@@ -223,7 +336,8 @@ export function sanitizeTagSlug(input: string): string {
     .trim()
     .toLowerCase()
     // Remove null bytes and control characters
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "")
     // Replace spaces and underscores with hyphens
     .replace(/[\s_]+/g, "-")
     // Only allow a-z, 0-9, and hyphens
@@ -272,22 +386,30 @@ export function validateTagSlug(slug: string): boolean {
 
 /**
  * Advanced content sanitization for user-generated HTML content
- * Use this for content that may legitimately contain some HTML
+ * Enhanced with DOMPurify for better XSS protection while allowing safe HTML
  */
 export function sanitizeRichContent(content: string): string {
   if (typeof content !== "string") {
     return String(content);
   }
 
-  // Note: Only specific safe HTML tags are allowed (hardcoded in regex patterns below)
-  // Allowed tags: p, br, strong, em, u, h1-h6, ul, ol, li, blockquote, a
-  // Allowed attributes: href, title, alt
+  // First apply basic sanitization
+  let sanitized = content
+    .trim()
+    // Remove null bytes and control characters
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "")
+    // Limit content length
+    .substring(0, 50000);
 
-  return (
-    content
-      .trim()
-      // Remove null bytes and control characters
-      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+  // Then use DOMPurify with rich content configuration
+  try {
+    const purify = createDOMPurify();
+    sanitized = purify.sanitize(sanitized, DOMPURIFY_CONFIGS.rich);
+  } catch (error) {
+    // Fallback to original regex-based sanitization if DOMPurify fails
+    console.warn("[SECURITY] DOMPurify failed, using fallback sanitization:", error);
+    sanitized = sanitized
       // Remove all script tags
       .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
       // Remove dangerous tags
@@ -310,15 +432,15 @@ export function sanitizeRichContent(content: string): string {
       .replace(
         /<(?!\/?(?:p|br|strong|em|u|h[1-6]|ul|ol|li|blockquote|a)\b)[^>]*>/gi,
         ""
-      )
-      // Limit content length
-      .substring(0, 50000)
-  );
+      );
+  }
+
+  return sanitized;
 }
 
 /**
  * Sanitize search query to prevent injection attacks
- * Enhanced security version with additional pattern detection
+ * Enhanced with DOMPurify for better XSS protection
  */
 export async function sanitizeSearchQuery(
   query: string,
@@ -334,11 +456,12 @@ export async function sanitizeSearchQuery(
 
   const { userId, ip, logSuspicious = true } = options || {};
 
-  // SECURITY: Enhanced sanitization
-  const sanitized = query
+  // First apply basic sanitization
+  let sanitized = query
     .trim()
     // Remove null bytes and control characters
-    .replace(/[\0-\x1F\x7F-\x9F]/g, "")
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x1F]/g, "")
     // Remove SQL injection patterns (more comprehensive)
     .replace(/[';\\"`]/g, "")
     // Remove script tags and HTML
@@ -356,6 +479,15 @@ export async function sanitizeSearchQuery(
     // Limit length
     .substring(0, 100)
     .trim();
+
+  // Then use DOMPurify for additional protection
+  try {
+    const purify = createDOMPurify();
+    sanitized = purify.sanitize(sanitized, DOMPURIFY_CONFIGS.strict);
+  } catch (error) {
+    // Fallback to original sanitization if DOMPurify fails
+    console.warn("[SECURITY] DOMPurify failed, using fallback sanitization:", error);
+  }
 
   // SECURITY: Additional validation - must contain at least one alphanumeric character
   if (sanitized && !/[a-zA-Z0-9]/.test(sanitized)) {
@@ -397,7 +529,7 @@ export async function sanitizeSearchQuery(
             { userId, ip },
             userId
           );
-        } catch (error) {
+        } catch {
           // Fallback to console logging if monitor is unavailable
           console.warn(
             `[SECURITY] Suspicious search pattern: ${name} - User: ${userId} - IP: ${ip}`
@@ -453,11 +585,54 @@ export function sanitizeEmail(email: string): string | null {
   }
 
   // Check for dangerous characters
-  if (/[<>'"\\\/]/.test(trimmedEmail)) {
+  if (/[<>'"\\/]/.test(trimmedEmail)) {
     return null;
   }
 
   return trimmedEmail.substring(0, 254); // RFC 5321 limit
+}
+
+/**
+ * Sanitize basic HTML content (limited tags)
+ * Use this for content that needs minimal HTML formatting
+ */
+export function sanitizeBasicHtml(content: string): string {
+  if (typeof content !== "string") {
+    return String(content);
+  }
+
+  // First apply basic sanitization
+  let sanitized = content
+    .trim()
+    // Remove null bytes and control characters
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "")
+    // Limit content length
+    .substring(0, 10000);
+
+  // Then use DOMPurify with basic configuration
+  try {
+    const purify = createDOMPurify();
+    sanitized = purify.sanitize(sanitized, DOMPURIFY_CONFIGS.basic);
+  } catch (error) {
+    // Fallback to original regex-based sanitization if DOMPurify fails
+    console.warn("[SECURITY] DOMPurify failed, using fallback sanitization:", error);
+    sanitized = sanitized
+      // Remove all script tags
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+      // Remove dangerous tags
+      .replace(/<(iframe|object|embed|form|input|button|textarea|select|meta|base|link|style)\b[^>]*(?:\/>|>.*?<\/\1>)/gi, "")
+      // Remove event handlers
+      .replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, "")
+      // Remove javascript: and vbscript: URLs
+      .replace(/(javascript|vbscript):[^"'\s]*/gi, "")
+      // Remove data: URLs except for images
+      .replace(/data:(?!image\/)[^"'\s]*/gi, "")
+      // Remove tags not in allowlist
+      .replace(/<(?!\/?(?:p|br|strong|em|u|a|ul|ol|li)\b)[^>]*>/gi, "");
+  }
+
+  return sanitized;
 }
 
 /**
@@ -516,6 +691,25 @@ export function validateFileExtension(filename: string): boolean {
 
   const extension = filename.toLowerCase().split(".").pop();
   return !dangerousExtensions.includes(`.${extension}`);
+}
+
+/**
+ * Get DOMPurify configuration by type
+ */
+export function getDOMPurifyConfig(type: "strict" | "basic" | "rich" = "strict") {
+  return DOMPURIFY_CONFIGS[type];
+}
+
+/**
+ * Check if DOMPurify is available and working
+ */
+export function isDOMPurifyAvailable(): boolean {
+  try {
+    const purify = createDOMPurify();
+    return typeof purify.sanitize === "function";
+  } catch {
+    return false;
+  }
 }
 
 /**

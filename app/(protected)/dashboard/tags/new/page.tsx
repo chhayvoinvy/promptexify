@@ -63,13 +63,13 @@ export default function NewTagPage() {
     startTransition(async () => {
       try {
         // Add CSRF protection to form data
-        const name = formData.get("name") as string;
-        const slug = formData.get("slug") as string;
-
-        const secureFormData = createFormDataWithCSRF({
-          name,
-          slug: slug || "",
-        });
+        // Create secure form data with CSRF protection
+        const secureFormData = createFormDataWithCSRF();
+        
+        // Add all form data to the secure form data
+        for (const [key, value] of formData.entries()) {
+          secureFormData.set(key, value);
+        }
 
         const result = await createTagAction(secureFormData);
 

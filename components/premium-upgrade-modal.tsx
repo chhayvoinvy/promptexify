@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Lock, Crown, Star, Zap, Loader2 } from "@/components/ui/icons";
+import { Crown, Star, Zap, Loader2 } from "@/components/ui/icons";
 import { PostWithInteractions } from "@/lib/content";
 import { redirectToStripeCheckout } from "@/actions/stripe";
 import { toast } from "sonner";
@@ -23,7 +23,6 @@ interface PremiumUpgradeModalProps {
 }
 
 export function PremiumUpgradeModal({
-  post,
   onClose,
 }: PremiumUpgradeModalProps) {
   const router = useRouter();

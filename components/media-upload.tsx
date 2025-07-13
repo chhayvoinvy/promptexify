@@ -35,6 +35,7 @@ interface UploadResult {
   storageType: "S3" | "LOCAL" | "DOSPACE";
   blurDataUrl?: string; // Base64 blur placeholder for images
   previewPath?: string; // Path to preview image
+  previewVideoPath?: string; // Path to preview video
 }
 
 interface MediaUploadProps {
@@ -44,6 +45,7 @@ interface MediaUploadProps {
   currentUploadFileType?: "IMAGE" | "VIDEO";
   currentUploadMediaId?: string;
   currentPreviewPath?: string;
+  currentPreviewVideoPath?: string; 
   title?: string;
   disabled?: boolean;
   className?: string;
@@ -71,6 +73,7 @@ export function MediaUpload({
   currentUploadFileType,
   currentUploadMediaId,
   currentPreviewPath,
+  currentPreviewVideoPath,
   title = "untitled",
   disabled = false,
   className,
@@ -87,6 +90,9 @@ export function MediaUpload({
   );
   const [previewPath, setPreviewPath] = useState<string | null>(
     currentPreviewPath || null
+  );
+  const [previewVideoPath, setPreviewVideoPath] = useState<string | null>(
+    currentPreviewVideoPath || null
   );
   // Store the full URL for deletion purposes
   const [uploadFullUrl, setUploadFullUrl] = useState<string | null>(null);
@@ -127,6 +133,10 @@ export function MediaUpload({
   useEffect(() => {
     setPreviewPath(currentPreviewPath || null);
   }, [currentPreviewPath]);
+
+  useEffect(() => {
+    setPreviewVideoPath(currentPreviewVideoPath || null);
+  }, [currentPreviewVideoPath]);
 
   // Storage configuration state
   const [storageConfig, setStorageConfig] = useState<{
@@ -313,6 +323,7 @@ export function MediaUpload({
               setUploadPath(mediaPath); // Relative path for display
               setUploadFullUrl(fullUrl); // Full URL for deletion
               setPreviewPath(result.previewPath || null);
+              setPreviewVideoPath(result.previewVideoPath || null); // Store preview video path
             }
 
             setTimeout(() => {
@@ -355,6 +366,7 @@ export function MediaUpload({
           setUploadFullUrl(null);
           setUploadFileType(null);
           setPreviewPath(null);
+          setPreviewVideoPath(null);
           setUploadMediaId(null);
         }
       };
@@ -374,6 +386,7 @@ export function MediaUpload({
         setUploadFullUrl(null);
         setUploadFileType(null);
         setPreviewPath(null);
+        setPreviewVideoPath(null);
         setUploadMediaId(null);
       };
 
@@ -382,8 +395,9 @@ export function MediaUpload({
     [disabled, validateFile, title, onMediaUploaded, token]
   );
 
-  // Handle file deletion from storage
-  const handleDeleteFile = async (type: MediaType, url: string) => {
+  // Handle file deletion from storage with retry logic
+  const handleDeleteFile = async (type: MediaType, url: string, retryCount = 0): Promise<boolean> => {
+    const maxRetries = 2;
     setDeletionState((prev) => ({ ...prev, deleting: true }));
 
     try {
@@ -392,12 +406,38 @@ export function MediaUpload({
       });
 
       const endpoint = `/api/upload/${type}/delete`;
+      
+      // Prepare request body with preview paths for videos
+      const requestBody: {
+        videoUrl?: string;
+        imageUrl?: string;
+        previewPath?: string;
+        previewVideoPath?: string;
+      } = {
+        [`${type}Url`]: url,
+      };
+
+      // Include preview paths for video deletion
+      if (type === "video") {
+        if (previewPath) {
+          requestBody.previewPath = previewPath;
+        }
+        if (previewVideoPath) {
+          requestBody.previewVideoPath = previewVideoPath;
+        }
+      }
+
+      // Include preview paths for image deletion
+      if (type === "image") {
+        if (previewPath) {
+          requestBody.previewPath = previewPath;
+        }
+      }
+
       const response = await fetch(endpoint, {
         method: "DELETE",
         headers,
-        body: JSON.stringify({
-          [`${type}Url`]: url,
-        }),
+        body: JSON.stringify(requestBody),
         credentials: "same-origin",
       });
 
@@ -410,15 +450,41 @@ export function MediaUpload({
 
       const result = await response.json();
       if (result.success) {
+        console.log(`Successfully deleted ${type} file: ${url}`);
+        if (result.previewFiles) {
+          console.log("Preview files deletion results:", result.previewFiles);
+        }
         return true;
       } else {
         throw new Error(result.error || "Failed to delete file");
       }
     } catch (error) {
-      console.error("Deletion error:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to delete file";
-      toast.error(errorMessage);
+      console.error(`Deletion error (attempt ${retryCount + 1}):`, error);
+      
+      // Retry logic for transient errors
+      if (retryCount < maxRetries) {
+        const isRetryableError = error instanceof Error && 
+          (error.message.includes("network") || 
+           error.message.includes("timeout") || 
+           error.message.includes("ECONNRESET") ||
+           error.message.includes("ENOTFOUND"));
+        
+        if (isRetryableError) {
+          console.log(`Retrying deletion in 1 second... (attempt ${retryCount + 2}/${maxRetries + 1})`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return handleDeleteFile(type, url, retryCount + 1);
+        }
+      }
+      
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete file";
+      
+      // Show different messages based on retry attempts
+      if (retryCount > 0) {
+        toast.error(`Failed to delete file after ${retryCount + 1} attempts: ${errorMessage}`);
+      } else {
+        toast.error(errorMessage);
+      }
+      
       return false;
     } finally {
       setDeletionState((prev) => ({ ...prev, deleting: false }));
@@ -457,6 +523,7 @@ export function MediaUpload({
     setUploadFullUrl(null);
     setUploadFileType(null);
     setPreviewPath(null);
+    setPreviewVideoPath(null);
     setUploadMediaId(null);
 
     // Reset upload state and notify parent
@@ -529,26 +596,28 @@ export function MediaUpload({
   };
 
   const renderPreview = () => {
-    if (!uploadPath) return null;
+    if (!previewPath) return null;
 
     const isDeleting = deletionState.deleting;
 
     return (
       <div className="relative w-full flex items-center justify-center">
-        {uploadPath ? (
+        {previewPath ? (
           uploadFileType === "VIDEO" ? (
             <div className="w-full h-96">
               <MediaVideo
-                src={uploadPath}
+                src={previewVideoPath || previewPath}
                 className="w-full h-full rounded-lg object-contain"
                 controls
                 preload="metadata"
+                usePreviewVideo={true}
+                fallbackToOriginal={false}
               />
             </div>
           ) : (
             <div className="relative w-full h-96">
               <MediaImage
-                src={previewPath ?? uploadPath}
+                src={previewPath}
                 alt="Image preview"
                 fill
                 className="object-contain rounded-lg"

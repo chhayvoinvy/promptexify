@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -39,7 +39,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
   const [previousPostCount, setPreviousPostCount] = useState(0);
   const [playingVideo, setPlayingVideo] = useState<string | null>(null);
   const [mutedVideos, setMutedVideos] = useState<Set<string>>(
-    new Set(posts.filter((post) => post.uploadPath && post.uploadFileType === "VIDEO").map((post) => post.id))
+    new Set(posts.filter((post) => post.previewVideoPath && post.uploadFileType === "VIDEO").map((post) => post.id))
   );
   
   // State to track which videos should be loaded and their loading status
@@ -54,34 +54,40 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
   >({});
 
   // Initialize prefetch hook for viewport-based prefetching
-  const { observePost, unobservePost, getPrefetchStatus } = usePrefetchPosts({
+  const { observePost, unobservePost } = usePrefetchPosts({
     rootMargin: "0px 0px 800px 0px", // Start prefetching 800px before entering viewport
     threshold: 0.1,
     prefetchData: true, // Prefetch both route and API data
     debounceMs: 100, // Quick response for better UX
   });
 
-  // Get all video post IDs for video state management
-  const videoPostIds = useMemo(
-    () =>
-      new Set(posts.filter((post) => post.uploadPath && post.uploadFileType === "VIDEO").map((post) => post.id)),
-    [posts]
-  );
-
-  // Handle video play/pause
+  // Handle video play/pause from button clicks
   const handleVideoPlay = useCallback(
-    (postId: string, event: React.MouseEvent) => {
-      event.stopPropagation();
-      event.preventDefault();
+    (postId: string, event?: React.MouseEvent) => {
+      if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+      }
       
       if (!videosToShow.has(postId)) {
-        // First click: show video and start loading
+        // First click: show video, mark as playing, and it will auto-play when loaded
         setVideosToShow(prev => new Set([...prev, postId]));
+        setPlayingVideo(postId);
         return;
       }
 
       const video = videoRefs.current[postId];
-      if (!video) return;
+      if (!video) {
+        // Video not ready yet, just mark as playing for auto-play
+        setPlayingVideo(postId);
+        return;
+      }
+
+      // Prevent rapid clicking during video state changes
+      if (video.readyState < 2) {
+        console.log("Video not ready for playback yet");
+        return;
+      }
 
       if (playingVideo === postId) {
         video.pause();
@@ -90,16 +96,38 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
         // Pause any currently playing video
         if (playingVideo) {
           const currentVideo = videoRefs.current[playingVideo];
-          if (currentVideo) {
+          if (currentVideo && !currentVideo.paused) {
             currentVideo.pause();
           }
         }
-        video.play();
+        // Start playing this video
+        video.play().catch(err => {
+          console.error("Failed to play video:", err);
+          // Don't change state if play failed
+        });
         setPlayingVideo(postId);
       }
     },
     [playingVideo, videosToShow]
   );
+
+  // Handle video play event (from video element, not button)
+  const handleVideoPlayEvent = useCallback((postId: string) => {
+    console.log(`Video started playing: ${postId}`);
+    // Just ensure state is in sync - don't toggle
+    if (playingVideo !== postId) {
+      setPlayingVideo(postId);
+    }
+  }, [playingVideo]);
+
+  // Handle video pause event (from video element, not button)
+  const handleVideoPauseEvent = useCallback((postId: string) => {
+    console.log(`Video paused: ${postId}`);
+    // Clear playing state when video pauses
+    if (playingVideo === postId) {
+      setPlayingVideo(null);
+    }
+  }, [playingVideo]);
 
   // Handle video mute/unmute
   const handleVideoMute = useCallback(
@@ -282,7 +310,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
       if (newPosts.length > 0) {
         // Add new videos to muted list by default
         const newVideoPostIds = newPosts
-          .filter((post) => post.uploadPath && post.uploadFileType === "VIDEO")
+          .filter((post) => post.previewVideoPath && post.uploadFileType === "VIDEO")
           .map((post) => post.id);
 
         if (newVideoPostIds.length > 0) {
@@ -297,7 +325,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
         setPreviousPostCount(posts.length);
       }
     }
-  }, [posts.length, previousPostCount]);
+  }, [posts, previousPostCount]);
 
   // Observer for image loads to trigger recalculation
   useEffect(() => {
@@ -342,14 +370,9 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
       >
         {posts.map((post) => {
           const position = postPositions.find((p) => p.id === post.id);
-          const videoPreviewPath = post.uploadPath && post.uploadFileType === "VIDEO"
-            ? post.previewPath 
-            : null;
-          const videoPreviewBlurData = post.uploadPath && post.uploadFileType === "VIDEO"
-            ? post.media?.find(m => m.relativePath === post.uploadPath)?.blurDataUrl
-            : null;
-          const shouldShowVideo = videosToShow.has(post.id);
-          const isVideoLoaded = videosLoaded.has(post.id);
+          const isVideo = post.previewVideoPath && post.uploadFileType === "VIDEO";
+          const showVideo = isVideo && videosToShow.has(post.id);
+          const videoLoaded = isVideo && videosLoaded.has(post.id);
 
           return (
             <div
@@ -383,107 +406,123 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                 <Card className="overflow-hidden hover:shadow-lg cursor-zoom-in py-0 shadow-lg">
                   <div
                     className="relative"
-                                          style={
-                        post.uploadPath
-                           ? getDynamicAspectRatio(post.id)
-                           : { height: "auto", minHeight: "120px" }
-                      }
+                    style={
+                      // Apply dynamic aspect ratio to images preview and videos preview only
+                      post.previewPath && post.uploadFileType === "IMAGE" || post.previewVideoPath && post.uploadFileType === "VIDEO"
+                        ? getDynamicAspectRatio(post.id)
+                        : { height: "auto", minHeight: "120px", maxHeight: "200px" }
+                    }
                   >
-                    {post.uploadPath && post.uploadFileType === "IMAGE" ? (
+                    {post.previewPath && post.uploadFileType === "IMAGE" ? (
+                      // For images: Always use previewPath if available, fallback to previewPath
                       <MediaImage
-                        src={post.previewPath ?? post.uploadPath}
+                        src={post.previewPath || ""}
                         alt={post.title}
                         fill
                         className="object-cover rounded-b-lg absolute"
                         loading="lazy"
+                        priority={posts.indexOf(post) < 4} // Prioritize first 4 images for LCP
                         blurDataURL={post.blurData || undefined}
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         onLoad={(e) => handleMediaLoad(post.id, e)}
                       />
-                    ) : post.uploadPath && post.uploadFileType === "VIDEO" ? (
-                      <>
-                        {/* Always show video preview image initially */}
-                        {videoPreviewPath && (
+                    ) : isVideo ? (
+                      <div className="relative w-full h-full">
+                        {/* Show thumbnail with play button when video is not loaded */}
+                        {!showVideo && post.previewPath && (
                           <MediaImage
-                            src={videoPreviewPath}
+                            src={post.previewPath}
                             alt={post.title}
                             fill
-                            className={`object-cover rounded-b-lg absolute transition-opacity duration-300 ${
-                              shouldShowVideo && isVideoLoaded ? "opacity-0" : "opacity-100"
-                            }`}
+                            className="object-cover rounded-b-lg absolute"
                             loading="lazy"
+                            priority={posts.indexOf(post) < 4} // Prioritize first 4 images for LCP
+                            blurDataURL={post.blurData || undefined}
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                             onLoad={(e) => handleMediaLoad(post.id, e)}
-                            blurDataURL={videoPreviewBlurData || undefined}
                           />
                         )}
                         
-                        {/* Load and show video only when user requests it */}
-                        {shouldShowVideo && (
+                        {/* Show video when user clicks play */}
+                        {showVideo && (
                           <MediaVideo
                             ref={(el) => {
                               if (el) videoRefs.current[post.id] = el;
                             }}
-                            src={post.uploadPath}
-                            className={`w-full h-full object-cover rounded-b-lg absolute scale-150 transition-opacity duration-300 ${
-                              isVideoLoaded ? "opacity-100" : "opacity-0"
-                            }`}
+                            // Always use previewVideoPath as the primary source when available
+                            src={post.previewVideoPath || ""}
+                            previewSrc={post.previewPath || undefined}
+                            previewVideoSrc={post.previewVideoPath || undefined}
+                            alt={post.title}
+                            fill
+                            className="rounded-b-lg"
                             muted={mutedVideos.has(post.id)}
                             loop
                             playsInline
                             preload="metadata"
-                            onLoadedMetadata={(e) => handleVideoLoadedMetadata(post.id, e)}
+                            autoPlay={playingVideo === post.id} // Auto-play if this video should be playing
+                            onLoadedMetadata={(e) => {
+                              handleVideoLoadedMetadata(post.id, e);
+                            }}
+                            onPlay={() => {
+                              handleVideoPlayEvent(post.id);
+                            }}
+                            onPause={() => {
+                              handleVideoPauseEvent(post.id);
+                            }}
                             onEnded={() => handleVideoEnded(post.id)}
+                            blurDataURL={post.blurData || undefined}
+                            usePreviewVideo={true}
+                            fallbackToOriginal={false}
                           />
                         )}
 
-                        {/* Video controls */}
-                        <div className="absolute inset-0 top-3 left-3 pointer-events-none z-10">
-                          <div className="flex gap-2">
-                            {/* Play/pause button */}
-                            <button
-                              className="bg-background/90 hover:bg-background rounded-full p-1.5 transition-colors pointer-events-auto"
-                              onClick={(e) => {
-                                handleVideoPlay(post.id, e);
-                              }}
-                            >
-                              {playingVideo === post.id && isVideoLoaded ? (
-                                <Pause className="w-5 h-5 text-foreground" />
-                              ) : (
-                                <Play className="w-5 h-5 text-foreground" />
-                              )}
-                            </button>
-
-                            {/* Mute/unmute button - only show when video is loaded */}
-                            {shouldShowVideo && isVideoLoaded && (
-                              <button
-                                className="bg-background/90 hover:bg-background rounded-full p-1.5 transition-colors pointer-events-auto"
-                                onClick={(e) => {
-                                  handleVideoMute(post.id, e);
-                                }}
-                              >
-                                {mutedVideos.has(post.id) ? (
-                                  <VolumeX className="w-5 h-5 text-foreground" />
-                                ) : (
-                                  <Volume2 className="w-5 h-5 text-foreground" />
-                                )}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
                         {/* Loading indicator when video is being loaded */}
-                        {shouldShowVideo && !isVideoLoaded && (
-                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center z-5">
-                            <div className="bg-background/90 rounded-full p-2">
-                              <div className="w-4 h-4 border-2 border-foreground border-t-transparent rounded-full animate-spin"></div>
+                        {showVideo && !videoLoaded && (
+                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center z-10">
+                            <div className="bg-white rounded-full p-2">
+                              <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
                             </div>
                           </div>
                         )}
-                      </>
+
+                        {/* Video controls overlay - always visible on top left */}
+                        <div className="absolute top-3 left-3 flex items-center gap-2 z-20">
+                          {/* Play/Pause button */}
+                          <button
+                            className="bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
+                            onClick={(e) => handleVideoPlay(post.id, e)}
+                          >
+                            {playingVideo === post.id ? (
+                              <Pause className="w-4 h-4" />
+                            ) : (
+                              <Play className="w-4 h-4" />
+                            )}
+                          </button>
+                          
+                          {/* Mute/Unmute button */}
+                          <button
+                            className="bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
+                            onClick={(e) => handleVideoMute(post.id, e)}
+                          >
+                            {mutedVideos.has(post.id) ? (
+                              <VolumeX className="w-4 h-4" />
+                            ) : (
+                              <Volume2 className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
                     ) : (
                       // Text base post with shiny hover effect
-                      <PostTextBaseCard title={post.title} />
+                      <div
+                        className="relative"
+                        style={{
+                          height: "auto",
+                        }}
+                      >
+                        <PostTextBaseCard title={post.title} />
+                      </div>
                     )}
 
                     {post.isPremium && (
@@ -498,24 +537,6 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                         </Badge>
                       </div>
                     )}
-
-                    {/* Prefetch status indicator (development only) */}
-                    {process.env.NODE_ENV === "development" && getPrefetchStatus && (() => {
-                      const prefetchStatus = getPrefetchStatus(post.id);
-                      return prefetchStatus.isPrefetching ? (
-                        <div className="absolute top-3 left-3 z-20">
-                          <Badge variant="outline" className="text-xs bg-blue-500/90 text-white border-blue-400">
-                            ⚡ Prefetching...
-                          </Badge>
-                        </div>
-                      ) : prefetchStatus.isPrefetched ? (
-                        <div className="absolute top-3 left-3 z-20">
-                          <Badge variant="outline" className="text-xs bg-green-500/90 text-white border-green-400">
-                            ✅ Ready
-                          </Badge>
-                        </div>
-                      ) : null;
-                    })()}
 
                     {/* Action buttons overlay */}
                     <div className="absolute bottom-3 left-0 right-0 px-3 flex gap-2 items-end justify-between z-20">

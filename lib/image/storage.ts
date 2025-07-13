@@ -63,6 +63,7 @@ export interface UploadResult {
   storageType: StorageType;
   blurDataUrl?: string; // Base64 blur placeholder for images
   previewPath?: string; // Path to preview image
+  previewVideoPath?: string; // Path to preview video
 }
 
 // Cache for storage config to avoid repeated database calls
@@ -347,7 +348,7 @@ export async function deleteImageFromLocal(imageUrl: string): Promise<boolean> {
     // Check if file exists before attempting deletion
     try {
       await fs.access(filePath);
-    } catch (accessError) {
+    } catch {
       console.log(`File not found, skipping deletion: ${filePath}`);
       return true; // Consider this a success since the file is already gone
     }
@@ -386,7 +387,7 @@ export async function deleteVideoFromLocal(videoUrl: string): Promise<boolean> {
     // Check if file exists before attempting deletion
     try {
       await fs.access(filePath);
-    } catch (accessError) {
+    } catch {
       console.log(`File not found, skipping deletion: ${filePath}`);
       return true; // Consider this a success since the file is already gone
     }
@@ -504,6 +505,153 @@ export async function uploadPreviewToLocal(
   } catch (error) {
     console.error("Error uploading preview to local storage:", error);
     throw new Error("Failed to upload preview to local storage");
+  }
+}
+
+/**
+ * Upload preview video to S3 with configuration
+ */
+export async function uploadPreviewVideoToS3WithConfig(
+  previewVideoBuffer: Buffer,
+  previewVideoFilename: string,
+  config: StorageConfig
+): Promise<string> {
+  const s3Client = await createS3Client(config);
+  if (!s3Client) {
+    throw new Error("Failed to create S3 client");
+  }
+
+  const key = `preview/${previewVideoFilename}`;
+
+  const uploadParams = {
+    Bucket: config.s3BucketName!,
+    Key: key,
+    Body: previewVideoBuffer,
+    ContentType: "video/mp4",
+    ACL: "private" as const,
+    ServerSideEncryption: ServerSideEncryption.AES256,
+    CacheControl: "public, max-age=31536000", // Cache for 1 year
+    ContentDisposition: "inline",
+  };
+
+  try {
+    await s3Client.send(new PutObjectCommand(uploadParams));
+
+    if (!config.s3CloudfrontUrl) {
+      throw new Error("S3 CloudFront URL is required for secure access");
+    }
+
+    return `${config.s3CloudfrontUrl}/${key}`;
+  } catch (error) {
+    console.error("Error uploading preview video to S3:", error);
+    throw new Error("Failed to upload preview video to S3");
+  }
+}
+
+/**
+ * Upload preview video to DigitalOcean Spaces with configuration
+ */
+export async function uploadPreviewVideoToDOSpacesWithConfig(
+  previewVideoBuffer: Buffer,
+  previewVideoFilename: string,
+  config: StorageConfig
+): Promise<string> {
+  const doClient = await createDOSpacesClient(config);
+  if (!doClient) {
+    throw new Error("Failed to create DigitalOcean Spaces client");
+  }
+
+  const key = `preview/${previewVideoFilename}`;
+
+  const uploadParams = {
+    Bucket: config.doSpaceName!,
+    Key: key,
+    Body: previewVideoBuffer,
+    ContentType: "video/mp4",
+    ACL: ObjectCannedACL.public_read,
+    CacheControl: "public, max-age=31536000",
+    ContentDisposition: "inline",
+  };
+
+  try {
+    await doClient.send(new PutObjectCommand(uploadParams));
+
+    if (!config.doCdnUrl) {
+      return `https://${config.doSpaceName}.${config.doRegion}.digitaloceanspaces.com/${key}`;
+    }
+
+    return `${config.doCdnUrl}/${key}`;
+  } catch (error) {
+    console.error("Error uploading preview video to DigitalOcean Spaces:", error);
+    throw new Error("Failed to upload preview video to DigitalOcean Spaces");
+  }
+}
+
+/**
+ * Upload preview video to local storage
+ */
+export async function uploadPreviewVideoToLocal(
+  previewVideoBuffer: Buffer,
+  previewVideoFilename: string,
+  basePath: string = "/uploads"
+): Promise<string> {
+  try {
+    // Ensure base directory exists first
+    await ensureUploadDirectory(basePath);
+
+    // Full file path - follow same pattern as other local upload functions
+    const filePath = path.join(
+      process.cwd(),
+      "public",
+      basePath.replace(/^\//, ""),
+      "preview",
+      previewVideoFilename
+    );
+
+    // Ensure preview subdirectory exists
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+
+    // Write file
+    await fs.writeFile(filePath, previewVideoBuffer);
+
+    // Return relative path for consistency
+    return `preview/${previewVideoFilename}`;
+  } catch (error) {
+    console.error("Error uploading preview video to local storage:", error);
+    throw new Error("Failed to upload preview video to local storage");
+  }
+}
+
+/**
+ * Upload preview video using configured storage method
+ */
+export async function uploadPreviewVideoToStorage(
+  previewVideoBuffer: Buffer,
+  previewVideoFilename: string,
+  storageType: StorageType,
+  config: StorageConfig
+): Promise<string> {
+  switch (storageType) {
+    case "S3":
+      return await uploadPreviewVideoToS3WithConfig(
+        previewVideoBuffer,
+        previewVideoFilename,
+        config
+      );
+    case "DOSPACE":
+      return await uploadPreviewVideoToDOSpacesWithConfig(
+        previewVideoBuffer,
+        previewVideoFilename,
+        config
+      );
+    case "LOCAL":
+      return await uploadPreviewVideoToLocal(
+        previewVideoBuffer,
+        previewVideoFilename,
+        config.localBasePath || "/uploads"
+      );
+    default:
+      throw new Error(`Unsupported storage type: ${storageType}`);
   }
 }
 
@@ -982,69 +1130,118 @@ export async function deleteImage(imageUrl: string): Promise<boolean> {
 
 /**
  * Delete video using configured storage method
- * Also deletes associated preview file (thumbnail) if it exists
+ * Also deletes associated preview file (thumbnail) and preview video if they exist
  */
 export async function deleteVideo(videoUrl: string): Promise<boolean> {
   const config = await getStorageConfig();
 
+  console.log(`Starting video deletion process for: ${videoUrl}`);
+
   // First, try to delete the main video file
   let mainFileDeleted = false;
-  if (config.storageType === "LOCAL") {
-    mainFileDeleted = await deleteVideoFromLocal(videoUrl);
-  } else if (config.storageType === "DOSPACE") {
-    mainFileDeleted = await deleteVideoFromDOSpacesWithConfig(videoUrl, config);
-  } else {
-    mainFileDeleted = await deleteVideoFromS3WithConfig(videoUrl, config);
+  try {
+    if (config.storageType === "LOCAL") {
+      mainFileDeleted = await deleteVideoFromLocal(videoUrl);
+    } else if (config.storageType === "DOSPACE") {
+      mainFileDeleted = await deleteVideoFromDOSpacesWithConfig(videoUrl, config);
+    } else {
+      mainFileDeleted = await deleteVideoFromS3WithConfig(videoUrl, config);
+    }
+  } catch (error) {
+    console.error(`Failed to delete main video file: ${videoUrl}`, error);
+    return false;
   }
 
-  // If main file deletion succeeded, also try to delete the associated preview file (thumbnail)
-  if (mainFileDeleted) {
-    try {
-      // Extract filename from the main video URL to generate preview filename
-      const urlParts = videoUrl.split("/");
-      const mainFilename = urlParts[urlParts.length - 1];
+  if (!mainFileDeleted) {
+    console.warn(`Main video file deletion failed for: ${videoUrl}`);
+    return false;
+  }
+
+  console.log(`Successfully deleted main video file: ${videoUrl}`);
+
+  // If main file deletion succeeded, also try to delete the associated preview files
+  let previewImageDeleted = false;
+  let previewVideoDeleted = false;
+  
+  try {
+    // Extract filename from the main video URL to generate preview filenames
+    const urlParts = videoUrl.split("/");
+    const mainFilename = urlParts[urlParts.length - 1];
+    
+    // Only attempt preview deletion for main video files (not already preview files)
+    if (mainFilename && !mainFilename.startsWith("preview-")) {
+      // Generate preview filenames using the same logic as upload
+      const { generatePreviewFilename } = await import("./preview");
+      const previewFilename = generatePreviewFilename(mainFilename);
+      const previewVideoFilename = previewFilename.replace('.webp', '.mp4');
       
-      // Only attempt preview deletion for main video files (not already preview files)
-      if (mainFilename && !mainFilename.startsWith("preview-")) {
-        // Generate preview filename using the same logic as upload
-        const { generatePreviewFilename } = await import("./preview");
-        const previewFilename = generatePreviewFilename(mainFilename);
-        
-        // Construct preview URL based on storage type
-        let previewUrl: string;
-        if (config.storageType === "LOCAL") {
-          // For local storage, replace the path segment
-          previewUrl = videoUrl.replace(/\/videos\/[^/]+$/, `/preview/${previewFilename}`);
-        } else {
-          // For cloud storage, replace the key in the URL
-          previewUrl = videoUrl.replace(/\/videos\/[^/]+$/, `/preview/${previewFilename}`);
-        }
-        
-        // Attempt to delete preview file (don't fail if it doesn't exist)
-        // Note: We use image deletion functions since video previews are images
-        if (config.storageType === "LOCAL") {
-          const previewDeleted = await deleteImageFromLocal(previewUrl);
-          if (!previewDeleted) {
-            console.log("Preview file not found or already deleted:", previewUrl);
-          }
-        } else if (config.storageType === "DOSPACE") {
-          const previewDeleted = await deleteImageFromDOSpacesWithConfig(previewUrl, config);
-          if (!previewDeleted) {
-            console.log("Preview file not found or already deleted:", previewUrl);
-          }
-        } else {
-          const previewDeleted = await deleteImageFromS3WithConfig(previewUrl, config);
-          if (!previewDeleted) {
-            console.log("Preview file not found or already deleted:", previewUrl);
-          }
-        }
-        
-        console.log("Attempted to delete associated preview file:", previewUrl);
+      // Construct preview URLs based on storage type
+      let previewImageUrl: string;
+      let previewVideoUrl: string;
+      if (config.storageType === "LOCAL") {
+        // For local storage, replace the path segment
+        previewImageUrl = videoUrl.replace(/\/videos\/[^/]+$/, `/preview/${previewFilename}`);
+        previewVideoUrl = videoUrl.replace(/\/videos\/[^/]+$/, `/preview/${previewVideoFilename}`);
+      } else {
+        // For cloud storage, replace the key in the URL
+        previewImageUrl = videoUrl.replace(/\/videos\/[^/]+$/, `/preview/${previewFilename}`);
+        previewVideoUrl = videoUrl.replace(/\/videos\/[^/]+$/, `/preview/${previewVideoFilename}`);
       }
-    } catch (error) {
-      console.warn("Failed to delete associated preview file:", error);
-      // Don't fail the main operation if preview deletion fails
+      
+      console.log(`Attempting to delete preview files for: ${mainFilename}`);
+      console.log(`Preview image URL: ${previewImageUrl}`);
+      console.log(`Preview video URL: ${previewVideoUrl}`);
+      
+      // Attempt to delete preview image (thumbnail) - use image deletion functions
+      try {
+        if (config.storageType === "LOCAL") {
+          previewImageDeleted = await deleteImageFromLocal(previewImageUrl);
+        } else if (config.storageType === "DOSPACE") {
+          previewImageDeleted = await deleteImageFromDOSpacesWithConfig(previewImageUrl, config);
+        } else {
+          previewImageDeleted = await deleteImageFromS3WithConfig(previewImageUrl, config);
+        }
+        
+        if (previewImageDeleted) {
+          console.log(`Successfully deleted preview image: ${previewImageUrl}`);
+        } else {
+          console.log(`Preview image not found or already deleted: ${previewImageUrl}`);
+        }
+      } catch (error) {
+        console.warn(`Failed to delete preview image: ${previewImageUrl}`, error);
+      }
+      
+      // Attempt to delete preview video - use video deletion functions
+      try {
+        if (config.storageType === "LOCAL") {
+          previewVideoDeleted = await deleteVideoFromLocal(previewVideoUrl);
+        } else if (config.storageType === "DOSPACE") {
+          previewVideoDeleted = await deleteVideoFromDOSpacesWithConfig(previewVideoUrl, config);
+        } else {
+          previewVideoDeleted = await deleteVideoFromS3WithConfig(previewVideoUrl, config);
+        }
+        
+        if (previewVideoDeleted) {
+          console.log(`Successfully deleted preview video: ${previewVideoUrl}`);
+        } else {
+          console.log(`Preview video not found or already deleted: ${previewVideoUrl}`);
+        }
+      } catch (error) {
+        console.warn(`Failed to delete preview video: ${previewVideoUrl}`, error);
+      }
+      
+      console.log("Preview file deletion summary:", {
+        mainFile: true,
+        previewImage: previewImageDeleted,
+        previewVideo: previewVideoDeleted,
+        totalFiles: 1 + (previewImageDeleted ? 1 : 0) + (previewVideoDeleted ? 1 : 0)
+      });
+    } else {
+      console.log(`Skipping preview deletion for preview file: ${mainFilename}`);
     }
+  } catch (error) {
+    console.warn("Failed to delete associated preview files:", error);
+    // Don't fail the main operation if preview deletion fails
   }
 
   return mainFileDeleted;
@@ -1062,7 +1259,7 @@ export async function processAndUploadImageWithConfig(
   const { storageType } = config;
 
   // Import functions dynamically to avoid circular dependencies
-  const { convertToWebp, generateImageFilename } = await import("./s3");
+  const { generateImageFilename } = await import("./s3");
   const { generateOptimizedBlurPlaceholder } = await import("./blur");
   const { generateImagePreview, generatePreviewFilename } = await import("./preview");
 
@@ -1070,11 +1267,11 @@ export async function processAndUploadImageWithConfig(
   const filename = generateImageFilename(file.name, userId);
   const relativePath = `images/${filename}`;
 
-  // Process the image
+  // Process the image - KEEP ORIGINAL FORMAT
   const sharp = (await import("sharp")).default;
   const buffer: Buffer = Buffer.from(new Uint8Array(await file.arrayBuffer()));
-  let imageBuffer: Buffer = buffer;
-  let finalMimeType = file.type;
+  const imageBuffer: Buffer = buffer;  // Keep original format
+  const finalMimeType = file.type;  // Keep original MIME type
 
   const image = sharp(buffer);
   const metadata = await image.metadata();
@@ -1083,19 +1280,23 @@ export async function processAndUploadImageWithConfig(
   // Generate blur placeholder from original buffer (before compression)
   let blurDataUrl: string | undefined;
   try {
-    blurDataUrl = await generateOptimizedBlurPlaceholder(buffer, file.type);
+    blurDataUrl = await generateOptimizedBlurPlaceholder(buffer, file.type, {
+      enableCompression: config.enableCompression,
+      quality: config.compressionQuality,
+    });
   } catch (error) {
     console.error("Failed to generate blur placeholder:", error);
   }
 
-  // Generate preview image
+  // Generate preview image with compression settings
   let previewPath: string | undefined;
   try {
     const previewBuffer = await generateImagePreview(buffer, {
       maxWidth: 1280,
       maxHeight: 720,
-      quality: 80,
-      format: "webp",
+      quality: config.compressionQuality,  // Use dashboard setting
+      format: "webp",  // Always WebP for previews
+      enableCompression: config.enableCompression,  // Respect compression toggle
     });
 
     const previewFilename = generatePreviewFilename(filename);
@@ -1117,7 +1318,7 @@ export async function processAndUploadImageWithConfig(
           config
         );
         break;
-      case "LOCAL":
+      case "LOCAL": {
         const uploadedPreviewPath = await uploadPreviewToLocal(
           previewBuffer,
           previewFilename,
@@ -1125,43 +1326,42 @@ export async function processAndUploadImageWithConfig(
         );
         previewPath = uploadedPreviewPath;
         break;
+      }
     }
   } catch (error) {
     console.error("Failed to generate and upload preview:", error);
     // Continue without preview - it's not critical
   }
 
-  // Convert to WebP if enabled and not already WebP
-  if (config.enableCompression && file.type !== "image/webp") {
-    imageBuffer = await convertToWebp(buffer);
-    finalMimeType = "image/webp";
-  }
-
+  // Upload original image (original format, no WebP conversion)
   let uploadedPath: string;
 
   // Upload original image based on storage type
   switch (storageType) {
-    case "S3":
+    case "S3": {
       uploadedPath = await uploadImageToS3WithConfig(
         imageBuffer,
         filename,
         config
       );
       break;
-    case "DOSPACE":
+    }
+    case "DOSPACE": {
       uploadedPath = await uploadImageToDOSpacesWithConfig(
         imageBuffer,
         filename,
         config
       );
       break;
-    case "LOCAL":
+    }
+    case "LOCAL": {
       uploadedPath = await uploadImageToLocal(
         imageBuffer,
         filename,
         config.localBasePath || "/uploads"
       );
       break;
+    }
     default:
       throw new Error(`Unsupported storage type: ${storageType}`);
   }
@@ -1177,13 +1377,13 @@ export async function processAndUploadImageWithConfig(
     filename,
     relativePath: storageType === "LOCAL" ? uploadedPath : relativePath,
     originalName: file.name,
-    mimeType: finalMimeType,
+    mimeType: finalMimeType,  // Original MIME type
     fileSize: imageBuffer.length,
     width,
     height,
     storageType: storageType as StorageType,
     blurDataUrl,
-    previewPath,
+    previewPath,  // WebP preview path
   };
 }
 
@@ -1200,45 +1400,68 @@ export async function processAndUploadVideoWithConfig(
 
   // Import functions dynamically to avoid circular dependencies
   const { generateVideoFilename } = await import("./s3");
-  const { generateVideoThumbnail, generatePreviewFilename } = await import("./preview");
+  const { generateVideoThumbnail, generateVideoPreview, generatePreviewFilename } = await import("./preview");
+  const { extractVideoMetadata } = await import("./preview");
 
   // Generate filename
   const filename = generateVideoFilename(file.name, userId);
   const relativePath = `videos/${filename}`;
-  const videoBuffer = Buffer.from(new Uint8Array(await file.arrayBuffer()));
 
-  // Generate video thumbnail
+  // Process the video
+  const videoBuffer: Buffer = Buffer.from(new Uint8Array(await file.arrayBuffer()));
+  
+  // Extract video metadata
+  const videoMetadata = await extractVideoMetadata(videoBuffer);
+
+  // Generate thumbnail and preview with compression settings
   let previewPath: string | undefined;
+  let previewVideoPath: string | undefined;
   let blurDataUrl: string | undefined;
   
   try {
+    // Generate thumbnail image with smart dimensions for portrait videos
     const thumbnailBuffer = await generateVideoThumbnail(videoBuffer, {
       time: "00:00:01",
-      width: 1280,
-      height: 720,
-      quality: 80,
+      maxWidth: 1280,
+      maxHeight: 720,
+      quality: config.compressionQuality,  // Use dashboard setting
+      enableCompression: config.enableCompression,  // Respect compression toggle
+    });
+
+    // Generate compressed video preview
+    const previewVideoBuffer = await generateVideoPreview(videoBuffer, {
+      maxWidth: 640, // Reduced from 1280
+      maxHeight: 360, // Reduced from 720
+      bitrate: "300k", // Reduced from 500k
+      fps: 15, // Reduced from 24
+      quality: 60,
+      duration: 10, // 10 seconds max
+      format: "mp4",
     });
 
     const previewFilename = generatePreviewFilename(filename);
     previewPath = `preview/${previewFilename}`;
+    previewVideoPath = `preview/${previewFilename.replace('.webp', '.mp4')}`;
 
     // Upload thumbnail based on storage type
     switch (storageType) {
-      case "S3":
+      case "S3": {
         await uploadPreviewToS3WithConfig(
           thumbnailBuffer,
           previewFilename,
           config
         );
         break;
-      case "DOSPACE":
+      }
+      case "DOSPACE": {
         await uploadPreviewToDOSpacesWithConfig(
           thumbnailBuffer,
           previewFilename,
           config
         );
         break;
-      case "LOCAL":
+      }
+      case "LOCAL": {
         const uploadedPreviewPath = await uploadPreviewToLocal(
           thumbnailBuffer,
           previewFilename,
@@ -1246,45 +1469,60 @@ export async function processAndUploadVideoWithConfig(
         );
         previewPath = uploadedPreviewPath;
         break;
+      }
     }
+
+    // Upload compressed video preview
+    await uploadPreviewVideoToStorage(
+      previewVideoBuffer,
+      previewFilename.replace('.webp', '.mp4'),
+      storageType,
+      config
+    );
 
     // Generate blur placeholder from thumbnail
     try {
       const { generateOptimizedBlurPlaceholder } = await import("./blur");
-      blurDataUrl = await generateOptimizedBlurPlaceholder(thumbnailBuffer, "image/webp");
+      blurDataUrl = await generateOptimizedBlurPlaceholder(thumbnailBuffer, "image/webp", {
+        enableCompression: config.enableCompression,
+        quality: config.compressionQuality,
+      });
     } catch (error) {
       console.error("Failed to generate blur placeholder for video thumbnail:", error);
     }
   } catch (error) {
-    console.error("Failed to generate and upload video thumbnail:", error);
-    // Continue without thumbnail - it's not critical
+    console.error("Failed to generate and upload video previews:", error);
+    // Continue without previews - they're not critical
   }
 
   let uploadedPath: string;
 
   // Upload original video based on storage type
   switch (storageType) {
-    case "S3":
+    case "S3": {
       uploadedPath = await uploadVideoToS3WithConfig(
         videoBuffer,
         filename,
         config
       );
       break;
-    case "DOSPACE":
+    }
+    case "DOSPACE": {
       uploadedPath = await uploadVideoToDOSpacesWithConfig(
         videoBuffer,
         filename,
         config
       );
       break;
-    case "LOCAL":
+    }
+    case "LOCAL": {
       uploadedPath = await uploadVideoToLocal(
         videoBuffer,
         filename,
         config.localBasePath || "/uploads"
       );
       break;
+    }
     default:
       throw new Error(`Unsupported storage type: ${storageType}`);
   }
@@ -1300,10 +1538,14 @@ export async function processAndUploadVideoWithConfig(
     filename,
     relativePath: storageType === "LOCAL" ? uploadedPath : relativePath,
     originalName: file.name,
-    mimeType: file.type,
+    mimeType: file.type,  // Original video MIME type
     fileSize: file.size,
+    width: videoMetadata.width,
+    height: videoMetadata.height,
+    duration: videoMetadata.duration,
     storageType: storageType as StorageType,
-    previewPath,
+    previewPath,  // WebP thumbnail path
+    previewVideoPath,  // Compressed video preview path
     blurDataUrl,
   };
 }
@@ -1321,7 +1563,12 @@ export async function testStorageConfiguration(): Promise<{
   };
 }> {
   const testPath = "images/test-image.webp";
-  const results: { [key: string]: any } = {};
+  const results: { [key: string]: {
+    isValid: boolean;
+    testUrl: string;
+    issues: string[];
+    storageType?: StorageConfig["storageType"];
+  } } = {};
 
   // Test current configuration
   const currentConfig = await getStorageConfig();
@@ -1538,4 +1785,121 @@ export async function cleanupOrphanedMedia(dryRun: boolean = true): Promise<{
     errors,
     orphanedFiles: orphanedMedia,
   };
+}
+
+/**
+ * Clean up orphaned preview files that exist in storage but don't have corresponding database records
+ * This function scans the preview directory and removes files that aren't referenced in the database
+ * @param dryRun - If true, only returns what would be deleted without actually deleting
+ * @returns Promise with cleanup results
+ */
+export async function cleanupOrphanedPreviewFiles(dryRun: boolean = true): Promise<{
+  orphanedCount: number;
+  deletedCount: number;
+  errors: string[];
+  orphanedFiles: string[];
+}> {
+  const { prisma } = await import("@/lib/prisma");
+  const config = await getStorageConfig();
+  const errors: string[] = [];
+  let deletedCount = 0;
+  const orphanedFiles: string[] = [];
+
+  try {
+    // Get all preview files from database (both preview images and preview videos)
+    const dbPreviewFiles = await prisma.media.findMany({
+      where: {
+        OR: [
+          { relativePath: { startsWith: "preview/" } },
+          { filename: { startsWith: "preview-" } }
+        ]
+      },
+      select: {
+        relativePath: true,
+        filename: true,
+      },
+    });
+
+    // Create a set of known preview files for quick lookup
+    const knownPreviewFiles = new Set([
+      ...dbPreviewFiles.map(f => f.relativePath),
+      ...dbPreviewFiles.map(f => f.filename)
+    ]);
+
+    // For local storage, we can scan the actual directory
+    if (config.storageType === "LOCAL") {
+      const fs = await import("fs/promises");
+      const path = await import("path");
+      
+      try {
+        const previewDir = path.join(
+          process.cwd(),
+          "public",
+          (config.localBasePath || "/uploads").replace(/^\//, ""),
+          "preview"
+        );
+
+        // Check if preview directory exists
+        try {
+          await fs.access(previewDir);
+        } catch {
+          // Directory doesn't exist, nothing to clean
+          return {
+            orphanedCount: 0,
+            deletedCount: 0,
+            errors: [],
+            orphanedFiles: [],
+          };
+        }
+
+        const files = await fs.readdir(previewDir);
+        
+        for (const file of files) {
+          const filePath = path.join(previewDir, file);
+          const relativePath = `preview/${file}`;
+          
+          // Check if this file is known in the database
+          if (!knownPreviewFiles.has(relativePath) && !knownPreviewFiles.has(file)) {
+            orphanedFiles.push(relativePath);
+            
+            if (!dryRun) {
+              try {
+                await fs.unlink(filePath);
+                deletedCount++;
+                console.log(`Deleted orphaned preview file: ${relativePath}`);
+              } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : "Unknown error";
+                errors.push(`Failed to delete ${relativePath}: ${errorMessage}`);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        errors.push(`Error scanning preview directory: ${errorMessage}`);
+      }
+    } else {
+      // For cloud storage, we can't easily scan directories
+      // This would require listing objects from S3/DO Spaces
+      // For now, we'll just log that this feature is not available for cloud storage
+      console.log("Orphaned preview file cleanup is only available for local storage");
+    }
+
+    return {
+      orphanedCount: orphanedFiles.length,
+      deletedCount,
+      errors,
+      orphanedFiles,
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    errors.push(`Error in orphaned preview cleanup: ${errorMessage}`);
+    
+    return {
+      orphanedCount: 0,
+      deletedCount: 0,
+      errors,
+      orphanedFiles: [],
+    };
+  }
 }

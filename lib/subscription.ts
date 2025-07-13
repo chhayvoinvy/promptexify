@@ -272,8 +272,10 @@ export async function checkAndHandleExpiredSubscriptions(): Promise<{
             user.stripeSubscriptionId
           );
 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const subscriptionData = subscription as any;
+          const subscriptionData = subscription as unknown as {
+            current_period_end: number;
+            status: string;
+          };
           const currentPeriodEnd = new Date(
             subscriptionData.current_period_end * 1000
           );
@@ -407,7 +409,10 @@ export async function diagnoseOrphanedSubscriptions(): Promise<{
     for (const subscription of stripeSubscriptions.data) {
       if (!localSubscriptionIds.has(subscription.id)) {
         // This subscription exists in Stripe but not in our database
-        const customer = subscription.customer as any;
+        const customer = subscription.customer as {
+          id: string;
+          email?: string;
+        } | string;
 
         orphanedSubscriptions.push({
           subscriptionId: subscription.id,

@@ -1,7 +1,6 @@
 import sharp from "sharp";
 import { spawn } from "child_process";
-import { promisify } from "util";
-import { writeFile, unlink } from "fs/promises";
+import { writeFile, unlink, readFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 
@@ -15,13 +14,27 @@ interface PreviewOptions {
   maxHeight?: number;
   quality?: number;
   format?: "avif" | "webp" | "jpeg";
+  enableCompression?: boolean;  // New parameter to control compression
 }
 
 interface VideoThumbnailOptions {
   time?: string; // Time position for thumbnail (e.g., "00:00:01")
-  width?: number;
-  height?: number;
+  width?: number;  // Legacy parameter - will be calculated from maxWidth/maxHeight
+  height?: number; // Legacy parameter - will be calculated from maxWidth/maxHeight
+  maxWidth?: number;  // New parameter for smart dimension calculation
+  maxHeight?: number; // New parameter for smart dimension calculation
   quality?: number;
+  enableCompression?: boolean;  // New parameter to control compression
+}
+
+interface VideoPreviewOptions {
+  maxWidth?: number;
+  maxHeight?: number;
+  bitrate?: string;
+  fps?: number;
+  quality?: number;
+  duration?: number;
+  format?: "mp4" | "webm";
 }
 
 /**
@@ -40,6 +53,7 @@ export async function generateImagePreview(
     maxHeight = 720,
     quality = 80,
     format = "webp",
+    enableCompression = true,  // Default to true for backward compatibility
   } = options;
 
   try {
@@ -59,17 +73,20 @@ export async function generateImagePreview(
       maxHeight
     );
 
+    // Apply compression settings
+    const finalQuality = enableCompression ? Math.round(quality) : 100;
+    const finalFormat = enableCompression ? format : "jpeg";
+
     // Generate preview
     const previewBuffer = await sharp(imageBuffer)
       .resize(width, height, {
         fit: "inside", // Maintain aspect ratio, don't crop
         withoutEnlargement: true, // Don't upscale if image is smaller
-      })
-      [format]({
-        quality,
-        ...(format === "avif" && { effort: 4 }),
-        ...(format === "webp" && { effort: 6 }),
-        ...(format === "jpeg" && { progressive: true }),
+      })[finalFormat]({
+        quality: finalQuality,
+        ...(finalFormat === "avif" && { effort: 4 }),
+        ...(finalFormat === "webp" && { effort: 6 }),
+        ...(finalFormat === "jpeg" && { progressive: true }),
       })
       .toBuffer();
 
@@ -95,6 +112,7 @@ export async function generateVideoThumbnail(
     width = 1280,
     height = 720,
     quality = 80,
+    enableCompression = true,  // Default to true for backward compatibility
   } = options;
 
   try {
@@ -106,17 +124,35 @@ export async function generateVideoThumbnail(
     // Write video buffer to temporary file
     await writeFile(videoPath, videoBuffer);
 
-    // Generate thumbnail using FFmpeg
+    // Extract video metadata to get dimensions
+    const metadata = await extractVideoMetadata(videoBuffer);
+    const { width: videoWidth, height: videoHeight } = metadata;
+
+    // Calculate optimal thumbnail dimensions based on video orientation
+    const { width: optimalWidth, height: optimalHeight, isPortrait } = calculateOptimalThumbnailDimensions(
+      videoWidth,
+      videoHeight,
+      width,
+      height
+    );
+
+    console.log(`Video: ${videoWidth}x${videoHeight} (${isPortrait ? 'Portrait' : 'Landscape'})`);
+    console.log(`Thumbnail: ${optimalWidth}x${optimalHeight}`);
+
+    // Generate thumbnail using FFmpeg with calculated dimensions
     await generateThumbnailWithFFmpeg(videoPath, thumbnailPath, {
       time,
-      width,
-      height,
-      quality,
+      width: optimalWidth,
+      height: optimalHeight,
+      quality: enableCompression ? Math.round(quality) : 100,
     });
 
-    // Read thumbnail file
+    // Convert to WebP with compression settings
     const thumbnailBuffer = await sharp(thumbnailPath)
-      .webp({ quality, effort: 6 })
+      .webp({ 
+        quality: enableCompression ? Math.round(quality) : 100,
+        effort: 6 
+      })
       .toBuffer();
 
     // Clean up temporary files
@@ -129,6 +165,62 @@ export async function generateVideoThumbnail(
   } catch (error) {
     console.error("Error generating video thumbnail:", error);
     throw new Error("Failed to generate video thumbnail");
+  }
+}
+
+/**
+ * Generate a compressed video preview using FFmpeg
+ * @param videoBuffer - The source video buffer
+ * @param options - Configuration options for video preview generation
+ * @returns Promise<Buffer> - Compressed video buffer
+ */
+export async function generateVideoPreview(
+  videoBuffer: Buffer,
+  options: VideoPreviewOptions = {}
+): Promise<Buffer> {
+  const {
+    maxWidth = 1280,
+    maxHeight = 720,
+    bitrate = "500k",
+    fps = 24,
+    quality = 60,
+    duration = 10,
+    format = "mp4",
+  } = options;
+
+  try {
+    // Create temporary files
+    const tempDir = tmpdir();
+    const inputPath = join(tempDir, `temp-input-${Date.now()}.mp4`);
+    const outputPath = join(tempDir, `temp-preview-${Date.now()}.mp4`);
+
+    // Write input video to temp file
+    await writeFile(inputPath, videoBuffer);
+
+    // Generate compressed preview using FFmpeg
+    await generateCompressedVideoWithFFmpeg(inputPath, outputPath, {
+      maxWidth,
+      maxHeight,
+      bitrate,
+      fps,
+      quality,
+      duration,
+      format,
+    });
+
+    // Read compressed video
+    const previewBuffer = await readFile(outputPath);
+
+    // Clean up temp files
+    await Promise.all([
+      unlink(inputPath).catch(() => {}),
+      unlink(outputPath).catch(() => {}),
+    ]);
+
+    return previewBuffer;
+  } catch (error) {
+    console.error("Error generating video preview:", error);
+    throw new Error("Failed to generate video preview");
   }
 }
 
@@ -199,7 +291,47 @@ function calculateAspectRatioFit(
 }
 
 /**
- * Generate thumbnail using FFmpeg
+ * Calculate optimal thumbnail dimensions based on video orientation
+ * @param videoWidth - Original video width
+ * @param videoHeight - Original video height
+ * @param maxWidth - Maximum allowed width
+ * @param maxHeight - Maximum allowed height
+ * @returns Object with calculated dimensions and orientation info
+ */
+function calculateOptimalThumbnailDimensions(
+  videoWidth: number,
+  videoHeight: number,
+  maxWidth: number = 1280,
+  maxHeight: number = 720
+): { width: number; height: number; isPortrait: boolean } {
+  const aspectRatio = videoWidth / videoHeight;
+  const isPortrait = aspectRatio < 1;
+  
+  if (isPortrait) {
+    // For portrait videos, prioritize height
+    const targetHeight = maxHeight;
+    const targetWidth = Math.round(targetHeight * aspectRatio);
+    
+    return {
+      width: targetWidth,
+      height: targetHeight,
+      isPortrait: true
+    };
+  } else {
+    // For landscape videos, prioritize width
+    const targetWidth = maxWidth;
+    const targetHeight = Math.round(targetWidth / aspectRatio);
+    
+    return {
+      width: targetWidth,
+      height: targetHeight,
+      isPortrait: false
+    };
+  }
+}
+
+/**
+ * Generate a video thumbnail using FFmpeg
  * @param inputPath - Path to input video file
  * @param outputPath - Path to output thumbnail file
  * @param options - Thumbnail generation options
@@ -244,6 +376,56 @@ async function generateThumbnailWithFFmpeg(
 }
 
 /**
+ * Generate compressed video using FFmpeg
+ * @param inputPath - Path to input video file
+ * @param outputPath - Path to output compressed video file
+ * @param options - Video compression options
+ * @returns Promise<void>
+ */
+async function generateCompressedVideoWithFFmpeg(
+  inputPath: string,
+  outputPath: string,
+  options: VideoPreviewOptions
+): Promise<void> {
+  const { maxWidth = 640, maxHeight = 360, bitrate = "300k", fps = 15, duration = 10 } = options;
+
+  return new Promise((resolve, reject) => {
+    const ffmpeg = spawn("ffmpeg", [
+      "-i", inputPath,
+      "-t", String(duration), // Limit duration
+      "-vf", `scale=${maxWidth}:${maxHeight}:force_original_aspect_ratio=decrease`,
+      "-r", String(fps), // Set frame rate (lower for smaller files)
+      "-b:v", bitrate, // Set bitrate (lower for smaller files)
+      "-c:v", "libx264", // Use H.264 codec
+      "-preset", "veryfast", // Faster encoding
+      "-crf", "28", // More aggressive compression (higher CRF = smaller file)
+      "-an", // Remove audio for preview videos
+      "-movflags", "+faststart", // Optimize for web
+      "-y", // Overwrite output
+      outputPath,
+    ]);
+
+    let stderr = "";
+
+    ffmpeg.stderr?.on("data", (data: Buffer) => {
+      stderr += data.toString();
+    });
+
+    ffmpeg.on("close", (code: number | null) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`FFmpeg failed with code ${code}: ${stderr}`));
+      }
+    });
+
+    ffmpeg.on("error", (error: Error) => {
+      reject(new Error(`FFmpeg error: ${error.message}`));
+    });
+  });
+}
+
+/**
  * Check if FFmpeg is available on the system
  * @returns Promise<boolean> - True if FFmpeg is available
  */
@@ -259,4 +441,127 @@ export async function isFFmpegAvailable(): Promise<boolean> {
       resolve(false);
     });
   });
+} 
+
+/**
+ * Parse frame rate string (e.g., "30/1" -> 30)
+ * @param frameRateString - Frame rate string from FFmpeg
+ * @returns Parsed frame rate as number
+ */
+function parseFrameRate(frameRateString: string): number {
+  const parts = frameRateString.split('/');
+  if (parts.length === 2) {
+    const numerator = parseFloat(parts[0]);
+    const denominator = parseFloat(parts[1]);
+    return denominator !== 0 ? numerator / denominator : 0;
+  }
+  return parseFloat(frameRateString) || 0;
+}
+
+/**
+ * Extract video metadata using FFmpeg probe
+ * @param inputPath - Path to input video file
+ * @returns Promise<VideoMetadata> - Video metadata
+ */
+async function getVideoMetadataWithFFmpeg(
+  inputPath: string
+): Promise<VideoMetadata> {
+  return new Promise((resolve, reject) => {
+    const ffprobe = spawn("ffprobe", [
+      "-v", "quiet",
+      "-print_format", "json",
+      "-show_format",
+      "-show_streams",
+      inputPath,
+    ]);
+
+    let stdout = "";
+    let stderr = "";
+
+    ffprobe.stdout?.on("data", (data: Buffer) => {
+      stdout += data.toString();
+    });
+
+    ffprobe.stderr?.on("data", (data: Buffer) => {
+      stderr += data.toString();
+    });
+
+    ffprobe.on("close", (code: number | null) => {
+      if (code === 0) {
+        try {
+          const probeData = JSON.parse(stdout);
+          
+          // Find video stream
+          const videoStream = probeData.streams.find(
+            (stream: { codec_type: string; width?: string; height?: string; r_frame_rate?: string; codec_name?: string }) => 
+              stream.codec_type === "video"
+          );
+
+          if (!videoStream) {
+            reject(new Error("No video stream found"));
+            return;
+          }
+
+          // Extract metadata
+          const metadata: VideoMetadata = {
+            width: parseInt(videoStream.width) || 0,
+            height: parseInt(videoStream.height) || 0,
+            duration: parseFloat(probeData.format.duration) || 0,
+            bitrate: parseInt(probeData.format.bit_rate) || undefined,
+            fps: videoStream.r_frame_rate ? 
+              parseFrameRate(videoStream.r_frame_rate) : undefined, // e.g., "30/1" -> 30
+            codec: videoStream.codec_name || undefined,
+          };
+
+          resolve(metadata);
+        } catch (parseError) {
+          reject(new Error(`Failed to parse FFmpeg output: ${parseError}`));
+        }
+      } else {
+        reject(new Error(`FFprobe failed with code ${code}: ${stderr}`));
+      }
+    });
+
+    ffprobe.on("error", (error: Error) => {
+      reject(new Error(`FFprobe error: ${error.message}`));
+    });
+  });
+}
+
+/**
+ * Extract video metadata using FFmpeg
+ * @param videoBuffer - The source video buffer
+ * @returns Promise<VideoMetadata> - Video metadata including dimensions and duration
+ */
+export interface VideoMetadata {
+  width: number;
+  height: number;
+  duration: number; // in seconds
+  bitrate?: number;
+  fps?: number;
+  codec?: string;
+}
+
+export async function extractVideoMetadata(
+  videoBuffer: Buffer
+): Promise<VideoMetadata> {
+  try {
+    // Create temporary file
+    const tempDir = tmpdir();
+    const videoPath = join(tempDir, `temp-video-${Date.now()}.mp4`);
+
+    // Write video buffer to temporary file
+    await writeFile(videoPath, videoBuffer);
+
+    // Extract metadata using FFmpeg
+    const metadata = await getVideoMetadataWithFFmpeg(videoPath);
+
+    // Clean up temporary file
+    await unlink(videoPath).catch(() => {});
+
+    return metadata;
+  } catch (error) {
+    console.error("Error extracting video metadata:", error);
+    throw new Error("Failed to extract video metadata");
+  }
 } 

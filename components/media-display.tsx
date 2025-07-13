@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
-import { Play, Loader2 } from "@/components/ui/icons";
 
 // Batched media resolver to reduce API calls
 class BatchedMediaResolver {
@@ -121,7 +120,7 @@ async function resolveMediaUrl(path: string): Promise<string> {
 }
 
 interface MediaImageProps {
-  src: string; // Relative path like "images/user123-prompt-abc123.webp" or "preview/preview-user123-prompt-abc123.webp"
+  src: string; // Relative path like "images/user123-prompt-abc123.avif" or "preview/preview-user123-prompt-abc123.avif"
   alt: string;
   width?: number;
   height?: number;
@@ -135,24 +134,10 @@ interface MediaImageProps {
 }
 
 interface MediaVideoProps {
-  src: string; // Relative path like "videos/user123-video-xyz789.mp4"
-  className?: string;
-  controls?: boolean;
-  autoPlay?: boolean;
-  loop?: boolean;
-  muted?: boolean;
-  playsInline?: boolean;
-  preload?: "none" | "metadata" | "auto";
-  onLoadedMetadata?: (event: React.SyntheticEvent<HTMLVideoElement>) => void;
-  onPlay?: () => void;
-  onPause?: () => void;
-  onEnded?: () => void;
-}
-
-interface MediaVideoLazyProps {
   src: string; // Video path like "videos/user123-video-xyz789.mp4"
-  previewSrc?: string; // Preview image path like "preview/preview-user123-video-xyz789.webp"
-  alt: string;
+  previewSrc?: string; // Preview image path like "preview/user123abc123456789.webp"
+  previewVideoSrc?: string; // Preview video path like "preview/user123abc123456789.mp4"
+  alt?: string; // For accessibility
   className?: string;
   controls?: boolean;
   autoPlay?: boolean;
@@ -160,27 +145,27 @@ interface MediaVideoLazyProps {
   muted?: boolean;
   playsInline?: boolean;
   preload?: "none" | "metadata" | "auto";
-  onLoadedMetadata?: (event: React.SyntheticEvent<HTMLVideoElement>) => void;
-  onPlay?: () => void;
-  onPause?: () => void;
-  onEnded?: () => void;
-  blurDataURL?: string;
+  fill?: boolean;
   width?: number;
   height?: number;
-  fill?: boolean;
   sizes?: string;
-  priority?: boolean;
-  // Custom props for lazy loading behavior
-  autoShowVideo?: boolean; // If true, show video immediately (useful for components that manage this externally)
-  onVideoRequested?: () => void; // Callback when user clicks to load video
   loading?: "lazy" | "eager";
-  showPlayButton?: boolean; // Whether to show the play button overlay
-  playButtonClassName?: string; // Custom styling for play button
+  priority?: boolean;
+  blurDataURL?: string; // For video thumbnail blur placeholder
+  onLoadedMetadata?: (event: React.SyntheticEvent<HTMLVideoElement>) => void;
+  onPlay?: () => void;
+  onPause?: () => void;
+  onEnded?: () => void;
+  onPreviewLoad?: (event: React.SyntheticEvent<HTMLImageElement>) => void;
+  // Video loading strategy
+  usePreviewVideo?: boolean; // Use compressed video for initial playback
+  fallbackToOriginal?: boolean; // Fallback to original if preview fails
 }
 
 /**
- * MediaImage - Automatically resolves relative paths to full URLs
- * Usage: <MediaImage src="images/user123-prompt-abc123.webp" alt="Prompt" />
+ * MediaImage - Automatically resolves relative paths to full URLs with preview priority
+ * Usage: <MediaImage src="images/user123-prompt-abc123.avif" alt="Prompt" />
+ *        <MediaImage src="preview/user123abc123456789.webp" alt="Preview" />
  */
 export function MediaImage({
   src,
@@ -217,12 +202,12 @@ export function MediaImage({
       return;
     }
 
-    // Handle preview paths differently - they should go through the preview API
+    // Handle preview paths - use API route for proper serving
     if (src.startsWith("preview/")) {
-      // For preview images, use the preview API route
-      const previewUrl = `/api/media/preview/${src.replace("preview/", "")}`;
-      console.log("Using preview API for:", src, "→", previewUrl);
-      setResolvedUrl(previewUrl);
+      // Use API route for preview images to ensure proper content-type and security
+      const previewApiUrl = `/api/media/preview/${src.replace("preview/", "")}`;
+      console.log("Using preview API URL for:", src, "→", previewApiUrl);
+      setResolvedUrl(previewApiUrl);
       setIsLoading(false);
       return;
     }
@@ -378,7 +363,7 @@ export function MediaImage({
   return (
     <div className={containerClassName} style={containerStyle}>
       {/* Blur placeholder that stays visible until the sharp image loads */}
-      {blurDataURL && (
+      {blurDataURL && !imageLoaded && (
         <Image
           src={blurDataURL}
           alt={alt}
@@ -417,13 +402,16 @@ export function MediaImage({
 }
 
 /**
- * MediaVideo - Automatically resolves relative paths to full URLs
- * Usage: <MediaVideo src="videos/user123-video-xyz789.mp4" controls />
+ * MediaVideo - Automatically resolves relative paths to full URLs with preview support
+ * Usage: <MediaVideo src="videos/user123-video-xyz789.mp4" previewVideoSrc="preview/user123abc123456789.mp4" controls />
  */
 export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
   function MediaVideo(
     {
       src,
+      previewSrc,
+      previewVideoSrc,
+      alt,
       className,
       controls = false,
       autoPlay = false,
@@ -431,38 +419,97 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
       muted = false,
       playsInline = false,
       preload = "metadata",
+      fill = false,
+      width,
+      height,
+      blurDataURL,
       onLoadedMetadata,
       onPlay,
       onPause,
       onEnded,
+      onPreviewLoad,
+      usePreviewVideo = false,
+      fallbackToOriginal = false,
     },
     ref
   ) {
+    const [currentVideoSrc, setCurrentVideoSrc] = useState<string>("");
+    const [isUsingPreview, setIsUsingPreview] = useState(false);
     const [resolvedUrl, setResolvedUrl] = useState<string>("");
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [showPreviewImage, setShowPreviewImage] = useState(true);
+    const [videoLoaded, setVideoLoaded] = useState(false);
+    const [isPlayPending, setIsPlayPending] = useState(false); // Track pending play operations
 
+    // Determine which video source to use
     useEffect(() => {
-      if (!src) {
+      console.log(`MediaVideo source determination for post:`, {
+        src,
+        previewVideoSrc,
+        usePreviewVideo,
+        hasPreviewVideo: !!previewVideoSrc,
+        willUsePreview: usePreviewVideo && !!previewVideoSrc
+      });
+      
+      // Priority order: previewVideoSrc → src (only if src is not empty)
+      if (usePreviewVideo && previewVideoSrc) {
+        console.log(`✅ Using preview video: ${previewVideoSrc}`);
+        setCurrentVideoSrc(previewVideoSrc);
+        setIsUsingPreview(true);
+      } else if (src && src.trim() !== '') {
+        console.log(`❌ Using original video: ${src} (usePreviewVideo: ${usePreviewVideo}, hasPreviewVideo: ${!!previewVideoSrc})`);
+        setCurrentVideoSrc(src);
+        setIsUsingPreview(false);
+      } else {
+        console.log(`❌ No video source available`);
+        setCurrentVideoSrc("");
+        setIsUsingPreview(false);
+      }
+    }, [src, previewVideoSrc, usePreviewVideo]);
+
+    // Resolve video URL
+    useEffect(() => {
+      console.log(`Resolving video URL for: ${currentVideoSrc}`);
+      
+      if (!currentVideoSrc) {
+        console.log(`No currentVideoSrc, setting loading to false`);
         setIsLoading(false);
         return;
       }
 
       // If src is already a full URL or a blob URL, use it directly
       if (
-        src.startsWith("http://") ||
-        src.startsWith("https://") ||
-        src.startsWith("blob:")
+        currentVideoSrc.startsWith("http://") ||
+        currentVideoSrc.startsWith("https://") ||
+        currentVideoSrc.startsWith("blob:")
       ) {
-        setResolvedUrl(src);
+        console.log(`Using direct URL: ${currentVideoSrc}`);
+        setResolvedUrl(currentVideoSrc);
         setIsLoading(false);
         return;
       }
 
-      // Resolve relative path to full URL
-      resolveMediaUrl(src)
+      // Handle preview paths - use API route for proper serving
+      if (currentVideoSrc.startsWith("preview/")) {
+        // Use API route for preview videos to ensure proper content-type and security
+        const previewApiUrl = `/api/media/preview/${currentVideoSrc.replace("preview/", "")}`;
+        console.log(`Using preview API URL: ${previewApiUrl}`);
+        setResolvedUrl(previewApiUrl);
+        setIsLoading(false);
+        return;
+      }
+
+      // Resolve relative path to full URL for regular media
+      console.log(`Resolving relative path: ${currentVideoSrc}`);
+      resolveMediaUrl(currentVideoSrc)
         .then((url: string) => {
-          setResolvedUrl(url);
+          console.log(`Resolved URL: ${url}`);
+          if (url && url.trim() !== '') {
+            setResolvedUrl(url);
+          } else {
+            setError("Invalid resolved URL");
+          }
           setIsLoading(false);
         })
         .catch((err: Error) => {
@@ -470,7 +517,80 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
           setError("Failed to load video");
           setIsLoading(false);
         });
-    }, [src]);
+    }, [currentVideoSrc, usePreviewVideo, previewVideoSrc]);
+
+    // Handle video error - fallback to original or show preview image
+    const handleVideoError = () => {
+      console.error("Video failed to load:", resolvedUrl);
+      setIsPlayPending(false); // Clear pending state on error
+      
+      if (isUsingPreview && fallbackToOriginal && src !== currentVideoSrc) {
+        console.log("Preview video failed, falling back to original");
+        setCurrentVideoSrc(src);
+        setIsUsingPreview(false);
+        setError(null);
+        setIsLoading(true);
+      } else {
+        console.log("Video failed to load, keeping preview image visible");
+        setError("Video not available");
+        setShowPreviewImage(true); // Keep preview image visible
+        setVideoLoaded(false);
+      }
+    };
+
+    // Handle video loaded metadata
+    const handleVideoLoadedMetadata = (event: React.SyntheticEvent<HTMLVideoElement>) => {
+      console.log("Video loaded successfully:", resolvedUrl);
+      const video = event.currentTarget as HTMLVideoElement;
+      
+      setVideoLoaded(true);
+      setError(null); // Clear any previous errors
+      
+      // Auto-play if this video should be playing (when user clicked play before video was loaded)
+      if (autoPlay && !isPlayPending) {
+        console.log("Auto-playing video due to autoPlay prop");
+        setIsPlayPending(true);
+        video.play()
+          .then(() => {
+            console.log("Auto-play succeeded");
+            setIsPlayPending(false);
+            setShowPreviewImage(false);
+          })
+          .catch(err => {
+            console.error("Auto-play failed:", err);
+            setIsPlayPending(false);
+            // Don't set error for autoplay failure, just show preview image with play button
+            setShowPreviewImage(true);
+            console.log("Auto-play blocked by browser - user needs to click play");
+          });
+      } else {
+        // If not auto-playing, keep preview image visible
+        setShowPreviewImage(true);
+      }
+      
+      onLoadedMetadata?.(event);
+    };
+
+    // Handle video play event
+    const handleVideoPlay = () => {
+      console.log("Video started playing:", resolvedUrl);
+      setShowPreviewImage(false); // Hide preview image when video starts playing
+      setIsPlayPending(false); // Clear pending state when video actually starts playing
+      onPlay?.();
+    };
+
+    // Handle video pause event
+    const handleVideoPause = () => {
+      console.log("Video paused:", resolvedUrl);
+      setIsPlayPending(false); // Clear pending state when video is paused
+      // Don't show preview image on pause, keep video visible
+      onPause?.();
+    };
+
+    // Handle preview image load
+    const handlePreviewImageLoad = (event: React.SyntheticEvent<HTMLImageElement>) => {
+      onPreviewLoad?.(event);
+    };
 
     if (isLoading) {
       return (
@@ -482,121 +602,31 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
       );
     }
 
-    if (error || !resolvedUrl) {
+    if (error && !previewSrc) {
       return (
         <div
           className={`bg-muted border-2 border-dashed border-muted-foreground/25 ${className}`}
         >
           <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-            {error || "Video not available"}
+            {error}
           </div>
         </div>
       );
     }
 
-    return (
-      <video
-        ref={ref}
-        src={resolvedUrl}
-        className={className}
-        controls={controls}
-        autoPlay={autoPlay}
-        loop={loop}
-        muted={muted}
-        playsInline={playsInline}
-        preload={preload}
-        onLoadedMetadata={onLoadedMetadata}
-        onPlay={onPlay}
-        onPause={onPause}
-        onEnded={onEnded}
-      >
-        Your browser does not support the video tag.
-      </video>
-    );
-  }
-);
+    if (!resolvedUrl && !previewSrc) {
+      return (
+        <div
+          className={`bg-muted border-2 border-dashed border-muted-foreground/25 ${className}`}
+        >
+          <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+            Video not available
+          </div>
+        </div>
+      );
+    }
 
-/**
- * MediaVideoLazy - Shows preview image first, loads video only on demand
- * This significantly reduces bandwidth by only loading videos when users actually want to watch them
- * 
- * Usage: 
- * <MediaVideoLazy 
- *   src="videos/user123-video-xyz789.mp4" 
- *   previewSrc="preview/preview-user123-video-xyz789.webp"
- *   alt="Video description"
- *   controls
- * />
- */
-export const MediaVideoLazy = React.forwardRef<HTMLVideoElement, MediaVideoLazyProps>(
-  function MediaVideoLazy(
-    {
-      src,
-      previewSrc,
-      alt,
-      className,
-      controls = false,
-      autoPlay = false,
-      loop = false,
-      muted = false,
-      playsInline = false,
-      preload = "metadata",
-      onLoadedMetadata,
-      onPlay,
-      onPause,
-      onEnded,
-      blurDataURL,
-      width,
-      height,
-      fill = false,
-      sizes,
-      priority = false,
-      autoShowVideo = false,
-      onVideoRequested,
-      loading = "lazy",
-      showPlayButton = true,
-      playButtonClassName,
-    },
-    ref
-  ) {
-    const [showVideo, setShowVideo] = useState(autoShowVideo);
-    const [videoLoaded, setVideoLoaded] = useState(false);
-    const [isLoadingVideo, setIsLoadingVideo] = useState(false);
-
-    // Handle play button click - this loads the video for the first time
-    const handlePlayButtonClick = (event: React.MouseEvent) => {
-      event.preventDefault();
-      event.stopPropagation();
-      
-      if (!showVideo) {
-        setIsLoadingVideo(true);
-        setShowVideo(true);
-        onVideoRequested?.();
-      }
-    };
-
-    // Handle video loaded metadata
-    const handleVideoLoadedMetadata = (event: React.SyntheticEvent<HTMLVideoElement>) => {
-      setVideoLoaded(true);
-      setIsLoadingVideo(false);
-      onLoadedMetadata?.(event);
-      
-      // Auto-play if requested
-      if (autoPlay) {
-        const video = event.currentTarget as HTMLVideoElement;
-        video.play();
-      }
-    };
-
-    // Update showVideo when autoShowVideo prop changes
-    useEffect(() => {
-      if (autoShowVideo && !showVideo) {
-        setIsLoadingVideo(true);
-        setShowVideo(true);
-      }
-    }, [autoShowVideo, showVideo]);
-
-    // Container styling for consistent dimensions
+    // Container styling for fill mode
     const containerStyle = fill 
       ? { 
           width: width || "100%", 
@@ -614,32 +644,40 @@ export const MediaVideoLazy = React.forwardRef<HTMLVideoElement, MediaVideoLazyP
 
     return (
       <div className={containerClassName} style={containerStyle}>
-        {/* Preview Image - Always shown initially, fades out when video loads */}
-        {previewSrc && (
+        {/* Preview image overlay */}
+        {previewSrc && showPreviewImage && (
           <MediaImage
             src={previewSrc}
-            alt={alt}
+            alt={alt || "Video preview"}
+            fill={fill}
             width={!fill ? width : undefined}
             height={!fill ? height : undefined}
-            fill={fill}
-            className={`object-cover transition-opacity duration-300 ${
-              showVideo && videoLoaded ? "opacity-0" : "opacity-100"
-            } ${fill ? "absolute inset-0" : ""}`}
-            loading={loading}
-            sizes={sizes}
-            priority={priority}
+            className={`absolute inset-0 object-cover transition-opacity duration-300 ${
+              videoLoaded ? "opacity-0" : "opacity-100"
+            }`}
+            loading="eager"
+            priority={true}
             blurDataURL={blurDataURL}
+            sizes={fill ? "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" : undefined}
+            onLoad={handlePreviewImageLoad}
           />
         )}
 
-        {/* Video Element - Only rendered when user requests it */}
-        {showVideo && (
-          <MediaVideo
+        {/* Error indicator overlay when video fails but preview is available */}
+        {error && previewSrc && showPreviewImage && (
+          <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+            <div className="bg-red-500/90 text-white px-2 py-1 rounded text-xs">
+              {error}
+            </div>
+          </div>
+        )}
+        
+        {/* Video element - only render if we have a resolved URL */}
+        {resolvedUrl && (
+          <video
             ref={ref}
-            src={src}
-            className={`transition-opacity duration-300 ${
-              videoLoaded ? "opacity-100" : "opacity-0"
-            } ${fill ? "absolute inset-0 w-full h-full object-cover" : ""}`}
+            src={resolvedUrl}
+            className={`${fill ? 'absolute inset-0 w-full h-full' : ''} ${className || ''}`}
             controls={controls}
             autoPlay={autoPlay}
             loop={loop}
@@ -647,45 +685,13 @@ export const MediaVideoLazy = React.forwardRef<HTMLVideoElement, MediaVideoLazyP
             playsInline={playsInline}
             preload={preload}
             onLoadedMetadata={handleVideoLoadedMetadata}
-            onPlay={onPlay}
-            onPause={onPause}
+            onPlay={handleVideoPlay}
+            onPause={handleVideoPause}
             onEnded={onEnded}
-          />
-        )}
-
-        {/* Play Button Overlay - Only shown when video is not loaded */}
-        {showPlayButton && !showVideo && previewSrc && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <button
-              className={`bg-black/50 hover:bg-black/70 text-white rounded-full p-3 transition-all duration-200 hover:scale-110 ${playButtonClassName || ""}`}
-              onClick={handlePlayButtonClick}
-              aria-label="Play video"
-            >
-              <Play className="w-6 h-6" />
-            </button>
-          </div>
-        )}
-
-        {/* Loading Indicator - Shown while video is loading */}
-        {isLoadingVideo && !videoLoaded && (
-          <div className="absolute inset-0 bg-black/20 flex items-center justify-center z-10">
-            <div className="bg-white/90 rounded-full p-3">
-              <Loader2 className="w-6 h-6 text-gray-600 animate-spin" />
-            </div>
-          </div>
-        )}
-
-        {/* Fallback when no preview is available */}
-        {!previewSrc && !showVideo && (
-          <div className="absolute inset-0 bg-muted flex items-center justify-center">
-            <button
-              className={`bg-primary text-primary-foreground rounded-full p-4 transition-all duration-200 hover:scale-110 ${playButtonClassName || ""}`}
-              onClick={handlePlayButtonClick}
-              aria-label="Load and play video"
-            >
-              <Play className="w-8 h-8" />
-            </button>
-          </div>
+            onError={handleVideoError}
+          >
+            Your browser does not support the video tag.
+          </video>
         )}
       </div>
     );

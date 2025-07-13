@@ -44,6 +44,11 @@ This document summarizes the Content Security Policy fixes implemented to resolv
 - `frame-src`: Added `https://*.sanity.io`
 - `connect-src`: Added `https://*.api.sanity.io` and `wss://*.api.sanity.io`
 
+### 5. Vercel Analytics Support
+**Fix**: Added comprehensive Vercel Analytics support to CSP:
+- `script-src`: Added `https://va.vercel-scripts.com` for loading analytics script
+- `connect-src`: Added `https://vitals.vercel-insights.com` and `https://vitals.vercel-analytics.com` for data transmission
+
 ## Files Modified
 
 ### 1. `lib/csp.ts`
@@ -52,6 +57,7 @@ This document summarizes the Content Security Policy fixes implemented to resolv
 - **generateCSP()**: Enhanced with Sanity domains, better error handling, and validation
 - **CSPNonce class**: Improved reliability with fallback mechanisms and validation
 - **Debug utilities**: Added hash calculation utilities for debugging
+- **Vercel Analytics**: Added `https://va.vercel-scripts.com` to script-src and `https://vitals.vercel-insights.com`/`https://vitals.vercel-analytics.com` to connect-src
 
 ### 2. `app/api/security/csp-report/route.ts`
 - **Enhanced reporting**: Better violation logging with hash calculation for debugging
@@ -81,11 +87,11 @@ This document summarizes the Content Security Policy fixes implemented to resolv
 
 ```csp
 default-src 'self';
-script-src 'self' 'nonce-{NONCE}' 'strict-dynamic' {SCRIPT_HASHES} https://www.googletagmanager.com https://www.google-analytics.com https://accounts.google.com https://vitals.vercel-insights.com https://va.vercel-scripts.com https://securepubads.g.doubleclick.net https://pagead2.googlesyndication.com https://*.sanity.io;
+script-src 'self' 'nonce-{NONCE}' 'strict-dynamic' {SCRIPT_HASHES} https://www.googletagmanager.com https://www.google-analytics.com https://accounts.google.com https://va.vercel-scripts.com https://securepubads.g.doubleclick.net https://pagead2.googlesyndication.com https://*.sanity.io;
 style-src 'self' 'nonce-{NONCE}' 'unsafe-hashes' https://fonts.googleapis.com https://accounts.google.com https://*.sanity.io {STYLE_HASHES} https://pagead2.googlesyndication.com;
 img-src 'self' blob: data: https: https://*.s3.amazonaws.com https://*.cloudfront.net https://cdn.sanity.io/ https://pagead2.googlesyndication.com;
 font-src 'self' https://fonts.gstatic.com;
-connect-src 'self' https://api.stripe.com https://*.supabase.co wss://*.supabase.co https://*.s3.amazonaws.com https://*.cloudfront.net https://vitals.vercel-analytics.com wss://vitals.vercel-analytics.com https://accounts.google.com https://*.api.sanity.io wss://*.api.sanity.io https://pagead2.googlesyndication.com;
+connect-src 'self' https://api.stripe.com https://*.supabase.co wss://*.supabase.co https://*.s3.amazonaws.com https://*.cloudfront.net https://vitals.vercel-insights.com https://vitals.vercel-analytics.com https://accounts.google.com https://*.api.sanity.io wss://*.api.sanity.io https://pagead2.googlesyndication.com;
 frame-src 'self' https://accounts.google.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://pagead2.googlesyndication.com https://*.sanity.io;
 media-src 'self' blob: data: https://*.s3.amazonaws.com https://*.cloudfront.net;
 object-src 'none';

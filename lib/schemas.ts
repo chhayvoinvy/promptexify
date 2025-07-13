@@ -197,7 +197,7 @@ export const fileUploadSchema = z.object({
     .string()
     .min(1, "Title is required")
     .max(100, "Title must be 100 characters or less")
-    .regex(/^[a-zA-Z0-9\s-_\.]+$/, "Title contains invalid characters")
+    .regex(/^[a-zA-Z0-9\s\-_.]+$/, "Title contains invalid characters")
     .transform((val) => val.trim())
     .refine((val) => val.length > 0, "Title cannot be empty after trimming"),
 });

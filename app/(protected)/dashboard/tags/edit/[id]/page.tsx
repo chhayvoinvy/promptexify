@@ -121,14 +121,16 @@ export default function EditTagPage({ params }: EditTagPageProps) {
     startTransition(async () => {
       try {
         // Add CSRF protection to form data
-        const name = formData.get("name") as string;
-        const slug = formData.get("slug") as string;
-
-        const secureFormData = createFormDataWithCSRF({
-          id: tag.id,
-          name,
-          slug,
-        });
+        // Create secure form data with CSRF protection
+        const secureFormData = createFormDataWithCSRF();
+        
+        // Add all form data to the secure form data
+        for (const [key, value] of formData.entries()) {
+          secureFormData.set(key, value);
+        }
+        
+        // Add the tag ID
+        secureFormData.set("id", tag.id);
 
         await updateTagAction(secureFormData);
 

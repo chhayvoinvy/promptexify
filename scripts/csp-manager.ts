@@ -7,7 +7,8 @@
  * without manually calculating hashes or editing configuration files.
  */
 
-import { CSPHashGenerator, CSPPolicyBuilder } from '../lib/security/csp';
+// Note: CSPHashGenerator and CSPPolicyBuilder are not implemented yet
+// import { CSPHashGenerator, CSPPolicyBuilder } from '../lib/security/csp';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -27,7 +28,13 @@ class CSPManager {
    * Generate hash for inline content
    */
   async generateHash(content: string): Promise<string> {
-    const hash = await CSPHashGenerator.generateHash(content);
+    // Generate hash using Web Crypto API
+    const encoder = new TextEncoder();
+    const data = encoder.encode(content);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashBase64 = btoa(String.fromCharCode(...hashArray));
+    const hash = `'sha256-${hashBase64}'`;
     console.log(`🔑 Generated hash: ${hash}`);
     return hash;
   }
@@ -36,7 +43,8 @@ class CSPManager {
    * Validate if a hash is properly formatted
    */
   validateHash(hash: string): boolean {
-    const isValid = CSPHashGenerator.isValidHash(hash);
+    // Basic hash validation - check if it follows the expected format
+    const isValid = /^'sha256-[A-Za-z0-9+/=]+'$/.test(hash);
     console.log(`✅ Hash validation: ${isValid ? 'Valid' : 'Invalid'}`);
     return isValid;
   }
@@ -131,13 +139,11 @@ class CSPManager {
     const isProduction = process.env.NODE_ENV === 'production';
     
     if (isProduction && nonce) {
-      const policy = CSPPolicyBuilder.createProductionPolicy(nonce);
       console.log('\n🔒 Production CSP Policy:');
-      console.log(policy);
+      console.log(`default-src 'self'; script-src 'self' 'nonce-${nonce}'; style-src 'self' 'nonce-${nonce}';`);
     } else {
-      const policy = CSPPolicyBuilder.createDevelopmentPolicy();
       console.log('\n🔓 Development CSP Policy:');
-      console.log(policy);
+      console.log(`default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';`);
     }
   }
 
@@ -150,20 +156,9 @@ class CSPManager {
       const violation = JSON.parse(content);
       
       if (violation['csp-report']) {
-        const { CSPViolationHandler } = await import('../lib/security/csp');
-        const analysis = await CSPViolationHandler.analyzeViolation(violation['csp-report']);
-        
         console.log('\n🔍 CSP Violation Analysis:');
-        console.log(`Type: ${analysis.type}`);
-        console.log(`Suggested Fix: ${analysis.suggestedFix}`);
-        
-        if (analysis.hash) {
-          console.log(`Generated Hash: ${analysis.hash}`);
-        }
-        
-        if (analysis.domain) {
-          console.log(`Domain: ${analysis.domain}`);
-        }
+        console.log('Content:', JSON.stringify(violation['csp-report'], null, 2));
+        console.log('Note: Advanced analysis not implemented yet');
       }
     } catch (error) {
       console.error(`❌ Failed to analyze violation: ${error}`);
@@ -238,7 +233,7 @@ function parseArgs(): CSPManagerOptions {
     switch (arg) {
       case '--action':
       case '-a':
-        options.action = args[++i] as any;
+        options.action = args[++i] as CSPManagerOptions['action'];
         break;
       case '--content':
       case '-c':
@@ -266,7 +261,7 @@ function parseArgs(): CSPManagerOptions {
       default:
         // Handle positional arguments for backward compatibility
         if (!options.action || options.action === 'list-hashes') {
-          options.action = arg as any;
+          options.action = arg as CSPManagerOptions['action'];
         } else if (!options.content && (options.action === 'generate-hash' || options.action === 'hash')) {
           options.content = arg;
         } else if (!options.hash && (options.action === 'add-hash' || options.action === 'add')) {

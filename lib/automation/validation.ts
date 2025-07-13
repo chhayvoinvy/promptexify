@@ -226,6 +226,8 @@ export function safeJsonParse(jsonString: string): unknown {
  */
 export async function sanitizeContent(content: string): Promise<string> {
   const window = new JSDOM("").window;
+  // Note: Using any here is acceptable for JSDOM/DOMPurify integration
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const DOMPurify = createDOMPurify(window as any);
   return DOMPurify.sanitize(content);
 }

@@ -11,6 +11,7 @@ export default function NotFound() {
         width={400}
         height={400}
         className="pointer-events-none mb-5 mt-6 dark:invert"
+        priority
       />
       <p className="text-balance px-4 text-center text-2xl font-medium">
         Page not found. Back to{" "}

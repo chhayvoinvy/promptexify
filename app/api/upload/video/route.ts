@@ -9,20 +9,17 @@ import {
 import {
   validateFileExtension,
   SECURITY_HEADERS,
-  getFileUploadConfig,
 } from "@/lib/security/sanitize";
-import { prisma } from "@/lib/prisma";
 import { CSRFProtection } from "@/lib/security/csp";
 import { SecurityEvents, getClientIP } from "@/lib/security/audit";
+import { prisma } from "@/lib/prisma";
+import { getStorageConfig } from "@/lib/image/storage";
 
-// Get environment-aware upload configurations
-const uploadConfig = getFileUploadConfig();
-
-// Video file magic number validation for additional security
+// File magic number validation for additional security
 const VIDEO_SIGNATURES: Record<string, number[]> = {
-  "video/mp4": [0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70], // ftyp box
-  "video/webm": [0x1a, 0x45, 0xdf, 0xa3], // EBML header
-  "video/quicktime": [0x00, 0x00, 0x00, 0x14, 0x66, 0x74, 0x79, 0x70, 0x71, 0x74], // QuickTime
+  "video/mp4": [0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70, 0x6d, 0x70, 0x34, 0x32], // MP4 signature
+  "video/webm": [0x1a, 0x45, 0xdf, 0xa3], // WebM signature
+  "video/quicktime": [0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70, 0x71, 0x74, 0x20, 0x20], // QuickTime signature
 };
 
 function validateVideoSignature(buffer: ArrayBuffer, mimeType: string): boolean {
@@ -143,6 +140,13 @@ export async function POST(request: NextRequest) {
     }
 
     // File size validation
+    const uploadConfig = await getStorageConfig();
+    const allowedVideoTypes = [
+      "video/mp4",
+      "video/webm", 
+      "video/quicktime",
+    ];
+
     if (file.size > uploadConfig.maxVideoSize) {
       return NextResponse.json(
         {
@@ -169,11 +173,12 @@ export async function POST(request: NextRequest) {
     }
 
     // File type validation
-    if (!uploadConfig.allowedVideoTypes.includes(file.type)) {
+    if (!allowedVideoTypes.includes(file.type)) {
       return NextResponse.json(
         {
-          error: "Invalid file type. Only MP4, WebM, and MOV videos are allowed",
-          allowedTypes: uploadConfig.allowedVideoTypes,
+          error:
+            "Invalid file type. Only MP4, WebM, and QuickTime videos are allowed",
+          allowedTypes: allowedVideoTypes,
         },
         {
           status: 400,
@@ -195,7 +200,7 @@ export async function POST(request: NextRequest) {
 
     // Enhanced file signature validation for additional security
     let videoBuffer: Buffer;
-    let detectedType: any;
+    let detectedType: {ext: string; mime: string} | undefined;
     
     try {
       const arrayBuffer = await file.arrayBuffer();
@@ -240,7 +245,7 @@ export async function POST(request: NextRequest) {
 
       // Validate detected MIME against allowed list and browser-provided type
       if (
-        !uploadConfig.allowedVideoTypes.includes(detectedType.mime) ||
+        !allowedVideoTypes.includes(detectedType.mime) ||
         detectedType.mime !== file.type
       ) {
         await SecurityEvents.suspiciousFileUpload(
@@ -299,6 +304,7 @@ export async function POST(request: NextRequest) {
         ...uploadResult,
         id: newMedia.id,
         previewPath: uploadResult.previewPath, // Explicitly include previewPath for frontend
+        previewVideoPath: uploadResult.previewVideoPath, // Explicitly include previewVideoPath for frontend
       },
       {
         status: 200,

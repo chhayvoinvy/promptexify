@@ -103,7 +103,7 @@ export function GoogleOneTap() {
         window.google.accounts.id.cancel();
       }
     };
-  }, [user, loading, supabase.auth]);
+  }, [user, loading, supabase.auth, nonce, router]);
 
   // This component doesn't render anything visible
   return null;

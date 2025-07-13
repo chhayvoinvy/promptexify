@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PostWithInteractions } from "@/lib/content";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { FavoriteButton } from "@/components/favorite-button";
-import { MediaImage, MediaVideoLazy } from "@/components/media-display";
+import { MediaImage, MediaVideo } from "@/components/media-display";
+
 import {
   LockIcon,
   UnlockIcon,
@@ -29,10 +30,6 @@ interface PostCardProps {
   // Prefetch utilities
   observePost?: (element: HTMLElement, postId: string) => void;
   unobservePost?: (element: HTMLElement) => void;
-  getPrefetchStatus?: (postId: string) => {
-    isPrefetching: boolean;
-    isPrefetched: boolean;
-  };
 }
 
 export function PostCard({
@@ -45,19 +42,15 @@ export function PostCard({
   playingVideo,
   observePost,
   unobservePost,
-  getPrefetchStatus,
 }: PostCardProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // We now directly use previewPath for images, no need for the hook
+
   // Calculate aspect ratio based on media type and dimensions
   const getDynamicAspectRatio = () => {
     if (post.uploadPath) {
-      // Try to get actual media dimensions from database
-      const mediaItem = post.media?.find(
-        (m) => m.relativePath === post.uploadPath
-      );
-
       // Default aspect ratio calculation based on width
       const baseRatio = width < 300 ? 0.75 : width < 400 ? 0.8 : 0.85;
       const randomOffset = (parseFloat(post.id.slice(-3)) / 1000) * 0.3;
@@ -69,24 +62,48 @@ export function PostCard({
   };
 
   // Handle media load for dimensions tracking
-  const handleMediaLoad = useCallback(
-    (event: React.SyntheticEvent<HTMLImageElement | HTMLVideoElement>) => {
-      // Media loaded successfully - could track dimensions here if needed
-    },
-    []
-  );
+  const handleMediaLoad = useCallback(() => {
+    // Media loaded successfully - could track dimensions here if needed
+  }, []);
 
-  // Handle video play/pause
+  // Handle video play/pause from button clicks
   const handleVideoPlay = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
+
+    // Prevent rapid clicking during video state changes
+    if (video.readyState < 2) {
+      console.log("Video not ready for playback yet");
+      return;
+    }
 
     if (playingVideo === post.id) {
       video.pause();
       onVideoStateChange?.(post.id, false);
     } else {
-      video.play();
+      video.play().catch(err => {
+        console.error("Failed to play video:", err);
+        // Don't change state if play failed
+      });
       onVideoStateChange?.(post.id, true);
+    }
+  }, [post.id, playingVideo, onVideoStateChange]);
+
+  // Handle video play event (from video element, not button)
+  const handleVideoPlayEvent = useCallback(() => {
+    console.log(`Video started playing: ${post.id}`);
+    // Just ensure state is in sync - don't toggle
+    if (playingVideo !== post.id) {
+      onVideoStateChange?.(post.id, true);
+    }
+  }, [post.id, playingVideo, onVideoStateChange]);
+
+  // Handle video pause event (from video element, not button)
+  const handleVideoPauseEvent = useCallback(() => {
+    console.log(`Video paused: ${post.id}`);
+    // Clear playing state when video pauses
+    if (playingVideo === post.id) {
+      onVideoStateChange?.(post.id, false);
     }
   }, [post.id, playingVideo, onVideoStateChange]);
 
@@ -98,8 +115,8 @@ export function PostCard({
   }, [post.id, playingVideo, onVideoStateChange]);
 
   // Handle video loaded metadata
-  const handleVideoLoadedMetadata = useCallback((event: React.SyntheticEvent<HTMLVideoElement>) => {
-    handleMediaLoad(event);
+  const handleVideoLoadedMetadata = useCallback(() => {
+    handleMediaLoad();
     
     // Auto-play if this video should be playing
     if (playingVideo === post.id) {
@@ -159,23 +176,24 @@ export function PostCard({
                 : { height: "auto", minHeight: "120px" }
             }
           >
-            {post.uploadPath ? (
+            {post.previewPath ? (
               post.uploadFileType === "IMAGE" ? (
                 <MediaImage
-                  src={post.previewPath ?? post.uploadPath}
+                  src={post.previewPath}
                   alt={post.title}
                   fill
                   className="object-cover rounded-b-lg absolute"
                   loading="lazy"
                   blurDataURL={post.blurData || undefined}
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  onLoad={handleMediaLoad}
+                  onLoad={() => handleMediaLoad()}
                 />
               ) : (
-                <MediaVideoLazy
+                <MediaVideo
                   ref={videoRef}
-                  src={post.uploadPath}
+                  src={post.previewVideoPath || ""}
                   previewSrc={post.previewPath || undefined}
+                  previewVideoSrc={post.previewVideoPath || undefined}
                   alt={post.title}
                   fill
                   className="rounded-b-lg"
@@ -183,14 +201,14 @@ export function PostCard({
                   loop
                   playsInline
                   preload="metadata"
-                  onLoadedMetadata={handleVideoLoadedMetadata}
-                  onPlay={handleVideoPlay}
+                  autoPlay={playingVideo === post.id} // Auto-play if this video should be playing
+                  onLoadedMetadata={() => handleVideoLoadedMetadata()}
+                  onPlay={handleVideoPlayEvent}
                   onEnded={handleVideoEnded}
+                  onPause={handleVideoPauseEvent}
                   blurDataURL={post.blurData || undefined}
-                  loading="lazy"
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  autoShowVideo={playingVideo === post.id}
-                  showPlayButton={false} // We'll use custom controls
+                  usePreviewVideo={true}
+                  fallbackToOriginal={false}
                 />
               )
             ) : (
@@ -202,11 +220,11 @@ export function PostCard({
 
             {/* Custom video controls overlay for videos */}
             {post.uploadFileType === "VIDEO" && (
-              <div className="absolute inset-0 top-3 left-3 pointer-events-none z-10">
+              <div className="absolute top-3 left-3 flex items-center gap-2 z-10 pointer-events-none">
                 <div className="flex gap-2">
                   {/* Play/pause button */}
                   <button
-                    className="bg-background/90 hover:bg-background rounded-full p-1.5 transition-colors pointer-events-auto"
+                    className="bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors pointer-events-auto"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -214,15 +232,15 @@ export function PostCard({
                     }}
                   >
                     {playingVideo === post.id ? (
-                      <Pause className="w-5 h-5 text-foreground" />
+                      <Pause className="w-4 h-4 text-white" />
                     ) : (
-                      <Play className="w-5 h-5 text-foreground" />
+                      <Play className="w-4 h-4 text-white" />
                     )}
                   </button>
 
                   {/* Mute/unmute button */}
                   <button
-                    className="bg-background/90 hover:bg-background rounded-full p-1.5 transition-colors pointer-events-auto"
+                    className="bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors pointer-events-auto"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -230,9 +248,9 @@ export function PostCard({
                     }}
                   >
                     {isVideoMuted ? (
-                      <VolumeX className="w-5 h-5 text-foreground" />
+                      <VolumeX className="w-4 h-4 text-white" />
                     ) : (
-                      <Volume2 className="w-5 h-5 text-foreground" />
+                      <Volume2 className="w-4 h-4 text-white" />
                     )}
                   </button>
                 </div>

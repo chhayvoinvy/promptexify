@@ -41,6 +41,7 @@ export const createPostAction = withCSRFProtection(
       const blurData = formData.get("blurData") as string;
       const uploadMediaId = formData.get("uploadMediaId") as string;
       const previewPath = formData.get("previewPath") as string;
+      const previewVideoPath = formData.get("previewVideoPath") as string;
       const category = formData.get("category") as string;
       const subcategory = formData.get("subcategory") as string;
       const tags = formData.get("tags") as string;
@@ -51,12 +52,36 @@ export const createPostAction = withCSRFProtection(
       const content = sanitizeContent(rawContent);
 
       // Generate slug if not provided
-      const slug =
+      const baseSlug =
         rawSlug ||
         title
           .toLowerCase()
           .replace(/\s+/g, "-")
           .replace(/[^\w-]/g, "");
+
+      // Ensure slug uniqueness
+      let slug = baseSlug;
+      let counter = 1;
+      
+      while (true) {
+        const existingPost = await prisma.post.findFirst({
+          where: { slug },
+          select: { id: true },
+        });
+        
+        if (!existingPost) {
+          break; // Slug is unique
+        }
+        
+        // Generate new slug with counter
+        slug = `${baseSlug}-${counter}`;
+        counter++;
+        
+        // Prevent infinite loop
+        if (counter > 1000) {
+          throw new Error("Unable to generate unique slug");
+        }
+      }
 
       // Handle publish/status logic based on user role
       let isPublished = false;
@@ -136,6 +161,7 @@ export const createPostAction = withCSRFProtection(
           uploadPath: uploadPath || null,
           uploadFileType: uploadFileType || null,
           previewPath: previewPath || null,
+          previewVideoPath: previewVideoPath || null,
           blurData: blurData || null,
           isPremium,
           isPublished,
@@ -193,6 +219,17 @@ export const createPostAction = withCSRFProtection(
       }
 
       console.error("Error creating post:", error);
+      
+      // Handle specific database errors
+      if (error && typeof error === "object" && "code" in error) {
+        const dbError = error as { code: string; meta?: unknown };
+        
+        if (dbError.code === "P2002") {
+          // Unique constraint violation
+          throw new Error("A post with this title already exists. Please choose a different title.");
+        }
+      }
+      
       throw new Error("Failed to create post");
     }
   }
@@ -212,7 +249,7 @@ export const updatePostAction = withCSRFProtection(
       // Extract form data
       const id = formData.get("id") as string;
       const title = formData.get("title") as string;
-      const slug = formData.get("slug") as string;
+      const rawSlug = formData.get("slug") as string;
       const description = formData.get("description") as string;
       const content = formData.get("content") as string;
       const uploadPath = formData.get("uploadPath") as string;
@@ -220,6 +257,7 @@ export const updatePostAction = withCSRFProtection(
       const blurData = formData.get("blurData") as string;
       const uploadMediaId = formData.get("uploadMediaId") as string;
       const previewPath = formData.get("previewPath") as string;
+      const previewVideoPath = formData.get("previewVideoPath") as string;
       const category = formData.get("category") as string;
       const subcategory = formData.get("subcategory") as string;
       const tags = formData.get("tags") as string;
@@ -228,6 +266,41 @@ export const updatePostAction = withCSRFProtection(
       // Validate required fields
       if (!id || !title || !content || !category) {
         throw new Error("Missing required fields");
+      }
+
+      // Generate slug if not provided and ensure uniqueness
+      const baseSlug =
+        rawSlug ||
+        title
+          .toLowerCase()
+          .replace(/\s+/g, "-")
+          .replace(/[^\w-]/g, "");
+
+      // Ensure slug uniqueness (excluding current post)
+      let slug = baseSlug;
+      let counter = 1;
+      
+      while (true) {
+        const existingPost = await prisma.post.findFirst({
+          where: { 
+            slug,
+            NOT: { id } // Exclude current post from uniqueness check
+          },
+          select: { id: true },
+        });
+        
+        if (!existingPost) {
+          break; // Slug is unique
+        }
+        
+        // Generate new slug with counter
+        slug = `${baseSlug}-${counter}`;
+        counter++;
+        
+        // Prevent infinite loop
+        if (counter > 1000) {
+          throw new Error("Unable to generate unique slug");
+        }
       }
 
       // Check if post exists and user has permission
@@ -367,6 +440,7 @@ export const updatePostAction = withCSRFProtection(
           uploadPath: uploadPath || null,
           uploadFileType: uploadFileType || null,
           previewPath: previewPath || null,
+          previewVideoPath: previewVideoPath || null,
           blurData: blurData || null,
           isPremium,
           isPublished,
@@ -438,6 +512,17 @@ export const updatePostAction = withCSRFProtection(
       }
 
       console.error("Error updating post:", error);
+      
+      // Handle specific database errors
+      if (error && typeof error === "object" && "code" in error) {
+        const dbError = error as { code: string; meta?: unknown };
+        
+        if (dbError.code === "P2002") {
+          // Unique constraint violation
+          throw new Error("A post with this title already exists. Please choose a different title.");
+        }
+      }
+      
       throw new Error("Failed to update post");
     }
   }
@@ -606,6 +691,7 @@ export async function deletePostAction(postId: string) {
         uploadPath: true,
         uploadFileType: true,
         previewPath: true,
+        previewVideoPath: true,
         media: {
           select: {
             id: true,
@@ -698,6 +784,17 @@ export async function deletePostAction(postId: string) {
         mediaDeletePromises.push(deleteImage(previewUrl));
       } catch (error) {
         console.error(`Failed to delete preview file ${existingPost.previewPath}:`, error);
+      }
+    }
+
+    // Delete preview video file if it exists
+    if (existingPost.previewVideoPath) {
+      try {
+        const { deleteVideo, getPublicUrl } = await import("@/lib/image/storage");
+        const previewVideoUrl = await getPublicUrl(existingPost.previewVideoPath);
+        mediaDeletePromises.push(deleteVideo(previewVideoUrl));
+      } catch (error) {
+        console.error(`Failed to delete preview video file ${existingPost.previewVideoPath}:`, error);
       }
     }
 
@@ -949,6 +1046,58 @@ export async function cleanupOrphanedMediaAction(dryRun: boolean = true) {
     console.error("Error in cleanup orphaned media action:", error);
     throw new Error(
       error instanceof Error ? error.message : "Failed to cleanup orphaned media"
+    );
+  }
+}
+
+// Cleanup orphaned preview files action
+export async function cleanupOrphanedPreviewFilesAction(dryRun: boolean = true) {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.userData) {
+      handleAuthRedirect();
+    }
+
+    // Only admins can run cleanup
+    if (currentUser.userData.role !== "ADMIN") {
+      throw new Error("Unauthorized: Admin access required");
+    }
+
+    // Import cleanup function
+    const { cleanupOrphanedPreviewFiles } = await import("@/lib/image/storage");
+    
+    // Run cleanup
+    const result = await cleanupOrphanedPreviewFiles(dryRun);
+
+    const message = dryRun
+      ? `Found ${result.orphanedCount} orphaned preview files that can be cleaned up`
+      : `Successfully cleaned up ${result.deletedCount} out of ${result.orphanedCount} orphaned preview files`;
+
+    // Revalidate relevant paths if actual cleanup was performed
+    if (!dryRun && result.deletedCount > 0) {
+      revalidatePath("/dashboard/settings");
+      revalidateCache([
+        CACHE_TAGS.POSTS,
+        CACHE_TAGS.POST_BY_ID,
+        CACHE_TAGS.POST_BY_SLUG,
+      ]);
+    }
+
+    return {
+      success: true,
+      message,
+      data: {
+        orphanedCount: result.orphanedCount,
+        deletedCount: result.deletedCount,
+        errors: result.errors,
+        orphanedFiles: result.orphanedFiles,
+        dryRun,
+      },
+    };
+  } catch (error) {
+    console.error("Error in cleanup orphaned preview files action:", error);
+    throw new Error(
+      error instanceof Error ? error.message : "Failed to cleanup orphaned preview files"
     );
   }
 }

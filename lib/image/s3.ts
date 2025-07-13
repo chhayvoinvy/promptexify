@@ -53,14 +53,15 @@ export function generateImageFilename(originalFilename: string, userId?: string)
 /**
  * Converts image buffer to WebP format
  * @param imageBuffer - Input image buffer
+ * @param quality - WebP quality (1-100), defaults to 80
  * @returns Promise<Buffer> - WebP formatted image buffer
  */
-export async function convertToWebp(imageBuffer: Buffer): Promise<Buffer> {
+export async function convertToWebp(imageBuffer: Buffer, quality: number = 80): Promise<Buffer> {
   const sharp = (await import("sharp")).default;
 
   return await sharp(imageBuffer)
     .webp({
-      quality: 80,
+      quality,  // Use passed quality instead of hardcoded 80
       effort: 6, // Higher effort for better compression
     })
     .toBuffer();

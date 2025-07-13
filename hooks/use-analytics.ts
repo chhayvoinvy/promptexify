@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 // Interface matching the API response
 interface AnalyticsData {
@@ -103,7 +103,7 @@ export function useAnalytics({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -150,7 +150,7 @@ export function useAnalytics({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [range, timezone]);
 
   const refetch = async () => {
     await fetchAnalytics();
@@ -159,7 +159,7 @@ export function useAnalytics({
   // Initial data fetch
   useEffect(() => {
     fetchAnalytics();
-  }, [range, timezone]);
+  }, [fetchAnalytics]);
 
   // Set up automatic refresh if specified (only in production)
   useEffect(() => {
@@ -167,7 +167,7 @@ export function useAnalytics({
 
     const interval = setInterval(fetchAnalytics, refreshInterval);
     return () => clearInterval(interval);
-  }, [refreshInterval, range, timezone]);
+  }, [fetchAnalytics, refreshInterval]);
 
   return {
     data,

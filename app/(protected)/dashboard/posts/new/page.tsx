@@ -44,12 +44,6 @@ interface Tag {
   slug: string;
 }
 
-interface FeaturedMedia {
-  id: string;
-  url: string;
-  relativePath: string;
-  blurDataUrl?: string;
-}
 
 export default function NewPostPage() {
   const { user, loading } = useAuth();
@@ -58,7 +52,6 @@ export default function NewPostPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [postTitle, setPostTitle] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
@@ -66,6 +59,7 @@ export default function NewPostPage() {
   const [uploadFileType, setUploadFileType] = useState<"IMAGE" | "VIDEO" | null>(null);
   const [uploadMediaId, setUploadMediaId] = useState<string | null>(null);
   const [previewPath, setPreviewPath] = useState<string | null>(null);
+  const [previewVideoPath, setPreviewVideoPath] = useState<string | null>(null);
   const [blurData, setBlurData] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [pendingTags, setPendingTags] = useState<string[]>([]);
@@ -263,20 +257,20 @@ export default function NewPostPage() {
         formData.set("uploadPath", uploadPath || "");
         formData.set("uploadFileType", uploadFileType || "");
         formData.set("previewPath", previewPath || "");
+        formData.set("previewVideoPath", previewVideoPath || "");
         formData.set("blurData", blurData || "");
       }
 
       // Add the selected tags to form data
       formData.set("tags", selectedTags.join(", "));
 
-      // Convert FormData to plain object for CSRF protection
-      const formObject: Record<string, FormDataEntryValue> = {};
+      // Create secure form data with CSRF protection
+      const secureFormData = createFormDataWithCSRF();
+      
+      // Add all form data to the secure form data
       for (const [key, value] of formData.entries()) {
-        formObject[key] = value;
+        secureFormData.set(key, value);
       }
-
-      // Create form data with CSRF protection
-      const secureFormData = createFormDataWithCSRF(formObject);
       await createPostAction(secureFormData);
 
               // Show success message - redirect is handled by server action
@@ -298,7 +292,12 @@ export default function NewPostPage() {
 
         // Show user-friendly error message for actual errors
         if (error instanceof Error) {
-          toast.error(error.message);
+          // Check for specific error types
+          if (error.message.includes("slug") || error.message.includes("unique")) {
+            toast.error("A post with this title already exists. Please choose a different title.");
+          } else {
+            toast.error(error.message);
+          }
         } else {
           toast.error("Failed to create post. Please try again.");
         }
@@ -316,18 +315,21 @@ export default function NewPostPage() {
       mimeType: string;
       blurDataUrl?: string;
       previewPath?: string;
+      previewVideoPath?: string;
     } | null
   ) {
     if (result) {
       setUploadMediaId(result.id);
       setUploadPath(result.relativePath);
       setPreviewPath(result.previewPath || null); // Use preview path from upload response
+      setPreviewVideoPath(result.previewVideoPath || null); // Use preview video path from upload response
       setBlurData(result.blurDataUrl || null);
       setUploadFileType(result.mimeType.startsWith("image/") ? "IMAGE" : "VIDEO");
     } else {
       setUploadMediaId(null);
       setUploadPath(null);
       setPreviewPath(null);
+      setPreviewVideoPath(null);
       setBlurData(null);
       setUploadFileType(null);
     }
@@ -641,6 +643,7 @@ export default function NewPostPage() {
             <input type="hidden" name="uploadFileType" value={uploadFileType || ""} />
             <input type="hidden" name="uploadMediaId" value={uploadMediaId || ""} />
             <input type="hidden" name="previewPath" value={previewPath || ""} />
+            <input type="hidden" name="previewVideoPath" value={previewVideoPath || ""} />
             <input type="hidden" name="blurData" value={blurData || ""} />
 
             <div className="flex justify-end gap-4">
@@ -649,20 +652,20 @@ export default function NewPostPage() {
                 className="w-full md:w-auto"
                 disabled={isSubmitting || isUploadingMedia}
               >
-                {isSubmitting || isUploadingMedia ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : null}
-                {isSubmitting
-                  ? "Creating Post..."
-                  : isUploadingMedia
-                    ? "Uploading..."
-                    : "Create Post"}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <span>Creating Post...</span>
+                  </>
+                ) : (
+                  <span>Create Post</span>
+                )}
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 asChild
-                disabled={isSubmitting}
+                disabled={isSubmitting || isUploadingMedia}
               >
                 <Link href="/dashboard/posts">Cancel</Link>
               </Button>

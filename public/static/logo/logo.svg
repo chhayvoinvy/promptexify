@@ -1,8 +1,8 @@
 <svg width="288" height="288" viewBox="0 0 288 288" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g filter="url(#filter0_d_51_2)">
-<rect x="4" width="277.586" height="280" rx="138.793" fill="black"/>
-<rect x="139.749" y="100.884" width="111.073" height="70.8575" transform="rotate(72.666 139.749 100.884)" fill="#E6E6E6" stroke="black"/>
-<rect x="196.843" y="51.4217" width="58.8406" height="56.2222" transform="rotate(72.666 196.843 51.4217)" fill="#E6E6E6" stroke="black"/>
+<rect x="4" width="277.586" height="280" rx="90" fill="black"/>
+<rect x="141.252" y="84.7556" width="146.995" height="93.8894" rx="24.5" transform="rotate(72.666 141.252 84.7556)" fill="#E6E6E6" stroke="black"/>
+<rect x="212.32" y="26.6263" width="78.0208" height="74.5631" rx="24.5" transform="rotate(72.666 212.32 26.6263)" fill="#E6E6E6" stroke="black"/>
 </g>
 <defs>
 <filter id="filter0_d_51_2" x="0" y="0" width="288" height="288" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">

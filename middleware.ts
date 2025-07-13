@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "./lib/supabase/middleware";
-import { CSPNonce, SecurityHeaders, CSRFProtection, EnvironmentDetector } from "./lib/security/csp";
+import { CSPNonce, SecurityHeaders, CSRFProtection } from "@/lib/security/csp";
 import {
   rateLimits,
   getClientIdentifier,
@@ -12,11 +12,11 @@ import {
 
 export async function middleware(request: NextRequest) {
   try {
-    const config = EnvironmentDetector.getCSPConfig();
-    const isLocalhost = EnvironmentDetector.isLocalhost(request);
-
-    // Generate nonce for CSP only in production (dev mode uses 'unsafe-inline')
-    const nonce = config.isProduction && !config.isLocalDevelopment ? CSPNonce.generate() : null;
+    // Generate nonce for CSP following csp.md approach
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const nonce = isDevelopment && request.nextUrl.hostname === 'localhost' 
+      ? null // No nonce needed for local development
+      : CSPNonce.generate(); // Generate nonce for production and non-localhost dev
 
     // Handle Supabase session
     const response = await updateSession(request);
@@ -29,28 +29,28 @@ export async function middleware(request: NextRequest) {
     // Prepare request headers for modification
     const requestHeaders = new Headers(request.headers);
 
-    // Set nonce in headers and cookies if in production mode
-    if (nonce && config.isProduction) {
+    // Set nonce in headers and cookies if generated
+    if (nonce) {
       // Set nonce in request headers for Server Components to access
       requestHeaders.set("x-nonce", nonce);
 
       // Set nonce in cookie for client components (httpOnly: false so client can read)
       response.cookies.set("csp-nonce", nonce, {
         httpOnly: false,
-        secure: config.isProduction, // Only secure in production
+        secure: !isDevelopment, // Only secure in production
         sameSite: "strict",
         maxAge: 60 * 60, // 1 hour
       });
     }
 
-    // Apply security headers with CSP
-    const securityHeaders = SecurityHeaders.getSecurityHeaders(
-      nonce || undefined,
-      request
-    );
+    // Apply security headers with CSP following csp.md methodology
+    const securityHeaders = SecurityHeaders.getSecurityHeaders(nonce || undefined);
     Object.entries(securityHeaders).forEach(([key, value]) => {
       response.headers.set(key, value);
     });
+
+    // Get client IP for logging and rate limiting
+    const clientIp = getClientIP(request);
 
     // For non-GET requests, validate CSRF token (except for auth endpoints and webhooks)
     if (["POST", "PUT", "DELETE", "PATCH"].includes(request.method)) {
@@ -60,15 +60,19 @@ export async function middleware(request: NextRequest) {
       const skipCSRF = [
         "/api/webhooks/",
         "/api/upload/",
+        "/api/media/resolve", // Read-only media URL resolution
         "/auth/callback",
         "/api/auth/",
-        // NEW: Allow CSP violation reports (no CSRF token sent by browsers)
+        // Allow CSP violation reports (no CSRF token sent by browsers)
         "/api/security/csp-report",
       ];
 
-      const shouldValidateCSRF = !skipCSRF.some((path) =>
+      // Special handling for dynamic routes that should skip CSRF
+      const shouldSkipCSRF = skipCSRF.some((path) =>
         pathname.startsWith(path)
-      );
+      ) || pathname.match(/^\/api\/posts\/[^/]+\/view$/);
+
+      const shouldValidateCSRF = !shouldSkipCSRF;
 
       if (shouldValidateCSRF && pathname.startsWith("/api/")) {
         // Always expect token in header for API routes
@@ -94,7 +98,6 @@ export async function middleware(request: NextRequest) {
       const skipLogging = ["/api/webhooks/", "/api/upload/"];
 
       // Ignore logging for localhost IPs in development
-      const clientIp = getClientIP(request);
       const isLocal =
         !clientIp ||
         clientIp === "127.0.0.1" ||
@@ -102,7 +105,7 @@ export async function middleware(request: NextRequest) {
         clientIp === "0:0:0:0:0:0:0:1";
       if (
         !skipLogging.some((path) => pathname.startsWith(path)) &&
-        (process.env.NODE_ENV === "production" || !isLocal)
+        (!isDevelopment || !isLocal)
       ) {
         console.log(
           `[SECURITY] ${request.method} ${pathname} - IP: ${clientIp} - User-Agent: ${sanitizeUserAgent(
@@ -120,31 +123,29 @@ export async function middleware(request: NextRequest) {
       const rateLimitResult = await rateLimits.api(clientId);
       // Attach rate-limit headers so clients can introspect remaining quota
       Object.entries(getRateLimitHeaders(rateLimitResult)).forEach(
-        ([key, value]) => response.headers.set(key, value)
+        ([key, value]) => response.headers.set(key, String(value))
       );
 
       if (!rateLimitResult.allowed) {
-        // Audit log
-        SecurityEvents.rateLimitExceeded(
+        // Log rate limit violation
+        await SecurityEvents.rateLimitExceeded(
           clientId,
           request.nextUrl.pathname,
-          getClientIP(request as unknown as Request)
+          clientIp
         );
 
         return NextResponse.json(
           {
-            error: "Too many requests. Please slow down.",
-            retryAfter: Math.ceil(
-              (rateLimitResult.resetTime - Date.now()) / 1000
-            ),
+            error: "Too many requests",
+            code: "RATE_LIMIT_EXCEEDED",
+            resetTime: rateLimitResult.resetTime,
           },
           {
             status: 429,
             headers: {
               ...securityHeaders,
-              ...getRateLimitHeaders(rateLimitResult),
-              "Retry-After": String(
-                Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)
+              ...Object.fromEntries(
+                Object.entries(getRateLimitHeaders(rateLimitResult)).map(([key, value]) => [key, String(value)])
               ),
             },
           }
@@ -152,7 +153,7 @@ export async function middleware(request: NextRequest) {
       }
     }
 
-    // Update response with modified headers
+    // Update request with modified headers
     return NextResponse.next({
       request: {
         headers: requestHeaders,
@@ -161,32 +162,16 @@ export async function middleware(request: NextRequest) {
     });
   } catch (error) {
     console.error("Middleware error:", error);
-
-    // Log security incident (Edge Runtime compatible - no database calls)
-    const timestamp = new Date().toISOString();
-    const ip = getClientIP(request);
-    const userAgent = sanitizeUserAgent(request.headers.get("user-agent"));
-
-    console.error(
-      `[SECURITY] ${timestamp} - MIDDLEWARE_ERROR: ${
-        error instanceof Error ? error.message : "Unknown error"
-      } - IP: ${ip} - User-Agent: ${userAgent}`
-    );
-
-    const securityHeaders = SecurityHeaders.getSecurityHeaders();
+    // Return a basic error response with security headers
+    const basicSecurityHeaders = {
+      "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "DENY",
+      "X-XSS-Protection": "1; mode=block",
+    };
 
     return NextResponse.json(
-      {
-        error: "Internal server error",
-        code: "MIDDLEWARE_ERROR",
-      },
-      {
-        status: 500,
-        headers: {
-          "Content-Type": "application/json",
-          ...securityHeaders,
-        },
-      }
+      { error: "Internal server error", code: "MIDDLEWARE_ERROR" },
+      { status: 500, headers: basicSecurityHeaders }
     );
   }
 }
@@ -195,19 +180,17 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api (API routes)
+     * - api (API routes) - but we want to process these for CSRF
      * - _next/static (static files)
-     * - _next/image (image optimization files)
+     * - _next/image (image optimization files)  
      * - favicon.ico (favicon file)
-     * - Static assets (images, etc.)
-     * Also exclude prefetch requests
+     * Update: Include API routes for CSRF protection and rate limiting
      */
     {
-      source:
-        "/((?!api|_next/static|_next/image|favicon.ico|uploads|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|mp4|mov|avi|webm)$).*)",
+      source: '/((?!_next/static|_next/image|favicon.ico).*)',
       missing: [
-        { type: "header", key: "next-router-prefetch" },
-        { type: "header", key: "purpose", value: "prefetch" },
+        { type: 'header', key: 'next-router-prefetch' },
+        { type: 'header', key: 'purpose', value: 'prefetch' },
       ],
     },
   ],

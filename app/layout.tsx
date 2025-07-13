@@ -7,7 +7,7 @@ import { ThemeProvider } from "@/components/ui/theme";
 import { Toaster } from "@/components/ui/sonner";
 import { GoogleOneTap } from "@/components/google-one-tap";
 import { getBaseUrl } from "@/lib/utils";
-import { CSPNonce } from "@/lib/security/csp";
+import { headers } from 'next/headers';
 
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseUrl()),
@@ -50,12 +50,11 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://promptexify.com",
-    siteName: "Promptexify",
-    title:
-      "Promptexify - AI Prompt Directory for ChatGPT, Claude, Gemini, AI Code Editor, and more",
+    url: getBaseUrl(),
+    title: "Promptexify - AI Prompt Directory",
     description:
-      "Discover and share high-quality AI prompts for ChatGPT, Claude, Gemini, AI Code Editor, and more. Browse our comprehensive directory of tested prompts for creative writing, business, design, and more.",
+      "Discover and share high-quality AI prompts for ChatGPT, Claude, Gemini, and more. The comprehensive AI prompt directory for all your needs.",
+    siteName: "Promptexify",
     images: [
       {
         url: "/static/og-image.png",
@@ -67,50 +66,16 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title:
-      "Promptexify - AI Prompt Directory for ChatGPT, Claude, Gemini, AI Code Editor, and more",
+    title: "Promptexify - AI Prompt Directory",
     description:
-      "Discover and share high-quality AI prompts for ChatGPT, Claude, Gemini, AI Code Editor, and more. Browse our comprehensive directory of tested prompts for creative writing, business, design, and more.",
+      "Discover and share high-quality AI prompts for ChatGPT, Claude, Gemini, and more.",
     images: ["/static/og-image.png"],
-  },
-  alternates: {
-    canonical: "https://promptexify.com",
+    creator: "@promptexify",
   },
   icons: {
-    icon: [
-      {
-        url: "/static/favicon/favicon-16x16.png",
-        sizes: "16x16",
-        type: "image/png",
-      },
-      {
-        url: "/static/favicon/favicon-32x32.png",
-        sizes: "32x32",
-        type: "image/png",
-      },
-      { url: "/static/favicon/favicon.ico", sizes: "any" },
-    ],
-    apple: [
-      {
-        url: "/static/favicon/apple-touch-icon.png",
-        sizes: "180x180",
-        type: "image/png",
-      },
-    ],
-    other: [
-      {
-        rel: "android-chrome-192x192",
-        url: "/static/favicon/android-chrome-192x192.png",
-        sizes: "192x192",
-        type: "image/png",
-      },
-      {
-        rel: "android-chrome-512x512",
-        url: "/static/favicon/android-chrome-512x512.png",
-        sizes: "512x512",
-        type: "image/png",
-      },
-    ],
+    icon: "/static/favicon/favicon.ico",
+    shortcut: "/static/favicon/favicon-16x16.png",
+    apple: "/static/favicon/apple-touch-icon.png",
   },
   manifest: "/static/favicon/site.webmanifest",
 };
@@ -122,17 +87,15 @@ export default async function RootLayout({
   children: React.ReactNode;
   modal: React.ReactNode;
 }>) {
-  // Get CSP nonce for inline scripts/styles (only in production)
-  // Use safe method that handles static rendering gracefully
-  const nonce = await CSPNonce.getFromHeadersSafe();
+  // Get CSP nonce for inline scripts/styles following csp.md approach
+  const headersList = await headers();
+  const nonce = headersList.get('x-nonce') || '';
   const isProduction = process.env.NODE_ENV === "production";
-
-  // console.log("🌐 Root layout rendered, modal:", !!modal);
 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* All security headers are now handled by middleware and Next.js config */}
+        {/* All security headers are now handled by middleware following csp.md */}
         {/* Only keep favicon and theme-related meta tags */}
         <link
           rel="icon"
@@ -159,7 +122,8 @@ export default async function RootLayout({
         <link rel="manifest" href="/static/favicon/site.webmanifest" />
         <meta name="theme-color" content="#ffffff" />
         <meta name="msapplication-TileColor" content="#ffffff" />
-        {/* Only set nonce in production mode */}
+        
+        {/* CSP nonce handling following csp.md approach */}
         {nonce && isProduction && (
           <script
             nonce={nonce}
@@ -189,8 +153,7 @@ export default async function RootLayout({
           {children}
           {modal}
           <GoogleOneTap />
-          {/* Only render Vercel Analytics in production */}
-          {isProduction && <Analytics />}
+          <Analytics />
           <Toaster />
         </ThemeProvider>
       </body>
