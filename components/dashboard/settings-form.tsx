@@ -60,6 +60,7 @@ import {
   updateSettingsAction,
   resetSettingsToDefaultAction,
 } from "@/actions/settings";
+import { clearMediaUrlCache } from "@/components/media-display";
 
 // Form validation schema
 const settingsFormSchema = z.object({
@@ -195,6 +196,8 @@ export function SettingsForm() {
     try {
       const result = await updateSettingsAction(data);
       if (result.success) {
+        // Clear media URL cache to ensure new storage URLs are used
+        clearMediaUrlCache();
         toast.success("Settings updated successfully");
         router.refresh();
       } else {
@@ -214,6 +217,8 @@ export function SettingsForm() {
     try {
       const result = await resetSettingsToDefaultAction();
       if (result.success) {
+        // Clear media URL cache to ensure new storage URLs are used
+        clearMediaUrlCache();
         toast.success("Settings reset to defaults");
         // Reload the form with default values
         window.location.reload();

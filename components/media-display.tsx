@@ -19,6 +19,29 @@ class BatchedMediaResolver {
     return BatchedMediaResolver.instance;
   }
 
+  /**
+   * Clear all cached URLs - useful when storage configuration changes
+   */
+  clearCache(): void {
+    console.log("🗑️  Clearing BatchedMediaResolver cache due to storage change");
+    this.resolvedUrls.clear();
+    this.pendingPaths.clear();
+    this.pendingCallbacks.clear();
+    if (this.batchTimeout) {
+      clearTimeout(this.batchTimeout);
+      this.batchTimeout = null;
+    }
+  }
+
+  /**
+   * Static method to clear cache globally
+   */
+  static clearCache(): void {
+    if (BatchedMediaResolver.instance) {
+      BatchedMediaResolver.instance.clearCache();
+    }
+  }
+
   async resolveMediaUrl(path: string): Promise<string> {
     // If already resolved, return immediately
     if (this.resolvedUrls.has(path)) {
@@ -67,6 +90,8 @@ class BatchedMediaResolver {
     const pathsToResolve = Array.from(this.pendingPaths);
     this.pendingPaths.clear();
 
+    console.log('🔄 BatchedMediaResolver: Processing paths:', pathsToResolve);
+
     try {
       const response = await fetch("/api/media/resolve", {
         method: "POST",
@@ -76,12 +101,30 @@ class BatchedMediaResolver {
         body: JSON.stringify({ paths: pathsToResolve }),
       });
 
+      console.log('📡 BatchedMediaResolver: API response status:', response.status);
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
       const resolvedUrls = data.urls || [];
+
+      console.log('✅ BatchedMediaResolver: Resolved URLs:', {
+        paths: pathsToResolve,
+        resolvedUrls,
+        singleUrl: data.url
+      });
+
+      // Handle single URL response
+      if (pathsToResolve.length === 1 && data.url) {
+        const resolvedUrl = data.url;
+        this.resolvedUrls.set(pathsToResolve[0], resolvedUrl);
+        const callbacks = this.pendingCallbacks.get(pathsToResolve[0]) || [];
+        callbacks.forEach(callback => callback(resolvedUrl));
+        this.pendingCallbacks.delete(pathsToResolve[0]);
+        return;
+      }
 
       // Store resolved URLs and trigger callbacks
       pathsToResolve.forEach((path, index) => {
@@ -94,10 +137,11 @@ class BatchedMediaResolver {
         this.pendingCallbacks.delete(path);
       });
     } catch (error) {
-      console.error("Error resolving media URLs:", error);
+      console.error("❌ BatchedMediaResolver: Error resolving media URLs:", error);
       
       // On error, resolve with original paths
       pathsToResolve.forEach((path) => {
+        console.warn(`⚠️ BatchedMediaResolver: Falling back to original path: ${path}`);
         this.resolvedUrls.set(path, path);
         const callbacks = this.pendingCallbacks.get(path) || [];
         callbacks.forEach(callback => callback(path));
@@ -117,6 +161,11 @@ class BatchedMediaResolver {
 // Legacy function for backward compatibility (now uses batched resolver)
 async function resolveMediaUrl(path: string): Promise<string> {
   return BatchedMediaResolver.getInstance().resolveMediaUrl(path);
+}
+
+// Export cache clearing function for use when storage configuration changes
+export function clearMediaUrlCache(): void {
+  BatchedMediaResolver.clearCache();
 }
 
 interface MediaImageProps {
@@ -202,17 +251,7 @@ export function MediaImage({
       return;
     }
 
-    // Handle preview paths - use API route for proper serving
-    if (src.startsWith("preview/")) {
-      // Use API route for preview images to ensure proper content-type and security
-      const previewApiUrl = `/api/media/preview/${src.replace("preview/", "")}`;
-      console.log("Using preview API URL for:", src, "→", previewApiUrl);
-      setResolvedUrl(previewApiUrl);
-      setIsLoading(false);
-      return;
-    }
-
-    // Resolve relative path to full URL for regular media
+    // Resolve relative path to full URL for all media (including preview paths)
     resolveMediaUrl(src)
       .then((url: string) => {
         // Validate the resolved URL before setting it
@@ -323,7 +362,21 @@ export function MediaImage({
       // Fallback for other relative paths
       validUrl = `/${resolvedUrl}`;
     }
-  } catch {
+    
+    // Debug logging to understand URL resolution
+    console.log('MediaImage URL resolution:', {
+      originalSrc: src,
+      resolvedUrl,
+      validUrl,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('MediaImage URL parsing error:', {
+      originalSrc: src,
+      resolvedUrl,
+      error: error instanceof Error ? error.message : String(error),
+      timestamp: new Date().toISOString()
+    });
     // If URL parsing fails, show error state
     return (
       <div
@@ -377,6 +430,7 @@ export function MediaImage({
           blurDataURL={blurDataURL}
           loading="eager"
           priority={true}
+          unoptimized={true}
         />
       )}
       
@@ -396,6 +450,7 @@ export function MediaImage({
         onLoad={handleImageLoad}
         placeholder="empty"
         blurDataURL={undefined}
+        unoptimized={validUrl.startsWith("/uploads") || validUrl.startsWith("/preview")}
       />
     </div>
   );
@@ -490,17 +545,7 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
         return;
       }
 
-      // Handle preview paths - use API route for proper serving
-      if (currentVideoSrc.startsWith("preview/")) {
-        // Use API route for preview videos to ensure proper content-type and security
-        const previewApiUrl = `/api/media/preview/${currentVideoSrc.replace("preview/", "")}`;
-        console.log(`Using preview API URL: ${previewApiUrl}`);
-        setResolvedUrl(previewApiUrl);
-        setIsLoading(false);
-        return;
-      }
-
-      // Resolve relative path to full URL for regular media
+      // Resolve relative path to full URL for all media (including preview paths)
       console.log(`Resolving relative path: ${currentVideoSrc}`);
       resolveMediaUrl(currentVideoSrc)
         .then((url: string) => {

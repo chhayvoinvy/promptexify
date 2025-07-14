@@ -32,7 +32,6 @@ interface UploadResult {
   fileSize: number;
   width?: number;
   height?: number;
-  storageType: "S3" | "LOCAL" | "DOSPACE";
   blurDataUrl?: string; // Base64 blur placeholder for images
   previewPath?: string; // Path to preview image
   previewVideoPath?: string; // Path to preview video

@@ -64,4 +64,5 @@ export {
   updateSettingsAction,
   getStorageConfigAction,
   resetSettingsToDefaultAction,
+  clearMediaCachesAction,
 } from "./settings";

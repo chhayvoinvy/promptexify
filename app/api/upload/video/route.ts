@@ -292,7 +292,6 @@ export async function POST(request: NextRequest) {
         width: uploadResult.width,
         height: uploadResult.height,
         duration: uploadResult.duration,
-        storageType: uploadResult.storageType,
         uploadedBy: user.userData!.id,
         blurDataUrl: uploadResult.blurDataUrl,
       },

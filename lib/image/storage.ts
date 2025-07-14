@@ -60,7 +60,6 @@ export interface UploadResult {
   width?: number;
   height?: number;
   duration?: number;
-  storageType: StorageType;
   blurDataUrl?: string; // Base64 blur placeholder for images
   previewPath?: string; // Path to preview image
   previewVideoPath?: string; // Path to preview video
@@ -1381,7 +1380,6 @@ export async function processAndUploadImageWithConfig(
     fileSize: imageBuffer.length,
     width,
     height,
-    storageType: storageType as StorageType,
     blurDataUrl,
     previewPath,  // WebP preview path
   };
@@ -1543,7 +1541,6 @@ export async function processAndUploadVideoWithConfig(
     width: videoMetadata.width,
     height: videoMetadata.height,
     duration: videoMetadata.duration,
-    storageType: storageType as StorageType,
     previewPath,  // WebP thumbnail path
     previewVideoPath,  // Compressed video preview path
     blurDataUrl,
