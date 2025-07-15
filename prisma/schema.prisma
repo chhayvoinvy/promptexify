@@ -183,8 +183,8 @@ model Log {
 }
 
 model Media {
-  id           String      @id @default(uuid())
-  filename     String      @unique
+  id           String   @id @default(uuid())
+  filename     String   @unique
   relativePath String
   originalName String
   mimeType     String
@@ -192,19 +192,17 @@ model Media {
   width        Int?
   height       Int?
   duration     Float?
-  storageType  StorageType @default(S3)
   uploadedBy   String
   postId       String?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
   blurDataUrl  String?
-  post         Post?       @relation(fields: [postId], references: [id])
+  post         Post?    @relation(fields: [postId], references: [id])
 
   @@index([filename])
   @@index([relativePath])
   @@index([postId])
   @@index([uploadedBy])
-  @@index([storageType])
   @@index([mimeType])
   @@index([createdAt(sort: Desc)])
   @@map("media")

@@ -6,6 +6,10 @@ This document summarizes the key architectural and technical aspects of the `pro
 
 `promptexify` is a full-stack web application built with Next.js. It features a comprehensive user authentication system, content management capabilities, a subscription model with payments, and a detailed admin dashboard. The application is designed to be flexible, particularly in its storage options.
 
+## Strict Rule Applied
+- Avoid making changes without asking for approval.
+- Always analyze context before making any adjustments.
+
 ## Core Technologies
 
 - **Framework:** Next.js (App Router)

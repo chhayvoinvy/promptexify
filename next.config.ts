@@ -108,6 +108,12 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "localprompt.s3.us-west-1.amazonaws.com",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
         hostname: "**.cloudfront.net",
         port: "",
         pathname: "/**",

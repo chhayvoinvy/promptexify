@@ -7,6 +7,7 @@ import { StorageType } from "@/app/generated/prisma";
 import { z } from "zod";
 import { sanitizeInput } from "@/lib/security/sanitize";
 import { clearStorageConfigCache } from "@/lib/image/storage";
+import { clearUrlCache } from "@/lib/image/path";
 
 // Settings validation schema
 const settingsSchema = z.object({
@@ -241,8 +242,9 @@ export async function updateSettingsAction(data: SettingsFormData) {
       });
     }
 
-    // Clear storage config cache to ensure new settings are used
+    // Clear all storage-related caches to ensure new settings are used
     clearStorageConfigCache();
+    clearUrlCache();
 
     // Revalidate relevant pages
     revalidatePath("/dashboard/settings");
@@ -390,8 +392,9 @@ export async function resetSettingsToDefaultAction() {
       });
     }
 
-    // Clear storage config cache to ensure new settings are used
+    // Clear all storage-related caches to ensure new settings are used
     clearStorageConfigCache();
+    clearUrlCache();
 
     // Revalidate relevant pages
     revalidatePath("/dashboard/settings");
@@ -407,6 +410,38 @@ export async function resetSettingsToDefaultAction() {
     return {
       success: false,
       error: "Failed to reset settings",
+    };
+  }
+}
+
+/**
+ * Clear all media-related caches manually
+ * Useful for immediate cache clearing after storage changes
+ */
+export async function clearMediaCachesAction() {
+  try {
+    const user = await getCurrentUser();
+
+    if (!user || user.userData?.role !== "ADMIN") {
+      return {
+        success: false,
+        error: "Unauthorized: Admin access required",
+      };
+    }
+
+    // Clear all storage-related caches
+    clearStorageConfigCache();
+    clearUrlCache();
+
+    return {
+      success: true,
+      message: "All media caches cleared successfully",
+    };
+  } catch (error) {
+    console.error("Error clearing media caches:", error);
+    return {
+      success: false,
+      error: "Failed to clear media caches",
     };
   }
 }

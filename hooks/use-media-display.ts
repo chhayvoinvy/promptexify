@@ -1,5 +1,33 @@
 import { useState, useEffect } from "react";
 
+// Import dynamic media URL resolution
+async function resolveMediaUrl(path: string): Promise<string> {
+  if (!path) return "";
+
+  // If it's already a full URL, return it as-is
+  if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("blob:")) {
+    return path;
+  }
+
+  try {
+    const response = await fetch("/api/media/resolve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paths: [path] }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.url || path;
+  } catch (error) {
+    console.error("Error resolving media URL:", error);
+    return path;
+  }
+}
+
 interface MediaDisplayOptions {
   preferPreview?: boolean;
   fallbackToOriginal?: boolean;
@@ -55,24 +83,24 @@ export function useMediaDisplay(
       return;
     }
 
-    // Handle preview paths - use API route for proper serving
-    if (pathToUse.startsWith("preview/")) {
-      // Use API route for preview media to ensure proper content-type and security
-      const previewApiUrl = `/api/media/preview/${pathToUse.replace("preview/", "")}`;
-      setDisplayUrl(previewApiUrl);
-      setIsPreview(true);
-      setIsLoading(false);
-      setError(null);
-      return;
-    }
-
-    // For regular media paths, resolve to full URL
-    // This would typically use your existing resolveMediaUrl function
-    // For now, we'll set it directly and let the MediaImage component handle resolution
-    setDisplayUrl(pathToUse);
-    setIsPreview(shouldUsePreview);
-    setIsLoading(false);
+    // For all media paths (including previews), use dynamic resolution
+    // This will resolve based on current storage configuration
+    setIsLoading(true);
     setError(null);
+    
+    resolveMediaUrl(pathToUse)
+      .then((resolvedUrl) => {
+        setDisplayUrl(resolvedUrl);
+        setIsPreview(shouldUsePreview);
+        setIsLoading(false);
+      })
+      .catch((error) => {
+        console.error("Error resolving media URL in hook:", error);
+        setDisplayUrl(pathToUse); // Fallback to original path
+        setIsPreview(shouldUsePreview);
+        setIsLoading(false);
+        setError("Failed to resolve media URL");
+      });
   }, [previewPath, preferPreview, fallbackToOriginal]);
 
   return {
@@ -114,8 +142,10 @@ export function useVideoDisplay(
   
   const result = useMediaDisplay(originalPath, videoPath, mediaOptions);
   
+  // For preview video URL, we'll need to resolve it dynamically too
+  // For now, we'll return the relative path and let the component handle resolution
   return {
     ...result,
-    previewVideoUrl: previewVideoPath ? `/api/media/preview/${previewVideoPath.replace("preview/", "")}` : null,
+    previewVideoUrl: previewVideoPath || null,
   };
 } 

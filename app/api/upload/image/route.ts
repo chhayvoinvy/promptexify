@@ -250,7 +250,6 @@ export async function POST(request: NextRequest) {
         fileSize: uploadResult.fileSize,
         width: uploadResult.width,
         height: uploadResult.height,
-        storageType: uploadResult.storageType,
         uploadedBy: user.userData!.id,
         blurDataUrl: uploadResult.blurDataUrl,
       },
