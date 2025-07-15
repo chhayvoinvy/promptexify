@@ -48,17 +48,26 @@ export function PostCard({
 
   // We now directly use previewPath for images, no need for the hook
 
-  // Calculate aspect ratio based on media type and dimensions
+  // Calculate aspect ratio based on real media dimensions or fallback
   const getDynamicAspectRatio = () => {
-    if (post.uploadPath) {
-      // Default aspect ratio calculation based on width
-      const baseRatio = width < 300 ? 0.75 : width < 400 ? 0.8 : 0.85;
-      const randomOffset = (parseFloat(post.id.slice(-3)) / 1000) * 0.3;
-      const aspectRatio = baseRatio + randomOffset;
-
-      return { aspectRatio };
+    if (post.uploadPath && post.media && post.media.length > 0) {
+      // Use real image dimensions from media table
+      const media = post.media[0];
+      if (media.width && media.height) {
+        const aspectRatio = media.width / media.height;
+        // Cap aspect ratio to reasonable bounds for UI consistency
+        const cappedRatio = Math.max(0.67, Math.min(1.8, aspectRatio));
+        const width = Math.round(cappedRatio * 100);
+        
+        // Debug: Log aspect ratio info to help verify blur/image matching
+        console.log(`Post ${post.id}: Real dimensions ${media.width}x${media.height}, ratio: ${aspectRatio.toFixed(3)}, capped: ${cappedRatio.toFixed(3)}, CSS: ${width}/100`);
+        
+        return { aspectRatio: `${width} / 100` };
+      }
     }
-    return { aspectRatio: 0.75 };
+    
+    // Fallback for posts without media dimensions
+    return { aspectRatio: "75 / 100" }; // Default 3:4 ratio
   };
 
   // Handle media load for dimensions tracking

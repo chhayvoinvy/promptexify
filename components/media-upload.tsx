@@ -32,7 +32,7 @@ interface UploadResult {
   fileSize: number;
   width?: number;
   height?: number;
-  blurDataUrl?: string; // Base64 blur placeholder for images
+  blurDataUrl?: string; // Base64 blur placeholder for images (used for Post table)
   previewPath?: string; // Path to preview image
   previewVideoPath?: string; // Path to preview video
 }

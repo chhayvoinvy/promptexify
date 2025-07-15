@@ -46,8 +46,9 @@ export async function generateBlurPlaceholder(
     // Create a tiny, blurred version of the image
     const tinyBuffer = await sharp(imageBuffer)
       .resize(width, height, {
-        fit: "cover", // Maintain aspect ratio while filling dimensions
+        fit: "inside", // Maintain aspect ratio without cropping
         position: "center",
+        withoutEnlargement: true, // Don't upscale small images
       })
       .blur(blur)
       .modulate({
@@ -73,6 +74,12 @@ export async function generateBlurPlaceholder(
 
 /**
  * Generate a blur placeholder optimized for different image types
+ * 
+ * IMPORTANT: This function preserves the original image aspect ratio to prevent
+ * layout mismatch between blur placeholders and actual images. The blur dimensions
+ * are calculated proportionally to maintain the same visual proportions as the
+ * final rendered image.
+ * 
  * @param imageBuffer - The source image buffer  
  * @param originalMimeType - The original image MIME type
  * @param compressionOptions - Optional compression settings
@@ -86,12 +93,45 @@ export async function generateOptimizedBlurPlaceholder(
     quality?: number;
   }
 ): Promise<string> {
+  // Get original image metadata to preserve aspect ratio
+  const sharp = (await import("sharp")).default;
+  const metadata = await sharp(imageBuffer).metadata();
+  const { width: originalWidth, height: originalHeight } = metadata;
+
+  if (!originalWidth || !originalHeight) {
+    throw new Error("Unable to determine image dimensions for blur generation");
+  }
+
+  // Calculate blur dimensions while preserving aspect ratio
+  const maxBlurSize = 16; // Maximum dimension for blur placeholder
+  const aspectRatio = originalWidth / originalHeight;
+  
+  let blurWidth: number;
+  let blurHeight: number;
+  
+  if (aspectRatio > 1) {
+    // Landscape: limit width, calculate height
+    blurWidth = maxBlurSize;
+    blurHeight = Math.round(maxBlurSize / aspectRatio);
+  } else {
+    // Portrait or square: limit height, calculate width
+    blurHeight = maxBlurSize;
+    blurWidth = Math.round(maxBlurSize * aspectRatio);
+  }
+
+  // Ensure minimum dimensions
+  blurWidth = Math.max(blurWidth, 4);
+  blurHeight = Math.max(blurHeight, 4);
+
+  // Debug: Log blur generation info
+  console.log(`Blur generation: Original ${originalWidth}x${originalHeight} (ratio: ${aspectRatio.toFixed(3)}) → Blur ${blurWidth}x${blurHeight} (ratio: ${(blurWidth/blurHeight).toFixed(3)})`);
+
   // Choose optimal settings based on original image type
   const isPhoto = originalMimeType?.includes("jpeg") || originalMimeType?.includes("jpg");
   
   const options: BlurOptions = {
-    width: isPhoto ? 12 : 8, // Slightly larger for photos
-    height: isPhoto ? 12 : 8,
+    width: blurWidth,
+    height: blurHeight,
     quality: compressionOptions?.quality ? Math.round(compressionOptions.quality) : (isPhoto ? 25 : 15),
     blur: isPhoto ? 2.5 : 3,
     format: "webp", // WebP for better compression
