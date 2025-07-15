@@ -10,6 +10,7 @@ import {
   Settings,
   Clock,
   Calendar,
+  Command,
 } from "lucide-react";
 
 // Tabler Icons
@@ -98,6 +99,7 @@ export const Icons = {
   settings: Settings,
   clock: Clock,
   calendar: Calendar,
+  command: Command,
   google: (props: React.SVGProps<SVGSVGElement>) => (
     <svg viewBox="0 0 24 24" {...props}>
       <path

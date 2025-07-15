@@ -22,7 +22,8 @@ export interface PostWithDetails {
     id: string;
     mimeType: string;
     relativePath: string;
-    blurDataUrl?: string | null;
+    width?: number | null;
+    height?: number | null;
   }[];
 
   authorId: string;
@@ -98,7 +99,8 @@ const optimizedPostSelect = {
       id: true,
       mimeType: true,
       relativePath: true,
-      blurDataUrl: true,
+      width: true,
+      height: true,
     },
   },
 

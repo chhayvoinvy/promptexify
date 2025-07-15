@@ -5,6 +5,7 @@ import { PostMasonrySkeleton } from "@/components/post-masonry-skeleton";
 import { SearchClientWrapper } from "@/components/search-client-wrapper";
 import { Queries } from "@/lib/query";
 import { getSettingsAction } from "@/actions/settings";
+import { SafeAsync } from "@/components/ui/safe-async";
 
 export const dynamic = "force-dynamic"; // Required because we use getCurrentUser() which accesses cookies
 
@@ -24,12 +25,34 @@ async function SearchResults({
 }: {
   searchParams: SearchPageProps["searchParams"];
 }) {
-  const [categories, params, currentUser, settingsResult] = await Promise.all([
-    getAllCategories(),
-    searchParams,
-    getCurrentUser(),
-    getSettingsAction(),
-  ]);
+  try {
+    // Handle async operations with individual error handling
+    let categories: Awaited<ReturnType<typeof getAllCategories>> = [];
+    let currentUser = null;
+    let settingsResult = null;
+    
+    try {
+      categories = await getAllCategories();
+    } catch (error) {
+      console.warn("Failed to load categories:", error);
+      categories = []; // Fallback to empty array
+    }
+    
+    try {
+      currentUser = await getCurrentUser();
+    } catch (error) {
+      console.warn("Failed to get current user:", error);
+      // currentUser remains null for anonymous access
+    }
+    
+    try {
+      settingsResult = await getSettingsAction();
+    } catch (error) {
+      console.warn("Failed to get settings:", error);
+      // settingsResult remains null, will use defaults
+    }
+
+    const params = await searchParams;
 
   const postsPageSize =
     settingsResult?.success && settingsResult.data?.postsPageSize
@@ -108,12 +131,18 @@ async function SearchResults({
       searchParams={params}
     />
   );
+  } catch (error) {
+    console.error("Critical error in SearchResults:", error);
+    throw error; // Let the error boundary handle this
+  }
 }
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
   return (
     <Suspense fallback={<PostMasonrySkeleton />}>
-      <SearchResults searchParams={searchParams} />
+      <SafeAsync>
+        <SearchResults searchParams={searchParams} />
+      </SafeAsync>
     </Suspense>
   );
 }

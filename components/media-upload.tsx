@@ -20,6 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useCSRFForm } from "@/hooks/use-csrf";
 import { toast } from "sonner";
+import { IconPhoto, IconVideo } from "@tabler/icons-react";
 
 // Local type definition for the upload result to avoid direct dependency on backend types
 interface UploadResult {
@@ -32,7 +33,7 @@ interface UploadResult {
   fileSize: number;
   width?: number;
   height?: number;
-  blurDataUrl?: string; // Base64 blur placeholder for images
+  blurDataUrl?: string; // Base64 blur placeholder for images (used for Post table)
   previewPath?: string; // Path to preview image
   previewVideoPath?: string; // Path to preview video
 }
@@ -688,21 +689,22 @@ export function MediaUpload({
                 aria-hidden="true"
               />
               <p className="mb-2 text-sm text-muted-foreground">
-                <span className="font-semibold">Click to upload</span> or
+                <span className="font-semibold">Click </span> or
                 drag and drop
               </p>
               {storageConfig && (
-                <p className="text-xs text-muted-foreground mt-5">
+                <p className="text-xs text-muted-foreground mt-5 flex items-center">
                   Max size:{" "}
+                  <IconPhoto className="inline-block mr-1" size={14} />
                   {Math.round(storageConfig.maxImageSize / (1024 * 1024))}
-                  MB (image),{" "}
+                  mb / <IconVideo className="inline-block mr-1 ml-2" size={14} />
                   {Math.round(storageConfig.maxVideoSize / (1024 * 1024))}
-                  MB (video)
+                  mb
                 </p>
               )}
 
               <p className="text-xs text-muted-foreground mt-1">
-                                      Supported: .webp, .png, .jpg, and .mp4.
+                                      Formats: .webp, .png, .jpg, and .mp4.
               </p>
             </div>
           )}

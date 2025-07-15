@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Search, Filter, X } from "@/components/ui/icons";
+import { Icons } from "@/components/ui/icons";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   useState,
@@ -19,6 +20,15 @@ import {
   useEffect,
 } from "react";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 
 type CategoryWithCount = Awaited<
   ReturnType<typeof import("@/lib/content").getAllCategories>
@@ -32,6 +42,7 @@ export function DirectoryFilters({ categories }: DirectoryFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   // Get current values from URL with safety checks and default values
   const currentQuery = searchParams?.get("q") ?? "";
@@ -52,6 +63,22 @@ export function DirectoryFilters({ categories }: DirectoryFiltersProps) {
     setSubcategoryFilter(currentSubcategory);
     setPremiumFilter(currentPremium);
   }, [currentQuery, currentCategory, currentSubcategory, currentPremium]);
+
+  // Keyboard shortcut for opening filter dialog (Cmd+F / Ctrl+F)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Check for Cmd+F (Mac) or Ctrl+F (Windows/Linux)
+      if ((event.metaKey || event.ctrlKey) && event.key === 'f') {
+        event.preventDefault(); // Prevent default browser find behavior
+        setIsDialogOpen(true);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   // Separate parent and child categories
   const parentCategories = useMemo(
@@ -85,6 +112,8 @@ export function DirectoryFilters({ categories }: DirectoryFiltersProps) {
 
       startTransition(() => {
         router.push(`/directory?${params.toString()}`);
+        // Close dialog after URL update
+        setIsDialogOpen(false);
       });
     },
     [router, searchParams]
@@ -156,143 +185,119 @@ export function DirectoryFilters({ categories }: DirectoryFiltersProps) {
     if (router) {
       startTransition(() => {
         router.push("/directory");
+        // Close dialog after clearing filters
+        setIsDialogOpen(false);
       });
     }
   }, [router]);
 
-  const hasActiveFilters =
-    currentQuery ||
-    currentCategory !== "all" ||
-    currentSubcategory !== "all" ||
-    currentPremium !== "all";
-
   return (
     <div className="space-y-4">
-      {/* Results info and active filters */}
+      {/* Filter button */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium">Filters</span>
-          {isPending && (
-            <Badge variant="secondary" className="text-xs">
-              Updating...
-            </Badge>
-          )}
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Filters</span>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Icons.command className="h-3 w-3 scale-75" />
+                  <span>+ F</span>
+                </div>
+                {isPending && (
+                  <Badge variant="secondary" className="text-xs">
+                    Updating...
+                  </Badge>
+                )}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md w-full">
+              <DialogHeader>
+                <DialogTitle>Filter Prompts</DialogTitle>
+              </DialogHeader>
+              <div className="flex flex-col gap-4 mt-2">
+                {/* Search */}
+                <form onSubmit={handleSearchSubmit} className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                    <Input
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search prompts..."
+                      className="pl-10"
+                    />
+                  </div>
+                  <Button type="submit" variant="outline" disabled={isPending}>
+                    Search
+                  </Button>
+                </form>
+                {/* Category Filter */}
+                <Select value={categoryFilter} onValueChange={handleCategoryChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {parentCategories.map((category) => (
+                      <SelectItem key={category.id} value={category.slug}>
+                        {category.name} ({category._count.posts})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {/* Subcategory Filter */}
+                {categoryFilter !== "all" && childCategories.length > 0 && (
+                  <Select
+                    value={subcategoryFilter}
+                    onValueChange={handleSubcategoryChange}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="All Subcategories" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Subcategories</SelectItem>
+                      {childCategories.map((category) => (
+                        <SelectItem key={category.id} value={category.slug}>
+                          {category.name} ({category._count.posts})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {/* Premium Filter (Hidden for now) */}
+                {/* <Select value={premiumFilter} onValueChange={handlePremiumChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="free">Free</SelectItem>
+                    <SelectItem value="premium">Premium</SelectItem>
+                  </SelectContent>
+                </Select> */}
+                <DialogFooter className="flex flex-row gap-2 justify-between mt-4">
+                  <Button
+                    variant="secondary"
+                    type="button"
+                    onClick={() => {
+                      clearFilters();
+                    }}
+                    disabled={isPending}
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Clear All
+                  </Button>
+                  <DialogClose asChild>
+                    <Button type="button" variant="default">
+                      Done
+                    </Button>
+                  </DialogClose>
+                </DialogFooter>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
-        {hasActiveFilters && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={clearFilters}
-            disabled={isPending}
-          >
-            <X className="h-4 w-4 mr-1" />
-            Clear All
-          </Button>
-        )}
-      </div>
-
-      {/* Filter controls */}
-      <div className="flex flex-col gap-4">
-        {/* First row: Search */}
-        <form onSubmit={handleSearchSubmit} className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search prompts..."
-              className="pl-10"
-            />
-          </div>
-          <Button type="submit" variant="outline" disabled={isPending}>
-            Search
-          </Button>
-        </form>
-
-        {/* Second row: Category filters */}
-        <div className="flex flex-col sm:flex-row gap-2">
-          {/* Category Filter */}
-          <Select value={categoryFilter} onValueChange={handleCategoryChange}>
-            <SelectTrigger className="w-full sm:w-48">
-              <SelectValue placeholder="All Categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {parentCategories.map((category) => (
-                <SelectItem key={category.id} value={category.slug}>
-                  {category.name} ({category._count.posts})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Subcategory Filter - Only show when parent category is selected */}
-          {categoryFilter !== "all" && childCategories.length > 0 && (
-            <Select
-              value={subcategoryFilter}
-              onValueChange={handleSubcategoryChange}
-            >
-              <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="All Subcategories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Subcategories</SelectItem>
-                {childCategories.map((category) => (
-                  <SelectItem key={category.id} value={category.slug}>
-                    {category.name} ({category._count.posts})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-
-          {/* Premium Filter (Hidden for now) */}
-          {/* <Select value={premiumFilter} onValueChange={handlePremiumChange}>
-            <SelectTrigger className="w-full sm:w-32">
-              <SelectValue placeholder="All Types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="free">Free</SelectItem>
-              <SelectItem value="premium">Premium</SelectItem>
-            </SelectContent>
-          </Select> */}
-        </div>
-
-        {/* Active filters display */}
-        {hasActiveFilters && (
-          <div className="flex flex-wrap items-center gap-2 pt-2 border-t">
-            <span className="text-xs text-muted-foreground">
-              Active filters:
-            </span>
-            {currentQuery && (
-              <Badge variant="secondary" className="text-xs">
-                Search: &ldquo;{currentQuery}&rdquo;
-              </Badge>
-            )}
-            {currentCategory !== "all" && (
-              <Badge variant="secondary" className="text-xs">
-                Category:{" "}
-                {parentCategories.find((c) => c.slug === currentCategory)?.name}
-              </Badge>
-            )}
-            {currentSubcategory !== "all" && (
-              <Badge variant="secondary" className="text-xs">
-                Subcategory:{" "}
-                {
-                  childCategories.find((c) => c.slug === currentSubcategory)
-                    ?.name
-                }
-              </Badge>
-            )}
-            {currentPremium !== "all" && (
-              <Badge variant="secondary" className="text-xs">
-                Type: {currentPremium === "premium" ? "Premium" : "Free"}
-              </Badge>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

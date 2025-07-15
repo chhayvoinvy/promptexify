@@ -198,24 +198,41 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
     [playingVideo, handleMediaLoad]
   );
 
-  // Function to get dynamic aspect ratio style based on actual media dimensions
-  const getDynamicAspectRatio = (postId: string) => {
-    const dimensions = imageDimensions[postId];
-    if (!dimensions) {
-      // Generate a pseudo-random but consistent aspect ratio for each post while loading
-      const hash = postId.split("").reduce((a, b) => {
-        a = (a << 5) - a + b.charCodeAt(0);
-        return a & a;
-      }, 0);
-      const normalized = Math.abs(hash) / 2147483648;
-      const aspectRatio = 0.67 + normalized * 1.13;
-      const width = Math.round(aspectRatio * 100);
+  // Function to get dynamic aspect ratio style based on real media dimensions
+  const getDynamicAspectRatio = (post: PostWithInteractions) => {
+    // First check if we have real dimensions from media table
+    if (post.media && post.media.length > 0) {
+      const media = post.media[0];
+      if (media.width && media.height) {
+        const aspectRatio = media.width / media.height;
+        // Cap aspect ratio to reasonable bounds for UI consistency
+        const cappedRatio = Math.max(0.67, Math.min(1.8, aspectRatio));
+        const width = Math.round(cappedRatio * 100);
+        
+        // Debug: Log aspect ratio info
+        console.log(`PostMasonry ${post.id}: Real dimensions ${media.width}x${media.height}, ratio: ${aspectRatio.toFixed(3)}, capped: ${cappedRatio.toFixed(3)}, CSS: ${width}/100`);
+        
+        return { aspectRatio: `${width} / 100` };
+      }
+    }
+
+    // Check if we have tracked dimensions from image loading
+    const dimensions = imageDimensions[post.id];
+    if (dimensions) {
+      const naturalRatio = dimensions.width / dimensions.height;
+      const cappedRatio = Math.max(0.67, Math.min(1.8, naturalRatio));
+      const width = Math.round(cappedRatio * 100);
       return { aspectRatio: `${width} / 100` };
     }
 
-    const naturalRatio = dimensions.width / dimensions.height;
-    const cappedRatio = naturalRatio < 0.67 ? 0.67 : naturalRatio;
-    const width = Math.round(cappedRatio * 100);
+    // Generate a pseudo-random but consistent aspect ratio for each post while loading
+    const hash = post.id.split("").reduce((a, b) => {
+      a = (a << 5) - a + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    const normalized = Math.abs(hash) / 2147483648;
+    const aspectRatio = 0.67 + normalized * 1.13;
+    const width = Math.round(aspectRatio * 100);
     return { aspectRatio: `${width} / 100` };
   };
 
@@ -409,7 +426,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                     style={
                       // Apply dynamic aspect ratio to images preview and videos preview only
                       post.previewPath && post.uploadFileType === "IMAGE" || post.previewVideoPath && post.uploadFileType === "VIDEO"
-                        ? getDynamicAspectRatio(post.id)
+                        ? getDynamicAspectRatio(post)
                         : { height: "auto", minHeight: "120px", maxHeight: "200px" }
                     }
                   >

@@ -11,28 +11,47 @@ import { BentoGrid } from "@/components/bento-grid";
 import { CtaSection } from "@/components/cta-section";
 import { Container } from "@/components/ui/container";
 import { getSettingsAction } from "@/actions/settings";
+import { SafeAsync } from "@/components/ui/safe-async";
 
 // Route segment config for better caching
 export const revalidate = 300; // Revalidate every 5 minutes (matches CACHE_DURATIONS.POSTS_LIST)
 
 async function PostGrid() {
-  // Get current user to determine bookmark status
-  const currentUser = await getCurrentUser();
-  const userId = currentUser?.userData?.id;
-  const userType = currentUser?.userData?.type || null;
+  try {
+    // Get current user with error handling
+    let currentUser = null;
+    let userId = undefined;
+    let userType = null;
+    
+    try {
+      currentUser = await getCurrentUser();
+      userId = currentUser?.userData?.id;
+      userType = currentUser?.userData?.type || null;
+    } catch (error) {
+      console.warn("Failed to get current user, using anonymous access:", error);
+    }
 
-  // Get settings for configurable limits
-  const settingsResult = await getSettingsAction();
-  const featuredPostsLimit = settingsResult?.success && settingsResult.data?.featuredPostsLimit
-    ? settingsResult.data.featuredPostsLimit
-    : 12; // Fallback to default
+    // Get settings with error handling
+    let featuredPostsLimit = 12; // Default fallback
+    try {
+      const settingsResult = await getSettingsAction();
+      if (settingsResult?.success && settingsResult.data?.featuredPostsLimit) {
+        featuredPostsLimit = settingsResult.data.featuredPostsLimit;
+      }
+    } catch (error) {
+      console.warn("Failed to get settings, using defaults:", error);
+    }
 
-  const posts = await getPostsWithSorting(userId, "latest");
+    const posts = await getPostsWithSorting(userId, "latest");
 
-  // Filter for featured posts first and show configurable limit
-  const featuredPosts = posts.filter((post) => post.isFeatured).slice(0, featuredPostsLimit);
+    // Filter for featured posts first and show configurable limit
+    const featuredPosts = posts.filter((post) => post.isFeatured).slice(0, featuredPostsLimit);
 
-  return <PostMasonryGrid posts={featuredPosts} userType={userType} />;
+    return <PostMasonryGrid posts={featuredPosts} userType={userType} />;
+  } catch (error) {
+    console.error("Critical error in PostGrid:", error);
+    throw error; // Let the error boundary handle this
+  }
 }
 
 export default async function HomePage() {
@@ -54,7 +73,9 @@ export default async function HomePage() {
         </div>
 
         <Suspense fallback={<PostMasonrySkeleton />}>
-          <PostGrid />
+          <SafeAsync>
+            <PostGrid />
+          </SafeAsync>
         </Suspense>
 
         <div className="text-center mt-12">
