@@ -6,8 +6,8 @@ import { DirectoryClientWrapper } from "@/components/directory-client-wrapper";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Container } from "@/components/ui/container";
 import { Queries } from "@/lib/query";
-
 import { getSettingsAction } from "@/actions/settings";
+import { SafeAsync } from "@/components/ui/safe-async";
 
 interface DirectoryPageProps {
   searchParams: Promise<{
@@ -60,12 +60,34 @@ async function DirectoryContent({
 }: {
   searchParams: DirectoryPageProps["searchParams"];
 }) {
-  const [categories, params, currentUser, settingsResult] = await Promise.all([
-    getAllCategories(),
-    searchParams,
-    getCurrentUser(),
-    getSettingsAction(),
-  ]);
+  try {
+    // Handle async operations with individual error handling
+    let categories: Awaited<ReturnType<typeof getAllCategories>> = [];
+    let currentUser = null;
+    let settingsResult = null;
+    
+    try {
+      categories = await getAllCategories();
+    } catch (error) {
+      console.warn("Failed to load categories:", error);
+      categories = []; // Fallback to empty array
+    }
+    
+    try {
+      currentUser = await getCurrentUser();
+    } catch (error) {
+      console.warn("Failed to get current user:", error);
+      // currentUser remains null for anonymous access
+    }
+    
+    try {
+      settingsResult = await getSettingsAction();
+    } catch (error) {
+      console.warn("Failed to get settings:", error);
+      // settingsResult remains null, will use defaults
+    }
+
+    const params = await searchParams;
 
   const postsPageSize =
     settingsResult?.success && settingsResult.data?.postsPageSize
@@ -146,12 +168,18 @@ async function DirectoryContent({
       pagination={pagination}
     />
   );
+  } catch (error) {
+    console.error("Critical error in DirectoryContent:", error);
+    throw error; // Let the error boundary handle this
+  }
 }
 
 export default function DirectoryPage({ searchParams }: DirectoryPageProps) {
   return (
     <Suspense fallback={<DirectoryPageSkeleton />}>
-      <DirectoryContent searchParams={searchParams} />
+      <SafeAsync>
+        <DirectoryContent searchParams={searchParams} />
+      </SafeAsync>
     </Suspense>
   );
 }
