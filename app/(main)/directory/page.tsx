@@ -24,37 +24,29 @@ export const dynamic = "force-dynamic";
 function DirectoryPageSkeleton() {
   return (
     <Container>
-      {/* Header Skeleton */}
-      <div className="mb-8">
-        <Skeleton className="h-10 w-80 mb-4" />
-        <Skeleton className="h-6 w-full max-w-2xl" />
-      </div>
-
-      {/* Filters Skeleton */}
-      <div className="mb-8">
-        <div className="flex flex-col md:flex-row gap-4">
-          {/* Search skeleton */}
-          <div className="relative flex-1">
-            <Skeleton className="h-10 w-full" />
-          </div>
-
-          {/* Category filter skeleton */}
-          <Skeleton className="h-10 w-full md:w-48" />
-
-          {/* Premium filter skeleton */}
-          <Skeleton className="h-10 w-full md:w-32" />
-
-          {/* Buttons skeleton */}
-          <div className="flex gap-2">
-            <Skeleton className="h-10 w-20" />
-            <Skeleton className="h-10 w-16" />
-          </div>
+      {/* Header: Two-column layout skeleton */}
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between mb-8 gap-4">
+        {/* Left: Title and description skeleton */}
+        <div className="flex-1">
+          <Skeleton className="h-8 w-48 mb-2" />
+          <Skeleton className="h-5 w-full max-w-2xl" />
+        </div>
+        {/* Right: Filter button skeleton */}
+        <div className="flex flex-col items-end gap-2 min-w-[200px]">
+          <Skeleton className="h-10 w-32" />
         </div>
       </div>
 
+      {/* Active filters skeleton - only show if there might be filters */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="h-5 w-24 rounded-full" />
+        <Skeleton className="h-5 w-28 rounded-full" />
+      </div>
+
       {/* Results summary skeleton */}
-      <div className="mb-6">
-        <Skeleton className="h-5 w-48" />
+      <div className="mb-6 flex items-center justify-between">
+        <Skeleton className="h-4 w-48" />
       </div>
 
       {/* Posts grid skeleton */}

@@ -4,6 +4,7 @@ import { DirectoryFilters } from "@/components/directory-filters";
 import { InfinitePostGrid } from "@/components/infinite-scroll-grid";
 import { Container } from "@/components/ui/container";
 import { PostWithInteractions } from "@/lib/content";
+import { Badge } from "@/components/ui/badge";
 
 type CategoryWithCount = Awaited<
   ReturnType<typeof import("@/lib/content").getAllCategories>
@@ -34,23 +35,65 @@ export function DirectoryClientWrapper({
   searchQuery,
   categoryFilter,
   subcategoryFilter,
+  premiumFilter,
   pagination,
 }: DirectoryClientWrapperProps) {
+  // Separate parent and child categories for active filter display
+  const parentCategories = categories.filter((cat) => !cat.parent);
+  const childCategories = categoryFilter && categoryFilter !== "all" 
+    ? categories.filter((cat) => cat.parent?.slug === categoryFilter)
+    : [];
+
+  const hasActiveFilters =
+    searchQuery ||
+    (categoryFilter && categoryFilter !== "all") ||
+    (subcategoryFilter && subcategoryFilter !== "all") ||
+    (premiumFilter && premiumFilter !== "all");
+
   return (
     <Container>
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-4">Prompt Directory</h1>
-        <p className="text-muted-foreground text-lg max-w-2xl">
-          Discover and explore our curated collection of AI prompts. Find the
-          perfect prompt for your creative and professional needs.
-        </p>
+      {/* Header: Two-column layout */}
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between mb-8 gap-4">
+        {/* Left: Title and description */}
+        <div className="flex-1">
+          <h1 className="text-2xl font-bold mb-2">Prompt Directory</h1>
+          <p className="text-muted-foreground text-lg max-w-2xl">
+            Discover and explore our curated collection of AI prompts. Find the
+            perfect prompt for your creative and professional needs.
+          </p>
+        </div>
+        {/* Right: Filter button */}
+        <div className="flex flex-col items-end gap-2 min-w-[200px]">
+          <DirectoryFilters categories={categories} />
+        </div>
       </div>
 
-      {/* Filters */}
-      <div className="mb-6">
-        <DirectoryFilters categories={categories} />
-      </div>
+      {/* Active filters summary */}
+      {hasActiveFilters && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">Active filters:</span>
+          {searchQuery && (
+            <Badge variant="secondary" className="text-xs">
+              Search: &ldquo;{searchQuery}&rdquo;
+            </Badge>
+          )}
+          {categoryFilter && categoryFilter !== "all" && (
+            <Badge variant="secondary" className="text-xs">
+              Category: {parentCategories.find((c) => c.slug === categoryFilter)?.name}
+            </Badge>
+          )}
+          {subcategoryFilter && subcategoryFilter !== "all" && (
+            <Badge variant="secondary" className="text-xs">
+              Subcategory: {childCategories.find((c) => c.slug === subcategoryFilter)?.name}
+            </Badge>
+          )}
+          {premiumFilter && premiumFilter !== "all" && (
+            <Badge variant="secondary" className="text-xs">
+              Type: {premiumFilter === "premium" ? "Premium" : "Free"}
+            </Badge>
+          )}
+        </div>
+      )}
 
       {/* Results Summary */}
       <div className="mb-6 flex items-center justify-between">
