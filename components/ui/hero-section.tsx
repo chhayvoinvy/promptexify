@@ -45,7 +45,7 @@ export function HeroSection({
   return (
     <section
       ref={containerRef}
-      className="group relative bg-gradient-to-b from-background via-muted/20 to-background -mt-10 pt-14 overflow-hidden z-20 pb-15"
+      className="group relative bg-gradient-to-b from-background via-muted/20 to-background -mt-10 pt-14 overflow-hidden z-20 pb-10"
     >
       {/* Grid Background */}
       <GridBackground className="z-0" gridSize={80} />
