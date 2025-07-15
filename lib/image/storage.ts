@@ -428,11 +428,11 @@ export async function uploadPreviewToS3WithConfig(
   try {
     await s3Client.send(new PutObjectCommand(uploadParams));
 
-    if (!config.s3CloudfrontUrl) {
-      throw new Error("S3 CloudFront URL is required for secure access");
-    }
-
-    return `${config.s3CloudfrontUrl}/${key}`;
+    // CloudFront is now optional, fallback to S3 URL if not set
+    const baseUrl =
+      config.s3CloudfrontUrl ||
+      `https://${config.s3BucketName}.s3.${config.s3Region || "us-east-1"}.amazonaws.com`;
+    return `${baseUrl}/${key}`;
   } catch (error) {
     console.error("Error uploading preview to S3:", error);
     throw new Error("Failed to upload preview to S3");
@@ -536,11 +536,11 @@ export async function uploadPreviewVideoToS3WithConfig(
   try {
     await s3Client.send(new PutObjectCommand(uploadParams));
 
-    if (!config.s3CloudfrontUrl) {
-      throw new Error("S3 CloudFront URL is required for secure access");
-    }
-
-    return `${config.s3CloudfrontUrl}/${key}`;
+    // CloudFront is now optional, fallback to S3 URL if not set
+    const baseUrl =
+      config.s3CloudfrontUrl ||
+      `https://${config.s3BucketName}.s3.${config.s3Region || "us-east-1"}.amazonaws.com`;
+    return `${baseUrl}/${key}`;
   } catch (error) {
     console.error("Error uploading preview video to S3:", error);
     throw new Error("Failed to upload preview video to S3");

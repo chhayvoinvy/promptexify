@@ -45,7 +45,9 @@ import {
   IconCrown,
   IconLoader,
   IconX,
+  IconFileText,
 } from "@/components/ui/icons";
+import { MediaImage } from "@/components/media-display";  
 
 // Enable caching for better performance
 // Use revalidate instead of force-dynamic for dashboard pages
@@ -84,10 +86,10 @@ function TableSkeleton() {
             <Skeleton className="h-8 w-32" />
           </div>
         </div>
-        
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-20">Preview</TableHead>
               <TableHead>Title</TableHead>
               <TableHead>Category</TableHead>
               <TableHead>Status</TableHead>
@@ -102,9 +104,10 @@ function TableSkeleton() {
             {Array.from({ length: 10 }).map((_, i) => (
               <TableRow key={i}>
                 <TableCell>
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-48" />
-                  </div>
+                  <Skeleton className="w-12 h-12 rounded-md" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-48" />
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
@@ -334,6 +337,7 @@ async function PostsManagementContent({
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-20">Preview</TableHead>
                   <TableHead>Title</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Status</TableHead>
@@ -345,15 +349,34 @@ async function PostsManagementContent({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPosts.map((post) => (
-                  <TableRow key={post.id}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium line-clamp-1">
-                          {post.title}
+                {filteredPosts.map((post) => {
+                  // Only use fields from the post table
+                  const previewSrc = post.previewPath || (post.uploadFileType === "IMAGE" ? post.previewPath : null) || (post.uploadFileType === "VIDEO" ? post.previewVideoPath : null);
+                  return (
+                    <TableRow key={post.id}>
+                      <TableCell>
+                        {previewSrc ? (
+                          <MediaImage
+                            src={previewSrc}
+                            alt={post.title}
+                            width={52}
+                            height={52}
+                            blurDataURL={post.blurData || undefined}
+                            className="rounded-md object-cover w-12 h-12 border border-muted"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 flex items-center justify-center bg-muted rounded-md border border-muted text-xs text-muted-foreground">
+                            <IconFileText className="h-6 w-6 opacity-20" />
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium line-clamp-1">
+                            {post.title}
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
+                      </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <Badge variant="secondary" className="text-xs">
@@ -442,7 +465,8 @@ async function PostsManagementContent({
                       />
                     </TableCell>
                   </TableRow>
-                ))}
+                );
+              })}
               </TableBody>
             </Table>
 
