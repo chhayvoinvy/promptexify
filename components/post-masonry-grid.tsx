@@ -210,7 +210,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
         const width = Math.round(cappedRatio * 100);
         
         // Debug: Log aspect ratio info
-        console.log(`PostMasonry ${post.id}: Real dimensions ${media.width}x${media.height}, ratio: ${aspectRatio.toFixed(3)}, capped: ${cappedRatio.toFixed(3)}, CSS: ${width}/100`);
+        // console.log(`PostMasonry ${post.id}: Real dimensions ${media.width}x${media.height}, ratio: ${aspectRatio.toFixed(3)}, capped: ${cappedRatio.toFixed(3)}, CSS: ${width}/100`);
         
         return { aspectRatio: `${width} / 100` };
       }

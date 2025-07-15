@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { User, Settings, UserIcon } from "@/components/ui/icons";
-import { Button } from "@/components/ui/button";
+import { Settings, UserIcon, IconDashboard } from "@/components/ui/icons";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,7 +15,8 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { UserData } from "@/lib/utils";
 import { IconCrown } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
-import { DarkModeToggle } from "./toggle-darkmode";
+import { DarkModeToggle } from "./ui/toggle-darkmode";
+import Image from "next/image";
 
 interface UserType {
   email?: string;
@@ -30,33 +30,22 @@ interface UserProfileDropdownProps {
 export function UserProfileDropdown({ user }: UserProfileDropdownProps) {
   // Get user data from userData or fallback to email
   const userData = user.userData;
+  const userRole = userData?.role;
+  const userAvatar = userData?.avatar;
   const displayName = userData?.name || user.email?.split("@")[0] || "User";
   const displayEmail = userData?.email || user.email || "";
   const isPremium = userData?.type === "PREMIUM";
-  // const avatar = userData?.avatar;
-
-  // Get user initials for avatar fallback
-  // const getInitials = (name?: string | null, email?: string) => {
-  //   if (name) {
-  //     return name
-  //       .split(" ")
-  //       .map((word) => word[0])
-  //       .join("")
-  //       .toUpperCase()
-  //       .slice(0, 2);
-  //   }
-  //   return email ? email[0].toUpperCase() : "U";
-  // };
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          className="h-9 w-9 text-muted-foreground bg-muted rounded-full border border-muted-foreground/20"
-        >
+        <div className="h-8 w-8 flex items-center justify-center overflow-hidden cursor-pointer text-muted-foreground bg-muted rounded-full border border-muted-foreground/20">
+          {userAvatar ? (
+            <Image src={userAvatar} alt="User Avatar" width={32} height={32} className="rounded-full object-fill" />
+        ) : (
           <UserIcon className="h-4 w-4" />
-        </Button>
+        )}
+        </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
@@ -86,16 +75,24 @@ export function UserProfileDropdown({ user }: UserProfileDropdownProps) {
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
             <Link href="/dashboard" className="flex items-center">
-              <User className="mr-2 h-4 w-4" />
+              <IconDashboard className="mr-2 h-4 w-4" />
               <span>Dashboard</span>
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/dashboard/account" className="flex items-center">
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Account</span>
-            </Link>
-          </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/account" className="flex items-center">
+                <UserIcon className="mr-2 h-4 w-4" />
+                <span>Account</span>
+              </Link>
+            </DropdownMenuItem>
+            {userRole === "ADMIN" && (
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard/settings" className="flex items-center">
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>Settings</span>
+                </Link>
+              </DropdownMenuItem>
+            )}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <div className="flex items-center w-full gap-4 p-2">

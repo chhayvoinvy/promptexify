@@ -1,5 +1,5 @@
-import { BentoGrid } from "@/components/bento-grid";
-import { CtaSection } from "@/components/cta-section";
+import { BentoGrid } from "@/components/ui/bento-grid";
+import { CtaSection } from "@/components/ui/cta-section";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";

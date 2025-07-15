@@ -22,7 +22,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { DarkModeToggle } from "@/components/toggle-darkmode";
+import { DarkModeToggle } from "@/components/ui/toggle-darkmode";
 import { Container } from "@/components/ui/container";
 
 // Mobile Navigation Component

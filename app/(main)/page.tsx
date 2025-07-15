@@ -3,18 +3,17 @@ import Link from "next/link";
 import { getPostsWithSorting } from "@/lib/content";
 import { getCurrentUser } from "@/lib/auth";
 import { Suspense } from "react";
-import { PostMasonryGrid } from "@/components/post-masonry-grid";
 import { PostMasonrySkeleton } from "@/components/post-masonry-skeleton";
-import { HeroSection } from "@/components/hero-section";
-import Testimonials from "@/components/testimonials";
-import { BentoGrid } from "@/components/bento-grid";
-import { CtaSection } from "@/components/cta-section";
+import { HeroSection } from "@/components/ui/hero-section";
+import Testimonials from "@/components/ui/testimonials";
+import { BentoGrid } from "@/components/ui/bento-grid";
+import { CtaSection } from "@/components/ui/cta-section";
 import { Container } from "@/components/ui/container";
 import { getSettingsAction } from "@/actions/settings";
 import { SafeAsync } from "@/components/ui/safe-async";
+import { FeaturedPostsClient } from "@/components/featured-posts-client";
 
-// Route segment config for better caching
-export const revalidate = 300; // Revalidate every 5 minutes (matches CACHE_DURATIONS.POSTS_LIST)
+export const dynamic = "force-dynamic";
 
 async function PostGrid() {
   try {
@@ -47,7 +46,7 @@ async function PostGrid() {
     // Filter for featured posts first and show configurable limit
     const featuredPosts = posts.filter((post) => post.isFeatured).slice(0, featuredPostsLimit);
 
-    return <PostMasonryGrid posts={featuredPosts} userType={userType} />;
+    return <FeaturedPostsClient posts={featuredPosts} userType={userType} />;
   } catch (error) {
     console.error("Critical error in PostGrid:", error);
     throw error; // Let the error boundary handle this

@@ -60,7 +60,7 @@ export function PostCard({
         const width = Math.round(cappedRatio * 100);
         
         // Debug: Log aspect ratio info to help verify blur/image matching
-        console.log(`Post ${post.id}: Real dimensions ${media.width}x${media.height}, ratio: ${aspectRatio.toFixed(3)}, capped: ${cappedRatio.toFixed(3)}, CSS: ${width}/100`);
+        // console.log(`Post ${post.id}: Real dimensions ${media.width}x${media.height}, ratio: ${aspectRatio.toFixed(3)}, capped: ${cappedRatio.toFixed(3)}, CSS: ${width}/100`);
         
         return { aspectRatio: `${width} / 100` };
       }
@@ -82,7 +82,7 @@ export function PostCard({
 
     // Prevent rapid clicking during video state changes
     if (video.readyState < 2) {
-      console.log("Video not ready for playback yet");
+      // console.log("Video not ready for playback yet");
       return;
     }
 
@@ -100,7 +100,7 @@ export function PostCard({
 
   // Handle video play event (from video element, not button)
   const handleVideoPlayEvent = useCallback(() => {
-    console.log(`Video started playing: ${post.id}`);
+    // console.log(`Video started playing: ${post.id}`);
     // Just ensure state is in sync - don't toggle
     if (playingVideo !== post.id) {
       onVideoStateChange?.(post.id, true);
@@ -109,7 +109,7 @@ export function PostCard({
 
   // Handle video pause event (from video element, not button)
   const handleVideoPauseEvent = useCallback(() => {
-    console.log(`Video paused: ${post.id}`);
+    //  console.log(`Video paused: ${post.id}`);
     // Clear playing state when video pauses
     if (playingVideo === post.id) {
       onVideoStateChange?.(post.id, false);
