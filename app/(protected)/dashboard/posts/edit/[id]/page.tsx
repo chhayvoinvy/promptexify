@@ -604,7 +604,14 @@ export default function EditPostPage() {
                     disabled={isSubmitting}
                   />
                 </div>
+              </CardContent>
+            </Card>
 
+            <Card>
+              <CardHeader>
+                <CardTitle>Media & Categorization</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div className="space-y-2">
                   <Label htmlFor="featured-media">Featured Media</Label>
                   <MediaUpload
@@ -621,78 +628,64 @@ export default function EditPostPage() {
                     Upload an image or video for this post.
                   </p>
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Categorization</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="category">Category *</Label>
-                    <Select
-                      name="category"
-                      defaultValue={
-                        post.category.parent
-                          ? currentParentCategory
-                          : post.category.slug
-                      }
-                      required
-                      disabled={isSubmitting}
-                      onValueChange={handleCategoryChange}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {parentCategories.map((category) => (
-                          <SelectItem key={category.id} value={category.slug}>
-                            {category.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="subcategory">Sub Category (Optional)</Label>
-                    <Select
-                      name="subcategory"
-                      defaultValue={
-                        post.category.parent ? post.category.slug : "none"
-                      }
-                      disabled={isSubmitting}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select sub category (optional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No sub category</SelectItem>
-                        {categories
-                          .filter(
-                            (cat) => cat.parent?.slug === selectedCategory
-                          )
-                          .map((category) => (
+                <div className="flex gap-4 flex-col col-span-2">
+                  <div className="flex gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="category">Category *</Label>
+                      <Select
+                        name="category"
+                        defaultValue={post.category.parent ? currentParentCategory : post.category.slug}
+                        required
+                        disabled={isSubmitting}
+                        onValueChange={handleCategoryChange}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {parentCategories.map((category) => (
                             <SelectItem key={category.id} value={category.slug}>
                               {category.name}
                             </SelectItem>
                           ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                <TagSelector
-                  availableTags={tags}
-                  selectedTags={selectedTags}
-                  onTagsChange={handleTagsChange}
-                  onPendingTagsChange={handlePendingTagsChange}
-                  pendingTags={pendingTags}
-                  maxTags={maxTagsPerPost}
-                  disabled={isSubmitting}
-                />
+                    <div className="space-y-2">
+                      <Label htmlFor="subcategory">Sub-category</Label>
+                      <Select
+                        name="subcategory"
+                        defaultValue={post.category.parent ? post.category.slug : "none"}
+                        disabled={isSubmitting}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select sub-category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No sub-category</SelectItem>
+                          {categories
+                            .filter((cat) => cat.parent?.slug === selectedCategory)
+                            .map((category) => (
+                              <SelectItem key={category.id} value={category.slug}>
+                                {category.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <TagSelector
+                    availableTags={tags}
+                    selectedTags={selectedTags}
+                    onTagsChange={handleTagsChange}
+                    onPendingTagsChange={handlePendingTagsChange}
+                    pendingTags={pendingTags}
+                    maxTags={maxTagsPerPost}
+                    disabled={isSubmitting}
+                  />
+                </div>
               </CardContent>
             </Card>
 
@@ -770,23 +763,6 @@ export default function EditPostPage() {
                         </div>
                       </div>
                     )}
-
-                    {/* Temporarily hide premium switch */}
-                    {/* TODO: Add premium that approve by admin */}
-                    {/* <div className="flex items-center justify-between opacity-50">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="isPremium">Premium</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Only admins can set premium status
-                        </p>
-                      </div>
-                      <Switch
-                        id="isPremium"
-                        name="isPremium"
-                        disabled
-                        defaultChecked={post.isPremium}
-                      />
-                    </div> */}
                   </div>
                 )}
               </CardContent>
@@ -797,8 +773,8 @@ export default function EditPostPage() {
             <input type="hidden" name="uploadFileType" value={uploadFileType || ""} />
             <input type="hidden" name="uploadMediaId" value={uploadMediaId || ""} />
             <input type="hidden" name="previewPath" value={previewPath || ""} />
-            <input type="hidden" name="blurData" value={blurData || ""} />
             <input type="hidden" name="previewVideoPath" value={previewVideoPath || ""} />
+            <input type="hidden" name="blurData" value={blurData || ""} />
 
             <div className="flex justify-end gap-4">
               <Button

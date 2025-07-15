@@ -486,7 +486,14 @@ export default function NewPostPage() {
                     disabled={isSubmitting}
                   />
                 </div>
+              </CardContent>
+            </Card>
 
+            <Card>
+              <CardHeader>
+                <CardTitle>Media & Categorization</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div className="space-y-2">
                   <Label htmlFor="featured-media">Featured Media</Label>
                   <MediaUpload
@@ -502,15 +509,8 @@ export default function NewPostPage() {
                     Upload an image or video to be featured with your post.
                   </p>
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Categorization</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-4">
+                <div className="flex gap-4 flex-col col-span-2">
+                  <div className="flex gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="category">Category *</Label>
                     <Select
@@ -533,13 +533,13 @@ export default function NewPostPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="subcategory">Sub Category (Optional)</Label>
+                    <Label htmlFor="subcategory">Sub-category</Label>
                     <Select name="subcategory" disabled={isSubmitting}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select sub category (optional)" />
+                        <SelectValue placeholder="Select sub-category" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">No sub category</SelectItem>
+                        <SelectItem value="none">No sub-category</SelectItem>
                         {categories
                           .filter(
                             (cat) => cat.parent?.slug === selectedCategory
@@ -552,9 +552,9 @@ export default function NewPostPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
+                  </div>
 
-                <TagSelector
+                  <TagSelector
                   availableTags={tags}
                   selectedTags={selectedTags}
                   onTagsChange={handleTagsChange}
@@ -563,6 +563,9 @@ export default function NewPostPage() {
                   maxTags={maxTagsPerPost}
                   disabled={isSubmitting}
                 />
+                </div>
+
+             
               </CardContent>
             </Card>
 
