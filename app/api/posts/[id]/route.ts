@@ -38,8 +38,14 @@ async function handlePostRequest(request: NextRequest, { params }: RouteParams, 
       });
     }
 
-    // For GET requests, maintain strict authentication and authorization
-    const user = await getCurrentUser();
+    // For GET requests, maintain strict authentication and authorization ONLY if request is from /dashboard/*
+    // We check the Referer header to determine the source page
+    const referer = request.headers.get("referer") || "";
+    const isDashboardRequest = referer.includes("/dashboard/");
+
+    let user = null;
+    if (isDashboardRequest) {
+        user = await getCurrentUser();
     if (!user) {
       return NextResponse.json(
         { error: "Authentication required" },
@@ -54,6 +60,7 @@ async function handlePostRequest(request: NextRequest, { params }: RouteParams, 
         { status: 403 }
       );
     }
+  }
 
     // Fetch post for GET requests
     const post = await getPostById(id);
