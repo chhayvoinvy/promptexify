@@ -38,29 +38,26 @@ async function handlePostRequest(request: NextRequest, { params }: RouteParams, 
       });
     }
 
-    // For GET requests, maintain strict authentication and authorization ONLY if request is from /dashboard/*
-    // We check the Referer header to determine the source page
-    const referer = request.headers.get("referer") || "";
-    const isDashboardRequest = referer.includes("/dashboard/");
-
-    let user = null;
+    // For GET requests, check if this is a dashboard request
+    const url = new URL(request.url);
+    const isDashboardRequest = url.pathname.startsWith('/dashboard');
+    let user = undefined;
     if (isDashboardRequest) {
-        user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 }
-      );
+      user = await getCurrentUser();
+      if (!user) {
+        return NextResponse.json(
+          { error: "Authentication required" },
+          { status: 401 }
+        );
+      }
+      // Role-based access control for dashboard requests
+      if (user.userData?.role !== "ADMIN" && user.userData?.role !== "USER") {
+        return NextResponse.json(
+          { error: "Insufficient permissions" },
+          { status: 403 }
+        );
+      }
     }
-
-    // Role-based access control for GET requests
-    if (user.userData?.role !== "ADMIN" && user.userData?.role !== "USER") {
-      return NextResponse.json(
-        { error: "Insufficient permissions" },
-        { status: 403 }
-      );
-    }
-  }
 
     // Fetch post for GET requests
     const post = await getPostById(id);
@@ -71,7 +68,8 @@ async function handlePostRequest(request: NextRequest, { params }: RouteParams, 
 
     // Check if post is published - unpublished posts can only be viewed by author and admin
     if (!post.isPublished) {
-      const canViewUnpublished = post.authorId === user.userData?.id || user.userData?.role === "ADMIN";
+      // Only check unpublished access if user is present (dashboard route)
+      const canViewUnpublished = user && (post.authorId === user.userData?.id || user.userData?.role === "ADMIN");
       if (!canViewUnpublished) {
         return NextResponse.json({ error: "Post not found" }, { status: 404 });
       }
@@ -79,17 +77,19 @@ async function handlePostRequest(request: NextRequest, { params }: RouteParams, 
 
     // Check premium access control for published posts
     if (post.isPremium && post.isPublished) {
-      const userType = user.userData?.type || null;
-      const isUserFree = userType === "FREE" || userType === null;
-      const isAdmin = user.userData?.role === "ADMIN";
-      const isAuthor = post.authorId === user.userData?.id;
-      
-      // Allow access for: premium users, admins, or the post author
-      if (isUserFree && !isAdmin && !isAuthor) {
-        return NextResponse.json(
-          { error: "Premium subscription required to access this content" },
-          { status: 403 }
-        );
+      // Only check premium access if user is present (dashboard route)
+      if (user) {
+        const userType = user.userData?.type || null;
+        const isUserFree = userType === "FREE" || userType === null;
+        const isAdmin = user.userData?.role === "ADMIN";
+        const isAuthor = post.authorId === user.userData?.id;
+        // Allow access for: premium users, admins, or the post author
+        if (isUserFree && !isAdmin && !isAuthor) {
+          return NextResponse.json(
+            { error: "Premium subscription required to access this content" },
+            { status: 403 }
+          );
+        }
       }
     }
 
