@@ -39,9 +39,15 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
   const [previousPostCount, setPreviousPostCount] = useState(0);
   const [playingVideo, setPlayingVideo] = useState<string | null>(null);
   const [mutedVideos, setMutedVideos] = useState<Set<string>>(
-    new Set(posts.filter((post) => post.previewVideoPath && post.uploadFileType === "VIDEO").map((post) => post.id))
+    new Set(
+      posts
+        .filter(
+          (post) => post.previewVideoPath && post.uploadFileType === "VIDEO"
+        )
+        .map((post) => post.id)
+    )
   );
-  
+
   // State to track which videos should be loaded and their loading status
   const [videosToShow, setVideosToShow] = useState<Set<string>>(new Set());
   const [videosLoaded, setVideosLoaded] = useState<Set<string>>(new Set());
@@ -68,10 +74,10 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
         event.stopPropagation();
         event.preventDefault();
       }
-      
+
       if (!videosToShow.has(postId)) {
         // First click: show video, mark as playing, and it will auto-play when loaded
-        setVideosToShow(prev => new Set([...prev, postId]));
+        setVideosToShow((prev) => new Set([...prev, postId]));
         setPlayingVideo(postId);
         return;
       }
@@ -101,7 +107,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
           }
         }
         // Start playing this video
-        video.play().catch(err => {
+        video.play().catch((err) => {
           console.error("Failed to play video:", err);
           // Don't change state if play failed
         });
@@ -112,22 +118,28 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
   );
 
   // Handle video play event (from video element, not button)
-  const handleVideoPlayEvent = useCallback((postId: string) => {
-    console.log(`Video started playing: ${postId}`);
-    // Just ensure state is in sync - don't toggle
-    if (playingVideo !== postId) {
-      setPlayingVideo(postId);
-    }
-  }, [playingVideo]);
+  const handleVideoPlayEvent = useCallback(
+    (postId: string) => {
+      console.log(`Video started playing: ${postId}`);
+      // Just ensure state is in sync - don't toggle
+      if (playingVideo !== postId) {
+        setPlayingVideo(postId);
+      }
+    },
+    [playingVideo]
+  );
 
   // Handle video pause event (from video element, not button)
-  const handleVideoPauseEvent = useCallback((postId: string) => {
-    console.log(`Video paused: ${postId}`);
-    // Clear playing state when video pauses
-    if (playingVideo === postId) {
-      setPlayingVideo(null);
-    }
-  }, [playingVideo]);
+  const handleVideoPauseEvent = useCallback(
+    (postId: string) => {
+      console.log(`Video paused: ${postId}`);
+      // Clear playing state when video pauses
+      if (playingVideo === postId) {
+        setPlayingVideo(null);
+      }
+    },
+    [playingVideo]
+  );
 
   // Handle video mute/unmute
   const handleVideoMute = useCallback(
@@ -148,11 +160,14 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
   );
 
   // Handle video ended
-  const handleVideoEnded = useCallback((postId: string) => {
-    if (playingVideo === postId) {
-      setPlayingVideo(null);
-    }
-  }, [playingVideo]);
+  const handleVideoEnded = useCallback(
+    (postId: string) => {
+      if (playingVideo === postId) {
+        setPlayingVideo(null);
+      }
+    },
+    [playingVideo]
+  );
 
   // Handle media load and calculate aspect ratio
   const handleMediaLoad = useCallback(
@@ -184,9 +199,9 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
   // Handle video loaded metadata
   const handleVideoLoadedMetadata = useCallback(
     (postId: string, event: React.SyntheticEvent<HTMLVideoElement>) => {
-      setVideosLoaded(prev => new Set([...prev, postId]));
+      setVideosLoaded((prev) => new Set([...prev, postId]));
       handleMediaLoad(postId, event);
-      
+
       // Auto-play if this video should be playing
       if (playingVideo === postId) {
         const video = videoRefs.current[postId];
@@ -208,10 +223,10 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
         // Cap aspect ratio to reasonable bounds for UI consistency
         const cappedRatio = Math.max(0.67, Math.min(1.8, aspectRatio));
         const width = Math.round(cappedRatio * 100);
-        
+
         // Debug: Log aspect ratio info
         // console.log(`PostMasonry ${post.id}: Real dimensions ${media.width}x${media.height}, ratio: ${aspectRatio.toFixed(3)}, capped: ${cappedRatio.toFixed(3)}, CSS: ${width}/100`);
-        
+
         return { aspectRatio: `${width} / 100` };
       }
     }
@@ -327,7 +342,9 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
       if (newPosts.length > 0) {
         // Add new videos to muted list by default
         const newVideoPostIds = newPosts
-          .filter((post) => post.previewVideoPath && post.uploadFileType === "VIDEO")
+          .filter(
+            (post) => post.previewVideoPath && post.uploadFileType === "VIDEO"
+          )
           .map((post) => post.id);
 
         if (newVideoPostIds.length > 0) {
@@ -365,9 +382,9 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
   // Reset video states when playingVideo changes
   useEffect(() => {
     // Clean up video states for posts that are no longer playing
-    posts.forEach(post => {
+    posts.forEach((post) => {
       if (playingVideo !== post.id) {
-        setVideosToShow(prev => {
+        setVideosToShow((prev) => {
           const newSet = new Set(prev);
           if (newSet.has(post.id)) {
             // Keep video loaded but not playing
@@ -387,7 +404,8 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
       >
         {posts.map((post) => {
           const position = postPositions.find((p) => p.id === post.id);
-          const isVideo = post.previewVideoPath && post.uploadFileType === "VIDEO";
+          const isVideo =
+            post.previewVideoPath && post.uploadFileType === "VIDEO";
           const showVideo = isVideo && videosToShow.has(post.id);
           const videoLoaded = isVideo && videosLoaded.has(post.id);
 
@@ -415,8 +433,8 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                 top: position?.y || 0,
               }}
             >
-              <Link 
-                href={`/entry/${post.id}`} 
+              <Link
+                href={`/entry/${post.id}`}
                 scroll={false}
                 prefetch={true} // Enable automatic Next.js prefetching
               >
@@ -425,9 +443,14 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                     className="relative"
                     style={
                       // Apply dynamic aspect ratio to images preview and videos preview only
-                      post.previewPath && post.uploadFileType === "IMAGE" || post.previewVideoPath && post.uploadFileType === "VIDEO"
+                      (post.previewPath && post.uploadFileType === "IMAGE") ||
+                      (post.previewVideoPath && post.uploadFileType === "VIDEO")
                         ? getDynamicAspectRatio(post)
-                        : { height: "auto", minHeight: "120px", maxHeight: "200px" }
+                        : {
+                            height: "auto",
+                            minHeight: "120px",
+                            maxHeight: "200px",
+                          }
                     }
                   >
                     {post.previewPath && post.uploadFileType === "IMAGE" ? (
@@ -459,7 +482,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                             onLoad={(e) => handleMediaLoad(post.id, e)}
                           />
                         )}
-                        
+
                         {/* Show video when user clicks play */}
                         {showVideo && (
                           <MediaVideo
@@ -516,7 +539,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                               <Play className="w-4 h-4" />
                             )}
                           </button>
-                          
+
                           {/* Mute/Unmute button */}
                           <button
                             className="bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
@@ -556,7 +579,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                     )}
 
                     {/* Action buttons overlay */}
-                    <div className="absolute bottom-3 left-0 right-0 px-3 flex gap-2 items-end justify-between z-20">
+                    <div className="absolute bottom-3 right-3 px-3 flex gap-2 items-end justify-between z-20">
                       <div
                         className="flex items-bottom justify-end gap-2"
                         onClick={(e) => e.stopPropagation()}
@@ -574,7 +597,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                           initialBookmarked={post.isBookmarked || false}
                         />
                       </div>
-                      <div className="flex items-end justify-end gap-1 flex-col flex-wrap">
+                      {/* <div className="flex items-end justify-end gap-1 flex-col flex-wrap">
                         <div className="flex items-center gap-1">
                           <Badge
                             variant="outline"
@@ -584,7 +607,6 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                           </Badge>
                         </div>
                         <div className="flex items-end gap-1">
-                          {/* Show up to 2 tags */}
                           {post.tags &&
                             post.tags.slice(0, 2).map((tag) => (
                               <Badge
@@ -596,7 +618,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                               </Badge>
                             ))}
                         </div>
-                      </div>
+                      </div> */}
                     </div>
                   </div>
                 </Card>

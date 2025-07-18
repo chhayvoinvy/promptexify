@@ -1,10 +1,10 @@
 import { AppSidebar } from "@/components/dashboard/admin-sidebar";
-import { ChartAreaInteractive } from "@/components/dashboard/user-chart";
+// import { ChartAreaInteractive } from "@/components/dashboard/user-chart";
 import { DataTable } from "@/components/dashboard/data-table";
 import {
   SectionCards,
   // EngagementCards,
-  PopularCategoriesCard,
+  // PopularCategoriesCard,
 } from "@/components/dashboard/section-cards";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { UserStatsCards } from "@/components/dashboard/user-stats-cards";
@@ -212,7 +212,7 @@ export default async function DashboardPage() {
                     </div> */}
 
                     {/* Popular Categories and Insights */}
-                    <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-2">
+                    {/* <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-2">
                       <PopularCategoriesCard
                         dashboardStats={
                           adminDashboardStats.success
@@ -221,14 +221,9 @@ export default async function DashboardPage() {
                         }
                         isLoading={!adminDashboardStats.success}
                       />
+                    </div> */}
 
-                      {/* Recent Activity Card (you can implement this later) */}
-                      <div className="@xl/main:col-span-1">
-                        {/* Placeholder for future components like recent activity */}
-                      </div>
-                    </div>
-
-                    <ChartAreaInteractive />
+                    {/* <ChartAreaInteractive /> */}
                     <DataTable />
                   </TabsContent>
 
