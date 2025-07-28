@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { GeistMono } from "geist/font/mono";
-import { Analytics } from "@vercel/analytics/next";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 
 import { ThemeProvider } from "@/components/ui/theme";
 import { Toaster } from "@/components/ui/sonner";
 import { GoogleOneTap } from "@/components/google-one-tap";
 import { getBaseUrl } from "@/lib/utils";
-import { headers } from 'next/headers';
+import { headers } from "next/headers";
 
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseUrl()),
@@ -89,7 +89,7 @@ export default async function RootLayout({
 }>) {
   // Get CSP nonce for inline scripts/styles following csp.md approach
   const headersList = await headers();
-  const nonce = headersList.get('x-nonce') || '';
+  const nonce = headersList.get("x-nonce") || "";
   const isProduction = process.env.NODE_ENV === "production";
 
   return (
@@ -122,7 +122,7 @@ export default async function RootLayout({
         <link rel="manifest" href="/static/favicon/site.webmanifest" />
         <meta name="theme-color" content="#ffffff" />
         <meta name="msapplication-TileColor" content="#ffffff" />
-        
+
         {/* CSP nonce handling following csp.md approach */}
         {nonce && isProduction && (
           <script
@@ -153,7 +153,7 @@ export default async function RootLayout({
           {children}
           {modal}
           <GoogleOneTap />
-          <Analytics />
+          <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID || ""} />
           <Toaster />
         </ThemeProvider>
       </body>
