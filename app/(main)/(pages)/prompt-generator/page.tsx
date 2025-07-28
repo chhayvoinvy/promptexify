@@ -1,10 +1,10 @@
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Metadata } from "next";
 import { GridBackground } from "@/components/ui/grid-background";
+import { setMetadata } from "@/config/seo";
 
-export const metadata: Metadata = {
+export const metadata = setMetadata({
   title: "Prompt Generator - Promptexify",
   description:
     "AI-powered prompt generator coming soon to Promptexify. Create perfect prompts automatically with our intelligent generation tool.",
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     description:
       "AI-powered prompt generator coming soon to Promptexify. Create perfect prompts automatically.",
   },
-};
+});
 
 export default function PromptGeneratorPage() {
   return (

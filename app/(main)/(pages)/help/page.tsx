@@ -10,8 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Icons } from "@/components/ui/icons";
 import { sanityFetch, groq, cacheTags } from "@/lib/sanity";
 import { Container } from "@/components/ui/container";
-import { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { getMetadata } from "@/config/seo";
 
 // Enhanced type definitions based on schema
 interface HelpArticle {
@@ -34,16 +34,7 @@ interface HelpArticle {
 }
 
 // Enhanced metadata
-export const metadata: Metadata = {
-  title: "Help Center - Find answers to your questions",
-  description:
-    "Get help with subscriptions, content contribution, technical support, and more. Search our comprehensive help center for quick solutions.",
-  openGraph: {
-    title: "Help Center - Promptexify",
-    description: "Find answers to your questions about Promptexify",
-    type: "website",
-  },
-};
+export const metadata = getMetadata("help");
 
 // Fetch help articles with enhanced error handling and caching
 async function getHelpArticles(): Promise<HelpArticle[]> {

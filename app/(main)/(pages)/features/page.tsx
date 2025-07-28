@@ -3,18 +3,9 @@ import { CtaSection } from "@/components/ui/cta-section";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Metadata } from "next";
+import { getMetadata } from "@/config/seo";
 
-export const metadata: Metadata = {
-  title: "Features - Promptexify",
-  description:
-    "Discover all the powerful features that make Promptexify the best platform for AI prompts. From curated collections to community sharing, explore what sets us apart.",
-  openGraph: {
-    title: "Features - Promptexify",
-    description:
-      "Discover all the powerful features that make Promptexify the best platform for AI prompts.",
-  },
-};
+export const metadata = getMetadata("features");
 
 export default function FeaturesPage() {
   return (

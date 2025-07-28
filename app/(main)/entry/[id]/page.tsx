@@ -8,6 +8,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { Crown } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { setMetadata } from "@/config/seo";
 
 interface PostPageProps {
   params: Promise<{
@@ -19,6 +20,25 @@ interface PostPageProps {
 }
 
 export const dynamic = "force-dynamic";
+
+// Use static metadata with template title
+export const metadata = setMetadata({
+  title: "AI Prompt", // This will use the template: "AI Prompt | Promptexify"
+  description:
+    "Discover high-quality AI prompts for ChatGPT, Claude, Gemini, and more. Browse our comprehensive collection of tested prompts for creative writing, business, design, and more.",
+  openGraph: {
+    type: "article",
+    title: "AI Prompt - Promptexify",
+    description:
+      "Discover high-quality AI prompts for ChatGPT, Claude, Gemini, and more.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AI Prompt - Promptexify",
+    description:
+      "Discover high-quality AI prompts for ChatGPT, Claude, Gemini, and more.",
+  },
+});
 
 export async function generateStaticParams() {
   try {
@@ -57,12 +77,12 @@ export default async function PostPage({
   // Check premium access control
   const userType = currentUser?.userData?.type || null;
   const userRole = currentUser?.userData?.role || null;
-  
+
   // If this is premium content, check user access
   if (processedPost.isPremium) {
     const isUserFree = userType === "FREE" || userType === null;
     const isAdmin = userRole === "ADMIN";
-    
+
     // Only allow access for premium users and admins
     if (isUserFree && !isAdmin) {
       redirect("/pricing");
@@ -84,11 +104,14 @@ export default async function PostPage({
           <Crown className="w-12 h-12 text-amber-500 mb-4" />
           <h1 className="text-2xl font-bold mb-2">Premium Content</h1>
           <p className="text-muted-foreground mb-6 text-center max-w-md">
-            This content requires a Premium subscription to access. 
-            Upgrade now to unlock exclusive AI prompts and advanced features.
+            This content requires a Premium subscription to access. Upgrade now
+            to unlock exclusive AI prompts and advanced features.
           </p>
           <Link href="/pricing">
-            <Button size="lg" className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white">
+            <Button
+              size="lg"
+              className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white"
+            >
               <Crown className="w-4 h-4 mr-2" />
               Upgrade to Premium
             </Button>

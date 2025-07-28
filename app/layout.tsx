@@ -1,84 +1,14 @@
-import type { Metadata } from "next";
 import { GeistMono } from "geist/font/mono";
-import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 
 import { ThemeProvider } from "@/components/ui/theme";
 import { Toaster } from "@/components/ui/sonner";
 import { GoogleOneTap } from "@/components/google-one-tap";
-import { getBaseUrl } from "@/lib/utils";
+import { GoogleAnalytics } from "@/components/google-analytics";
 import { headers } from "next/headers";
+import { seoConfig } from "@/config/seo";
 
-export const metadata: Metadata = {
-  metadataBase: new URL(getBaseUrl()),
-  title: {
-    default:
-      "Promptexify - AI Prompt Directory for ChatGPT, Claude, Gemini, AI Code Editor, and more",
-    template: "%s | Promptexify",
-  },
-  description:
-    "Discover and share high-quality AI prompts for ChatGPT, Claude, Gemini, AI Code Editor, and more. Browse our comprehensive directory of tested prompts for creative writing, business, design, and more.",
-  keywords: [
-    "AI prompts",
-    "ChatGPT prompts",
-    "Claude prompts",
-    "Gemini prompts",
-    "AI Code Editor prompts",
-    "prompt engineering",
-    "AI tools",
-    "AI prompt directory",
-    "AI prompt library",
-    "AI prompt engine",
-    "AI prompt generator",
-    "prompt directory",
-    "prompt library",
-  ],
-  authors: [{ name: "Promptexify Team" }],
-  creator: "Promptexify",
-  publisher: "Promptexify",
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-    },
-  },
-  openGraph: {
-    type: "website",
-    locale: "en_US",
-    url: getBaseUrl(),
-    title: "Promptexify - AI Prompt Directory",
-    description:
-      "Discover and share high-quality AI prompts for ChatGPT, Claude, Gemini, and more. The comprehensive AI prompt directory for all your needs.",
-    siteName: "Promptexify",
-    images: [
-      {
-        url: "/static/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Promptexify - AI Prompt Directory",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Promptexify - AI Prompt Directory",
-    description:
-      "Discover and share high-quality AI prompts for ChatGPT, Claude, Gemini, and more.",
-    images: ["/static/og-image.png"],
-    creator: "@promptexify",
-  },
-  icons: {
-    icon: "/static/favicon/favicon.ico",
-    shortcut: "/static/favicon/favicon-16x16.png",
-    apple: "/static/favicon/apple-touch-icon.png",
-  },
-  manifest: "/static/favicon/site.webmanifest",
-};
+export const metadata = seoConfig;
 
 export default async function RootLayout({
   children,
@@ -87,7 +17,7 @@ export default async function RootLayout({
   children: React.ReactNode;
   modal: React.ReactNode;
 }>) {
-  // Get CSP nonce for inline scripts/styles following csp.md approach
+  // Get CSP nonce for inline scripts/styles
   const headersList = await headers();
   const nonce = headersList.get("x-nonce") || "";
   const isProduction = process.env.NODE_ENV === "production";
@@ -95,7 +25,7 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* All security headers are now handled by middleware following csp.md */}
+        {/* All security headers are now handled by middleware */}
         {/* Only keep favicon and theme-related meta tags */}
         <link
           rel="icon"
@@ -123,8 +53,8 @@ export default async function RootLayout({
         <meta name="theme-color" content="#ffffff" />
         <meta name="msapplication-TileColor" content="#ffffff" />
 
-        {/* CSP nonce handling following csp.md approach */}
-        {nonce && isProduction && (
+        {/* CSP nonce handling - always set nonce if available */}
+        {nonce && (
           <script
             nonce={nonce}
             suppressHydrationWarning={true}
@@ -133,8 +63,8 @@ export default async function RootLayout({
             }}
           />
         )}
-        {/* In development, set global without nonce to avoid CSP conflicts */}
-        {!isProduction && (
+        {/* Fallback for development when no nonce is available */}
+        {!nonce && !isProduction && (
           <script
             suppressHydrationWarning={true}
             dangerouslySetInnerHTML={{

@@ -537,12 +537,12 @@ export class SecurityHeaders {
     scriptSrc += " " + externalScripts.join(" ");
 
     if (isDevelopment) {
-      // Development: Add 'unsafe-eval' for hot-reloading as shown in csp.md
+      // Development: Add 'unsafe-eval' for hot-reloading
       scriptSrc += " 'unsafe-eval'";
     }
 
+    // Always add nonce if provided, regardless of environment
     if (nonce) {
-      // Add nonce and strict-dynamic as recommended in csp.md
       scriptSrc += ` 'nonce-${nonce}' 'strict-dynamic'`;
     } else if (isDevelopment) {
       // Fallback for development without nonce
@@ -722,6 +722,72 @@ export class SecurityHeaders {
     ];
 
     return `frame-src ${frameSources.join(" ")}`;
+  }
+}
+
+// CSP Debug Utilities
+export class CSPDebug {
+  /**
+   * Calculate SHA-256 hash for inline content
+   */
+  static async calculateHash(content: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(content);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashBase64 = btoa(String.fromCharCode(...hashArray));
+    return `'sha256-${hashBase64}'`;
+  }
+
+  /**
+   * Analyze CSP violation and suggest fixes
+   */
+  static async analyzeViolation(violatedDirective: string): Promise<{
+    type: 'script' | 'style' | 'other';
+    suggestedHash?: string;
+    suggestedNonce?: boolean;
+    recommendation: string;
+  }> {
+    if (violatedDirective === 'script-src') {
+      return {
+        type: 'script',
+        recommendation: 'Add nonce to inline script or calculate hash',
+        suggestedNonce: true,
+      };
+    } else if (violatedDirective === 'style-src') {
+      return {
+        type: 'style',
+        recommendation: 'Add nonce to inline style or calculate hash',
+        suggestedNonce: true,
+      };
+    }
+
+    return {
+      type: 'other',
+      recommendation: 'Unknown violation type'
+    };
+  }
+
+  /**
+   * Get common inline content patterns for debugging
+   */
+  static getCommonPatterns() {
+    return {
+      scripts: [
+        'window.__CSP_NONCE__ = "example-nonce";',
+        'window.__CSP_NONCE__ = null; // Development mode - no CSP nonces',
+        'gtag("config", "GA_MEASUREMENT_ID");',
+        'window.dataLayer = window.dataLayer || [];',
+        'function gtag(){dataLayer.push(arguments);}',
+        'document.documentElement.classList.add("dark");',
+        'document.documentElement.classList.remove("dark");',
+      ],
+      styles: [
+        '[data-chart=id] { --color-primary: #000; }',
+        '.dark { background-color: #000; }',
+        '.light { background-color: #fff; }',
+      ]
+    };
   }
 }
 

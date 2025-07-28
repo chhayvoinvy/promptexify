@@ -12,11 +12,9 @@ import {
 
 export async function middleware(request: NextRequest) {
   try {
-    // Generate nonce for CSP following csp.md approach
+    // Generate nonce for CSP - simplified logic
     const isDevelopment = process.env.NODE_ENV === 'development';
-    const nonce = isDevelopment && request.nextUrl.hostname === 'localhost' 
-      ? null // No nonce needed for local development
-      : CSPNonce.generate(); // Generate nonce for production and non-localhost dev
+    const nonce = CSPNonce.generate(); // Always generate nonce for consistency
 
     // Handle Supabase session
     const response = await updateSession(request);
@@ -29,22 +27,19 @@ export async function middleware(request: NextRequest) {
     // Prepare request headers for modification
     const requestHeaders = new Headers(request.headers);
 
-    // Set nonce in headers and cookies if generated
-    if (nonce) {
-      // Set nonce in request headers for Server Components to access
-      requestHeaders.set("x-nonce", nonce);
+    // Set nonce in headers for Server Components to access
+    requestHeaders.set("x-nonce", nonce);
 
-      // Set nonce in cookie for client components (httpOnly: false so client can read)
-      response.cookies.set("csp-nonce", nonce, {
-        httpOnly: false,
-        secure: !isDevelopment, // Only secure in production
-        sameSite: "strict",
-        maxAge: 60 * 60, // 1 hour
-      });
-    }
+    // Set nonce in cookie for client components (httpOnly: false so client can read)
+    response.cookies.set("csp-nonce", nonce, {
+      httpOnly: false,
+      secure: !isDevelopment, // Only secure in production
+      sameSite: "strict",
+      maxAge: 60 * 60, // 1 hour
+    });
 
-    // Apply security headers with CSP following csp.md methodology
-    const securityHeaders = SecurityHeaders.getSecurityHeaders(nonce || undefined);
+    // Apply security headers with CSP
+    const securityHeaders = SecurityHeaders.getSecurityHeaders(nonce);
     Object.entries(securityHeaders).forEach(([key, value]) => {
       response.headers.set(key, value);
     });
