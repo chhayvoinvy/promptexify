@@ -7,6 +7,7 @@ import { GoogleOneTap } from "@/components/google-one-tap";
 import { GoogleAnalytics } from "@/components/google-analytics";
 import { headers } from "next/headers";
 import { seoConfig } from "@/config/seo";
+import { Container } from "@/components/ui/container";
 
 export const metadata = seoConfig;
 
@@ -74,18 +75,20 @@ export default async function RootLayout({
         )}
       </head>
       <body className={GeistMono.className}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-          {modal}
-          <GoogleOneTap />
-          <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID || ""} />
-          <Toaster />
-        </ThemeProvider>
+        <Container className="py-0">
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+            {modal}
+            <GoogleOneTap />
+            <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID || ""} />
+            <Toaster />
+          </ThemeProvider>
+        </Container>
       </body>
     </html>
   );

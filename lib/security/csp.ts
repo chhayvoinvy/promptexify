@@ -474,7 +474,8 @@ export class SecurityHeaders {
       "form-action 'self'",
       "frame-ancestors 'none'",
       "block-all-mixed-content",
-      "upgrade-insecure-requests",
+      // Only add upgrade-insecure-requests in production
+      ...(isDevelopment ? [] : ["upgrade-insecure-requests"]),
     ];
 
     return cspDirectives.join('; ');
@@ -502,6 +503,8 @@ export class SecurityHeaders {
       'base-uri': "'self'",
       'form-action': "'self'",
       'frame-ancestors': "'none'",
+      // Only add upgrade-insecure-requests in production
+      ...(isDevelopment ? {} : { 'upgrade-insecure-requests': '' }),
     };
 
     return {
@@ -519,14 +522,19 @@ export class SecurityHeaders {
     const scriptSources = [
       "'self'",
       "'sha256-n46vPwSWuMC0W703pBofImv82Z26xo4LXymv0E9caPk='", // Allow specific inline script
-      // Google services
+            // Google services
       "https://www.googletagmanager.com",
-      "https://www.google-analytics.com", 
+      "https://www.google-analytics.com",
       "https://googleads.g.doubleclick.net",
       "https://www.google.com",
       "https://accounts.google.com", 
-      // Google One Tap
+      // Google One Tap and Identity Services
       "https://apis.google.com",
+      "https://accounts.google.com",
+      "https://oauth2.googleapis.com",
+      "https://www.googleapis.com",
+      "https://identitytoolkit.googleapis.com",
+      "https://securetoken.googleapis.com",
       // Stripe payments
       "https://js.stripe.com",
       "https://checkout.stripe.com",
@@ -671,6 +679,12 @@ export class SecurityHeaders {
       "https://apis.google.com",
       "https://region1.google-analytics.com", // GA4
       "https://www.google.com",
+      // Google One Tap and Identity Services
+      "https://oauth2.googleapis.com",
+      "https://www.googleapis.com",
+      "https://identitytoolkit.googleapis.com",
+      "https://securetoken.googleapis.com",
+      "https://identitytoolkit.googleapis.com",
       // Stripe
       "https://api.stripe.com",
       "https://events.stripe.com", // Stripe events

@@ -8,7 +8,8 @@ class BatchedMediaResolver {
   private static instance: BatchedMediaResolver;
   private pendingPaths: Set<string> = new Set();
   private resolvedUrls: Map<string, string> = new Map();
-  private pendingCallbacks: Map<string, Array<(url: string) => void>> = new Map();
+  private pendingCallbacks: Map<string, Array<(url: string) => void>> =
+    new Map();
   private isProcessing = false;
   private batchTimeout: NodeJS.Timeout | null = null;
 
@@ -23,7 +24,9 @@ class BatchedMediaResolver {
    * Clear all cached URLs - useful when storage configuration changes
    */
   clearCache(): void {
-    console.log("🗑️  Clearing BatchedMediaResolver cache due to storage change");
+    console.log(
+      "🗑️  Clearing BatchedMediaResolver cache due to storage change"
+    );
     this.resolvedUrls.clear();
     this.pendingPaths.clear();
     this.pendingCallbacks.clear();
@@ -59,7 +62,7 @@ class BatchedMediaResolver {
 
     // Add to pending paths and set up callback
     this.pendingPaths.add(path);
-    
+
     return new Promise((resolve) => {
       if (!this.pendingCallbacks.has(path)) {
         this.pendingCallbacks.set(path, []);
@@ -90,7 +93,7 @@ class BatchedMediaResolver {
     const pathsToResolve = Array.from(this.pendingPaths);
     this.pendingPaths.clear();
 
-    console.log('🔄 BatchedMediaResolver: Processing paths:', pathsToResolve);
+    // console.log("🔄 BatchedMediaResolver: Processing paths:", pathsToResolve);
 
     try {
       const response = await fetch("/api/media/resolve", {
@@ -101,7 +104,10 @@ class BatchedMediaResolver {
         body: JSON.stringify({ paths: pathsToResolve }),
       });
 
-      console.log('📡 BatchedMediaResolver: API response status:', response.status);
+      // console.log(
+      //   "📡 BatchedMediaResolver: API response status:",
+      //   response.status
+      // );
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -110,18 +116,18 @@ class BatchedMediaResolver {
       const data = await response.json();
       const resolvedUrls = data.urls || [];
 
-      console.log('✅ BatchedMediaResolver: Resolved URLs:', {
-        paths: pathsToResolve,
-        resolvedUrls,
-        singleUrl: data.url
-      });
+      // console.log("✅ BatchedMediaResolver: Resolved URLs:", {
+      //   paths: pathsToResolve,
+      //   resolvedUrls,
+      //   singleUrl: data.url,
+      // });
 
       // Handle single URL response
       if (pathsToResolve.length === 1 && data.url) {
         const resolvedUrl = data.url;
         this.resolvedUrls.set(pathsToResolve[0], resolvedUrl);
         const callbacks = this.pendingCallbacks.get(pathsToResolve[0]) || [];
-        callbacks.forEach(callback => callback(resolvedUrl));
+        callbacks.forEach((callback) => callback(resolvedUrl));
         this.pendingCallbacks.delete(pathsToResolve[0]);
         return;
       }
@@ -133,20 +139,25 @@ class BatchedMediaResolver {
 
         // Trigger all callbacks for this path
         const callbacks = this.pendingCallbacks.get(path) || [];
-        callbacks.forEach(callback => callback(resolvedUrl));
+        callbacks.forEach((callback) => callback(resolvedUrl));
         this.pendingCallbacks.delete(path);
       });
     } catch (error) {
-      console.error("❌ BatchedMediaResolver: Error resolving media URLs:", error);
-      
+      console.error(
+        "❌ BatchedMediaResolver: Error resolving media URLs:",
+        error
+      );
+
       // Check if it's a rate limit error and implement exponential backoff
-      if (error instanceof Error && error.message.includes('429')) {
-        console.warn("🔄 BatchedMediaResolver: Rate limited, will retry with exponential backoff");
+      if (error instanceof Error && error.message.includes("429")) {
+        // console.warn(
+        //   "🔄 BatchedMediaResolver: Rate limited, will retry with exponential backoff"
+        // );
         // Re-add paths to pending for retry with exponential backoff
         pathsToResolve.forEach((path) => {
           this.pendingPaths.add(path);
         });
-        
+
         // Schedule retry with exponential backoff
         setTimeout(() => {
           this.scheduleBatchProcessing();
@@ -154,16 +165,18 @@ class BatchedMediaResolver {
       } else {
         // On other errors, resolve with original paths
         pathsToResolve.forEach((path) => {
-          console.warn(`⚠️ BatchedMediaResolver: Falling back to original path: ${path}`);
+          // console.warn(
+          //   `⚠️ BatchedMediaResolver: Falling back to original path: ${path}`
+          // );
           this.resolvedUrls.set(path, path);
           const callbacks = this.pendingCallbacks.get(path) || [];
-          callbacks.forEach(callback => callback(path));
+          callbacks.forEach((callback) => callback(path));
           this.pendingCallbacks.delete(path);
         });
       }
     } finally {
       this.isProcessing = false;
-      
+
       // Process any new pending paths that accumulated during processing
       if (this.pendingPaths.size > 0) {
         this.scheduleBatchProcessing();
@@ -269,7 +282,7 @@ export function MediaImage({
     resolveMediaUrl(src)
       .then((url: string) => {
         // Validate the resolved URL before setting it
-        if (url && url.trim() !== '') {
+        if (url && url.trim() !== "") {
           setResolvedUrl(url);
         } else {
           setError("Invalid resolved URL");
@@ -299,24 +312,26 @@ export function MediaImage({
   // Loading state - always show blur image if available, otherwise show loading placeholder
   if (isLoading) {
     // When using fill, ensure proper container styling during loading
-    const loadingContainerStyle = fill 
-      ? { 
-          width: width || "100%", 
+    const loadingContainerStyle = fill
+      ? {
+          width: width || "100%",
           height: height || "100%",
           minHeight: height || "200px",
-          position: "relative" as const
+          position: "relative" as const,
         }
       : { width, height };
 
-    const loadingContainerClassName = fill 
-      ? `relative overflow-hidden ${className || ""}` + (
-          (!height && !className?.includes('h-')) ? ' min-h-[200px]' : ''
-        )
+    const loadingContainerClassName = fill
+      ? `relative overflow-hidden ${className || ""}` +
+        (!height && !className?.includes("h-") ? " min-h-[200px]" : "")
       : `relative overflow-hidden ${className || ""}`;
 
     if (blurDataURL) {
       return (
-        <div className={loadingContainerClassName} style={loadingContainerStyle}>
+        <div
+          className={loadingContainerClassName}
+          style={loadingContainerStyle}
+        >
           <Image
             src={blurDataURL}
             alt={alt}
@@ -348,7 +363,7 @@ export function MediaImage({
     }
   }
 
-  if (!resolvedUrl || resolvedUrl.trim() === '') {
+  if (!resolvedUrl || resolvedUrl.trim() === "") {
     return (
       <div
         className={`bg-muted border-2 border-dashed border-muted-foreground/25 ${className}`}
@@ -365,31 +380,35 @@ export function MediaImage({
   let validUrl: string;
   try {
     // For blob URLs, relative URLs, and absolute URLs, validate differently
-    if (resolvedUrl.startsWith('blob:') || resolvedUrl.startsWith('http://') || resolvedUrl.startsWith('https://')) {
+    if (
+      resolvedUrl.startsWith("blob:") ||
+      resolvedUrl.startsWith("http://") ||
+      resolvedUrl.startsWith("https://")
+    ) {
       // Test if it's a valid URL
       new URL(resolvedUrl);
       validUrl = resolvedUrl;
-    } else if (resolvedUrl.startsWith('/')) {
+    } else if (resolvedUrl.startsWith("/")) {
       // Relative URL starting with /
       validUrl = resolvedUrl;
     } else {
       // Fallback for other relative paths
       validUrl = `/${resolvedUrl}`;
     }
-    
+
     // Debug logging to understand URL resolution
-    console.log('MediaImage URL resolution:', {
-      originalSrc: src,
-      resolvedUrl,
-      validUrl,
-      timestamp: new Date().toISOString()
-    });
+    // console.log('MediaImage URL resolution:', {
+    //   originalSrc: src,
+    //   resolvedUrl,
+    //   validUrl,
+    //   timestamp: new Date().toISOString()
+    // });
   } catch (error) {
-    console.error('MediaImage URL parsing error:', {
+    console.error("MediaImage URL parsing error:", {
       originalSrc: src,
       resolvedUrl,
       error: error instanceof Error ? error.message : String(error),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
     // If URL parsing fails, show error state
     return (
@@ -411,20 +430,19 @@ export function MediaImage({
   };
 
   // When using fill, ensure the container has proper styling and minimum dimensions
-  const containerStyle = fill 
-    ? { 
-        width: width || "100%", 
+  const containerStyle = fill
+    ? {
+        width: width || "100%",
         height: height || "100%",
         minHeight: height || "200px", // Ensure minimum height when using fill
-        position: "relative" as const
+        position: "relative" as const,
       }
     : { width, height };
 
-  const containerClassName = fill 
-    ? `relative overflow-hidden ${className || ""}` + (
-        // Add min-height class if no explicit height is provided
-        (!height && !className?.includes('h-')) ? ' min-h-[200px]' : ''
-      )
+  const containerClassName = fill
+    ? `relative overflow-hidden ${className || ""}` +
+      // Add min-height class if no explicit height is provided
+      (!height && !className?.includes("h-") ? " min-h-[200px]" : "")
     : `relative overflow-hidden ${className || ""}`;
 
   return (
@@ -447,7 +465,7 @@ export function MediaImage({
           unoptimized={true}
         />
       )}
-      
+
       {/* Main image with smooth fade-in */}
       <Image
         src={validUrl}
@@ -464,7 +482,9 @@ export function MediaImage({
         onLoad={handleImageLoad}
         placeholder="empty"
         blurDataURL={undefined}
-        unoptimized={validUrl.startsWith("/uploads") || validUrl.startsWith("/preview")}
+        unoptimized={
+          validUrl.startsWith("/uploads") || validUrl.startsWith("/preview")
+        }
       />
     </div>
   );
@@ -518,16 +538,18 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
         previewVideoSrc,
         usePreviewVideo,
         hasPreviewVideo: !!previewVideoSrc,
-        willUsePreview: usePreviewVideo && !!previewVideoSrc
+        willUsePreview: usePreviewVideo && !!previewVideoSrc,
       });
-      
+
       // Priority order: previewVideoSrc → src (only if src is not empty)
       if (usePreviewVideo && previewVideoSrc) {
         console.log(`✅ Using preview video: ${previewVideoSrc}`);
         setCurrentVideoSrc(previewVideoSrc);
         setIsUsingPreview(true);
-      } else if (src && src.trim() !== '') {
-        console.log(`❌ Using original video: ${src} (usePreviewVideo: ${usePreviewVideo}, hasPreviewVideo: ${!!previewVideoSrc})`);
+      } else if (src && src.trim() !== "") {
+        console.log(
+          `❌ Using original video: ${src} (usePreviewVideo: ${usePreviewVideo}, hasPreviewVideo: ${!!previewVideoSrc})`
+        );
         setCurrentVideoSrc(src);
         setIsUsingPreview(false);
       } else {
@@ -540,7 +562,7 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
     // Resolve video URL
     useEffect(() => {
       console.log(`Resolving video URL for: ${currentVideoSrc}`);
-      
+
       if (!currentVideoSrc) {
         console.log(`No currentVideoSrc, setting loading to false`);
         setIsLoading(false);
@@ -564,7 +586,7 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
       resolveMediaUrl(currentVideoSrc)
         .then((url: string) => {
           console.log(`Resolved URL: ${url}`);
-          if (url && url.trim() !== '') {
+          if (url && url.trim() !== "") {
             setResolvedUrl(url);
           } else {
             setError("Invalid resolved URL");
@@ -582,7 +604,7 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
     const handleVideoError = () => {
       console.error("Video failed to load:", resolvedUrl);
       setIsPlayPending(false); // Clear pending state on error
-      
+
       if (isUsingPreview && fallbackToOriginal && src !== currentVideoSrc) {
         console.log("Preview video failed, falling back to original");
         setCurrentVideoSrc(src);
@@ -598,35 +620,40 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
     };
 
     // Handle video loaded metadata
-    const handleVideoLoadedMetadata = (event: React.SyntheticEvent<HTMLVideoElement>) => {
+    const handleVideoLoadedMetadata = (
+      event: React.SyntheticEvent<HTMLVideoElement>
+    ) => {
       console.log("Video loaded successfully:", resolvedUrl);
       const video = event.currentTarget as HTMLVideoElement;
-      
+
       setVideoLoaded(true);
       setError(null); // Clear any previous errors
-      
+
       // Auto-play if this video should be playing (when user clicked play before video was loaded)
       if (autoPlay && !isPlayPending) {
         console.log("Auto-playing video due to autoPlay prop");
         setIsPlayPending(true);
-        video.play()
+        video
+          .play()
           .then(() => {
             console.log("Auto-play succeeded");
             setIsPlayPending(false);
             setShowPreviewImage(false);
           })
-          .catch(err => {
+          .catch((err) => {
             console.error("Auto-play failed:", err);
             setIsPlayPending(false);
             // Don't set error for autoplay failure, just show preview image with play button
             setShowPreviewImage(true);
-            console.log("Auto-play blocked by browser - user needs to click play");
+            console.log(
+              "Auto-play blocked by browser - user needs to click play"
+            );
           });
       } else {
         // If not auto-playing, keep preview image visible
         setShowPreviewImage(true);
       }
-      
+
       onLoadedMetadata?.(event);
     };
 
@@ -647,7 +674,9 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
     };
 
     // Handle preview image load
-    const handlePreviewImageLoad = (event: React.SyntheticEvent<HTMLImageElement>) => {
+    const handlePreviewImageLoad = (
+      event: React.SyntheticEvent<HTMLImageElement>
+    ) => {
       onPreviewLoad?.(event);
     };
 
@@ -686,19 +715,18 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
     }
 
     // Container styling for fill mode
-    const containerStyle = fill 
-      ? { 
-          width: width || "100%", 
+    const containerStyle = fill
+      ? {
+          width: width || "100%",
           height: height || "100%",
           minHeight: height || "200px",
-          position: "relative" as const
+          position: "relative" as const,
         }
       : { width, height };
 
-    const containerClassName = fill 
-      ? `relative overflow-hidden ${className || ""}` + (
-          (!height && !className?.includes('h-')) ? ' min-h-[200px]' : ''
-        )
+    const containerClassName = fill
+      ? `relative overflow-hidden ${className || ""}` +
+        (!height && !className?.includes("h-") ? " min-h-[200px]" : "")
       : `relative overflow-hidden ${className || ""}`;
 
     return (
@@ -717,7 +745,11 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
             loading="eager"
             priority={true}
             blurDataURL={blurDataURL}
-            sizes={fill ? "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" : undefined}
+            sizes={
+              fill
+                ? "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                : undefined
+            }
             onLoad={handlePreviewImageLoad}
           />
         )}
@@ -730,13 +762,13 @@ export const MediaVideo = React.forwardRef<HTMLVideoElement, MediaVideoProps>(
             </div>
           </div>
         )}
-        
+
         {/* Video element - only render if we have a resolved URL */}
         {resolvedUrl && (
           <video
             ref={ref}
             src={resolvedUrl}
-            className={`${fill ? 'absolute inset-0 w-full h-full' : ''} ${className || ''}`}
+            className={`${fill ? "absolute inset-0 w-full h-full" : ""} ${className || ""}`}
             controls={controls}
             autoPlay={autoPlay}
             loop={loop}

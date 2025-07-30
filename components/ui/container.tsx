@@ -30,7 +30,7 @@ export function Container({
   return (
     <div
       className={cn(
-        "container mx-auto px-5 py-6",
+        "container mx-auto px-4 py-6",
         variantStyles[variant],
         className
       )}
