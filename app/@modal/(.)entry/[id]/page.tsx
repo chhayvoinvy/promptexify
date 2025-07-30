@@ -37,14 +37,14 @@ export default function GlobalInterceptedModalPage() {
       try {
         // Fetch post data with caching for instant loads
         const response = await fetch(`/api/posts/${id}`, {
-          // Use default cache to leverage prefetched data
+          // Use default cache for data
           cache: "default",
           // Add cache headers for better performance
           headers: {
-            'Cache-Control': 'max-age=300', // 5 minute cache
-          }
+            "Cache-Control": "max-age=300", // 5 minute cache
+          },
         });
-        
+
         if (response.status === 403) {
           // Check if this is a premium content error
           const errorData = await response.json();
@@ -55,7 +55,7 @@ export default function GlobalInterceptedModalPage() {
           }
           throw new Error(errorData.error || "Access denied");
         }
-        
+
         if (!response.ok) {
           throw new Error("Failed to fetch post");
         }
@@ -117,7 +117,7 @@ export default function GlobalInterceptedModalPage() {
       title: "Premium Content",
       isPremium: true,
     } as PostWithInteractions;
-    
+
     return <PremiumUpgradeModal post={mockPost} onClose={handleClose} />;
   }
 

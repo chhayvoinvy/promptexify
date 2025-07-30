@@ -125,6 +125,25 @@ export async function checkRateLimit(
 ): Promise<RateLimitResult> {
   const { identifier, limit, window } = config;
 
+  // Bypass rate limiting in development for localhost or when explicitly disabled
+  if (process.env.NODE_ENV === "development") {
+    const isLocalhost = identifier.includes("127.0.0.1") || 
+                       identifier.includes("::1") || 
+                       identifier.includes("localhost") ||
+                       identifier.includes("unknown");
+    
+    // Allow bypass if explicitly disabled or localhost
+    if (process.env.DISABLE_RATE_LIMITS === "true" || isLocalhost) {
+      return {
+        allowed: true,
+        count: 0,
+        remaining: limit,
+        resetTime: Date.now() + window,
+        blocked: false,
+      };
+    }
+  }
+
   // Always use in-memory store in Edge Runtime
   const now = Date.now();
   if (!rateLimitStore[identifier]) {

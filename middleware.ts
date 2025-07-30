@@ -122,7 +122,8 @@ export async function middleware(request: NextRequest) {
       );
 
       if (!rateLimitResult.allowed) {
-        // Log rate limit violation
+        // Log rate limit violation with more details
+        console.warn(`🚫 Rate limit exceeded for ${clientId} on ${request.nextUrl.pathname} - IP: ${clientIp}`);
         await SecurityEvents.rateLimitExceeded(
           clientId,
           request.nextUrl.pathname,
@@ -134,6 +135,7 @@ export async function middleware(request: NextRequest) {
             error: "Too many requests",
             code: "RATE_LIMIT_EXCEEDED",
             resetTime: rateLimitResult.resetTime,
+            retryAfter: Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000),
           },
           {
             status: 429,
@@ -142,6 +144,7 @@ export async function middleware(request: NextRequest) {
               ...Object.fromEntries(
                 Object.entries(getRateLimitHeaders(rateLimitResult)).map(([key, value]) => [key, String(value)])
               ),
+              "Retry-After": String(Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)),
             },
           }
         );

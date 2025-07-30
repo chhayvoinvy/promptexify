@@ -13,7 +13,7 @@ async function handlePostRequest(request: NextRequest, { params }: RouteParams, 
   try {
     const { id } = await params;
 
-    // For HEAD requests (prefetching), use more permissive checks
+    // For HEAD requests, use more permissive checks
     if (isHeadRequest) {
       // Basic validation - just check if post exists and is published
       const post = await getPostById(id);
@@ -23,7 +23,7 @@ async function handlePostRequest(request: NextRequest, { params }: RouteParams, 
       }
       
       // For HEAD requests, only check if post is published
-      // This allows prefetching for all published content regardless of auth state
+      // This allows HEAD requests for all published content regardless of auth state
       if (!post.isPublished) {
         return NextResponse.json({ error: "Post not found" }, { status: 404 });
       }

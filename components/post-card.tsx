@@ -27,9 +27,6 @@ interface PostCardProps {
   isVideoMuted?: boolean;
   onVideoMuteChange?: (postId: string, isMuted: boolean) => void;
   playingVideo?: string | null;
-  // Prefetch utilities
-  observePost?: (element: HTMLElement, postId: string) => void;
-  unobservePost?: (element: HTMLElement) => void;
 }
 
 export function PostCard({
@@ -40,8 +37,6 @@ export function PostCard({
   isVideoMuted = true,
   onVideoMuteChange,
   playingVideo,
-  observePost,
-  unobservePost,
 }: PostCardProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -58,14 +53,14 @@ export function PostCard({
         // Cap aspect ratio to reasonable bounds for UI consistency
         const cappedRatio = Math.max(0.67, Math.min(1.8, aspectRatio));
         const width = Math.round(cappedRatio * 100);
-        
+
         // Debug: Log aspect ratio info to help verify blur/image matching
         // console.log(`Post ${post.id}: Real dimensions ${media.width}x${media.height}, ratio: ${aspectRatio.toFixed(3)}, capped: ${cappedRatio.toFixed(3)}, CSS: ${width}/100`);
-        
+
         return { aspectRatio: `${width} / 100` };
       }
     }
-    
+
     // Fallback for posts without media dimensions
     return { aspectRatio: "75 / 100" }; // Default 3:4 ratio
   };
@@ -90,7 +85,7 @@ export function PostCard({
       video.pause();
       onVideoStateChange?.(post.id, false);
     } else {
-      video.play().catch(err => {
+      video.play().catch((err) => {
         console.error("Failed to play video:", err);
         // Don't change state if play failed
       });
@@ -126,7 +121,7 @@ export function PostCard({
   // Handle video loaded metadata
   const handleVideoLoadedMetadata = useCallback(() => {
     handleMediaLoad();
-    
+
     // Auto-play if this video should be playing
     if (playingVideo === post.id) {
       const video = videoRef.current;
@@ -135,19 +130,6 @@ export function PostCard({
       }
     }
   }, [playingVideo, post.id, handleMediaLoad]);
-
-  // Set up prefetch observer
-  useEffect(() => {
-    const element = containerRef.current;
-    if (element && observePost) {
-      observePost(element, post.id);
-      return () => {
-        if (unobservePost) {
-          unobservePost(element);
-        }
-      };
-    }
-  }, [post.id, observePost, unobservePost]);
 
   // Update video play/pause state when external playingVideo changes
   useEffect(() => {
@@ -171,11 +153,7 @@ export function PostCard({
 
   return (
     <div ref={containerRef} style={{ width }}>
-      <Link 
-        href={`/entry/${post.id}`} 
-        scroll={false}
-        prefetch={true}
-      >
+      <Link href={`/entry/${post.id}`} scroll={false}>
         <Card className="overflow-hidden hover:shadow-lg cursor-zoom-in py-0 shadow-lg">
           <div
             className="relative"
@@ -221,10 +199,7 @@ export function PostCard({
                 />
               )
             ) : (
-              <PostTextBaseCard
-                title={post.title}
-                className="min-h-[120px]"
-              />
+              <PostTextBaseCard title={post.title} className="min-h-[120px]" />
             )}
 
             {/* Custom video controls overlay for videos */}
@@ -321,4 +296,4 @@ export function PostCard({
       </Link>
     </div>
   );
-} 
+}

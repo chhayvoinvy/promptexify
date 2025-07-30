@@ -780,14 +780,14 @@ export function getRateLimitConfig() {
   } else {
     // More lenient rate limits in development
     return {
-      auth: { limit: 10, window: 15 * 60 * 1000 }, // 10 requests per 15 minutes
-      upload: { limit: 20, window: 60 * 1000 }, // 20 uploads per minute
-      createPost: { limit: 10, window: 60 * 1000 }, // 10 posts per minute
-      createTag: { limit: 50, window: 60 * 1000 }, // 50 tags per minute
-      api: { limit: 200, window: 60 * 1000 }, // 200 requests per minute
-      search: { limit: 100, window: 60 * 1000 }, // 100 searches per minute
-      interactions: { limit: 500, window: 60 * 1000 }, // 500 interactions per minute
-      mediaResolve: { limit: 300, window: 60 * 1000 }, // 300 media resolves per minute (lenient)
+      auth: { limit: 20, window: 15 * 60 * 1000 }, // 20 requests per 15 minutes
+      upload: { limit: 50, window: 60 * 1000 }, // 50 uploads per minute
+      createPost: { limit: 20, window: 60 * 1000 }, // 20 posts per minute
+      createTag: { limit: 100, window: 60 * 1000 }, // 100 tags per minute
+      api: { limit: 500, window: 60 * 1000 }, // 500 requests per minute
+      search: { limit: 200, window: 60 * 1000 }, // 200 searches per minute
+      interactions: { limit: 1000, window: 60 * 1000 }, // 1000 interactions per minute
+      mediaResolve: { limit: 1000, window: 60 * 1000 }, // 1000 media resolves per minute (very lenient)
     };
   }
 }

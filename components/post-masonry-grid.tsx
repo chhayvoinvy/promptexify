@@ -17,7 +17,6 @@ import {
   VolumeX,
 } from "@/components/ui/icons";
 import { PostTextBaseCard } from "@/components/post-text-base-card";
-import { usePrefetchPosts } from "@/hooks/use-prefetch";
 
 interface PostMasonryGridProps {
   posts: PostWithInteractions[];
@@ -58,14 +57,6 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
   const [imageDimensions, setImageDimensions] = useState<
     Record<string, { width: number; height: number }>
   >({});
-
-  // Initialize prefetch hook for viewport-based prefetching
-  const { observePost, unobservePost } = usePrefetchPosts({
-    rootMargin: "0px 0px 950px 0px", // Start prefetching 950px before entering viewport
-    threshold: 0.1,
-    prefetchData: true, // Prefetch both route and API data
-    debounceMs: 100, // Quick response for better UX
-  });
 
   // Handle video play/pause from button clicks
   const handleVideoPlay = useCallback(
@@ -415,13 +406,10 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
               ref={(el) => {
                 if (el) {
                   postRefs.current[post.id] = el;
-                  // Start observing this post for prefetching
-                  observePost(el, post.id);
                 } else {
-                  // Clean up observer when element is unmounted
+                  // Clean up when element is unmounted
                   const existingEl = postRefs.current[post.id];
                   if (existingEl) {
-                    unobservePost(existingEl);
                     delete postRefs.current[post.id];
                   }
                 }
@@ -433,11 +421,7 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                 top: position?.y || 0,
               }}
             >
-              <Link
-                href={`/entry/${post.id}`}
-                scroll={false}
-                prefetch={true} // Enable automatic Next.js prefetching
-              >
+              <Link href={`/entry/${post.id}`} scroll={false}>
                 <Card className="overflow-hidden hover:shadow-lg cursor-zoom-in py-0 shadow-lg">
                   <div
                     className="relative"

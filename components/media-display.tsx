@@ -78,7 +78,7 @@ class BatchedMediaResolver {
 
     this.batchTimeout = setTimeout(() => {
       this.processBatch();
-    }, 50); // 50ms debounce to collect multiple requests
+    }, 100); // Increased to 100ms debounce to collect more requests
   }
 
   private async processBatch() {
@@ -139,14 +139,28 @@ class BatchedMediaResolver {
     } catch (error) {
       console.error("❌ BatchedMediaResolver: Error resolving media URLs:", error);
       
-      // On error, resolve with original paths
-      pathsToResolve.forEach((path) => {
-        console.warn(`⚠️ BatchedMediaResolver: Falling back to original path: ${path}`);
-        this.resolvedUrls.set(path, path);
-        const callbacks = this.pendingCallbacks.get(path) || [];
-        callbacks.forEach(callback => callback(path));
-        this.pendingCallbacks.delete(path);
-      });
+      // Check if it's a rate limit error and implement exponential backoff
+      if (error instanceof Error && error.message.includes('429')) {
+        console.warn("🔄 BatchedMediaResolver: Rate limited, will retry with exponential backoff");
+        // Re-add paths to pending for retry with exponential backoff
+        pathsToResolve.forEach((path) => {
+          this.pendingPaths.add(path);
+        });
+        
+        // Schedule retry with exponential backoff
+        setTimeout(() => {
+          this.scheduleBatchProcessing();
+        }, 2000); // 2 second delay for rate limit retry
+      } else {
+        // On other errors, resolve with original paths
+        pathsToResolve.forEach((path) => {
+          console.warn(`⚠️ BatchedMediaResolver: Falling back to original path: ${path}`);
+          this.resolvedUrls.set(path, path);
+          const callbacks = this.pendingCallbacks.get(path) || [];
+          callbacks.forEach(callback => callback(path));
+          this.pendingCallbacks.delete(path);
+        });
+      }
     } finally {
       this.isProcessing = false;
       
