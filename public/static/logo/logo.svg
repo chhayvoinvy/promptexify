@@ -1,9 +1,9 @@
 <svg width="288" height="288" viewBox="0 0 288 288" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g filter="url(#filter0_d_51_2)">
-<rect x="4" width="277.586" height="280" rx="75" fill="black"/>
-<rect x="208.13" y="153" width="30" height="142" transform="rotate(73.4684 208.13 153)" fill="#E6E6E6"/>
-<rect x="145.384" y="112.842" width="23.7722" height="78.1854" transform="rotate(134.543 145.384 112.842)" fill="#E6E6E6"/>
-<rect width="27.4087" height="66.3697" transform="matrix(-0.701438 -0.71273 -0.71273 0.701438 138.529 119.81)" fill="#E6E6E6"/>
+<rect x="4" width="277.586" height="280" rx="96" fill="black"/>
+<rect width="27.3732" height="129.567" transform="matrix(0.284545 0.958663 -0.958663 0.284543 202.211 151.682)" fill="#E6E6E6"/>
+<rect width="21.6907" height="71.3396" transform="matrix(-0.70144 0.712729 -0.712731 -0.701437 144.959 115.04)" fill="#E6E6E6"/>
+<rect width="25.0088" height="60.5585" transform="matrix(-0.70144 -0.712729 -0.712731 0.701437 138.704 121.398)" fill="#E6E6E6"/>
 </g>
 <defs>
 <filter id="filter0_d_51_2" x="0" y="0" width="288" height="288" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">

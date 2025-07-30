@@ -515,10 +515,10 @@ export class SecurityHeaders {
    * Build script-src directive following csp.md approach
    */
   private static buildScriptSrc(nonce?: string, isDevelopment: boolean = false): string {
-    let scriptSrc = "script-src 'self'";
-
-    // External script sources for integrations
-    const externalScripts = [
+    // FIX: Add the specific SHA hash from the error to allow the problematic inline script.
+    const scriptSources = [
+      "'self'",
+      "'sha256-n46vPwSWuMC0W703pBofImv82Z26xo4LXymv0E9caPk='", // Allow specific inline script
       // Google services
       "https://www.googletagmanager.com",
       "https://www.google-analytics.com", 
@@ -534,40 +534,37 @@ export class SecurityHeaders {
       "https://va.vercel-scripts.com",
     ];
 
-    scriptSrc += " " + externalScripts.join(" ");
 
     if (isDevelopment) {
       // Development: Add 'unsafe-eval' for hot-reloading
-      scriptSrc += " 'unsafe-eval'";
+      scriptSources.push("'unsafe-eval'");
     }
 
     // Always add nonce if provided, regardless of environment
     if (nonce) {
-      scriptSrc += ` 'nonce-${nonce}' 'strict-dynamic'`;
+      scriptSources.push(`'nonce-${nonce}'`, "'strict-dynamic'");
     } else if (isDevelopment) {
       // Fallback for development without nonce
-      scriptSrc += " 'unsafe-inline'";
+      scriptSources.push("'unsafe-inline'");
     }
 
-    return scriptSrc;
+    return `script-src ${scriptSources.join(" ")}`;
   }
 
   /**
    * Build style-src directive following csp.md approach
    */
   private static buildStyleSrc(): string {
-    // MODIFICATION: Added 'unsafe-inline' to allow styles from UI libraries
-    let styleSrc = "style-src 'self' 'unsafe-inline'";
-
     // External style sources
     const externalStyles = [
+      "'self'",
+      "'unsafe-inline'", // Keep for UI libraries
       "https://fonts.googleapis.com",
       "https://checkout.stripe.com", // Stripe checkout styles
+      "https://accounts.google.com", // FIX: Add for Google Sign-In styles
     ];
 
-    styleSrc += " " + externalStyles.join(" ");
-
-    return styleSrc;
+    return `style-src ${externalStyles.join(" ")}`;
   }
 
   /**
