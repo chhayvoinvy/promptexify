@@ -206,7 +206,8 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
         <NavMain items={filteredNavMain} />
 
         {/* Show content management section for both admins and users (filtered by permissions) */}
-        {(isAdmin || isUser) && filteredContentManagement.length > 0 && (
+        {/* Temporary disabled for users || isUser */}
+        {isAdmin && filteredContentManagement.length > 0 && (
           <NavDocuments
             items={filteredContentManagement.map((item) => ({
               name: item.title,
