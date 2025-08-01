@@ -274,7 +274,7 @@ export function Header() {
 
   return (
     <header
-      className={`sticky top-0 z-50 w-full border-b transition-all duration-300 ease-in-out transform ${
+      className={`sticky top-0 z-50 w-full transition-all duration-300 ease-in-out transform ${
         isVisible ? "translate-y-0" : "-translate-y-full"
       } ${
         isScrolled
@@ -346,7 +346,8 @@ export function Header() {
                     <DarkModeToggle />
                   </SheetTitle>
                   <SheetDescription>
-                    Navigation menu for browsing prompts and accessing account features
+                    Navigation menu for browsing prompts and accessing account
+                    features
                   </SheetDescription>
                 </SheetHeader>
                 <div className="mt-6">

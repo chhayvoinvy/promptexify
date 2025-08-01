@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Queries } from "@/lib/query";
 import { getSettingsAction } from "@/actions/settings";
 import { SafeAsync } from "@/components/ui/safe-async";
+import { Container } from "@/components/ui/container";
 
 interface DirectoryPageProps {
   searchParams: Promise<{
@@ -22,7 +23,7 @@ export const dynamic = "force-dynamic";
 // Directory page skeleton that matches the full layout
 function DirectoryPageSkeleton() {
   return (
-    <>
+    <Container>
       {/* Header: Two-column layout skeleton */}
       <div className="flex flex-col md:flex-row md:items-start md:justify-between mb-8 gap-4">
         {/* Left: Title and description skeleton */}
@@ -50,7 +51,7 @@ function DirectoryPageSkeleton() {
 
       {/* Posts grid skeleton */}
       <PostMasonrySkeleton count={16} />
-    </>
+    </Container>
   );
 }
 
