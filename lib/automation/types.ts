@@ -36,7 +36,9 @@ export interface PostData {
   isFeatured: boolean;
   uploadPath?: string;
   uploadFileType?: "IMAGE" | "VIDEO"; 
-  previewPath?: string; 
+  previewPath?: string;
+  previewVideoPath?: string;
+  blurData?: string;
 }
 
 export interface GenerationResult {

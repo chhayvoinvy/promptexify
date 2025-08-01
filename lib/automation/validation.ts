@@ -98,6 +98,19 @@ export const PostDataSchema = z.object({
         isAllowedPreviewPath(path),
       "Invalid or suspicious preview path"
     ),
+  previewVideoPath: z
+    .string()
+    .optional()
+    .refine(
+      (path) =>
+        !path ||
+        path === "" ||
+        isAllowedPreviewPath(path),
+      "Invalid or suspicious preview video path"
+    ),
+  blurData: z
+    .string()
+    .optional(),
 });
 
 export const ContentFileSchema = z.object({

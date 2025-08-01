@@ -137,12 +137,28 @@ export function AutomationDashboard() {
           return;
         }
 
-        throw new Error(
-          result.message ||
-            result.details?.join(", ") ||
-            result.error ||
-            "Execution failed"
-        );
+        // Provide more specific error messages for validation issues
+        let errorMessage = result.message || result.error || "Execution failed";
+
+        if (result.details && Array.isArray(result.details)) {
+          errorMessage = result.details.join(", ");
+        }
+
+        // Add helpful hints for common validation errors
+        if (errorMessage.includes("uploadFileType")) {
+          errorMessage +=
+            " - Note: uploadFileType must be 'IMAGE' or 'VIDEO' (uppercase)";
+        }
+        if (errorMessage.includes("uploadPath")) {
+          errorMessage +=
+            " - Note: uploadPath must be a valid local path like '/images/example.webp'";
+        }
+        if (errorMessage.includes("slug")) {
+          errorMessage +=
+            " - Note: slugs must be lowercase alphanumeric with dashes/underscores";
+        }
+
+        throw new Error(errorMessage);
       }
 
       toast.success(
@@ -267,24 +283,36 @@ export function AutomationDashboard() {
   // Helper function to generate compact JSON example
   const getCompactJsonExample = () => {
     const example = {
-      category: "ai-prompts",
+      category: "chatgpt-writing-prompts",
       tags: [
-        { name: "AI", slug: "ai" },
         { name: "Writing", slug: "writing" },
+        { name: "Creative", slug: "creative" },
       ],
       posts: [
         {
           title: "Creative Writing Prompt",
           slug: "creative-writing-prompt",
           description: "A prompt for creative writing",
-          content: "Write a story about...",
+          content:
+            "Write a story about a character who discovers they can see through time. What do they see in the past and future that changes their present?",
           isPremium: false,
+          isPublished: true,
+          status: "APPROVED",
+          isFeatured: false,
+          uploadPath: "/images/creative-writing.webp",
+          uploadFileType: "IMAGE",
+          previewPath: "/preview/creative-writing-preview.webp",
+        },
+        {
+          title: "Business Writing Guide",
+          slug: "business-writing-guide",
+          description: "Professional writing tips and techniques",
+          content:
+            "Learn the fundamentals of effective business communication. Focus on clarity, conciseness, and professional tone.",
+          isPremium: true,
           isPublished: false,
           status: "PENDING_APPROVAL",
-          isFeatured: false,
-          uploadPath: "/images/example-image.webp", // must be local image path
-          uploadFileType: "image", // "image" or "video"
-          uploadUrl: "/videos/example-video.mp4", // must be local video path
+          isFeatured: true,
         },
       ],
     };
@@ -325,6 +353,7 @@ export function AutomationDashboard() {
                   Paste JSON content to execute directly without file storage
                 </DialogDescription>
               </DialogHeader>
+
               <JsonExecutionForm
                 onSubmit={executeJsonContent}
                 isExecuting={jsonExecuting}
@@ -556,13 +585,20 @@ export function AutomationDashboard() {
                       • <code>is_premium</code>, <code>is_published</code>
                     </li>
                     <li>
-                      • <code>status</code>, <code>upload_path</code>, <code>upload_file_type</code>, <code>upload_url</code>
+                      • <code>status</code>, <code>upload_path</code>,{" "}
+                      <code>upload_file_type</code>, <code>upload_url</code>
                     </li>
                   </ul>
                   <div className="text-xs text-muted-foreground mt-2">
-                    <b>upload_path</b>: must be a local path like <code>/images/example.webp</code> (.webp, .jpg, .jpeg, .png, .avif)<br />
-                    <b>upload_file_type</b>: &quot;image&quot; or &quot;video&quot;<br />
-                    <b>upload_url</b>: must be a local path like <code>/videos/example.mp4</code> (.mp4 only)
+                    <b>upload_path</b>: must be a local path like{" "}
+                    <code>/images/example.webp</code> (.webp, .jpg, .jpeg, .png,
+                    .avif)
+                    <br />
+                    <b>upload_file_type</b>: &quot;image&quot; or
+                    &quot;video&quot;
+                    <br />
+                    <b>upload_url</b>: must be a local path like{" "}
+                    <code>/videos/example.mp4</code> (.mp4 only)
                   </div>
                 </div>
                 <div>
@@ -627,6 +663,45 @@ function JsonExecutionForm({
     }
   };
 
+  const loadExample = () => {
+    const example = {
+      category: "chatgpt-writing-prompts",
+      tags: [
+        { name: "Writing", slug: "writing" },
+        { name: "Creative", slug: "creative" },
+      ],
+      posts: [
+        {
+          title: "Creative Writing Prompt",
+          slug: "creative-writing-prompt",
+          description: "A prompt for creative writing",
+          content:
+            "Write a story about a character who discovers they can see through time. What do they see in the past and future that changes their present?",
+          isPremium: false,
+          isPublished: true,
+          status: "APPROVED",
+          isFeatured: false,
+          uploadPath: "/images/creative-writing.webp",
+          uploadFileType: "IMAGE",
+          previewPath: "/preview/creative-writing-preview.webp",
+        },
+        {
+          title: "Business Writing Guide",
+          slug: "business-writing-guide",
+          description: "Professional writing tips and techniques",
+          content:
+            "Learn the fundamentals of effective business communication. Focus on clarity, conciseness, and professional tone.",
+          isPremium: true,
+          isPublished: false,
+          status: "PENDING_APPROVAL",
+          isFeatured: true,
+        },
+      ],
+    };
+    setJsonContent(JSON.stringify(example, null, 2));
+    setIsValidJson(true);
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid flex-1 gap-2">
@@ -637,7 +712,27 @@ function JsonExecutionForm({
           onChange={(e) => handleJsonChange(e.target.value)}
           rows={15}
           className={`font-mono ${!isValidJson ? "border-red-500" : ""} max-h-[60vh] overflow-y-auto`}
-          placeholder={`{\n  "category": "example",\n  "tags": [],\n  "posts": []\n}`}
+          placeholder={`{
+  "category": "ai-prompts",
+  "tags": [
+    { "name": "AI", "slug": "ai" },
+    { "name": "Writing", "slug": "writing" }
+  ],
+  "posts": [
+    {
+      "title": "Creative Writing Prompt",
+      "slug": "creative-writing-prompt",
+      "description": "A prompt for creative writing",
+      "content": "Write a story about...",
+      "isPremium": false,
+      "isPublished": false,
+      "status": "PENDING_APPROVAL",
+      "isFeatured": false,
+      "uploadPath": "/images/example-image.webp",
+      "uploadFileType": "IMAGE"
+    }
+  ]
+}`}
         />
         {!isValidJson && (
           <p className="text-xs text-red-600">
@@ -645,13 +740,18 @@ function JsonExecutionForm({
           </p>
         )}
       </div>
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={formatJson}>
-          Format JSON
+      <div className="flex justify-between gap-2">
+        <Button type="button" variant="outline" onClick={loadExample}>
+          Load Example
         </Button>
-        <Button type="submit" disabled={isExecuting || !isValidJson}>
-          {isExecuting ? "Executing..." : "Execute"}
-        </Button>
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" onClick={formatJson}>
+            Format JSON
+          </Button>
+          <Button type="submit" disabled={isExecuting || !isValidJson}>
+            {isExecuting ? "Executing..." : "Execute"}
+          </Button>
+        </div>
       </div>
     </form>
   );
