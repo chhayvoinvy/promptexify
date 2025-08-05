@@ -92,95 +92,87 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Categories */}
+          {/* Prompts */}
           <div className="space-y-3 sm:space-y-4">
             <h3 className="font-semibold text-sm">Prompts</h3>
             <ul className="space-y-2 text-sm">
               <li>
                 <Link
-                  target="_blank"
-                  href="/directory?category=text-to-image"
+                  href="/directory?category=business"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Text to Image
+                  Business
                 </Link>
               </li>
               <li>
                 <Link
-                  target="_blank"
-                  href="/directory?category=text-to-video"
+                  href="/directory?category=marketing"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Text to Video
+                  Marketing
                 </Link>
               </li>
               <li>
                 <Link
-                  target="_blank"
-                  href="/directory?category=text-to-audio"
+                  href="/directory?category=education"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Text to Audio
+                  Education
                 </Link>
               </li>
               <li>
                 <Link
-                  target="_blank"
-                  href="/directory?category=chatgpt"
+                  href="/directory?category=health"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  ChatGPT Prompts
+                  Health
                 </Link>
               </li>
               <li>
                 <Link
-                  target="_blank"
-                  href="/directory?category=claude"
+                  href="/directory?category=social-media"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Claude Prompts
+                  Social Media
                 </Link>
               </li>
               <li>
                 <Link
-                  target="_blank"
-                  href="/directory?category=gemini"
+                  href="/directory"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Gemini Prompts
+                  More...
                 </Link>
               </li>
             </ul>
           </div>
 
+          {/* Rules */}
           <div className="space-y-3 sm:space-y-4">
-            <h3 className="font-semibold text-sm">Rules for AI</h3>
+            <h3 className="font-semibold text-sm">Rules</h3>
             <ul className="space-y-2 text-sm">
               <li>
                 <Link
-                  target="_blank"
-                  href="/directory?category=ai-code-editor&subcategory=cursor-rules"
+                  href="/directory?category=vibe-coding"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Cursor Rules
+                  Vibe Coding
                 </Link>
               </li>
               <li>
                 <Link
-                  target="_blank"
-                  href="/directory?category=ai-code-editor&subcategory=windsurf-rules"
+                  href="/directory?category=vibe-coding&subcategory=claude-code"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Windsurf Rules
+                  Claude Code
                 </Link>
               </li>
               <li>
                 <Link
-                  target="_blank"
-                  href="/directory?category=ai-code-editor&subcategory=chatgpt-rules"
+                  href="/directory?category=vibe-coding&subcategory=cursor"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  ChatGPT Rules
+                  Cursor
                 </Link>
               </li>
             </ul>

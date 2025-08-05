@@ -81,7 +81,7 @@ export function Navbar() {
               </li>
               <ListItem
                 href="/directory?category=ai-code-editor"
-                title="AI Code Editors"
+                title="Vibe Coding Prompts"
                 isActive={isActive("/directory?category=ai-code-editor")}
               >
                 Browse our complete collection of rules and instructions for AI
@@ -105,51 +105,82 @@ export function Navbar() {
           </NavigationMenuContent>
         </NavigationMenuItem>
         <NavigationMenuItem>
-          <NavigationMenuTrigger>Categories</NavigationMenuTrigger>
+          <NavigationMenuTrigger>Prompts</NavigationMenuTrigger>
           <NavigationMenuContent>
             <ul className="grid w-[400px] gap-2 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
               <ListItem
-                href="/directory?category=chatgpt"
-                title="ChatGPT Prompts"
-                isActive={isActive("/directory?category=chatgpt")}
+                href="/directory?category=business"
+                title="Business"
+                isActive={isActive("/directory?category=business")}
               >
-                Creative writing, marketing copy, and content generation
-                prompts.
+                Leverage AI to streamline operations, gain market insights, and
+                drive growth. From automated ad copy to sales forecasting, these
+                prompts are designed to give your business a competitive edge.
               </ListItem>
               <ListItem
-                href="/directory?category=claude"
-                title="Claude Prompts"
-                isActive={isActive("/directory?category=claude")}
+                href="/directory?category=marketing"
+                title="Marketing"
+                isActive={isActive("/directory?category=marketing")}
               >
-                Data analysis, research, and professional document prompts.
+                Boost your marketing efforts with AI-powered insights and
+                automation. From social media content to email marketing, these
+                prompts help you create engaging campaigns and drive results.
               </ListItem>
               <ListItem
-                href="/directory?category=gemini"
-                title="Gemini Prompts"
-                isActive={isActive("/directory?category=gemini")}
+                href="/directory?category=education"
+                title="Education"
+                isActive={isActive("/directory?category=education")}
               >
-                Business strategy, coding, and multilingual content.
+                Enhance your educational content with AI-driven tools. From
+                lesson planning to personalized learning, these prompts help you
+                create engaging and effective educational materials.
               </ListItem>
               <ListItem
-                href="/directory?category=text-to-image"
-                title="Text to Image Prompts"
-                isActive={isActive("/directory?category=text-to-image")}
+                href="/directory?category=health"
+                title="Health"
+                isActive={isActive("/directory?category=health")}
               >
-                Photography styles, artistic concepts, and visual creativity.
+                Stay on top of your health with AI-driven insights and
+                personalized recommendations. From symptom analysis to
+                medication tracking, these prompts help you manage your health
+                effectively.
               </ListItem>
               <ListItem
-                href="/directory?category=text-to-video"
-                title="Text to Video Prompts"
-                isActive={isActive("/directory?category=text-to-video")}
+                href="/directory?category=social-media"
+                title="Social Media"
+                isActive={isActive("/directory?category=social-media")}
               >
-                Video creation prompts and cinematographic concepts.
+                Elevate your social media presence with AI-driven content
+                creation. From content ideas to engagement strategies, these
+                prompts help you create content that resonates with your
+                audience.
               </ListItem>
               <ListItem
-                href="/directory?category=text-to-audio"
-                title="Text to Audio Prompts"
-                isActive={isActive("/directory?category=text-to-audio")}
+                href="/directory?category=music"
+                title="Music"
+                isActive={isActive("/directory?category=music")}
               >
-                Audio generation, music creation, and sound design prompts.
+                Create music with AI-driven tools. From melody generation to
+                instrumentals, these prompts help you create music that
+                resonates with your audience.
+              </ListItem>
+              <ListItem
+                href="/directory?category=writing"
+                title="Writing"
+                isActive={isActive("/directory?category=writing")}
+              >
+                Write with AI-driven tools. From story ideas to content
+                creation, these prompts help you create content that resonates
+                with your audience.
+              </ListItem>
+              <ListItem
+                href="/directory?category=productivity"
+                title="Productivity"
+                isActive={isActive("/directory?category=productivity")}
+              >
+                Boost your productivity with AI-driven tools. From task
+                management to time tracking, these prompts help you stay on
+                track and achieve your goals.
               </ListItem>
             </ul>
           </NavigationMenuContent>
@@ -159,32 +190,31 @@ export function Navbar() {
           <NavigationMenuContent>
             <ul className="grid w-[200px] gap-2 md:w-[250px] md:grid-cols-1 lg:w-[250px]">
               <ListItem
-                href="/directory?category=ai-code-editor&subcategory=cursor-rules"
-                title="Cursor Rules"
+                href="/directory?category=vibe-coding"
+                title="Vibe Coding"
+                isActive={isActive("/directory?category=vibe-coding")}
+              >
+                Rules for Vibe Coding AI Code Editor to enhance your coding
+                productivity.
+              </ListItem>
+              <ListItem
+                href="/directory?category=vibe-coding&subcategory=claude-code"
+                title="Claude Code"
                 isActive={isActive(
-                  "/directory?category=ai-code-editor&subcategory=cursor-rules"
+                  "/directory?category=vibe-coding&subcategory=claude-code"
+                )}
+              >
+                Rules for Claude AI Code Editor to streamline development.
+              </ListItem>
+              <ListItem
+                href="/directory?category=vibe-coding&subcategory=cursor"
+                title="Cursor"
+                isActive={isActive(
+                  "/directory?category=vibe-coding&subcategory=cursor"
                 )}
               >
                 Rules for Cursor AI Code Editor to enhance your coding
                 productivity.
-              </ListItem>
-              <ListItem
-                href="/directory?category=ai-code-editor&subcategory=windsurf-rules"
-                title="Windsurf Rules"
-                isActive={isActive(
-                  "/directory?category=ai-code-editor&subcategory=windsurf-rules"
-                )}
-              >
-                Rules for Windsurf AI Code Editor to streamline development.
-              </ListItem>
-              <ListItem
-                href="/directory?category=ai-code-editor&subcategory=chatgpt-rules"
-                title="ChatGPT Rules"
-                isActive={isActive(
-                  "/directory?category=ai-code-editor&subcategory=chatgpt-rules"
-                )}
-              >
-                Custom rules and instructions for ChatGPT interactions.
               </ListItem>
             </ul>
           </NavigationMenuContent>

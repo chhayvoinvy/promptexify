@@ -79,7 +79,7 @@ function MobileNav() {
         <div className="space-y-3">
           <CollapsibleTrigger asChild>
             <button className="flex items-center justify-between w-full font-medium text-sm text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
-              Categories
+              Prompts
               {categoriesOpen ? (
                 <ChevronDown className="h-4 w-4" />
               ) : (
