@@ -200,7 +200,7 @@ export function GoogleOneTap() {
         }
       }
     };
-  }, [user, loading, supabase.auth, nonce, router, retryCount]);
+  }, [supabase.auth, nonce, router, retryCount]);
 
   useEffect(() => {
     // Only show for unauthenticated users

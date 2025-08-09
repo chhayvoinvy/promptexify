@@ -156,7 +156,7 @@ function MobileNav() {
           <CollapsibleContent className="space-y-2">
             <SheetClose asChild>
               <Link
-                href="/directory?category=ai-code-editor&subcategory=cursor-rules"
+                href="/directory?category=vibe-coding&subcategory=cursor-rules"
                 className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
               >
                 Cursor Rules
@@ -164,7 +164,7 @@ function MobileNav() {
             </SheetClose>
             <SheetClose asChild>
               <Link
-                href="/directory?category=ai-code-editor&subcategory=windsurf-rules"
+                href="/directory?category=vibe-coding&subcategory=windsurf-rules"
                 className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
               >
                 Windsurf Rules
@@ -172,7 +172,7 @@ function MobileNav() {
             </SheetClose>
             <SheetClose asChild>
               <Link
-                href="/directory?category=ai-code-editor&subcategory=chatgpt-rules"
+                href="/directory?category=vibe-coding&subcategory=chatgpt-rules"
                 className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
               >
                 ChatGPT Rules

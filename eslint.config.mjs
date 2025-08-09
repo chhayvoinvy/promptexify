@@ -1,5 +1,6 @@
 import js from "@eslint/js";
 import { FlatCompat } from "@eslint/eslintrc";
+import nextPlugin from "@next/eslint-plugin-next";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
 
@@ -13,11 +14,17 @@ const compat = new FlatCompat({
 });
 
 export default [
+  // Ensure Next.js plugin is explicitly registered for Next's detection
+  {
+    plugins: {
+      "@next/next": nextPlugin,
+    },
+  },
   {
     ignores: [
       // Generated Prisma files
       "app/generated/**/*",
-      "prisma/generated/**/*", 
+      "prisma/generated/**/*",
       "**/generated/**/*",
       // Other generated/build files
       ".next/**/*",
@@ -28,10 +35,11 @@ export default [
       "node_modules/**/*",
       // Config files that don't need linting
       "*.config.js",
-      "*.config.mjs"
-    ]
+      "*.config.mjs",
+    ],
   },
   js.configs.recommended,
+  // Keep existing Next.js configs via compat for rule coverage and TS support
   ...compat.extends("next/core-web-vitals"),
   ...compat.extends("next/typescript"),
 ];

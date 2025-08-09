@@ -251,6 +251,17 @@ export const getAllPosts = createCachedFunction(
   [CACHE_TAGS.POSTS]
 );
 
+// Lightweight helper to avoid caching oversized objects when only IDs are needed
+export async function getFeaturedPostIds(limit = 100): Promise<string[]> {
+  const posts = await prisma.post.findMany({
+    where: { isPublished: true, isFeatured: true },
+    select: { id: true },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+  return posts.map((p) => p.id);
+}
+
 export const getPostById = createCachedFunction(
   _getPostById,
   "get-post-by-id",

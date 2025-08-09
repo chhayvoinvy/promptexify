@@ -9,6 +9,9 @@ import { sanitizeSearchQuery, SECURITY_HEADERS } from "@/lib/security/sanitize";
 import { Queries } from "@/lib/query";
 import { getAllCategories } from "@/lib/content";
 
+// Ensure Node.js runtime to support Prisma and jsdom/DOMPurify used in sanitization
+export const runtime = "nodejs";
+
 export async function GET(request: NextRequest) {
   try {
     // Get current user for bookmark/favorite status

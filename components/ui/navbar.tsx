@@ -80,9 +80,9 @@ export function Navbar() {
                 </NavigationMenuLink>
               </li>
               <ListItem
-                href="/directory?category=ai-code-editor"
+                href="/directory?category=vibe-coding"
                 title="Vibe Coding Prompts"
-                isActive={isActive("/directory?category=ai-code-editor")}
+                isActive={isActive("/directory?category=vibe-coding")}
               >
                 Browse our complete collection of rules and instructions for AI
                 Code Editors.

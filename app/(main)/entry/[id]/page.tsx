@@ -1,6 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { incrementPostView, getAllPosts, getRelatedPosts } from "@/lib/content";
+import {
+  incrementPostView,
+  getRelatedPosts,
+  getFeaturedPostIds,
+} from "@/lib/content";
 import { Queries } from "@/lib/query";
 import type { PostWithInteractions } from "@/lib/content";
 import { PostStandalonePage } from "@/components/post-standalone-page";
@@ -42,11 +46,8 @@ export const metadata = setMetadata({
 
 export async function generateStaticParams() {
   try {
-    const posts = await getAllPosts();
-    const featuredPosts = posts.filter((post) => post.isFeatured).slice(0, 100);
-    return featuredPosts.map((post) => ({
-      id: post.id,
-    }));
+    const ids = await getFeaturedPostIds(100);
+    return ids.map((id) => ({ id }));
   } catch (error) {
     console.error("Error in generateStaticParams:", error);
     return [];
