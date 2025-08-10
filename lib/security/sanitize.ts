@@ -19,16 +19,21 @@ const HTML_ENTITIES: Record<string, string> = {
 };
 
 /**
- * Initialize DOMPurify for server-side usage
+ * Initialize DOMPurify for server-side usage with enhanced error handling
  */
 function createDOMPurify() {
-  if (typeof window === "undefined") {
-    // Server-side: use JSDOM
-    const dom = new JSDOM("<!DOCTYPE html>");
-    return DOMPurify(dom.window as unknown as Window & typeof globalThis);
-  } else {
-    // Client-side: use browser window
-    return DOMPurify;
+  try {
+    if (typeof window === "undefined") {
+      // Server-side: use JSDOM
+      const dom = new JSDOM("<!DOCTYPE html>");
+      return DOMPurify(dom.window as unknown as Window & typeof globalThis);
+    } else {
+      // Client-side: use browser window
+      return DOMPurify;
+    }
+  } catch (error) {
+    console.error("[SECURITY] Failed to initialize DOMPurify:", error);
+    throw new Error("DOMPurify initialization failed");
   }
 }
 
@@ -480,10 +485,16 @@ export async function sanitizeSearchQuery(
     .substring(0, 100)
     .trim();
 
-  // Then use DOMPurify for additional protection
+  // Then use DOMPurify for additional protection (with enhanced error handling)
   try {
-    const purify = createDOMPurify();
-    sanitized = purify.sanitize(sanitized, DOMPURIFY_CONFIGS.strict);
+    // Check if we're in an environment that supports JSDOM
+    if (typeof process !== "undefined" && process.env.NEXT_RUNTIME !== "edge") {
+      const purify = createDOMPurify();
+      sanitized = purify.sanitize(sanitized, DOMPURIFY_CONFIGS.strict);
+    } else {
+      // Skip DOMPurify in edge runtime or problematic environments
+      console.warn("[SECURITY] Skipping DOMPurify in edge runtime, using basic sanitization");
+    }
   } catch (error) {
     // Fallback to original sanitization if DOMPurify fails
     console.warn("[SECURITY] DOMPurify failed, using fallback sanitization:", error);

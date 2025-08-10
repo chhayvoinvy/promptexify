@@ -6,6 +6,36 @@ import {
   getRateLimitHeaders,
 } from "@/lib/security/limits";
 import { sanitizeSearchQuery, SECURITY_HEADERS } from "@/lib/security/sanitize";
+
+// Simple fallback sanitization for search queries that doesn't use JSDOM
+function simpleSanitizeQuery(query: string): string {
+  if (typeof query !== "string") {
+    return "";
+  }
+  
+  return query
+    .trim()
+    // Remove null bytes and control characters
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x1F]/g, "")
+    // Remove SQL injection patterns
+    .replace(/[';\\"`]/g, "")
+    // Remove HTML tags
+    .replace(/<[^>]*>/g, "")
+    // Remove dangerous URL patterns
+    .replace(/javascript:/gi, "")
+    .replace(/data:/gi, "")
+    .replace(/vbscript:/gi, "")
+    // Keep only safe characters
+    .replace(/[^\w\s\-_.]/g, "")
+    // Normalize whitespace
+    .replace(/\s+/g, " ")
+    // Remove leading/trailing special characters
+    .replace(/^[\s\-_.]+|[\s\-_.]+$/g, "")
+    // Limit length
+    .substring(0, 100)
+    .trim();
+}
 import { Queries } from "@/lib/query";
 import { getAllCategories } from "@/lib/content";
 
@@ -15,6 +45,11 @@ export const runtime = "nodejs";
 export async function GET(request: NextRequest) {
   let currentUser = null;
   let userId: string | undefined;
+  
+  // Add detailed request logging for debugging
+  const requestUrl = request.url;
+  const userAgent = request.headers.get("user-agent");
+  console.log(`[POSTS-API] Request: ${requestUrl} from ${userAgent?.substring(0, 50)}...`);
   
   try {
     // Get current user for bookmark/favorite status with error handling
@@ -81,8 +116,9 @@ export async function GET(request: NextRequest) {
     try {
       searchQuery = await sanitizeSearchQuery(rawParams.q);
     } catch (sanitizeError) {
-      console.warn("Search query sanitization failed:", sanitizeError);
-      searchQuery = "";
+      console.error("[POSTS-API] Search query sanitization failed:", sanitizeError);
+      // Use simple fallback sanitization that doesn't use JSDOM
+      searchQuery = simpleSanitizeQuery(rawParams.q);
     }
 
     const categoryFilter = rawParams.category;
@@ -135,7 +171,10 @@ export async function GET(request: NextRequest) {
 
     // Use search or paginated query based on search query presence
     try {
+      console.log(`[POSTS-API] Executing query - page: ${page}, limit: ${limit}, userId: ${userId || 'anonymous'}, categoryId: ${categoryId || 'none'}`);
+      
       if (searchQuery && searchQuery.trim()) {
+        console.log(`[POSTS-API] Using search query: "${searchQuery}"`);
         // Use optimized search query
         result = await Queries.posts.search(searchQuery, {
           page,
@@ -145,6 +184,7 @@ export async function GET(request: NextRequest) {
           isPremium,
         });
       } else {
+        console.log(`[POSTS-API] Using paginated query with sortBy: ${sortBy}`);
         // Use optimized paginated query
         result = await Queries.posts.getPaginated({
           page,
@@ -155,8 +195,14 @@ export async function GET(request: NextRequest) {
           sortBy,
         });
       }
+      
+      console.log(`[POSTS-API] Query successful - returned ${result.data.length} posts, hasNextPage: ${result.pagination.hasNextPage}`);
     } catch (queryError) {
-      console.error("Database query failed:", queryError);
+      console.error("[POSTS-API] Database query failed:", {
+        error: queryError instanceof Error ? queryError.message : queryError,
+        stack: queryError instanceof Error ? queryError.stack : undefined,
+        params: { page, limit, userId, categoryId, isPremium, sortBy, searchQuery },
+      });
       
       // Return fallback empty result rather than 500 error
       result = {
