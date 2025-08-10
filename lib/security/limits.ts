@@ -120,21 +120,27 @@ export async function checkRateLimit(
   const redis = await getRedisClient();
 
   if (redis) {
-    const key = `rl:${identifier}`;
-    const count = await redis.incr(key);
-    if (count === 1) {
-      await redis.pexpire(key, window);
+    try {
+      const key = `rl:${identifier}`;
+      const count = await redis.incr(key);
+      if (count === 1) {
+        await redis.pexpire(key, window);
+      }
+      const ttl = await redis.pttl(key);
+      const resetTime = Date.now() + (ttl >= 0 ? ttl : window);
+      const blocked = count > limit;
+      return {
+        allowed: !blocked,
+        count,
+        remaining: blocked ? 0 : Math.max(0, limit - count),
+        resetTime,
+        blocked,
+      };
+    } catch (error) {
+      // Fail open to in-memory fallback on Redis errors to avoid 500s
+      console.error("Redis rate limit operation failed, falling back to memory store:", error);
+      // Intentionally continue to memory fallback below
     }
-    const ttl = await redis.pttl(key);
-    const resetTime = Date.now() + (ttl >= 0 ? ttl : window);
-    const blocked = count > limit;
-    return {
-      allowed: !blocked,
-      count,
-      remaining: blocked ? 0 : Math.max(0, limit - count),
-      resetTime,
-      blocked,
-    };
   }
 
   // Fallback to in-memory store
