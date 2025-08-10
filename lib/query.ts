@@ -392,8 +392,16 @@ export class PostQueries {
           orderBy,
           skip,
           take: limit,
+        }).catch((error) => {
+          console.error("Post query failed:", error);
+          // Return empty array on query failure
+          return [];
         }),
-        prisma.post.count({ where }),
+        prisma.post.count({ where }).catch((error) => {
+          console.error("Post count query failed:", error);
+          // Return 0 on count failure
+          return 0;
+        }),
       ]);
 
       let transformedPosts: PostWithInteractions[];
@@ -410,6 +418,9 @@ export class PostQueries {
               postId: { in: postIds },
             },
             select: { postId: true },
+          }).catch((error) => {
+            console.warn("Bookmark query failed:", error);
+            return [];
           }),
           prisma.favorite.findMany({
             where: {
@@ -417,6 +428,9 @@ export class PostQueries {
               postId: { in: postIds },
             },
             select: { postId: true },
+          }).catch((error) => {
+            console.warn("Favorite query failed:", error);
+            return [];
           }),
         ]);
 
@@ -516,8 +530,16 @@ export class PostQueries {
           orderBy: [{ views: { _count: "desc" } }, { createdAt: "desc" }],
           skip,
           take: limit,
+        }).catch((error) => {
+          console.error("Search posts query failed:", error);
+          // Return empty array on query failure
+          return [];
         }),
-        prisma.post.count({ where: searchWhere }),
+        prisma.post.count({ where: searchWhere }).catch((error) => {
+          console.error("Search count query failed:", error);
+          // Return 0 on count failure
+          return 0;
+        }),
       ]);
 
       let transformedPosts: PostWithInteractions[];
@@ -534,6 +556,9 @@ export class PostQueries {
               postId: { in: postIds },
             },
             select: { postId: true },
+          }).catch((error) => {
+            console.warn("Bookmark query failed:", error);
+            return [];
           }),
           prisma.favorite.findMany({
             where: {
@@ -541,6 +566,9 @@ export class PostQueries {
               postId: { in: postIds },
             },
             select: { postId: true },
+          }).catch((error) => {
+            console.warn("Favorite query failed:", error);
+            return [];
           }),
         ]);
 

@@ -26,8 +26,6 @@ interface PostsResponse {
   };
 }
 
-
-
 export function InfinitePostGrid({
   initialPosts,
   totalCount,
@@ -40,6 +38,7 @@ export function InfinitePostGrid({
   const [hasNextPage, setHasNextPage] = useState(initialHasNextPage);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const loadingRef = useRef<HTMLDivElement>(null);
   const searchParams = useSearchParams();
   const previousSearchParamsRef = useRef<string>("");
@@ -53,7 +52,7 @@ export function InfinitePostGrid({
   // Only include actual filtering parameters, ignore modal/entry params
   const searchParamsKey = useMemo(() => {
     if (!searchParams) return "";
-    
+
     const params = new URLSearchParams();
     const q = searchParams.get("q");
     const category = searchParams.get("category");
@@ -85,6 +84,7 @@ export function InfinitePostGrid({
       setCurrentPage(1);
       setHasNextPage(initialHasNextPage);
       setError(null);
+      setRetryCount(0);
       hasUserScrolledRef.current = false;
       isLoadingRequestRef.current = false;
       lastRequestPageRef.current = 0;
@@ -151,10 +151,39 @@ export function InfinitePostGrid({
       const response = await fetch(`/api/posts?${params.toString()}`);
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        // Try to parse error response for better error handling
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          if (errorData.message) {
+            errorMessage = errorData.message;
+          } else if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+
+          // If server provides fallback data on error, use it
+          if (errorData.fallback && response.status === 500) {
+            console.warn("Using fallback data from server error response");
+
+            // Update with fallback data instead of failing
+            setPosts((prevPosts) => prevPosts); // Keep existing posts
+            setHasNextPage(false); // Stop further loading
+            setError("Unable to load more posts at this time.");
+            return;
+          }
+        } catch {
+          // If we can't parse the error response, use the status-based message
+        }
+
+        throw new Error(errorMessage);
       }
 
       const data: PostsResponse = await response.json();
+
+      // Validate response structure
+      if (!data || !data.posts || !data.pagination) {
+        throw new Error("Invalid response structure from server");
+      }
 
       // Use functional update to ensure we're working with the latest state
       setPosts((prevPosts) => {
@@ -172,9 +201,26 @@ export function InfinitePostGrid({
       setHasNextPage(data.pagination.hasNextPage);
     } catch (error) {
       console.error("Error loading more posts:", error);
-      setError("Failed to load more posts. Please try again.");
+
+      // Provide more helpful error messages based on error type
+      let userErrorMessage = "Failed to load more posts. Please try again.";
+      if (error instanceof Error) {
+        if (error.message.includes("fetch")) {
+          userErrorMessage =
+            "Network error. Please check your connection and try again.";
+        } else if (error.message.includes("timeout")) {
+          userErrorMessage = "Request timed out. Please try again.";
+        } else if (error.message.includes("Invalid response")) {
+          userErrorMessage = "Server returned invalid data. Please try again.";
+        }
+      }
+
+      setError(userErrorMessage);
       // Reset the last requested page on error so user can retry
       lastRequestPageRef.current = currentPageValue;
+
+      // Increment retry count for monitoring
+      setRetryCount((prev) => prev + 1);
     } finally {
       setIsLoading(false);
       isLoadingRequestRef.current = false;
@@ -281,6 +327,11 @@ export function InfinitePostGrid({
             >
               Try Again
             </Button>
+            {retryCount > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Attempts: {retryCount}
+              </p>
+            )}
           </div>
         )}
 
