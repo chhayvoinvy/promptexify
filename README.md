@@ -1,3 +1,10 @@
+# IMPORTANT SECURITY NOTICE:
+## This was built as a personal cybersecurity demonstration project. Feel free to fork and modify it for your own purposes.
+## This project is not production-ready. It contains intentional bugs and vulnerabilities that were included to serve its demonstration purposes. Please do not use this in a live environment.
+## This repository's commit history may contain hardcoded credentials that were included for demonstration purposes only. If you plan to use or fork this project, it is crucial that you replace them with your own secure credentials. Proceed at your own risk in live environment.
+
+- - -
+
 # Promptexify
 
 A comprehensive AI prompt directory for ChatGPT, Claude, Gemini, AI Code Editor, and more. Discover, share, and manage high-quality AI prompts with powerful search, categorization, and collaboration features.
@@ -159,19 +166,3 @@ Request → Middleware → CSP Headers + CSRF Validation → Route Handler
 ├── actions/               # Server actions (CSRF protected)
 └── hooks/                 # React hooks including useCSRF
 ```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes following our security guidelines
-4. Test thoroughly including security features
-5. Submit a pull request
-
-## License
-
-[Your License Here]
-
-## Support
-
-For support, please [open an issue](link-to-issues) or contact [support email].
