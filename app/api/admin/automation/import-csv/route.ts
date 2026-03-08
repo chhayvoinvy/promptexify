@@ -158,6 +158,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate CSV dimensions to prevent memory exhaustion during parsing.
+    // Count columns from the header row before full parsing.
+    const MAX_COLUMNS = 50;
+    const MAX_CELL_LENGTH = 50_000;
+    const headerRow = csvContent.split(/\r?\n/)[0] ?? "";
+    const columnCount = headerRow.split(delimiter).length;
+    if (columnCount > MAX_COLUMNS) {
+      return NextResponse.json(
+        { error: `CSV has too many columns (max ${MAX_COLUMNS}, got ${columnCount})` },
+        { status: 400 }
+      );
+    }
+
+    // Check individual cell lengths by scanning a sample of lines
+    const lines = csvContent.split(/\r?\n/).slice(0, maxRows + 1);
+    for (const line of lines) {
+      const cells = line.split(delimiter);
+      for (const cell of cells) {
+        if (cell.length > MAX_CELL_LENGTH) {
+          return NextResponse.json(
+            { error: `CSV contains a cell that exceeds the maximum length (${MAX_CELL_LENGTH} chars)` },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     // Parse CSV to ContentFile format
     const parseResult = await convertCsvToContentFiles(csvContent, {
       delimiter,
@@ -242,7 +269,9 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         error: "CSV import failed",
-        details: error instanceof Error ? error.message : "Unknown error",
+        ...(process.env.NODE_ENV !== "production" && {
+          details: error instanceof Error ? error.message : "Unknown error",
+        }),
       },
       { status: 500 }
     );

@@ -461,44 +461,33 @@ export async function sanitizeSearchQuery(
 
   const { userId, ip, logSuspicious = true } = options || {};
 
-  // First apply basic sanitization
-  let sanitized = query
-    .trim()
-    // Remove null bytes and control characters
-    // eslint-disable-next-line no-control-regex
-    .replace(/[\x00-\x1F]/g, "")
-    // Remove SQL injection patterns (more comprehensive)
-    .replace(/[';\\"`]/g, "")
-    // Remove script tags and HTML
-    .replace(/<[^>]*>/g, "")
-    // Remove potentially dangerous URL patterns
-    .replace(/javascript:/gi, "")
-    .replace(/data:/gi, "")
-    .replace(/vbscript:/gi, "")
-    // Remove excessive special characters (keep only basic ones)
-    .replace(/[^\w\s\-_.]/g, "")
+  // Strip null bytes and control characters first
+  // eslint-disable-next-line no-control-regex
+  let sanitized = query.trim().replace(/[\x00-\x1F]/g, "");
+
+  // Run DOMPurify BEFORE any character removal to prevent bypass sequences
+  // (e.g. "uni/**/on" becoming "union" after comment stripping).
+  try {
+    if (typeof process !== "undefined" && process.env.NEXT_RUNTIME !== "edge") {
+      const purify = createDOMPurify();
+      sanitized = purify.sanitize(sanitized, DOMPURIFY_CONFIGS.strict);
+    }
+    // Edge runtime skips DOMPurify — the allowlist below still applies.
+  } catch (error) {
+    console.warn("[SECURITY] DOMPurify failed, using fallback sanitization:", error);
+  }
+
+  // Allowlist: keep only characters safe for a plain-text search query.
+  // This replaces the previous denylist approach which was bypassable.
+  sanitized = sanitized
+    .replace(/[^a-zA-Z0-9\s\-_.,'!?&]/g, "")
     // Normalize whitespace
     .replace(/\s+/g, " ")
     // Remove leading/trailing special characters
     .replace(/^[\s\-_.]+|[\s\-_.]+$/g, "")
-    // Limit length
+    // Enforce maximum length
     .substring(0, 100)
     .trim();
-
-  // Then use DOMPurify for additional protection (with enhanced error handling)
-  try {
-    // Check if we're in an environment that supports JSDOM
-    if (typeof process !== "undefined" && process.env.NEXT_RUNTIME !== "edge") {
-      const purify = createDOMPurify();
-      sanitized = purify.sanitize(sanitized, DOMPURIFY_CONFIGS.strict);
-    } else {
-      // Skip DOMPurify in edge runtime or problematic environments
-      console.warn("[SECURITY] Skipping DOMPurify in edge runtime, using basic sanitization");
-    }
-  } catch (error) {
-    // Fallback to original sanitization if DOMPurify fails
-    console.warn("[SECURITY] DOMPurify failed, using fallback sanitization:", error);
-  }
 
   // SECURITY: Additional validation - must contain at least one alphanumeric character
   if (sanitized && !/[a-zA-Z0-9]/.test(sanitized)) {

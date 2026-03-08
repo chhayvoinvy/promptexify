@@ -14,20 +14,10 @@ export class CSRFProtection {
    * Compatible with Edge Runtime
    */
   static generateToken(): string {
-    // Generate multiple UUIDs for better entropy
-    const uuid1 = crypto.randomUUID().replace(/-/g, "");
-    const uuid2 = crypto.randomUUID().replace(/-/g, "");
-    const combined = uuid1 + uuid2;
-
-    // Convert to base64url using btoa directly
-    const base64 = btoa(combined);
-
-    // Convert to base64url format
-    return base64
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=/g, "")
-      .slice(0, 43);
+    // 32 random bytes → 64-char hex string (256 bits of entropy)
+    return Array.from(crypto.getRandomValues(new Uint8Array(32)))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
   }
 
   /**
@@ -63,9 +53,11 @@ export class CSRFProtection {
         });
       }
 
-      console.log(
-        `[CSRF] Token set successfully with cookie name: ${this.CSRF_COOKIE_NAME}`
-      );
+      if (process.env.NODE_ENV !== "production") {
+        console.log(
+          `[CSRF] Token set successfully with cookie name: ${this.CSRF_COOKIE_NAME}`
+        );
+      }
     } catch (error) {
       console.error("[CSRF] Failed to set token:", error);
       throw error;
@@ -175,7 +167,9 @@ export class CSRFProtection {
         // Try to generate a new token and set it
         const newToken = this.generateToken();
         await this.setToken(newToken);
-        console.log("[SECURITY] Generated new CSRF token for session recovery");
+        if (process.env.NODE_ENV !== "production") {
+          console.log("[SECURITY] Generated new CSRF token for session recovery");
+        }
         
         // For this request, still return false since the submitted token
         // won't match the newly generated one
@@ -213,7 +207,9 @@ export class CSRFProtection {
         // Generate new token if none exists
         token = this.generateToken();
         await this.setToken(token);
-        console.log("[CSRF] Generated new CSRF token for session");
+        if (process.env.NODE_ENV !== "production") {
+          console.log("[CSRF] Generated new CSRF token for session");
+        }
       }
       
       return token;
@@ -290,7 +286,9 @@ export class CSRFProtection {
         cookieStore.delete(name);
       });
 
-      console.log("[CSRF] All CSRF tokens cleared");
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[CSRF] All CSRF tokens cleared");
+      }
     } catch (error) {
       console.error("[CSRF] Failed to clear tokens:", error);
     }
@@ -458,7 +456,7 @@ export class SecurityHeaders {
     const cspDirectives = [
       "default-src 'self'",
       this.buildScriptSrc(nonce, isDevelopment),
-      this.buildStyleSrc(),
+      this.buildStyleSrc(nonce, isDevelopment),
       this.buildImgSrc(),
       this.buildFontSrc(),
       this.buildConnectSrc(isDevelopment),
@@ -488,7 +486,7 @@ export class SecurityHeaders {
     const directives = {
       'default-src': "'self'",
       'script-src': this.buildScriptSrc(nonce, isDevelopment),
-      'style-src': this.buildStyleSrc(),
+      'style-src': this.buildStyleSrc(nonce, isDevelopment),
       'img-src': this.buildImgSrc(),
       'font-src': this.buildFontSrc(),
       'connect-src': this.buildConnectSrc(isDevelopment),
@@ -515,7 +513,10 @@ export class SecurityHeaders {
     // FIX: Add the specific SHA hash from the error to allow the problematic inline script.
     const scriptSources = [
       "'self'",
-      "'sha256-n46vPwSWuMC0W703pBofImv82Z26xo4LXymv0E9caPk='", // Allow specific inline script
+      // SHA-256 hash of the Next.js __NEXT_DATA__ / theme-detection inline script
+      // injected before hydration (e.g. document.documentElement.classList.add("dark")).
+      // Regenerate with: npm run csp:hash  if the script content changes.
+      "'sha256-n46vPwSWuMC0W703pBofImv82Z26xo4LXymv0E9caPk='",
             // Google services
       "https://www.googletagmanager.com",
       "https://www.google-analytics.com",
@@ -554,17 +555,36 @@ export class SecurityHeaders {
   }
 
   /**
-   * Build style-src directive following csp.md approach
+   * Build style-src directive following csp.md approach.
+   *
+   * Production: nonce-based inline styles only (no unsafe-inline).
+   * Development: unsafe-inline retained for hot-reload / devtools convenience.
+   *
+   * NOTE: React's `style={{ ... }}` renders as style *attributes* on HTML
+   * elements, which are covered by style-src.  Radix UI / shadcn use inline
+   * style attributes for CSS custom properties and animations — these require
+   * either unsafe-inline or (CSP Level 3) unsafe-hashes with pre-computed
+   * hashes.  Until those components are audited and hashed, unsafe-inline is
+   * left in development to avoid breakage.  In production the nonce covers
+   * Next.js <style> elements; remaining inline style *attributes* from UI
+   * libraries are an accepted limitation tracked for future remediation.
    */
-  private static buildStyleSrc(): string {
-    // External style sources
+  private static buildStyleSrc(nonce?: string, isDevelopment: boolean = false): string {
     const externalStyles = [
       "'self'",
-      "'unsafe-inline'", // Keep for UI libraries
       "https://fonts.googleapis.com",
-      "https://checkout.stripe.com", // Stripe checkout styles
-      "https://accounts.google.com", // FIX: Add for Google Sign-In styles
+      "https://checkout.stripe.com",
+      "https://accounts.google.com",
     ];
+
+    if (nonce) {
+      externalStyles.push(`'nonce-${nonce}'`);
+    }
+
+    if (isDevelopment) {
+      // Allow unsafe-inline in development for hot-reload / devtools
+      externalStyles.push("'unsafe-inline'");
+    }
 
     return `style-src ${externalStyles.join(" ")}`;
   }

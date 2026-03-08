@@ -32,7 +32,16 @@ npm run csp:hash         # Generate a CSP hash for an inline script
 npm run csp:analyze      # Analyze a CSP violation report
 ```
 
-No test runner is configured; the only test file is `lib/security/sanitize.test.ts`.
+No test runner is configured; the only test file is `lib/security/sanitize.test.ts`. Run it with:
+```bash
+npx tsx lib/security/sanitize.test.ts
+```
+
+Additional commands:
+```bash
+npm run content:generate  # Execute content automation (CSV → posts pipeline)
+npm run sanity:setup      # Setup Sanity CMS for production
+```
 
 ## Architecture
 
@@ -90,3 +99,9 @@ app/
 - **Premium content gating**: check `hasActivePremiumSubscription(userId)` from `lib/auth.ts`; this auto-syncs with Stripe on expiry.
 - **Sanity content**: accessed via `lib/sanity.ts`; used for editorial/blog content distinct from user-submitted prompts.
 - **Parallel modal route**: `app/(main)/@modal/` intercepts `/entry/[id]` links to show a modal preview without full page navigation.
+- **Server action responses**: Actions return `ActionResult` — `{ success: boolean; message?: string; error?: string; data?: unknown }`.
+- **Client mutations**: Use `useTransition()` for async server actions in Client Components (not `useFormStatus`). Multiple `useTransition` calls are fine for parallel independent ops.
+- **Validation**: Zod schemas live in `lib/schemas.ts`. Slugs enforce no leading/trailing/consecutive hyphens via regex.
+- **Performance**: Use `React.cache()` for request-level memoization in Server Components. Use `Promise.allSettled()` for parallel fetches that should not block on failure. `PerformanceMonitor` (in `lib/`) measures async operations; slow DB queries (>500ms) are logged by `DatabasePerformanceMonitor`.
+- **Worker process**: The BullMQ worker (`scripts/worker.ts`) processes `process-csv` jobs from the `ContentAutomation` queue, transforming CSV rows → `ContentFile` objects → posts via `AutomationService.executeFromJsonInput()`. Requires Redis.
+- **Storage backends**: S3, DigitalOcean Spaces, or LOCAL filesystem — selected via DB `settings` table, cached for 5 min. Upload results include `blurDataUrl` for blur placeholders.

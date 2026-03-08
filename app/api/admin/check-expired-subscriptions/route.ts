@@ -1,25 +1,11 @@
 import { NextResponse } from "next/server";
 import { checkAndHandleExpiredSubscriptions } from "@/lib/subscription";
-import { getCurrentUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 
 export async function POST() {
   try {
-    // Check if user is authenticated and is an admin
-    const user = await getCurrentUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 }
-      );
-    }
-
-    if (user.role !== "ADMIN") {
-      return NextResponse.json(
-        { error: "Admin access required" },
-        { status: 403 }
-      );
-    }
+    // requireAdmin() throws / redirects if the user is not an authenticated admin
+    await requireAdmin();
 
     // Run the expired subscription check
     const result = await checkAndHandleExpiredSubscriptions();
