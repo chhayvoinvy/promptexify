@@ -616,13 +616,17 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                   <span className="line-clamp-2">
                     <span className="font-medium">Prompt: </span>
 
-                    {post.description
-                      ? post.description
-                          .replace(/^# .+\n\n/, "")
-                          .replace(/\n+/g, " ")
-                          .substring(0, 100) +
-                        (post.description.length > 100 ? "..." : "")
-                      : "Something went wrong"}
+                    {(() => {
+                      const text = post.description || post.content || post.title;
+                      if (!text) return "No description available";
+                      const cleaned = text
+                        .replace(/^# .+\n\n/, "")
+                        .replace(/\n+/g, " ")
+                        .trim();
+                      return cleaned.length > 100
+                        ? cleaned.substring(0, 100) + "..."
+                        : cleaned;
+                    })()}
                   </span>
                 </div>
               </div>
