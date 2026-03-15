@@ -1,4 +1,4 @@
-# ⚠️ IMPORTANT SECURITY NOTICE:
+# ⚠️ IMPORTANT SECURITY NOTICE
 
 - Built with Claude Code and Google Antigravity.
 - This was built as a personal cybersecurity demonstration project.
@@ -19,74 +19,60 @@ A comprehensive AI prompt directory for ChatGPT, Claude, Gemini, AI Code Editor,
 - **User Authentication**: Secure sign-up/sign-in with Supabase
 - **Content Management**: Full CRUD operations for prompts and content
 - **Free to use**: All features and prompts are free; no payments or subscriptions
-- **Background Jobs**: BullMQ and Redis for async operations
-- **Storage**: AWS S3 integration for robust media and file uploads
+- **Background Jobs**: BullMQ and Redis for async operations (e.g. CSV → posts pipeline)
+- **Storage**: AWS S3, DigitalOcean Spaces, or local filesystem — configurable via DB settings
 - **Admin Dashboard**: Complete admin interface for content management
-- **Security-First**: Implements CSRF protection, CSP, rate limiting, and more
-- **Responsive Design**: Beautiful UI with Shadcn components and Tailwind CSS
+- **Security-First**: CSRF protection, CSP, rate limiting, input sanitization, audit logging
+- **Responsive Design**: Shadcn UI and Tailwind CSS
 
 ## Tech Stack
 
-- **Framework**: Next.js 15 with App Router
-- **Database**: PostgreSQL with Prisma ORM
-- **Authentication**: Supabase Auth
+- **Framework**: Next.js 15 (App Router) with Turbopack, React 18
+- **Database**: PostgreSQL with Prisma ORM (client generated to `app/generated/prisma`)
+- **Authentication**: Supabase Auth (sessions; users mirrored to Prisma `users` table)
 - **Styling**: Tailwind CSS + Shadcn UI
-- **Content**: Postgres-backed prompts and metadata
-- **Queue**: BullMQ with Redis for background processing
-- **Storage**: AWS S3 for secure file uploads
-- **Security**: Comprehensive security implementation with CSP and CSRF protection
+- **Queue**: BullMQ with Redis (rate limiting and background jobs; in-memory fallback when Redis unavailable)
+- **Storage**: AWS S3, DigitalOcean Spaces, or LOCAL — selectable in DB `settings` table
+- **Security**: CSP (nonce-based), CSRF, rate limiting, sanitization, security headers, audit logs
 
 ## Security Implementation
 
-This application implements enterprise-grade security following industry best practices:
+This application implements security measures following industry best practices:
 
 ### Content Security Policy (CSP)
 
-Our CSP implementation follows the methodology outlined in `csp.md`:
-
-- **Dynamic Nonce-Based CSP**: Uses cryptographically secure nonces generated per request
-- **Environment-Aware Policies**: Strict CSP in production, relaxed in development
-- **Middleware-Based**: CSP headers are set via Next.js middleware for optimal performance
-- **Following Best Practices**: Implements the exact approach recommended in the csp.md guide
-
-#### CSP Implementation Details:
-
-1. **Nonce Generation**: Uses `crypto.randomUUID()` converted to base64 (following csp.md)
-2. **Development vs Production**:
-   - **Development**: Includes `'unsafe-eval'` for hot-reloading
-   - **Production**: Strict nonce-based policy with `'strict-dynamic'`
-3. **Header Management**: All security headers handled by middleware
-4. **Violation Reporting**: CSP violations are logged to `/api/security/csp-report`
+- **Dynamic nonce-based CSP**: Cryptographically secure nonces per request
+- **Environment-aware**: Strict in production; relaxed in development (e.g. `'unsafe-eval'` for HMR)
+- **Middleware-based**: Headers set in Next.js middleware; nonce via `x-nonce` header and `csp-nonce` cookie
+- **Violation reporting**: CSP reports sent to `/api/security/csp-report`
 
 ### CSRF Protection
 
-- **Token-Based Protection**: Cryptographically secure tokens for all state-changing operations
-- **Multiple Storage**: Tokens stored in secure cookies with backup mechanisms
-- **Server Action Integration**: Automatic CSRF validation for all server actions
-- **API Route Protection**: Middleware-level CSRF validation for API endpoints
+- **Token-based**: Secure tokens for all state-changing operations; stored in cookies
+- **Server actions**: Wrapped with `withCSRFProtection()` from `lib/security/csp.ts`
+- **API routes**: Middleware validates CSRF for mutating calls (webhooks, upload, auth callback, CSP report excluded)
 
 ### Rate Limiting
 
-- **Redis-Backed**: Uses Redis for distributed rate limiting (fallback to in-memory)
-- **Endpoint-Specific**: Different limits for auth, uploads, API calls, etc.
-- **Environment-Aware**: Stricter limits in production
+- **Redis-backed**: Distributed limits with in-memory fallback
+- **Scoped**: Different limits for auth, uploads, and general API
+- **Stricter in production**
 
-### Additional Security Features
+### Other Security
 
-- **Input Sanitization**: Comprehensive input validation and sanitization
-- **Security Headers**: Full set of security headers (HSTS, X-Frame-Options, etc.)
-- **Audit Logging**: Security events logged for monitoring
-- **Error Handling**: Secure error responses without information disclosure
+- **Input sanitization**: `lib/security/sanitize.ts` — `sanitizeInput()`, `sanitizeContent()`, `sanitizeTagSlug()` before DB writes
+- **Security headers**: HSTS, X-Frame-Options, etc.
+- **Audit logging**: Auth failures, rate limits, etc. logged to `logs` model
 
 ## Development
 
 ### Prerequisites
 
 - Node.js 18+ (20+ recommended)
-- PostgreSQL database
-- Redis (required for rate limiting and background jobs)
-- Supabase account
-- AWS S3 bucket (optional, for uploads)
+- PostgreSQL
+- Redis (for rate limiting and BullMQ; optional in dev — in-memory fallback)
+- Supabase project
+- Storage: AWS S3 or DigitalOcean Spaces (optional; local storage available)
 
 ### Setup
 
@@ -103,78 +89,103 @@ Our CSP implementation follows the methodology outlined in `csp.md`:
    npm install
    ```
 
-3. **Set up environment variables**
+3. **Environment variables**
 
    ```bash
    cp env.template .env.local
-   # Fill in your environment variables
+   # Edit .env.local with your database, Supabase, Redis, and storage config
    ```
 
-4. **Set up the database**
+4. **Database**
 
    ```bash
-   npm run db:migrate
-   npm run db:push
+   npm run db:migrate   # Deploy migrations
+   npm run db:seed      # Optional: seed data
    ```
 
-5. **Run the development server**
+5. **Run the dev server**
+
    ```bash
    npm run dev
    ```
 
+   Open [http://localhost:3000](http://localhost:3000). For background jobs (e.g. content automation), start the worker in another terminal: `npm run worker`.
+
 ### Environment Variables
 
-See `env.template` for all required environment variables including:
+See `env.template` for required and optional variables, including:
 
-- Database connection (PostgreSQL)
-- Supabase configuration
-- Redis URL
-- AWS S3 credentials (for file uploads)
-- Other service configurations
-
-### Security Development
-
-When working with security features:
-
-1. **CSP Development**: Use localhost for relaxed CSP, non-localhost for strict CSP testing
-2. **CSRF Testing**: All forms automatically include CSRF tokens via the `useCSRF` hook
-3. **Rate Limiting**: Test with different client identifiers to verify limits
-4. **Security Headers**: Check browser dev tools to verify headers are set correctly
+- PostgreSQL connection
+- Supabase URL and anon key
+- Redis URL (optional in dev)
+- S3/Spaces credentials if using cloud storage
 
 ### Scripts
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run db:migrate` - Run database migrations
-- `npm run db:studio` - Open Prisma Studio
-- `npm run lint` - Run ESLint
-- `npm run csp:analyze` - Analyze CSP violations (custom script)
+| Command | Description |
+|--------|-------------|
+| `npm run dev` | Start dev server (Turbopack) |
+| `npm run build` | Generate Prisma client, run migrations, push schema, build Next.js |
+| `npm start` | Start production server |
+| `npm run db:migrate` | Run pending migrations |
+| `npm run db:push` | Push schema without migrations |
+| `npm run db:studio` | Open Prisma Studio |
+| `npm run db:seed` | Seed database |
+| `npm run db:reset` | Reset database |
+| `npm run worker` | Start BullMQ worker (content automation, etc.) |
+| `npm run content:generate` | Run content automation (CSV → posts) |
+| `npm run lint` | Run ESLint |
+| `npm run lint:fix` | Auto-fix ESLint issues |
+| `npm run lint:format` | Format with Prettier |
+| `npm run csp:hash` | Generate CSP hash for inline script |
+| `npm run csp:analyze` | Analyze a CSP violation report |
+
+### Testing
+
+There is no test runner. The only test file is `lib/security/sanitize.test.ts`. Run it with:
+
+```bash
+npx tsx lib/security/sanitize.test.ts
+```
 
 ## Architecture
 
-### Security Architecture
+### Request Flow
 
 ```
-Request → Middleware → CSP Headers + CSRF Validation → Route Handler
-          ↓
-          Rate Limiting + Security Logging
+Request → Middleware (Supabase session, CSP nonce, CSRF check, rate limit) → Route
 ```
 
-### File Structure
+### Route Groups
 
 ```
-├── app/                    # Next.js App Router
-├── components/             # React components
+app/
+  (auth)/           # signin, signup
+  (main)/           # home, directory, entry/[id]
+    @modal/         # Parallel route: entry preview modal
+  (protected)/
+    dashboard/      # posts, bookmarks, favorites, billing, settings
+  api/              # posts, admin, upload, webhooks, csrf, analytics, etc.
+```
+
+### Key Directories
+
+```
+├── app/                  # Next.js App Router
+│   └── generated/prisma/ # Generated Prisma client (import from @/app/generated/prisma)
+├── components/           # React components
 ├── lib/
-│   ├── security/          # Security implementations
-│   │   ├── csp.ts         # CSP & CSRF protection
-│   │   ├── sanitize.ts    # Input sanitization
-│   │   ├── monitor.ts     # Security monitoring
-│   │   └── limits.ts      # Rate limiting
-│   ├── auth.ts            # Authentication utilities
-│   └── ...
-├── middleware.ts          # Security middleware
-├── actions/               # Server actions (CSRF protected)
-└── hooks/                 # React hooks including useCSRF
+│   ├── security/         # CSP, CSRF, sanitize, audit, etc.
+│   ├── auth.ts           # getCurrentUser, requireAuth, requireAdmin
+│   ├── cache.ts          # unstable_cache + Redis/memory
+│   ├── query.ts          # PostQueries, MetadataQueries
+│   └── prisma.ts         # Singleton client, withTransaction, withErrorHandling
+├── actions/              # Server actions (CSRF-protected)
+├── middleware.ts         # Session, CSP, CSRF, rate limiting
+└── scripts/
+    └── worker.ts         # BullMQ worker (e.g. process-csv → posts)
 ```
+
+### Content Automation
+
+The BullMQ worker processes jobs from the ContentAutomation queue (e.g. CSV rows → posts via `AutomationService.executeFromJsonInput()`). Run `npm run worker` when using features that depend on background jobs.
