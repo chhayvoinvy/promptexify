@@ -14,13 +14,13 @@ export default function FeaturesPage() {
       <section className="text-center">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-b from-zinc-900 to-zinc-600 bg-clip-text text-transparent mb-6 dark:from-zinc-100 dark:to-zinc-400">
-            Powerful Features for
-            <span className="block">Prompt Excellence</span>
+            Directory for the
+            <span className="block">New Coding Era</span>
           </h1>
           <p className="text-lg md:text-xl text-zinc-600 dark:text-zinc-300 mb-8 max-w-3xl mx-auto leading-relaxed">
-            Discover why thousands of creators trust Promptexify to enhance
-            their AI workflows. From premium prompt collections to
-            community-driven sharing, we&apos;ve built everything you need.
+            Discover why developers trust Promptexify to get more from Cursor,
+            Claude Code, and AI code editors. From Rules and MCP to Skills and
+            prompts—everything you need for better AI-assisted coding.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button asChild size="lg" className="font-semibold">
@@ -32,7 +32,7 @@ export default function FeaturesPage() {
               size="lg"
               className="font-semibold"
             >
-              <Link href="/directory">Browse Prompts</Link>
+              <Link href="/directory">Browse Rules & Prompts</Link>
             </Button>
           </div>
         </div>
@@ -42,11 +42,11 @@ export default function FeaturesPage() {
       <section className="py-12">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Everything you need to master AI prompts
+            Everything you need for the new coding era: Rules, MCP, Skills & prompts
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Our comprehensive platform provides all the tools and resources to
-            help you create, discover, and share exceptional AI prompts.
+            Create, discover, and share Rules, MCP configs, Skills, and prompts
+            for Cursor, Claude Code, and other AI coding tools.
           </p>
         </div>
 
@@ -61,7 +61,7 @@ export default function FeaturesPage() {
               More reasons to choose Promptexify
             </h2>
             <p className="text-lg text-muted-foreground">
-              Built with modern technology and designed for creators
+              Built for developers who use AI coding tools
             </p>
           </div>
 

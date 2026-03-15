@@ -81,7 +81,7 @@ export function TagActionsDropdown({ tag }: TagActionsDropdownProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem asChild>
-            <Link href={`/dashboard/tags/edit/${tag.id}`}>
+            <Link href={`/tags/edit/${tag.id}`}>
               <Edit className="mr-2 h-4 w-4" />
               Edit tag
             </Link>

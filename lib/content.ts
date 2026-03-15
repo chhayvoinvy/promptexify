@@ -465,6 +465,38 @@ export const getAllCategories = createCachedFunction(
   [CACHE_TAGS.CATEGORIES]
 );
 
+/** Parent categories only (parentId is null), for header/nav menu. */
+export interface ParentCategoryNav {
+  id: string;
+  name: string;
+  slug: string;
+  children: { id: string; name: string; slug: string }[];
+}
+
+const getParentCategoriesMemoized = cache(async (): Promise<ParentCategoryNav[]> => {
+  const rows = await prisma.category.findMany({
+    where: { parentId: null },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      children: {
+        select: { id: true, name: true, slug: true },
+        orderBy: { createdAt: "asc" },
+      },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+  return rows as ParentCategoryNav[];
+});
+
+export const getParentCategories = createCachedFunction(
+  getParentCategoriesMemoized,
+  "get-parent-categories",
+  CACHE_DURATIONS.STATIC_DATA,
+  [CACHE_TAGS.CATEGORIES]
+);
+
 export const getAllTags = createCachedFunction(
   _getAllTags,
   "get-all-tags",

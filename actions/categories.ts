@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { revalidateCache, CACHE_TAGS } from "@/lib/cache";
 import { handleAuthRedirect } from "./auth";
 import { withCSRFProtection } from "@/lib/security/csp";
 
@@ -56,7 +57,8 @@ export const createCategoryAction = withCSRFProtection(
         },
       });
 
-      revalidatePath("/dashboard/categories");
+      revalidatePath("/categories");
+      await revalidateCache(CACHE_TAGS.CATEGORIES);
       return {
         success: true,
         message: `Category "${newCategory.name}" created successfully`,
@@ -161,7 +163,8 @@ export const updateCategoryAction = withCSRFProtection(
         },
       });
 
-      revalidatePath("/dashboard/categories");
+      revalidatePath("/categories");
+      await revalidateCache(CACHE_TAGS.CATEGORIES);
       return {
         success: true,
         message: `Category "${updatedCategory.name}" updated successfully`,
@@ -236,7 +239,8 @@ export const deleteCategoryAction = withCSRFProtection(
         where: { id },
       });
 
-      revalidatePath("/dashboard/categories");
+      revalidatePath("/categories");
+      await revalidateCache(CACHE_TAGS.CATEGORIES);
       return {
         success: true,
         message: `Category "${category.name}" deleted successfully`,

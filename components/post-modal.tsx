@@ -17,25 +17,13 @@ import { Copy, Check, Share } from "@/components/ui/icons";
 import { PostWithInteractions } from "@/lib/content";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { FavoriteButton } from "@/components/favorite-button";
-import { PremiumUpgradeModal } from "@/components/premium-upgrade-modal";
-
 interface PostModalProps {
   post: PostWithInteractions;
   userType?: "FREE" | "PREMIUM" | null;
   onClose?: () => void;
 }
 
-export function PostModal({ post, userType, onClose }: PostModalProps) {
-  // Check if user should see premium upgrade modal
-  const shouldShowUpgradeModal =
-    post.isPremium && (userType === "FREE" || userType === null);
-
-  // If user is free and content is premium, show upgrade modal
-  if (shouldShowUpgradeModal) {
-    return <PremiumUpgradeModal post={post} onClose={onClose} />;
-  }
-
-  // Otherwise, render the full content modal
+export function PostModal({ post, onClose }: PostModalProps) {
   return <PostContentModal post={post} onClose={onClose} />;
 }
 

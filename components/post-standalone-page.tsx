@@ -16,8 +16,6 @@ import {
   Share2,
   Home,
   ChevronRight,
-  LockIcon,
-  UnlockIcon,
   Play,
   Pause,
   Eye,
@@ -95,7 +93,7 @@ export function PostStandalonePage({
       try {
         await navigator.share({
           title: post.title,
-          text: post.description || "Check out this AI prompt",
+          text: post.description || "Check out this rule or prompt for AI coding tools",
           url: url,
         });
         return;
@@ -288,16 +286,6 @@ export function PostStandalonePage({
                       </p>
                     )}
                   </div>
-                  {post.isPremium && (
-                    <Badge className="bg-gradient-to-r from-teal-500 to-sky-500 text-foreground">
-                      {userType === "PREMIUM" ? (
-                        <UnlockIcon className="w-4 h-4 mr-1" />
-                      ) : (
-                        <LockIcon className="w-4 h-4 mr-1" />
-                      )}
-                      Premium
-                    </Badge>
-                  )}
                 </div>
               </CardHeader>
 

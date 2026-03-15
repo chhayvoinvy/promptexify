@@ -17,8 +17,8 @@ A comprehensive AI prompt directory for ChatGPT, Claude, Gemini, AI Code Editor,
 - **Advanced Search & Filtering**: Find exactly what you need with powerful search
 - **Categories & Tags**: Organize prompts with intuitive categorization
 - **User Authentication**: Secure sign-up/sign-in with Supabase
-- **Content Management**: Full CRUD operations with Sanity CMS
-- **Payments**: Stripe integration for premium features
+- **Content Management**: Full CRUD operations for prompts and content
+- **Free to use**: All features and prompts are free; no payments or subscriptions
 - **Background Jobs**: BullMQ and Redis for async operations
 - **Storage**: AWS S3 integration for robust media and file uploads
 - **Admin Dashboard**: Complete admin interface for content management
@@ -31,8 +31,7 @@ A comprehensive AI prompt directory for ChatGPT, Claude, Gemini, AI Code Editor,
 - **Database**: PostgreSQL with Prisma ORM
 - **Authentication**: Supabase Auth
 - **Styling**: Tailwind CSS + Shadcn UI
-- **Content**: Sanity CMS for rich content management
-- **Payments**: Stripe for subscriptions and billing
+- **Content**: Postgres-backed prompts and metadata
 - **Queue**: BullMQ with Redis for background processing
 - **Storage**: AWS S3 for secure file uploads
 - **Security**: Comprehensive security implementation with CSP and CSRF protection
@@ -87,9 +86,7 @@ Our CSP implementation follows the methodology outlined in `csp.md`:
 - PostgreSQL database
 - Redis (required for rate limiting and background jobs)
 - Supabase account
-- Sanity account
 - AWS S3 bucket (optional, for uploads)
-- Stripe account (optional, for payments)
 
 ### Setup
 
@@ -131,8 +128,6 @@ See `env.template` for all required environment variables including:
 
 - Database connection (PostgreSQL)
 - Supabase configuration
-- Sanity configuration
-- Stripe API keys
 - Redis URL
 - AWS S3 credentials (for file uploads)
 - Other service configurations

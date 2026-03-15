@@ -530,9 +530,6 @@ export class SecurityHeaders {
       "https://www.googleapis.com",
       "https://identitytoolkit.googleapis.com",
       "https://securetoken.googleapis.com",
-      // Stripe payments
-      "https://js.stripe.com",
-      "https://checkout.stripe.com",
       // Vercel Analytics
       "https://va.vercel-scripts.com",
     ];
@@ -573,7 +570,6 @@ export class SecurityHeaders {
     const externalStyles = [
       "'self'",
       "https://fonts.googleapis.com",
-      "https://checkout.stripe.com",
       "https://accounts.google.com",
     ];
 
@@ -616,17 +612,11 @@ export class SecurityHeaders {
       "https://s3.amazonaws.com",
       // DigitalOcean Spaces (support multiple regions)
       "https://*.digitaloceanspaces.com",
-      // Sanity CMS images
-      "https://*.sanity.io",
-      "https://cdn.sanity.io",
       // Google AdSense and other Google services
       "https://googleads.g.doubleclick.net",
       "https://www.google.com",
       "https://ssl.gstatic.com", // Google static content
       "https://www.gstatic.com", // Google static content
-      // Stripe images
-      "https://checkout.stripe.com",
-      "https://q.stripe.com", // Stripe analytics pixels
     ];
 
     return `img-src ${imageSources.join(" ")}`;
@@ -651,12 +641,6 @@ export class SecurityHeaders {
   private static getExternalDomains() {
     return {
       supabase: process.env.NEXT_PUBLIC_SUPABASE_URL ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).origin : "https://*.supabase.co",
-      sanity: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID 
-        ? `https://${process.env.NEXT_PUBLIC_SANITY_PROJECT_ID}.api.sanity.io`
-        : "https://*.sanity.io",
-      stripe: process.env.NODE_ENV === 'production' 
-        ? ["https://js.stripe.com", "https://checkout.stripe.com"]
-        : ["https://js.stripe.com", "https://checkout.stripe.com"],
       // Add your CDN domains here if using CloudFront, CloudFlare, etc.
       cdn: {
         cloudfront: process.env.NEXT_PUBLIC_CLOUDFRONT_URL,
@@ -681,10 +665,6 @@ export class SecurityHeaders {
       // Supabase API (use specific URL if available)
       domains.supabase,
       domains.supabase.replace('https://', 'wss://'), // Supabase realtime
-      // Sanity CMS (use specific project if available)
-      domains.sanity,
-      "https://*.apicdn.sanity.io",
-      "https://cdn.sanity.io",
       // Google services
       "https://www.google-analytics.com",
       "https://analytics.google.com",
@@ -699,11 +679,6 @@ export class SecurityHeaders {
       "https://identitytoolkit.googleapis.com",
       "https://securetoken.googleapis.com",
       "https://identitytoolkit.googleapis.com",
-      // Stripe
-      "https://api.stripe.com",
-      "https://events.stripe.com", // Stripe events
-      "https://m.stripe.com", // Stripe mobile
-      ...domains.stripe,
       // AWS S3 (support multiple regions and custom domains)
       "https://*.amazonaws.com",
       "https://*.s3.amazonaws.com",
@@ -738,9 +713,6 @@ export class SecurityHeaders {
       // Google services that may need iframes
       "https://accounts.google.com", // Google One Tap
       "https://www.google.com",
-      // Stripe checkout
-      "https://checkout.stripe.com",
-      "https://js.stripe.com",
       // Google AdSense (if using iframe ads)
       "https://googleads.g.doubleclick.net",
       "https://tpc.googlesyndication.com",

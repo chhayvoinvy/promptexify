@@ -21,10 +21,18 @@ Allow: /privacy-policy
 Allow: /terms-of-use
 Allow: /help
 
-# Block authentication and dashboard areas
+# Block authentication and app (dashboard, bookmarks, etc.) areas
 Disallow: /signin
 Disallow: /signup
 Disallow: /dashboard
+Disallow: /bookmarks
+Disallow: /favorites
+Disallow: /account
+Disallow: /settings
+Disallow: /posts
+Disallow: /categories
+Disallow: /tags
+Disallow: /automation
 Disallow: /auth/
 Disallow: /api/
 
@@ -43,6 +51,14 @@ Allow: /about
 Allow: /contact
 Allow: /help
 Disallow: /dashboard
+Disallow: /bookmarks
+Disallow: /favorites
+Disallow: /account
+Disallow: /settings
+Disallow: /posts
+Disallow: /categories
+Disallow: /tags
+Disallow: /automation
 Disallow: /auth/
 Disallow: /api/
 
@@ -55,6 +71,14 @@ Allow: /about
 Allow: /contact
 Allow: /help
 Disallow: /dashboard
+Disallow: /bookmarks
+Disallow: /favorites
+Disallow: /account
+Disallow: /settings
+Disallow: /posts
+Disallow: /categories
+Disallow: /tags
+Disallow: /automation
 Disallow: /auth/
 Disallow: /api/
 
@@ -67,6 +91,14 @@ Allow: /about
 Allow: /contact
 Allow: /help
 Disallow: /dashboard
+Disallow: /bookmarks
+Disallow: /favorites
+Disallow: /account
+Disallow: /settings
+Disallow: /posts
+Disallow: /categories
+Disallow: /tags
+Disallow: /automation
 Disallow: /auth/
 Disallow: /api/
 
@@ -76,6 +108,14 @@ Allow: /
 Allow: /directory
 Allow: /entry/
 Disallow: /dashboard
+Disallow: /bookmarks
+Disallow: /favorites
+Disallow: /account
+Disallow: /settings
+Disallow: /posts
+Disallow: /categories
+Disallow: /tags
+Disallow: /automation
 Disallow: /auth/
 Disallow: /api/
 
@@ -85,6 +125,14 @@ Allow: /
 Allow: /directory
 Allow: /entry/
 Disallow: /dashboard
+Disallow: /bookmarks
+Disallow: /favorites
+Disallow: /account
+Disallow: /settings
+Disallow: /posts
+Disallow: /categories
+Disallow: /tags
+Disallow: /automation
 Disallow: /auth/
 Disallow: /api/
 
@@ -92,6 +140,14 @@ Disallow: /api/
 User-agent: ia_archiver
 Allow: /
 Disallow: /dashboard
+Disallow: /bookmarks
+Disallow: /favorites
+Disallow: /account
+Disallow: /settings
+Disallow: /posts
+Disallow: /categories
+Disallow: /tags
+Disallow: /automation
 Disallow: /auth/
 Disallow: /api/
 
@@ -103,6 +159,14 @@ Allow: /entry/
 Allow: /about
 Allow: /help
 Disallow: /dashboard
+Disallow: /bookmarks
+Disallow: /favorites
+Disallow: /account
+Disallow: /settings
+Disallow: /posts
+Disallow: /categories
+Disallow: /tags
+Disallow: /automation
 Disallow: /auth/
 Disallow: /api/
 

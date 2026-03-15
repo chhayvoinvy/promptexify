@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { User, Mail, Calendar, Shield, Crown } from "@/components/ui/icons";
+import { User, Mail, Calendar, Shield } from "@/components/ui/icons";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface AccountFormProps {
@@ -172,14 +172,8 @@ export function AccountForm({ user }: AccountFormProps) {
           <CardContent className="space-y-2">
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Membership Type</span>
-                <Badge
-                  variant={user.type === "PREMIUM" ? "default" : "outline"}
-                  className="flex items-center gap-1"
-                >
-                  {user.type === "PREMIUM" && <Crown className="h-3 w-3" />}
-                  {user.type === "PREMIUM" ? "PREMIUM" : "FOREVER FREE"}
-                </Badge>
+                <span className="text-sm font-medium">Membership</span>
+                <Badge variant="outline">Free</Badge>
               </div>
 
               <div className="flex items-center justify-between">
@@ -224,15 +218,6 @@ export function AccountForm({ user }: AccountFormProps) {
               </div>
             </div>
 
-            {user.type === "FREE" && (
-              <Alert className="hidden">
-                <Crown className="h-4 w-4" />
-                <AlertDescription>
-                  Upgrade to Premium to unlock advanced features and unlimited
-                  access to all prompts.
-                </AlertDescription>
-              </Alert>
-            )}
           </CardContent>
         </Card>
       </div>

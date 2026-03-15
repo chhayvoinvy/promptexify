@@ -119,7 +119,7 @@ export const updateUserProfileAction = withCSRFProtection(
       });
 
       // Revalidate the account page to show updated data
-      revalidatePath("/dashboard/account");
+      revalidatePath("/account");
 
       return {
         success: true,
@@ -138,7 +138,7 @@ export const updateUserProfileAction = withCSRFProtection(
 /**
  * Get user information
  * Returns user profile data
- * /dashboard/account
+ * /account
  */
 export async function getUserProfileAction() {
   try {

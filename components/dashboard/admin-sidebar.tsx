@@ -3,7 +3,6 @@
 import * as React from "react";
 import {
   IconDashboard,
-  IconHelp,
   IconSearch,
   IconSettings,
   IconEdit,
@@ -13,7 +12,6 @@ import {
   IconHeart,
   IconRobot,
   type Icon,
-  IconFile,
 } from "@/components/ui/icons";
 import Link from "next/link";
 import { User } from "@/components/ui/icons";
@@ -73,33 +71,17 @@ const navigationData: {
     },
     {
       title: "Bookmarks",
-      url: "/dashboard/bookmarks",
+      url: "/bookmarks",
       icon: IconBookmark,
     },
     {
       title: "Favorites",
-      url: "/dashboard/favorites",
+      url: "/favorites",
       icon: IconHeart,
     },
-    // {
-    //   title: "Billing",
-    //   url: "/dashboard/billing",
-    //   icon: IconCreditCard,
-    // },
-    // {
-    //   title: "Analytics",
-    //   url: "/dashboard/analytics",
-    //   icon: IconChartBar,
-    //   adminOnly: true,
-    // },
   ],
 
   navSecondary: [
-    {
-      title: "Get Help",
-      url: "/help",
-      icon: IconHelp,
-    },
     {
       title: "Search",
       url: "/directory",
@@ -107,7 +89,7 @@ const navigationData: {
     },
     {
       title: "Settings",
-      url: "/dashboard/settings",
+      url: "/settings",
       icon: IconSettings,
       adminOnly: true, // Admin only
     },
@@ -116,33 +98,27 @@ const navigationData: {
   contentManagement: [
     {
       title: "Posts",
-      url: "/dashboard/posts",
+      url: "/posts",
       icon: IconEdit,
       // adminOnly: true, // Admin only
       allowUser: true, // Allow both USER and ADMIN roles (Temporary disabled)
     },
     {
       title: "Categories",
-      url: "/dashboard/categories",
+      url: "/categories",
       icon: IconCategory,
       adminOnly: true, // Admin only
     },
     {
       title: "Tags",
-      url: "/dashboard/tags",
+      url: "/tags",
       icon: IconTags,
       adminOnly: true, // Admin only
     },
     {
       title: "Automation",
-      url: "/dashboard/automation",
+      url: "/automation",
       icon: IconRobot,
-      adminOnly: true, // Admin only
-    },
-    {
-      title: "Pages",
-      url: "/dashboard/pages/studio",
-      icon: IconFile,
       adminOnly: true, // Admin only
     },
   ],

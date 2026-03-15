@@ -8,6 +8,7 @@ import { UserProfileDropdown } from "@/components/user-profile-dropdown";
 import { useAuth } from "@/hooks/use-auth";
 import { Logo } from "@/components/ui/logo";
 import { Button } from "@/components/ui/button";
+import type { ParentCategoryNav } from "@/lib/content";
 import {
   Sheet,
   SheetClose,
@@ -24,162 +25,99 @@ import {
 } from "@/components/ui/collapsible";
 import { Container } from "@/components/ui/container";
 
-// Mobile Navigation Component
-function MobileNav() {
+// Mobile Navigation Component — parent categories as menu items, subcategories in collapsibles
+function MobileNav({
+  parentCategories,
+}: {
+  parentCategories: ParentCategoryNav[];
+}) {
   const { user } = useAuth();
-  const [categoriesOpen, setCategoriesOpen] = useState(false);
-  const [rulesOpen, setRulesOpen] = useState(false);
+  const [openParentId, setOpenParentId] = useState<string | null>(null);
 
   return (
     <nav className="flex flex-col space-y-4 px-4">
-      {/* Browse Section - Always visible */}
-      <div className="space-y-3">
-        <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wider">
-          Browse
-        </h3>
-        <div className="space-y-2">
-          <SheetClose asChild>
-            <Link
-              href="/"
-              className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
+      <div className="space-y-2">
+        <SheetClose asChild>
+          <Link
+            href="/"
+            className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
+          >
+            Home
+          </Link>
+        </SheetClose>
+        <SheetClose asChild>
+          <Link
+            href="/directory"
+            className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
+          >
+            All Prompts
+          </Link>
+        </SheetClose>
+        <SheetClose asChild>
+          <Link
+            href="/features"
+            className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
+          >
+            Features
+          </Link>
+        </SheetClose>
+        {parentCategories.map((cat) => {
+          const hasSubcategories = cat.children?.length;
+          if (!hasSubcategories) {
+            return (
+              <SheetClose key={cat.id} asChild>
+                <Link
+                  href={`/directory?category=${encodeURIComponent(cat.slug)}`}
+                  className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
+                >
+                  {cat.name}
+                </Link>
+              </SheetClose>
+            );
+          }
+          const isOpen = openParentId === cat.id;
+          return (
+            <Collapsible
+              key={cat.id}
+              open={isOpen}
+              onOpenChange={(o) => setOpenParentId(o ? cat.id : null)}
             >
-              Home
-            </Link>
-          </SheetClose>
-          <SheetClose asChild>
-            <Link
-              href="/directory"
-              className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
-            >
-              All Prompts
-            </Link>
-          </SheetClose>
-          <SheetClose asChild>
-            <Link
-              href="/directory?category=text-to-video"
-              className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
-            >
-              Text to Video
-            </Link>
-          </SheetClose>
-          <SheetClose asChild>
-            <Link
-              href="/directory?category=text-to-image"
-              className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
-            >
-              Text to Image
-            </Link>
-          </SheetClose>
-        </div>
+              <div className="flex items-center gap-1">
+                <SheetClose asChild>
+                  <Link
+                    href={`/directory?category=${encodeURIComponent(cat.slug)}`}
+                    className="flex-1 px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
+                  >
+                    {cat.name}
+                  </Link>
+                </SheetClose>
+                <CollapsibleTrigger
+                  className="p-2 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground"
+                  aria-label={isOpen ? "Close subcategories" : "Open subcategories"}
+                >
+                  {isOpen ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </CollapsibleTrigger>
+              </div>
+              <CollapsibleContent className="space-y-1 pl-2">
+                {cat.children!.map((child) => (
+                  <SheetClose key={child.id} asChild>
+                    <Link
+                      href={`/directory?category=${encodeURIComponent(cat.slug)}&subcategory=${encodeURIComponent(child.slug)}`}
+                      className="block px-3 py-1.5 pl-4 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
+                    >
+                      {child.name}
+                    </Link>
+                  </SheetClose>
+                ))}
+              </CollapsibleContent>
+            </Collapsible>
+          );
+        })}
       </div>
-
-      {/* Categories Section - Collapsible */}
-      <Collapsible open={categoriesOpen} onOpenChange={setCategoriesOpen}>
-        <div className="space-y-3">
-          <CollapsibleTrigger asChild>
-            <button className="flex items-center justify-between w-full font-medium text-sm text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
-              Prompts
-              {categoriesOpen ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              )}
-            </button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="space-y-2">
-            <SheetClose asChild>
-              <Link
-                href="/directory?category=chatgpt"
-                className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
-              >
-                ChatGPT Prompts
-              </Link>
-            </SheetClose>
-            <SheetClose asChild>
-              <Link
-                href="/directory?category=claude"
-                className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
-              >
-                Claude Prompts
-              </Link>
-            </SheetClose>
-            <SheetClose asChild>
-              <Link
-                href="/directory?category=gemini"
-                className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
-              >
-                Gemini Prompts
-              </Link>
-            </SheetClose>
-            <SheetClose asChild>
-              <Link
-                href="/directory?category=text-to-image"
-                className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
-              >
-                Text to Image
-              </Link>
-            </SheetClose>
-            <SheetClose asChild>
-              <Link
-                href="/directory?category=text-to-video"
-                className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
-              >
-                Text to Video
-              </Link>
-            </SheetClose>
-            <SheetClose asChild>
-              <Link
-                href="/directory?category=text-to-audio"
-                className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
-              >
-                Text to Audio
-              </Link>
-            </SheetClose>
-          </CollapsibleContent>
-        </div>
-      </Collapsible>
-
-      {/* Rules Section - Collapsible */}
-      <Collapsible open={rulesOpen} onOpenChange={setRulesOpen}>
-        <div className="space-y-3">
-          <CollapsibleTrigger asChild>
-            <button className="flex items-center justify-between w-full font-medium text-sm text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
-              Rules
-              {rulesOpen ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              )}
-            </button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="space-y-2">
-            <SheetClose asChild>
-              <Link
-                href="/directory?category=vibe-coding&subcategory=cursor-rules"
-                className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
-              >
-                Cursor Rules
-              </Link>
-            </SheetClose>
-            <SheetClose asChild>
-              <Link
-                href="/directory?category=vibe-coding&subcategory=windsurf-rules"
-                className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
-              >
-                Windsurf Rules
-              </Link>
-            </SheetClose>
-            <SheetClose asChild>
-              <Link
-                href="/directory?category=vibe-coding&subcategory=chatgpt-rules"
-                className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
-              >
-                ChatGPT Rules
-              </Link>
-            </SheetClose>
-          </CollapsibleContent>
-        </div>
-      </Collapsible>
 
       {/* Auth Section */}
       <div className="border-t pt-4 mt-6">
@@ -195,7 +133,7 @@ function MobileNav() {
             </SheetClose>
             <SheetClose asChild>
               <Link
-                href="/dashboard/account"
+                href="/account"
                 className="block px-3 py-2 text-sm font-medium text-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors"
               >
                 Account
@@ -227,7 +165,11 @@ function MobileNav() {
   );
 }
 
-export function Header() {
+export function Header({
+  parentCategories = [],
+}: {
+  parentCategories?: ParentCategoryNav[];
+}) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
@@ -287,10 +229,10 @@ export function Header() {
           <div className="flex items-center justify-self-start">
             <Logo />
           </div>
-          <div className="flex items-center justify-self-center">
-            <nav className="flex items-center">
+          <div className="flex items-center justify-center justify-self-center min-w-0 flex-1">
+            <nav className="flex items-center justify-center">
               <Suspense fallback={<div className="w-96 h-10" />}>
-                <Navbar />
+                <Navbar parentCategories={parentCategories} />
               </Suspense>
             </nav>
           </div>
@@ -347,7 +289,7 @@ export function Header() {
                   </SheetDescription>
                 </SheetHeader>
                 <div className="mt-6">
-                  <MobileNav />
+                  <MobileNav parentCategories={parentCategories} />
                 </div>
               </SheetContent>
             </Sheet>

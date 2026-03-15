@@ -13,8 +13,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { UserData } from "@/lib/utils";
-import { IconCrown } from "@/components/ui/icons";
-import { cn } from "@/lib/utils";
 import Image from "next/image";
 
 interface UserType {
@@ -33,7 +31,6 @@ export function UserProfileDropdown({ user }: UserProfileDropdownProps) {
   const userAvatar = userData?.avatar;
   const displayName = userData?.name || user.email?.split("@")[0] || "User";
   const displayEmail = userData?.email || user.email || "";
-  const isPremium = userData?.type === "PREMIUM";
 
   return (
     <DropdownMenu>
@@ -49,21 +46,8 @@ export function UserProfileDropdown({ user }: UserProfileDropdownProps) {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <div className="text-sm font-medium leading-none flex items-center">
-              <span
-                className={cn(
-                  "mr-1 line-clamp-1",
-                  isPremium &&
-                    "bg-gradient-to-r from-teal-500 to-sky-200 dark:from-teal-400 dark:to-sky-200 bg-clip-text text-transparent"
-                )}
-              >
-                {displayName}
-              </span>
-              {isPremium && (
-                <span className="flex items-center justify-center bg-teal-500/30 dark:bg-teal-500/20 border border-teal-500 dark:border-teal-500/50 rounded-full p-0.5 ml-1">
-                  <IconCrown className="h-4 w-4 text-teal-500 dark:text-teal-500" />
-                </span>
-              )}
+            <div className="text-sm font-medium leading-none line-clamp-1">
+              {displayName}
             </div>
             <p className="text-xs line-clamp-1 leading-none text-muted-foreground">
               {displayEmail}
@@ -79,14 +63,14 @@ export function UserProfileDropdown({ user }: UserProfileDropdownProps) {
             </Link>
           </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/dashboard/account" className="flex items-center">
+              <Link href="/account" className="flex items-center">
                 <UserIcon className="mr-2 h-4 w-4" />
                 <span>Account</span>
               </Link>
             </DropdownMenuItem>
             {userRole === "ADMIN" && (
               <DropdownMenuItem asChild>
-                <Link href="/dashboard/settings" className="flex items-center">
+                <Link href="/settings" className="flex items-center">
                   <Settings className="mr-2 h-4 w-4" />
                   <span>Settings</span>
                 </Link>

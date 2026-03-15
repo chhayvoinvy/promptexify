@@ -89,15 +89,15 @@ export function HeroSection({
             variants={FADE_IN_ANIMATION_VARIANTS}
             className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent"
           >
-            Prompt Directory
+            Vibe Coding Directory
           </motion.h1>
           <motion.p
             variants={FADE_IN_ANIMATION_VARIANTS}
             className="text-sm md:text-xl lg:text-xl xl:text-xl text-muted-foreground mb-6"
           >
-            Discover amazing prompts and rulesets for AI code editor, image
-            generation, video creation, and more. Browse our featured collection
-            of hand-picked, ready-to-use prompts.
+            Discover Rules, MCP configs, Skills, and prompts for Cursor, Claude
+            Code, and AI coding tools. Hand-picked, ready-to-use templates for
+            better AI-assisted development.
           </motion.p>
           {/* Search Bar */}
           <motion.form
@@ -109,7 +109,7 @@ export function HeroSection({
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               name="q"
-              placeholder="Search prompts, categories, or tags..."
+              placeholder="Search rules, MCP, skills, prompts, or tags..."
               defaultValue={searchQuery}
               className="px-10 py-6 text-lg border-2 rounded-xl focus:border-primary bg-background/90"
             />

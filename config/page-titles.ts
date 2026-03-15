@@ -3,51 +3,47 @@ export const PAGE_TITLES = {
     title: "Dashboard",
     description: "Overview of your activity and saved content",
   },
-  "/dashboard/favorites": {
+  "/favorites": {
     title: "Favorites",
     description: "Posts you've liked, organized by date",
   },
-  "/dashboard/bookmarks": {
+  "/bookmarks": {
     title: "Your Bookmarks",
     description: "Your saved prompts and bookmarked content",
   },
-  "/dashboard/account": {
+  "/account": {
     title: "Account Settings",
     description: "Manage your account information and preferences",
   },
-  "/dashboard/posts": {
+  "/posts": {
     title: "Posts Management",
     description: "Manage and organize your posts",
   },
-  "/dashboard/posts/new": {
+  "/posts/new": {
     title: "Create New Post",
     description: "Add a new post to your collection",
   },
-  "/dashboard/categories": {
+  "/categories": {
     title: "Categories Management",
     description: "Organize your content with categories",
   },
-  "/dashboard/categories/new": {
+  "/categories/new": {
     title: "Create New Category",
     description: "Add a new category to organize your content",
   },
-  "/dashboard/tags": {
+  "/tags": {
     title: "Tags Management",
     description: "Manage tags for better content organization",
   },
-  "/dashboard/tags/new": {
+  "/tags/new": {
     title: "Create New Tag",
     description: "Add a new tag for content organization",
   },
-  "/dashboard/settings": {
+  "/settings": {
     title: "Settings",
     description: "Configure your account and application preferences",
   },
-  "/dashboard/billing": {
-    title: "Billing",
-    description: "Manage your subscription and billing information",
-  },
-  "/dashboard/automation": {
+  "/automation": {
     title: "Automation",
     description: "Configure and manage automated workflows",
   },
@@ -56,21 +52,21 @@ export const PAGE_TITLES = {
 // Helper function to get title for a pathname
 export function getPageTitle(pathname: string) {
   // Handle dynamic routes (edit pages)
-  if (pathname.startsWith("/dashboard/posts/edit/")) {
+  if (pathname.startsWith("/posts/edit/")) {
     return {
       title: "Edit Post",
       description: "Update your post details",
     };
   }
   
-  if (pathname.startsWith("/dashboard/categories/edit/")) {
+  if (pathname.startsWith("/categories/edit/")) {
     return {
       title: "Edit Category",
       description: "Update category details",
     };
   }
   
-  if (pathname.startsWith("/dashboard/tags/edit/")) {
+  if (pathname.startsWith("/tags/edit/")) {
     return {
       title: "Edit Tag",
       description: "Update tag details",

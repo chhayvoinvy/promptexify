@@ -97,7 +97,7 @@ export function PostFilters({
   const generateFilterUrl = (
     newFilters: Record<string, string | undefined>
   ) => {
-    const url = new URL("/dashboard/posts", window.location.origin);
+    const url = new URL("/posts", window.location.origin);
 
     // Preserve current filters and apply new ones
     const combinedFilters = { ...filters, ...newFilters };
@@ -118,7 +118,7 @@ export function PostFilters({
   };
 
   const generatePageSizeUrl = (newPageSize: number) => {
-    const url = new URL("/dashboard/posts", window.location.origin);
+    const url = new URL("/posts", window.location.origin);
 
     // Preserve current filters
     Object.entries(filters).forEach(([key, value]) => {
@@ -154,7 +154,7 @@ export function PostFilters({
   };
 
   const clearFilters = () => {
-    router.push("/dashboard/posts");
+    router.push("/posts");
   };
 
   const hasActiveFilters = Object.values(filters).some(

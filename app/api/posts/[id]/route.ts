@@ -60,24 +60,6 @@ async function handlePostRequest(request: NextRequest, { params }: RouteParams, 
       }
     }
 
-    // Check premium access control for published posts
-    if (post.isPremium && post.isPublished) {
-      // Only check premium access if user is present (dashboard route)
-      if (user) {
-        const userType = user.userData?.type || null;
-        const isUserFree = userType === "FREE" || userType === null;
-        const isAdmin = user.userData?.role === "ADMIN";
-        const isAuthor = post.authorId === user.userData?.id;
-        // Allow access for: premium users, admins, or the post author
-        if (isUserFree && !isAdmin && !isAuthor) {
-          return NextResponse.json(
-            { error: "Premium subscription required to access this content" },
-            { status: 403 }
-          );
-        }
-      }
-    }
-
     // Merge bookmark/favorite status into response if user is authenticated
     // This eliminates the need for a separate /status API call
     let interactionStatus = { isBookmarked: false, isFavorited: false };

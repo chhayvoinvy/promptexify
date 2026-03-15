@@ -71,7 +71,7 @@ function generateMockData(range: string): AnalyticsData {
     { page: "/", views: Math.floor(totalVisitors * 0.3) },
     { page: "/directory", views: Math.floor(totalVisitors * 0.2) },
     { page: "/entry/prompts", views: Math.floor(totalVisitors * 0.15) },
-    { page: "/pricing", views: Math.floor(totalVisitors * 0.1) },
+    { page: "/features", views: Math.floor(totalVisitors * 0.1) },
     { page: "/about", views: Math.floor(totalVisitors * 0.05) },
   ];
 

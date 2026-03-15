@@ -201,8 +201,8 @@ export const createPostAction = withCSRFProtection(
         CACHE_TAGS.ANALYTICS, // Important: Invalidate analytics for dashboard stats
       ]);
 
-      revalidatePath("/dashboard/posts");
-      redirect("/dashboard/posts");
+      revalidatePath("/posts");
+      redirect("/posts");
     } catch (error) {
       // Check if this is a Next.js redirect
       if (error && typeof error === "object" && "digest" in error) {
@@ -466,7 +466,7 @@ export const updatePostAction = withCSRFProtection(
       }
 
 
-      revalidatePath("/dashboard/posts");
+      revalidatePath("/posts");
       // Removed entry path revalidation to prevent modal performance issues
       // Ensure caches are also invalidated to reflect new status
       revalidateCache([
@@ -480,7 +480,7 @@ export const updatePostAction = withCSRFProtection(
         CACHE_TAGS.ANALYTICS,
       ]);
 
-      redirect("/dashboard/posts");
+      redirect("/posts");
     } catch (error) {
       // Check if this is a Next.js redirect
       if (error && typeof error === "object" && "digest" in error) {
@@ -555,7 +555,7 @@ export async function approvePostAction(postId: string) {
     });
 
     // Revalidate relevant paths and caches
-    revalidatePath("/dashboard/posts");
+    revalidatePath("/posts");
     // Removed entry path revalidation to prevent modal performance issues
     // Ensure caches are also invalidated to reflect new status
     revalidateCache([
@@ -623,7 +623,7 @@ export async function rejectPostAction(postId: string) {
     });
 
     // Revalidate relevant caches
-    revalidatePath("/dashboard/posts");
+    revalidatePath("/posts");
     // Removed entry path revalidations to prevent modal performance issues
     revalidateCache([
       CACHE_TAGS.POSTS,
@@ -816,7 +816,7 @@ export async function deletePostAction(postId: string) {
       where: { id: postId },
     });
 
-    revalidatePath("/dashboard/posts");
+    revalidatePath("/posts");
     revalidatePath("/");
     revalidatePath("/directory");
     // Removed entry path revalidation to prevent modal performance issues
@@ -886,7 +886,7 @@ export async function togglePostPublishAction(postId: string) {
     });
 
     // Revalidate relevant paths and caches
-    revalidatePath("/dashboard/posts");
+    revalidatePath("/posts");
     // Removed entry path revalidation to prevent modal performance issues
     revalidatePath("/"); // Home page might show published posts
 
@@ -951,7 +951,7 @@ export async function togglePostFeaturedAction(postId: string) {
       },
     });
 
-    revalidatePath("/dashboard/posts");
+    revalidatePath("/posts");
     // Removed entry path revalidations to prevent modal performance issues
     revalidatePath("/");
     revalidateCache([
@@ -1006,7 +1006,7 @@ export async function cleanupOrphanedMediaAction(dryRun: boolean = true) {
 
     // Revalidate relevant paths if actual cleanup was performed
     if (!dryRun && result.deletedCount > 0) {
-      revalidatePath("/dashboard/settings");
+      revalidatePath("/settings");
       revalidateCache([
         CACHE_TAGS.POSTS,
         CACHE_TAGS.POST_BY_ID,
@@ -1057,7 +1057,7 @@ export async function cleanupOrphanedPreviewFilesAction(dryRun: boolean = true) 
 
     // Revalidate relevant paths if actual cleanup was performed
     if (!dryRun && result.deletedCount > 0) {
-      revalidatePath("/dashboard/settings");
+      revalidatePath("/settings");
       revalidateCache([
         CACHE_TAGS.POSTS,
         CACHE_TAGS.POST_BY_ID,

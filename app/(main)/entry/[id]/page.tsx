@@ -7,9 +7,6 @@ import { Queries } from "@/lib/query";
 import type { PostWithInteractions } from "@/lib/content";
 import { PostStandalonePage } from "@/components/post-standalone-page";
 import { getCurrentUser } from "@/lib/auth";
-import { Crown } from "@/components/ui/icons";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
 import { setMetadata } from "@/config/seo";
 
 interface PostPageProps {
@@ -23,22 +20,22 @@ interface PostPageProps {
 
 export const dynamic = "force-dynamic";
 
-// Use static metadata with template title
+// Use static metadata with template title (fallback when generateMetadata not used)
 export const metadata = setMetadata({
-  title: "AI Prompt", // This will use the template: "AI Prompt | Promptexify"
+  title: "Rule / Prompt",
   description:
-    "Discover high-quality AI prompts for ChatGPT, Claude, Gemini, and more. Browse our comprehensive collection of tested prompts for creative writing, business, design, and more.",
+    "Rules, MCP, Skills, or prompts for AI coding tools. Use with Cursor, Claude Code, and more.",
   openGraph: {
     type: "article",
-    title: "AI Prompt - Promptexify",
+    title: "Rule / Prompt - Promptexify",
     description:
-      "Discover high-quality AI prompts for ChatGPT, Claude, Gemini, and more.",
+      "Rules, MCP, Skills, or prompts for AI coding tools. Cursor, Claude Code, and more.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "AI Prompt - Promptexify",
+    title: "Rule / Prompt - Promptexify",
     description:
-      "Discover high-quality AI prompts for ChatGPT, Claude, Gemini, and more.",
+      "Rules, MCP, Skills, or prompts for AI coding tools. Cursor, Claude Code, and more.",
   },
 });
 
@@ -72,51 +69,14 @@ export default async function PostPage({
   }
 
   const processedPost = result as PostWithInteractions;
-
-  // Check premium access control
   const userType = currentUser?.userData?.type || null;
-  const userRole = currentUser?.userData?.role || null;
-
-  // If this is premium content, check user access
-  if (processedPost.isPremium) {
-    const isUserFree = userType === "FREE" || userType === null;
-    const isAdmin = userRole === "ADMIN";
-
-    // Only allow access for premium users and admins
-    if (isUserFree && !isAdmin) {
-      redirect("/pricing");
-    }
-  }
-
   const relatedPosts = await getRelatedPosts(id, processedPost, userId, 6);
 
   return (
-    <>
-      {processedPost.isPremium && (userType === "FREE" || userType === null) ? (
-        <div className="flex flex-col items-center justify-center min-h-[50vh]">
-          <Crown className="w-12 h-12 text-amber-500 mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Premium Content</h1>
-          <p className="text-muted-foreground mb-6 text-center max-w-md">
-            This content requires a Premium subscription to access. Upgrade now
-            to unlock exclusive AI prompts and advanced features.
-          </p>
-          <Link href="/pricing">
-            <Button
-              size="lg"
-              className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white"
-            >
-              <Crown className="w-4 h-4 mr-2" />
-              Upgrade to Premium
-            </Button>
-          </Link>
-        </div>
-      ) : (
-        <PostStandalonePage
-          post={processedPost}
-          relatedPosts={relatedPosts}
-          userType={userType}
-        />
-      )}
-    </>
+    <PostStandalonePage
+      post={processedPost}
+      relatedPosts={relatedPosts}
+      userType={userType}
+    />
   );
 }

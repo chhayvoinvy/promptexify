@@ -131,7 +131,7 @@ export const createTagAction = withCSRFProtection(
 
       // Invalidate tags cache so new tag appears immediately
       revalidateCache(CACHE_TAGS.TAGS);
-      revalidatePath("/dashboard/tags");
+      revalidatePath("/tags");
 
       // Return success before redirect
       return {
@@ -273,8 +273,8 @@ export const updateTagAction = withCSRFProtection(
 
       // Invalidate tags cache so updated tag appears immediately
       revalidateCache(CACHE_TAGS.TAGS);
-      revalidatePath("/dashboard/tags");
-      redirect("/dashboard/tags");
+      revalidatePath("/tags");
+      redirect("/tags");
     } catch (error) {
       // Check if this is a Next.js redirect
       if (error && typeof error === "object" && "digest" in error) {
@@ -344,7 +344,7 @@ export const deleteTagAction = withCSRFProtection(
 
       // Invalidate tags cache so deleted tag is removed immediately
       revalidateCache(CACHE_TAGS.TAGS);
-      revalidatePath("/dashboard/tags");
+      revalidatePath("/tags");
       return {
         success: true,
         message: `Tag "${existingTag.name}" deleted successfully`,

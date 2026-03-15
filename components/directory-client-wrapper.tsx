@@ -48,7 +48,7 @@ export function DirectoryClientWrapper({
     searchQuery ||
     (categoryFilter && categoryFilter !== "all") ||
     (subcategoryFilter && subcategoryFilter !== "all") ||
-    (premiumFilter && premiumFilter !== "all");
+    false;
 
   return (
     <Container>
@@ -58,8 +58,7 @@ export function DirectoryClientWrapper({
         <div className="flex-1">
           <h1 className="text-2xl font-bold mb-2">Prompt Directory</h1>
           <p className="text-muted-foreground text-lg max-w-2xl">
-            Discover and explore our curated collection of AI prompts. Find the
-            perfect prompt for your creative and professional needs.
+            Find the perfect prompt for your creative and professional needs.
           </p>
         </div>
         {/* Right: Filter button */}
@@ -85,11 +84,6 @@ export function DirectoryClientWrapper({
           {subcategoryFilter && subcategoryFilter !== "all" && (
             <Badge variant="secondary" className="text-xs">
               Subcategory: {childCategories.find((c) => c.slug === subcategoryFilter)?.name}
-            </Badge>
-          )}
-          {premiumFilter && premiumFilter !== "all" && (
-            <Badge variant="secondary" className="text-xs">
-              Type: {premiumFilter === "premium" ? "Premium" : "Free"}
             </Badge>
           )}
         </div>

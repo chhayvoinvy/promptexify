@@ -10,8 +10,6 @@ import { FavoriteButton } from "@/components/favorite-button";
 import { MediaImage, MediaVideo } from "@/components/media-display";
 
 import {
-  LockIcon,
-  UnlockIcon,
   Play,
   Pause,
   Volume2,
@@ -241,15 +239,6 @@ export function PostCard({
               </div>
             )}
 
-            {/* Premium badge */}
-            {post.isPremium && (
-              <div className="absolute top-3 right-3 z-10">
-                <Badge variant="secondary" className="text-xs">
-                  <LockIcon className="w-3 h-3 mr-1" />
-                  Premium
-                </Badge>
-              </div>
-            )}
           </div>
 
           <div className="p-4">
@@ -270,12 +259,6 @@ export function PostCard({
                 <Badge variant="outline" className="text-xs">
                   {post.category?.name}
                 </Badge>
-                {userType !== "FREE" && !post.isPremium && (
-                  <Badge variant="outline" className="text-xs">
-                    <UnlockIcon className="w-3 h-3 mr-1" />
-                    Free
-                  </Badge>
-                )}
               </div>
 
               <div className="flex items-center gap-1">

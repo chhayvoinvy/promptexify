@@ -19,9 +19,6 @@ The CSP configuration includes support for:
 - **Google Fonts**: Font loading from Google's CDN
 - **Google One Tap**: Authentication widget
 
-### 📝 Content Management
-- **Sanity**: CMS API calls and image serving
-
 ### 💳 Payments
 - **Stripe**: Payment processing, checkout, and webhooks
 
@@ -41,9 +38,6 @@ Configure these environment variables for more specific (and secure) CSP rules:
 ```bash
 # Required
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-
-# Recommended
-NEXT_PUBLIC_SANITY_PROJECT_ID=your-sanity-project-id
 
 # Optional CDN Configuration (recommended for production)
 NEXT_PUBLIC_CLOUDFRONT_URL=https://d1234567890.cloudfront.net
@@ -76,14 +70,12 @@ Allows images from:
 - Supabase storage
 - Google services (profile pictures, etc.)
 - AWS S3 and DigitalOcean Spaces
-- Sanity CMS
 - CDN domains (if configured)
 
 ### `connect-src`
 Allows API connections to:
 - Self (your domain)
 - Supabase API and realtime
-- Sanity CMS API
 - Google Analytics
 - Stripe API
 - S3 and DigitalOcean Spaces

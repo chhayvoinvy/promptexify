@@ -7,7 +7,7 @@ const testimonials = [
     job: "Content Creator",
     image: "/static/avatars/1.webp",
     review:
-      "Promptexify has completely transformed my content creation workflow. The premium AI prompts are incredibly well-crafted and save me hours of brainstorming. The quality and variety are unmatched!",
+      "Promptexify has completely transformed my content creation workflow. The AI prompts are incredibly well-crafted and save me hours of brainstorming. The quality and variety are unmatched!",
   },
   {
     name: "Marcus Rodriguez",
@@ -21,7 +21,7 @@ const testimonials = [
     job: "Freelance Writer",
     image: "/static/avatars/3.webp",
     review:
-      "As a freelance writer, I need reliable and creative prompts. Promptexify delivers exactly that. The premium features are worth every penny!",
+      "As a freelance writer, I need reliable and creative prompts. Promptexify delivers exactly that. The features and quality are outstanding!",
   },
   {
     name: "James Thompson",

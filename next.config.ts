@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Fix Supabase realtime-js webpack warnings
+  // Turbopack config for `next dev --turbopack`. Webpack config below is used for `next build`.
+  turbopack: {},
+
+  // Fix Supabase realtime-js webpack warnings (applies to production build)
   webpack: (config, { isServer, dev }) => {
     if (isServer) {
       config.externals = config.externals || [];
@@ -79,12 +82,6 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: false,
   },
   
-  turbopack: {
-    resolveAlias: {
-      "sanity/structure": "./node_modules/sanity/structure",
-    },
-  },
-
   // Image optimization
   images: {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
@@ -94,12 +91,6 @@ const nextConfig: NextConfig = {
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "cdn.sanity.io",
-        port: "",
-        pathname: "/images/**",
-      },
       {
         protocol: "https",
         hostname: "**.s3.amazonaws.com",

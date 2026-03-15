@@ -13,9 +13,8 @@ export function Footer() {
           <div className="space-y-4 col-span-1 sm:col-span-2 md:col-span-2 lg:col-span-3">
             <Logo />
             <p className="text-sm text-muted-foreground max-w-md">
-              A comprehensive collection of AI prompts to enhance your
-              creativity and productivity across various tools and platforms.
-              Better prompt, better results!
+              Directory for the new coding era. Rules, MCP, Skills, and prompts
+              for Cursor, Claude Code, and more. Better prompts, better code.
             </p>
             <div className="flex items-center space-x-2 border-t border-border/40 pt-5 mt-10">
               <Link
@@ -31,23 +30,12 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Services (Temporary hidden)*/}
-          <div className="space-y-3 sm:space-y-4 opacity-0">
+          {/* Services (Temporary hidden) - keeps grid spacing so Company stays right */}
+          <div className="space-y-3 sm:space-y-4 opacity-0 lg:col-span-2">
             <h3 className="font-semibold text-sm">Services</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link
-                  href="/pricing"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Pricing
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/features"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
+                <Link href="/features" className="text-muted-foreground hover:text-foreground transition-colors">
                   Features
                 </Link>
               </li>
@@ -62,94 +50,8 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Prompts */}
-          <div className="space-y-3 sm:space-y-4">
-            <h3 className="font-semibold text-sm">Prompts</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link
-                  href="/directory?category=business"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Business
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/directory?category=marketing"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Marketing
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/directory?category=education"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Education
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/directory?category=health"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Health
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/directory?category=social-media"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Social Media
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/directory"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  More...
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Rules */}
-          <div className="space-y-3 sm:space-y-4">
-            <h3 className="font-semibold text-sm">Rules</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link
-                  href="/directory?category=vibe-coding"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Vibe Coding
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/directory?category=vibe-coding&subcategory=claude-code"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Claude Code
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/directory?category=vibe-coding&subcategory=cursor"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Cursor
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Company */}
-          <div className="space-y-3 sm:space-y-4">
+          {/* Company - keep on the right (same as original layout) */}
+          <div className="space-y-3 sm:space-y-4 lg:col-start-6 lg:col-span-2 lg:text-right">
             <h3 className="font-semibold text-sm">Company</h3>
             <ul className="space-y-2 text-sm">
               <li>

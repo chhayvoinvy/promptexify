@@ -36,13 +36,6 @@ export function PostMasonrySkeleton({ count = 12 }: PostMasonrySkeletonProps) {
             <div className="relative" style={getSampleAspectRatio(i)}>
               <Skeleton className="h-full w-full rounded-b-lg" />
 
-              {/* Premium badge skeleton on every 3rd item */}
-              {i % 3 === 0 && (
-                <div className="absolute top-2 right-2">
-                  <Skeleton className="h-6 w-20 rounded-full" />
-                </div>
-              )}
-
               {/* Action buttons overlay skeleton - bottom area */}
               <div className="absolute bottom-3 left-0 right-0 px-3 flex gap-2 items-end justify-between">
                 {/* Action buttons - left side */}

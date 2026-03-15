@@ -891,7 +891,7 @@ export class MetadataQueries {
               name: true,
               slug: true,
             },
-            orderBy: { name: "asc" },
+            orderBy: { createdAt: "asc" },
           },
           _count: {
             select: {
@@ -901,7 +901,7 @@ export class MetadataQueries {
             },
           },
         },
-        orderBy: { name: "asc" },
+        orderBy: { createdAt: "asc" },
       });
     } finally {
       endTimer();

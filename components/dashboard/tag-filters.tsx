@@ -45,7 +45,7 @@ export function TagFilters({
   const generateFilterUrl = (
     newFilters: Record<string, string | undefined>
   ) => {
-    const url = new URL("/dashboard/tags", window.location.origin);
+    const url = new URL("/tags", window.location.origin);
 
     // Preserve current filters and apply new ones
     const combinedFilters = { ...filters, ...newFilters };
@@ -66,7 +66,7 @@ export function TagFilters({
   };
 
   const generatePageSizeUrl = (newPageSize: number) => {
-    const url = new URL("/dashboard/tags", window.location.origin);
+    const url = new URL("/tags", window.location.origin);
 
     // Preserve current filters
     Object.entries(filters).forEach(([key, value]) => {
@@ -109,7 +109,7 @@ export function TagFilters({
   const clearFilters = () => {
     setSearchValue("");
     startTransition(() => {
-      router.push("/dashboard/tags");
+      router.push("/tags");
     });
   };
 

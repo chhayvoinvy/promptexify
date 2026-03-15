@@ -224,7 +224,7 @@ export function PostActionsDropdown({
 
           {canEdit && (
             <DropdownMenuItem asChild>
-              <Link href={`/dashboard/posts/edit/${post.id}`}>
+              <Link href={`/posts/edit/${post.id}`}>
                 <Edit className="mr-2 h-4 w-4" />
                 Edit
               </Link>

@@ -135,7 +135,7 @@ export async function clearGenerationLogsAction(): Promise<ActionResult> {
       "medium"
     );
 
-    revalidatePath("/dashboard/automation");
+    revalidatePath("/automation");
 
     return {
       success: true,

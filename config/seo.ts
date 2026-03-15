@@ -5,25 +5,26 @@ export const seoConfig: Metadata = {
   metadataBase: new URL(getBaseUrl()),
   title: {
     default:
-      "Promptexify - AI Prompt Directory for ChatGPT, Claude, Gemini, AI Code Editor, and more",
+      "Promptexify - Directory for the New Coding Era | Cursor, Claude Code",
     template: "%s | Promptexify",
   },
   description:
-    "Discover and share high-quality AI prompts for ChatGPT, Claude, Gemini, AI Code Editor, and more. Browse our comprehensive directory of tested prompts for creative writing, business, design, and more.",
+    "Discover and share Rules, MCP (Model Context Protocol), Skills, and prompts for AI coding tools. Optimize Cursor, Claude Code, and other AI code editors with ready-to-use rulesets and prompt templates.",
   keywords: [
-    "AI prompts",
-    "ChatGPT prompts",
-    "Claude prompts",
-    "Gemini prompts",
-    "AI Code Editor prompts",
+    "AI coding prompts",
+    "Cursor rules",
+    "MCP prompts",
+    "AI Skills",
+    "Claude Code prompts",
+    "AI code editor prompts",
     "prompt engineering",
-    "AI tools",
+    "Rules for AI",
+    "MCP Model Context Protocol",
     "AI prompt directory",
-    "AI prompt library",
-    "AI prompt engine",
-    "AI prompt generator",
-    "prompt directory",
     "prompt library",
+    "AI coding tools",
+    "prompt templates",
+    "cursor rules directory",
   ],
   authors: [{ name: "Promptexify Team" }],
   creator: "Promptexify",
@@ -43,24 +44,24 @@ export const seoConfig: Metadata = {
     type: "website",
     locale: "en_US",
     url: getBaseUrl(),
-    title: "Promptexify - AI Prompt Directory",
+    title: "Promptexify - Directory for the New Coding Era",
     description:
-      "Discover and share high-quality AI prompts for ChatGPT, Claude, Gemini, and more. The comprehensive AI prompt directory for all your needs.",
+      "Rules, MCP, Skills, and prompts for AI coding tools. Optimize Cursor, Claude Code, and AI code editors with ready-to-use rulesets and prompt templates.",
     siteName: "Promptexify",
     images: [
       {
         url: "/static/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Promptexify - AI Prompt Directory",
+        alt: "Promptexify - Directory for the New Coding Era",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Promptexify - AI Prompt Directory",
+    title: "Promptexify - Directory for the New Coding Era",
     description:
-      "Discover and share high-quality AI prompts for ChatGPT, Claude, Gemini, and more.",
+      "Directory for the new coding era. Discover Rules, MCP, Skills, and prompts for Cursor, Claude Code, and AI coding tools. Better prompts, better code.",
     images: ["/static/og-image.png"],
     creator: "@promptexify",
   },
@@ -83,20 +84,19 @@ export function setMetadata(customMetadata: Partial<Metadata> = {}): Metadata {
 // SEO configuration for different page types
 export const pageSEOConfigs = {
   home: {
-    title: "Promptexify - AI Prompt Directory",
-    description: "Discover and share high-quality AI prompts for ChatGPT, Claude, Gemini, and more.",
+    title: "Promptexify - Directory for the New Coding Era",
+    description:
+      "Directory for the new coding era. Discover Rules, MCP, Skills, and prompts for Cursor, Claude Code, and AI coding tools. Better prompts, better code.",
   },
   directory: {
-    title: "AI Prompt Directory",
-    description: "Browse our comprehensive collection of AI prompts for all major AI platforms.",
+    title: "Directory",
+    description:
+      "Browse Rules, MCP configs, Skills, and prompts for AI coding tools. Cursor, Claude Code, and more.",
   },
   features: {
     title: "Features - Promptexify",
-    description: "Discover all the powerful features that make Promptexify the best platform for AI prompts.",
-  },
-  pricing: {
-    title: "Pricing - Promptexify",
-    description: "Choose the perfect plan for your AI prompt needs. Free and premium options available.",
+    description:
+      "Directory for the new coding era. Rules, MCP, Skills, and prompt features for Cursor and AI code editors.",
   },
   help: {
     title: "Help Center - Promptexify",
@@ -104,15 +104,25 @@ export const pageSEOConfigs = {
   },
   about: {
     title: "About - Promptexify",
-    description: "Learn about Promptexify, the comprehensive AI prompt directory for all your needs.",
+    description:
+      "Learn about Promptexify: directory for the new coding era. Rules, MCP, Skills, and prompts for Cursor, Claude Code, and AI coding tools.",
   },
   contact: {
     title: "Contact - Promptexify",
     description: "Get in touch with the Promptexify team for support and inquiries.",
   },
+  privacy: {
+    title: "Privacy Policy - Promptexify",
+    description: "Learn how Promptexify collects, uses, and protects your personal information.",
+  },
+  terms: {
+    title: "Terms of Use - Promptexify",
+    description: "Terms and conditions for using Promptexify—directory for the new coding era.",
+  },
   entry: {
-    title: "AI Prompt - Promptexify",
-    description: "Discover high-quality AI prompts for ChatGPT, Claude, Gemini, and more.",
+    title: "Rule / Prompt - Promptexify",
+    description:
+      "Rules, MCP, Skills, or prompts for AI coding tools. Use with Cursor, Claude Code, and more.",
   },
 } as const;
 
@@ -145,19 +155,21 @@ export function generatePostMetadata(post: {
         .replace(/^# .+\n\n/, "")
         .replace(/\n+/g, " ")
         .substring(0, 150) + "..." 
-      : "AI prompt for " + (post.category?.name || "AI tools")
+      : "Rule or prompt for " + (post.category?.name || "AI coding tools")
     );
 
   // Generate keywords from post data
   const keywords = [
-    "AI prompt",
+    "AI coding prompt",
+    "Rules",
+    "MCP",
+    "Skills",
     post.category?.name,
     ...(post.tags?.map(tag => tag.name) || []),
-    "ChatGPT",
-    "Claude", 
-    "Gemini",
-    "AI tools",
-    "prompt engineering"
+    "Cursor",
+    "Claude Code",
+    "AI coding tools",
+    "prompt engineering",
   ].filter(Boolean) as string[];
 
   // Generate OpenGraph image URL

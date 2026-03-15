@@ -40,7 +40,6 @@ npx tsx lib/security/sanitize.test.ts
 Additional commands:
 ```bash
 npm run content:generate  # Execute content automation (CSV → posts pipeline)
-npm run sanity:setup      # Setup Sanity CMS for production
 ```
 
 ## Architecture
@@ -49,10 +48,8 @@ npm run sanity:setup      # Setup Sanity CMS for production
 - **Next.js 15** App Router with Turbopack, React 18
 - **PostgreSQL** via **Prisma ORM** (client generated to `app/generated/prisma/`)
 - **Supabase Auth** — handles sessions; user records are mirrored into Prisma `users` table via `upsertUserInDatabase`
-- **Sanity CMS** — for rich content (separate from prompt posts stored in Postgres)
 - **Redis / BullMQ** — rate limiting and background job queues; falls back to in-memory when Redis is unavailable
 - **AWS S3 / DigitalOcean Spaces** — media uploads; storage provider configurable in DB `settings` table
-- **Stripe** — subscription billing; `FREE`/`PREMIUM` user types enforced locally with Stripe verification on expiry
 
 ### Route Groups
 
@@ -63,7 +60,7 @@ app/
     @modal/        # Parallel route for post preview modal
   (protected)/     # Authenticated routes (layout enforces auth)
     dashboard/     # User dashboard: posts, bookmarks, favorites, billing, settings, etc.
-  api/             # API routes: posts, admin, upload, webhooks/stripe, csrf, analytics, etc.
+  api/             # API routes: posts, admin, upload, webhooks, csrf, analytics, etc.
 ```
 
 ### Data Flow
@@ -96,8 +93,7 @@ app/
 
 - **`actions/index.ts`** re-exports all server actions as a barrel.
 - **Cache invalidation**: call `revalidateCache(CACHE_TAGS.POSTS)` (or relevant tag) after any data mutation.
-- **Premium content gating**: check `hasActivePremiumSubscription(userId)` from `lib/auth.ts`; this auto-syncs with Stripe on expiry.
-- **Sanity content**: accessed via `lib/sanity.ts`; used for editorial/blog content distinct from user-submitted prompts.
+- **Access**: All users have full access; no paid tiers. `hasActivePremiumSubscription()` in `lib/auth.ts` always returns true.
 - **Parallel modal route**: `app/(main)/@modal/` intercepts `/entry/[id]` links to show a modal preview without full page navigation.
 - **Server action responses**: Actions return `ActionResult` — `{ success: boolean; message?: string; error?: string; data?: unknown }`.
 - **Client mutations**: Use `useTransition()` for async server actions in Client Components (not `useFormStatus`). Multiple `useTransition` calls are fine for parallel independent ops.

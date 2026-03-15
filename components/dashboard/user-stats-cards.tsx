@@ -114,7 +114,7 @@ export function UserStatsCards({
                 </CardDescription>
               </div>
               <Link
-                href="/dashboard/favorites"
+                href="/favorites"
                 className="text-sm text-primary hover:underline"
               >
                 View all
@@ -170,7 +170,7 @@ export function UserStatsCards({
           </CardContent>
           <CardFooter>
             <Link
-              href="/dashboard/favorites"
+              href="/favorites"
               className="w-full text-center text-sm text-muted-foreground hover:text-primary transition-colors"
             >
               View all your favorite posts →

@@ -29,7 +29,6 @@ export async function GET() {
     const envInfo = {
       NODE_ENV: process.env.NODE_ENV,
       hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-      hasSanityProjectId: !!process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
       hasCloudfrontUrl: !!process.env.NEXT_PUBLIC_CLOUDFRONT_URL,
       hasCloudflareUrl: !!process.env.NEXT_PUBLIC_CLOUDFLARE_URL,
       hasCustomCdnUrl: !!process.env.NEXT_PUBLIC_CDN_URL,
@@ -46,7 +45,6 @@ export async function GET() {
       },
       recommendations: [
         isDevelopment ? "Set NEXT_PUBLIC_SUPABASE_URL for specific Supabase domain" : null,
-        !process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ? "Set NEXT_PUBLIC_SANITY_PROJECT_ID for specific Sanity domain" : null,
         "Consider setting CDN URLs (NEXT_PUBLIC_CLOUDFRONT_URL, NEXT_PUBLIC_CLOUDFLARE_URL, or NEXT_PUBLIC_CDN_URL) for better security",
         "Test CSP in browser dev tools to ensure no violations",
         "Monitor CSP violations in production using CSP reporting"

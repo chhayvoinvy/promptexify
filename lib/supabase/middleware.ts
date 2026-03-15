@@ -68,8 +68,22 @@ export async function updateSession(request: NextRequest) {
     "strict-origin-when-cross-origin"
   );
 
-  // Protected routes - require authentication
-  if (request.nextUrl.pathname.startsWith("/dashboard") && !user) {
+  // Protected routes - require authentication (dashboard and top-level app routes)
+  const protectedPrefixes = [
+    "/dashboard",
+    "/bookmarks",
+    "/favorites",
+    "/account",
+    "/settings",
+    "/posts",
+    "/categories",
+    "/tags",
+    "/automation",
+  ];
+  const isProtected = protectedPrefixes.some((p) =>
+    request.nextUrl.pathname.startsWith(p)
+  );
+  if (isProtected && !user) {
     // Clear any potentially stale auth cookies on unauthorized access
     const redirectResponse = NextResponse.redirect(
       new URL("/signin", request.url)

@@ -6,7 +6,7 @@ export const runtime = "edge";
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const title = searchParams.get("title") || "Promptexify";
+    const title = searchParams.get("title") || "Promptexify - Directory for the New Coding Era";
     const description =
       searchParams.get("description") ||
       "AI Prompt Directory for ChatGPT, Claude, Midjourney & DALL-E";

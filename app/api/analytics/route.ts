@@ -263,7 +263,7 @@ function generateMockData(range: string): ProcessedAnalyticsData {
     { page: "/", views: Math.floor(totalViews * 0.3) },
     { page: "/directory", views: Math.floor(totalViews * 0.2) },
     { page: "/entry/prompts", views: Math.floor(totalViews * 0.15) },
-    { page: "/pricing", views: Math.floor(totalViews * 0.1) },
+    { page: "/features", views: Math.floor(totalViews * 0.1) },
     { page: "/about", views: Math.floor(totalViews * 0.05) },
   ];
 

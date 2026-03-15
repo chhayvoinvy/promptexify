@@ -102,7 +102,7 @@ export function CategoryActionsDropdown({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem asChild>
-            <Link href={`/dashboard/categories/edit/${category.id}`}>
+            <Link href={`/categories/edit/${category.id}`}>
               <Edit className="mr-2 h-4 w-4" />
               Edit category
             </Link>

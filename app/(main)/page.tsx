@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { Suspense } from "react";
 import { PostMasonrySkeleton } from "@/components/post-masonry-skeleton";
 import { HeroSection } from "@/components/ui/hero-section";
-import Testimonials from "@/components/ui/testimonials";
+// import Testimonials from "@/components/ui/testimonials";
 import { BentoGrid } from "@/components/ui/bento-grid";
 import { CtaSection } from "@/components/ui/cta-section";
 import { Container } from "@/components/ui/container";
@@ -90,7 +90,7 @@ export default async function HomePage() {
       <BentoGrid />
 
       {/* Testimonials Section */}
-      <Testimonials />
+      {/* <Testimonials /> */}
 
       {/* Call to Action Section */}
       <CtaSection />

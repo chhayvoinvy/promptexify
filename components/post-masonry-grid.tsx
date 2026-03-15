@@ -9,8 +9,6 @@ import { BookmarkButton } from "@/components/bookmark-button";
 import { FavoriteButton } from "@/components/favorite-button";
 import { MediaImage, MediaVideo } from "@/components/media-display";
 import {
-  LockIcon,
-  UnlockIcon,
   Play,
   Pause,
   Volume2,
@@ -548,19 +546,6 @@ export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
                         }}
                       >
                         <PostTextBaseCard title={post.title} />
-                      </div>
-                    )}
-
-                    {post.isPremium && (
-                      <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
-                        <Badge className="text-foreground bg-gradient-to-r from-teal-500 to-sky-300 dark:from-teal-400 dark:to-sky-300 border border-black/20 dark:border-white/20">
-                          {userType === "PREMIUM" ? (
-                            <UnlockIcon className="w-4 h-4" />
-                          ) : (
-                            <LockIcon className="w-4 h-4" />
-                          )}
-                          Premium
-                        </Badge>
                       </div>
                     )}
 

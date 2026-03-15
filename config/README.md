@@ -34,7 +34,6 @@ Available page types:
 - `home` - Homepage
 - `directory` - AI Prompt Directory
 - `features` - Features page
-- `pricing` - Pricing page
 - `help` - Help center
 - `about` - About page
 - `contact` - Contact page

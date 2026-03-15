@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  IconCreditCard,
   IconDotsVertical,
   IconNotification,
   IconUserCircle,
@@ -128,19 +127,13 @@ export function NavUser({ user }: { user: User }) {
             <DropdownMenuSeparator className="px-2" />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link href="/dashboard/account">
+                <Link href="/account">
                   <IconUserCircle />
                   Account
                 </Link>
               </DropdownMenuItem>
               {userRole === "ADMIN" && (
                 <>
-                  <DropdownMenuItem asChild>
-                    <Link href="/dashboard/billing">
-                      <IconCreditCard />
-                      Billing
-                    </Link>
-                  </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/dashboard/notifications">
                       <IconNotification />

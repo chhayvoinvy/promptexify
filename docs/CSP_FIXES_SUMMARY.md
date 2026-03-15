@@ -2,13 +2,13 @@
 
 ## Overview
 
-This document summarizes the Content Security Policy fixes implemented to resolve CSP violations in production, particularly for Sanity CMS integration and various inline scripts.
+This document summarizes the Content Security Policy fixes implemented to resolve CSP violations in production and various inline scripts. (Sanity CMS has since been removed from the project.)
 
 ## Issues Resolved
 
 ### 1. Static Site Generation (SSG) Conflicts
 **Error**: `Dynamic server usage: Route couldn't be rendered statically because it used 'headers'`
-**Affected Routes**: `/`, `/signin`, `/signup`, `/features`, `/help`, `/pricing`, `/prompt-generator`, etc.
+**Affected Routes**: `/`, `/signin`, `/signup`, `/features`, `/help`, `/prompt-generator`, etc.
 
 **Root Cause**: The root layout was calling `CSPNonce.getFromHeaders()` which tries to access request headers during static site generation when no headers are available.
 
@@ -24,27 +24,7 @@ This document summarizes the Content Security Policy fixes implemented to resolv
 
 **Fix**: Added the missing hash to `CSP_HASHES.SCRIPTS` array in `lib/csp.ts`
 
-### 2. Sanity CMS WebSocket Connection
-**Error**: `Refused to connect to 'wss://q1et0guo.api.sanity.io/v2022-06-30/socket/production'`
-
-**Fix**: Added `wss://*.api.sanity.io` to the `connect-src` directive for both production and development CSP policies.
-
-### 3. Sanity CMS Inline Styles
-**Error**: Multiple inline style violations from Sanity Studio
-**Hashes Missing**: 
-- `'sha256-0/TUJR2e8LYCBRhRHap5/yeWLDibr3I9vkHArk3DX9I='`
-- `'sha256-H2xDirDcQVcpRmgDFGCE6G5DXZx14hy+aINR3qqO7Ms='`
-
-**Fix**: Added missing hashes to `CSP_HASHES.STYLES` array and included `https://*.sanity.io` in style-src directive.
-
-### 4. Sanity CMS General Support
-**Fix**: Added comprehensive Sanity support to CSP:
-- `script-src`: Added `https://*.sanity.io`
-- `style-src`: Added `https://*.sanity.io`
-- `frame-src`: Added `https://*.sanity.io`
-- `connect-src`: Added `https://*.api.sanity.io` and `wss://*.api.sanity.io`
-
-### 5. Vercel Analytics Support
+### 3. Vercel Analytics Support
 **Fix**: Added comprehensive Vercel Analytics support to CSP:
 - `script-src`: Added `https://va.vercel-scripts.com` for loading analytics script
 - `connect-src`: Added `https://vitals.vercel-insights.com` and `https://vitals.vercel-analytics.com` for data transmission
@@ -53,8 +33,7 @@ This document summarizes the Content Security Policy fixes implemented to resolv
 
 ### 1. `lib/csp.ts`
 - **CSP_HASHES.SCRIPTS**: Added missing script hash
-- **CSP_HASHES.STYLES**: Added Sanity inline style hashes
-- **generateCSP()**: Enhanced with Sanity domains, better error handling, and validation
+- **generateCSP()**: Enhanced with better error handling and validation
 - **CSPNonce class**: Improved reliability with fallback mechanisms and validation
 - **Debug utilities**: Added hash calculation utilities for debugging
 - **Vercel Analytics**: Added `https://va.vercel-scripts.com` to script-src and `https://vitals.vercel-insights.com`/`https://vitals.vercel-analytics.com` to connect-src
@@ -87,12 +66,12 @@ This document summarizes the Content Security Policy fixes implemented to resolv
 
 ```csp
 default-src 'self';
-script-src 'self' 'nonce-{NONCE}' 'strict-dynamic' {SCRIPT_HASHES} https://www.googletagmanager.com https://www.google-analytics.com https://accounts.google.com https://va.vercel-scripts.com https://securepubads.g.doubleclick.net https://pagead2.googlesyndication.com https://*.sanity.io;
-style-src 'self' 'nonce-{NONCE}' 'unsafe-hashes' https://fonts.googleapis.com https://accounts.google.com https://*.sanity.io {STYLE_HASHES} https://pagead2.googlesyndication.com;
-img-src 'self' blob: data: https: https://*.s3.amazonaws.com https://*.cloudfront.net https://cdn.sanity.io/ https://pagead2.googlesyndication.com;
+script-src 'self' 'nonce-{NONCE}' 'strict-dynamic' {SCRIPT_HASHES} https://www.googletagmanager.com https://www.google-analytics.com https://accounts.google.com https://va.vercel-scripts.com https://securepubads.g.doubleclick.net https://pagead2.googlesyndication.com;
+style-src 'self' 'nonce-{NONCE}' 'unsafe-hashes' https://fonts.googleapis.com https://accounts.google.com {STYLE_HASHES} https://pagead2.googlesyndication.com;
+img-src 'self' blob: data: https: https://*.s3.amazonaws.com https://*.cloudfront.net https://pagead2.googlesyndication.com;
 font-src 'self' https://fonts.gstatic.com;
-connect-src 'self' https://api.stripe.com https://*.supabase.co wss://*.supabase.co https://*.s3.amazonaws.com https://*.cloudfront.net https://vitals.vercel-insights.com https://vitals.vercel-analytics.com https://accounts.google.com https://*.api.sanity.io wss://*.api.sanity.io https://pagead2.googlesyndication.com;
-frame-src 'self' https://accounts.google.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://pagead2.googlesyndication.com https://*.sanity.io;
+connect-src 'self' https://api.stripe.com https://*.supabase.co wss://*.supabase.co https://*.s3.amazonaws.com https://*.cloudfront.net https://vitals.vercel-insights.com https://vitals.vercel-analytics.com https://accounts.google.com https://pagead2.googlesyndication.com;
+frame-src 'self' https://accounts.google.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://pagead2.googlesyndication.com;
 media-src 'self' blob: data: https://*.s3.amazonaws.com https://*.cloudfront.net;
 object-src 'none';
 base-uri 'self';
@@ -104,7 +83,7 @@ worker-src 'self' blob:;
 ```
 
 ### Development CSP
-Development mode uses more permissive policies with `'unsafe-inline'` and `'unsafe-eval'` for easier development, while still including Sanity domains and the CSP report endpoint for debugging.
+Development mode uses more permissive policies with `'unsafe-inline'` and `'unsafe-eval'` for easier development, while still including the CSP report endpoint for debugging.
 
 ## Static vs Dynamic Page Handling
 
@@ -269,7 +248,7 @@ CSP violations appear in the browser console with details about:
 ### Manual Testing
 1. **Open browser console** and check for CSP violations
 2. **Test all interactive features** (forms, analytics, etc.)
-3. **Verify Sanity Studio functionality** in `/dashboard/pages/studio`
+3. **Verify CSP in browser DevTools** for any remaining violations
 4. **Check third-party integrations** (Google Auth, Stripe, etc.)
 
 ### Automated Testing

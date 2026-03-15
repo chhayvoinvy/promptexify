@@ -247,7 +247,7 @@ export async function updateSettingsAction(data: SettingsFormData) {
     clearUrlCache();
 
     // Revalidate relevant pages
-    revalidatePath("/dashboard/settings");
+    revalidatePath("/settings");
     revalidatePath("/dashboard");
 
     return {
@@ -397,7 +397,7 @@ export async function resetSettingsToDefaultAction() {
     clearUrlCache();
 
     // Revalidate relevant pages
-    revalidatePath("/dashboard/settings");
+    revalidatePath("/settings");
     revalidatePath("/dashboard");
 
     return {
