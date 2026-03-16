@@ -425,12 +425,12 @@ export class SecurityHeaders {
     const isDevelopment = process.env.NODE_ENV === 'development';
 
     const headers: Record<string, string> = {
-      // Basic security headers
       "X-Content-Type-Options": "nosniff",
-      "X-XSS-Protection": "1; mode=block", 
+      "X-XSS-Protection": "0",
       "Referrer-Policy": "strict-origin-when-cross-origin",
       "X-Frame-Options": "DENY",
-      "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
+      "Permissions-Policy":
+        "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()",
     };
 
     // Production-only headers
@@ -465,8 +465,6 @@ export class SecurityHeaders {
       "base-uri 'self'",
       "form-action 'self'",
       "frame-ancestors 'none'",
-      "block-all-mixed-content",
-      // Only add upgrade-insecure-requests in production
       ...(isDevelopment ? [] : ["upgrade-insecure-requests"]),
     ];
 
@@ -595,7 +593,6 @@ export class SecurityHeaders {
       "'self'",
       "blob:",
       "data:",
-      "https:", // Fallback for any HTTPS image (consider removing in production for stricter CSP)
       // CDN domains (if configured)
       ...(domains.cdn.cloudfront ? [domains.cdn.cloudfront] : []),
       ...(domains.cdn.cloudflare ? [domains.cdn.cloudflare] : []),
@@ -858,12 +855,13 @@ export function handleSecureActionError(error: unknown): {
     };
   }
 
-  // Handle other types of errors
   if (error instanceof Error) {
-    return {
-      error: error.message,
-      code: "UNKNOWN_ERROR",
-    };
+    if (process.env.NODE_ENV !== "production") {
+      return {
+        error: error.message,
+        code: "UNKNOWN_ERROR",
+      };
+    }
   }
 
   return {

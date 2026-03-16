@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { SECURITY_HEADERS } from "@/lib/security/sanitize";
 
 // Interface for Vercel Analytics API response
 interface AnalyticsData {
@@ -44,20 +45,18 @@ interface ProcessedAnalyticsData {
 // GET /api/analytics - Fetch analytics data
 export async function GET(request: NextRequest) {
   try {
-    // Check authentication and admin access
     const user = await getCurrentUser();
     if (!user?.userData) {
       return NextResponse.json(
         { error: "Authentication required" },
-        { status: 401 }
+        { status: 401, headers: SECURITY_HEADERS }
       );
     }
 
-    // Only allow admins to access analytics data
     if (user.userData.role !== "ADMIN") {
       return NextResponse.json(
         { error: "Admin access required" },
-        { status: 403 }
+        { status: 403, headers: SECURITY_HEADERS }
       );
     }
 

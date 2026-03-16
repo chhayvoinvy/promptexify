@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getStorageConfigAction } from "@/actions/settings";
 import { testStorageConfiguration } from "@/lib/image/storage";
+import { getCurrentUser } from "@/lib/auth";
+import { SECURITY_HEADERS } from "@/lib/security/sanitize";
 import { NextRequest } from "next/server";
 
 /**
@@ -54,9 +56,18 @@ export async function GET() {
 /**
  * POST /api/settings/storage-config/test
  * Test storage configuration across all storage types.
+ * Requires admin authentication.
  */
 export async function POST(request: NextRequest) {
   try {
+    const user = await getCurrentUser();
+    if (!user?.userData || user.userData.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Admin access required" },
+        { status: 403, headers: SECURITY_HEADERS }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const action = searchParams.get("action");
 
@@ -65,16 +76,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         testResults,
-      });
+      }, { headers: SECURITY_HEADERS });
     }
 
-    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid action" },
+      { status: 400, headers: SECURITY_HEADERS }
+    );
   } catch (error) {
     console.error("Error testing storage config:", error);
     return NextResponse.json({
       success: false,
       error: "Failed to test storage configuration",
-    }, { status: 500 });
+    }, { status: 500, headers: SECURITY_HEADERS });
   }
 }
 

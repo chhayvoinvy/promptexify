@@ -2,13 +2,24 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { settings } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
+import { getCurrentUser } from "@/lib/auth";
+import { SECURITY_HEADERS } from "@/lib/security/sanitize";
 
 /**
  * GET /api/settings/content-config
  * Returns frontend-safe content configuration values.
+ * Requires authentication.
  */
 export async function GET() {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401, headers: SECURITY_HEADERS }
+      );
+    }
+
     const [row] = await db
       .select({ maxTagsPerPost: settings.maxTagsPerPost })
       .from(settings)
@@ -18,9 +29,12 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       maxTagsPerPost: row?.maxTagsPerPost ?? 20,
-    });
+    }, { headers: SECURITY_HEADERS });
   } catch (error) {
     console.error("Error fetching content config:", error);
-    return NextResponse.json({ success: true, maxTagsPerPost: 20 });
+    return NextResponse.json(
+      { success: true, maxTagsPerPost: 20 },
+      { headers: SECURITY_HEADERS }
+    );
   }
 }

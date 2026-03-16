@@ -184,7 +184,7 @@ export async function middleware(request: NextRequest) {
     const basicSecurityHeaders = {
       "X-Content-Type-Options": "nosniff",
       "X-Frame-Options": "DENY",
-      "X-XSS-Protection": "1; mode=block",
+      "X-XSS-Protection": "0",
     };
 
     return NextResponse.json(

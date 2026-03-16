@@ -22,12 +22,12 @@ export async function updateSession(request: NextRequest) {
           // Recreate response to ensure new cookies propagate
           supabaseResponse = NextResponse.next({ request });
 
+          const isProduction = process.env.NODE_ENV === "production";
           cookiesToSet.forEach(({ name, value, options }) => {
-            // Enforce additional security: SameSite=Strict & Secure
             supabaseResponse.cookies.set(name, value, {
               ...options,
               sameSite: "strict",
-              secure: true,
+              secure: isProduction,
             });
           });
         },
@@ -59,10 +59,9 @@ export async function updateSession(request: NextRequest) {
     console.error("Supabase session refresh error:", error);
   }
 
-  // Security headers for all responses
   supabaseResponse.headers.set("X-Content-Type-Options", "nosniff");
   supabaseResponse.headers.set("X-Frame-Options", "DENY");
-  supabaseResponse.headers.set("X-XSS-Protection", "1; mode=block");
+  supabaseResponse.headers.set("X-XSS-Protection", "0");
   supabaseResponse.headers.set(
     "Referrer-Policy",
     "strict-origin-when-cross-origin"

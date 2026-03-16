@@ -234,12 +234,12 @@ export const updatePostAction = withCSRFProtection(
       }
       const user = currentUser.userData;
 
-      // Extract form data
+      // Extract and sanitize form data
       const id = formData.get("id") as string;
-      const title = formData.get("title") as string;
+      const rawTitle = formData.get("title") as string;
       const rawSlug = formData.get("slug") as string;
-      const description = formData.get("description") as string;
-      const content = formData.get("content") as string;
+      const rawDescription = formData.get("description") as string;
+      const rawContent = formData.get("content") as string;
       const uploadPath = formData.get("uploadPath") as string;
       const uploadFileType = formData.get("uploadFileType") as "IMAGE" | "VIDEO";
       const blurData = formData.get("blurData") as string;
@@ -250,6 +250,10 @@ export const updatePostAction = withCSRFProtection(
       const subcategory = formData.get("subcategory") as string;
       const tagsInputUpdate = formData.get("tags") as string;
       const isPremium = formData.get("isPremium") === "on";
+
+      const title = sanitizeInput(rawTitle);
+      const description = rawDescription ? sanitizeInput(rawDescription) : null;
+      const content = sanitizeContent(rawContent);
 
       // Validate required fields
       if (!id || !title || !content || !category) {
@@ -368,7 +372,7 @@ export const updatePostAction = withCSRFProtection(
       }
 
       const newTagNames = tagsInputUpdate
-        ? tagsInputUpdate.split(",").map((tag) => tag.trim()).filter(Boolean)
+        ? tagsInputUpdate.split(",").map((tag) => sanitizeInput(tag.trim())).filter(Boolean)
         : [];
       const maxTagsPerPostUpdate = await (
         await import("@/lib/settings")
@@ -406,7 +410,7 @@ export const updatePostAction = withCSRFProtection(
         .set({
           title,
           slug,
-          description: description || null,
+          description: description ?? null,
           content,
           uploadPath: uploadPath || null,
           uploadFileType: uploadFileType ?? null,

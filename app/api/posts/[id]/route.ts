@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPostById } from "@/lib/content";
 import { getPublicUrl } from "@/lib/image/storage";
+import { SECURITY_HEADERS } from "@/lib/security/sanitize";
 import { db } from "@/lib/db";
 import { bookmarks, favorites } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -50,15 +51,19 @@ async function handlePostRequest(request: NextRequest, { params }: RouteParams, 
     const user = currentUser || undefined;
 
     if (!post) {
-      return NextResponse.json({ error: "Post not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Post not found" },
+        { status: 404, headers: SECURITY_HEADERS }
+      );
     }
 
-    // Check if post is published - unpublished posts can only be viewed by author and admin
     if (!post.isPublished) {
-      // Only check unpublished access if user is present (dashboard route)
       const canViewUnpublished = user && (post.authorId === user.userData?.id || user.userData?.role === "ADMIN");
       if (!canViewUnpublished) {
-        return NextResponse.json({ error: "Post not found" }, { status: 404 });
+        return NextResponse.json(
+          { error: "Post not found" },
+          { status: 404, headers: SECURITY_HEADERS }
+        );
       }
     }
 
@@ -93,12 +98,12 @@ async function handlePostRequest(request: NextRequest, { params }: RouteParams, 
       uploadVideo: post.uploadPath && post.uploadFileType === "VIDEO"
         ? await getPublicUrl(post.uploadPath)
         : null,
-    });
+    }, { headers: SECURITY_HEADERS });
   } catch (error) {
     console.error("Post API error:", error);
     return NextResponse.json(
       { error: "Failed to fetch post" },
-      { status: 500 }
+      { status: 500, headers: SECURITY_HEADERS }
     );
   }
 }
