@@ -1,6 +1,8 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { categories as categoriesTable, posts } from "@/lib/db/schema";
+import { eq, ne, and, sql } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { revalidateCache, CACHE_TAGS } from "@/lib/cache";
@@ -38,31 +40,32 @@ export const createCategoryAction = withCSRFProtection(
         throw new Error("Category name is required");
       }
 
-      // Check if slug is unique
-      const existingCategory = await prisma.category.findUnique({
-        where: { slug },
-      });
+      const [existingCategory] = await db
+        .select()
+        .from(categoriesTable)
+        .where(eq(categoriesTable.slug, slug))
+        .limit(1);
 
       if (existingCategory) {
         throw new Error("A category with this slug already exists");
       }
 
-      // Create the category
-      const newCategory = await prisma.category.create({
-        data: {
+      const [newCategory] = await db
+        .insert(categoriesTable)
+        .values({
           name,
           slug,
           description: description || null,
           parentId: parentId && parentId !== "none" ? parentId : null,
-        },
-      });
+        })
+        .returning();
 
       revalidatePath("/categories");
       await revalidateCache(CACHE_TAGS.CATEGORIES);
       return {
         success: true,
-        message: `Category "${newCategory.name}" created successfully`,
-        category: newCategory,
+        message: `Category "${newCategory!.name}" created successfully`,
+        category: newCategory!,
       };
     } catch (error) {
       console.error("Error creating category:", error);
@@ -109,66 +112,62 @@ export const updateCategoryAction = withCSRFProtection(
         throw new Error("A category cannot be its own parent");
       }
 
-      // Check if category exists
-      const existingCategory = await prisma.category.findUnique({
-        where: { id },
-      });
+      const [existingCategory] = await db
+        .select()
+        .from(categoriesTable)
+        .where(eq(categoriesTable.id, id))
+        .limit(1);
 
       if (!existingCategory) {
         throw new Error("Category not found");
       }
 
-      // Check for slug conflicts (excluding current category)
-      const slugConflict = await prisma.category.findFirst({
-        where: {
-          slug,
-          id: { not: id },
-        },
-      });
+      const [slugConflict] = await db
+        .select()
+        .from(categoriesTable)
+        .where(and(eq(categoriesTable.slug, slug), ne(categoriesTable.id, id)))
+        .limit(1);
 
       if (slugConflict) {
         throw new Error("A category with this slug already exists");
       }
 
-      // If setting a parent, validate it exists and doesn't create circular reference
       if (parentId) {
-        const parentCategory = await prisma.category.findUnique({
-          where: { id: parentId },
-          include: {
-            parent: true,
-          },
-        });
+        const [parentCategory] = await db
+          .select()
+          .from(categoriesTable)
+          .where(eq(categoriesTable.id, parentId))
+          .limit(1);
 
         if (!parentCategory) {
           throw new Error("Parent category not found");
         }
 
-        // Check if the parent is a child of this category (would create circular reference)
-        if (parentCategory.parent?.id === id) {
+        if (parentCategory.parentId === id) {
           throw new Error(
             "Cannot create circular reference in category hierarchy"
           );
         }
       }
 
-      // Update the category
-      const updatedCategory = await prisma.category.update({
-        where: { id },
-        data: {
+      const [updatedCategory] = await db
+        .update(categoriesTable)
+        .set({
           name,
           slug,
           description: description || null,
           parentId: parentId || null,
           updatedAt: new Date(),
-        },
-      });
+        })
+        .where(eq(categoriesTable.id, id))
+        .returning();
 
       revalidatePath("/categories");
       await revalidateCache(CACHE_TAGS.CATEGORIES);
       return {
         success: true,
-        message: `Category "${updatedCategory.name}" updated successfully`,
-        category: updatedCategory,
+        message: `Category "${updatedCategory!.name}" updated successfully`,
+        category: updatedCategory!,
       };
     } catch (error) {
       console.error("Error updating category:", error);
@@ -201,20 +200,30 @@ export const deleteCategoryAction = withCSRFProtection(
         throw new Error("Category ID is required");
       }
 
-      // Check if category exists and get related data
-      const category = await prisma.category.findUnique({
-        where: { id },
-        include: {
-          children: true,
-          posts: true,
-          _count: {
-            select: {
-              posts: true,
-              children: true,
+      const [categoryRow] = await db
+        .select()
+        .from(categoriesTable)
+        .where(eq(categoriesTable.id, id))
+        .limit(1);
+
+      const [postsCountRow] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(posts)
+        .where(eq(posts.categoryId, id));
+      const [childrenCountRow] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(categoriesTable)
+        .where(eq(categoriesTable.parentId, id));
+
+      const category = categoryRow
+        ? {
+            ...categoryRow,
+            _count: {
+              posts: postsCountRow?.count ?? 0,
+              children: childrenCountRow?.count ?? 0,
             },
-          },
-        },
-      });
+          }
+        : null;
 
       if (!category) {
         throw new Error("Category not found");
@@ -234,10 +243,7 @@ export const deleteCategoryAction = withCSRFProtection(
         );
       }
 
-      // Safe to delete - category has no posts or subcategories
-      await prisma.category.delete({
-        where: { id },
-      });
+      await db.delete(categoriesTable).where(eq(categoriesTable.id, id));
 
       revalidatePath("/categories");
       await revalidateCache(CACHE_TAGS.CATEGORIES);

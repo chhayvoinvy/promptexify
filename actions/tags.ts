@@ -1,7 +1,9 @@
 "use server";
 
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { tags as tagsTable, postToTag } from "@/lib/db/schema";
+import { eq, or, ilike, ne, and, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createTagSchema, updateTagSchema } from "@/lib/schemas";
@@ -88,15 +90,11 @@ export const createTagAction = withCSRFProtection(
         };
       }
 
-      // Check for slug conflicts (case-insensitive for name, exact for slug)
-      const existingTag = await prisma.tag.findFirst({
-        where: {
-          OR: [
-            { name: { equals: sanitizedName, mode: "insensitive" } },
-            { slug: finalSlug },
-          ],
-        },
-      });
+      const [existingTag] = await db
+        .select()
+        .from(tagsTable)
+        .where(or(ilike(tagsTable.name, sanitizedName), eq(tagsTable.slug, finalSlug)))
+        .limit(1);
 
       if (existingTag) {
         const isNameMatch =
@@ -121,13 +119,7 @@ export const createTagAction = withCSRFProtection(
         }
       }
 
-      // Create the tag
-      await prisma.tag.create({
-        data: {
-          name: sanitizedName,
-          slug: finalSlug,
-        },
-      });
+      await db.insert(tagsTable).values({ name: sanitizedName, slug: finalSlug });
 
       // Invalidate tags cache so new tag appears immediately
       revalidateCache(CACHE_TAGS.TAGS);
@@ -227,25 +219,22 @@ export const updateTagAction = withCSRFProtection(
         );
       }
 
-      // Check if tag exists
-      const existingTag = await prisma.tag.findUnique({
-        where: { id },
-      });
+      const [existingTag] = await db.select().from(tagsTable).where(eq(tagsTable.id, id)).limit(1);
 
       if (!existingTag) {
         throw new Error("Tag not found");
       }
 
-      // Check for conflicts (excluding current tag)
-      const existingConflict = await prisma.tag.findFirst({
-        where: {
-          OR: [
-            { name: { equals: sanitizedName, mode: "insensitive" } },
-            { slug: finalSlug },
-          ],
-          id: { not: id },
-        },
-      });
+      const [existingConflict] = await db
+        .select()
+        .from(tagsTable)
+        .where(
+          and(
+            or(ilike(tagsTable.name, sanitizedName), eq(tagsTable.slug, finalSlug)),
+            ne(tagsTable.id, id)
+          )
+        )
+        .limit(1);
 
       if (existingConflict) {
         const isNameMatch =
@@ -261,15 +250,10 @@ export const updateTagAction = withCSRFProtection(
         }
       }
 
-      // Update the tag
-      await prisma.tag.update({
-        where: { id },
-        data: {
-          name: sanitizedName,
-          slug: finalSlug,
-          updatedAt: new Date(),
-        },
-      });
+      await db
+        .update(tagsTable)
+        .set({ name: sanitizedName, slug: finalSlug, updatedAt: new Date() })
+        .where(eq(tagsTable.id, id));
 
       // Invalidate tags cache so updated tag appears immediately
       revalidateCache(CACHE_TAGS.TAGS);
@@ -314,17 +298,14 @@ export const deleteTagAction = withCSRFProtection(
         throw new Error("Tag ID is required");
       }
 
-      // Check if tag exists and get post count
-      const existingTag = await prisma.tag.findUnique({
-        where: { id },
-        include: {
-          _count: {
-            select: {
-              posts: true,
-            },
-          },
-        },
-      });
+      const [existingTagRow] = await db.select().from(tagsTable).where(eq(tagsTable.id, id)).limit(1);
+      const [countRow] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(postToTag)
+        .where(eq(postToTag.B, id));
+      const existingTag = existingTagRow
+        ? { ...existingTagRow, _count: { posts: countRow?.count ?? 0 } }
+        : null;
 
       if (!existingTag) {
         throw new Error("Tag not found");
@@ -337,10 +318,7 @@ export const deleteTagAction = withCSRFProtection(
         );
       }
 
-      // Delete the tag
-      await prisma.tag.delete({
-        where: { id },
-      });
+      await db.delete(tagsTable).where(eq(tagsTable.id, id));
 
       // Invalidate tags cache so deleted tag is removed immediately
       revalidateCache(CACHE_TAGS.TAGS);

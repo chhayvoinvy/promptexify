@@ -4,7 +4,9 @@ import { getCurrentUser } from "@/lib/auth";
 import { handleAuthRedirect } from "./auth";
 import { revalidatePath } from "next/cache";
 import { SecurityMonitor, SecurityEventType } from "@/lib/security/monitor";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { logs } from "@/lib/db/schema";
+import { eq, and, desc, sql } from "drizzle-orm";
 
 // Define types for automation actions
 interface ActionResult {
@@ -47,19 +49,14 @@ export async function getGenerationLogsAction(): Promise<ActionResult> {
   try {
     await requireAdminAccess("get_generation_logs");
 
-    // Fetch automation logs from database
-    const logs = await prisma.log.findMany({
-      where: {
-        action: "automation",
-        entityType: "content_generation",
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      take: 50, // Limit to last 50 logs
-    });
+    const logRows = await db
+      .select()
+      .from(logs)
+      .where(and(eq(logs.action, "automation"), eq(logs.entityType, "content_generation")))
+      .orderBy(desc(logs.createdAt))
+      .limit(50);
 
-    const result = logs.map((log) => {
+    const result = logRows.map((log) => {
       // Safely extract metadata with proper type checking
       const metadata =
         log.metadata &&
@@ -117,20 +114,20 @@ export async function clearGenerationLogsAction(): Promise<ActionResult> {
   try {
     const user = await requireAdminAccess("clear_generation_logs");
 
-    // Delete all automation logs from database
-    const deleteResult = await prisma.log.deleteMany({
-      where: {
-        action: "automation",
-        entityType: "content_generation",
-      },
-    });
-
+    const [countRow] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(logs)
+      .where(and(eq(logs.action, "automation"), eq(logs.entityType, "content_generation")));
+    const deletedCount = countRow?.count ?? 0;
+    await db
+      .delete(logs)
+      .where(and(eq(logs.action, "automation"), eq(logs.entityType, "content_generation")));
     await SecurityMonitor.logSecurityEvent(
       SecurityEventType.SUSPICIOUS_REQUEST,
       {
         action: "logs_cleared",
         userId: user.id,
-        deletedCount: deleteResult.count,
+        deletedCount,
       },
       "medium"
     );
@@ -139,7 +136,7 @@ export async function clearGenerationLogsAction(): Promise<ActionResult> {
 
     return {
       success: true,
-      message: `Successfully cleared ${deleteResult.count} generation logs`,
+      message: `Successfully cleared ${deletedCount} generation logs`,
     };
   } catch (error) {
     console.error("Error clearing generation logs:", error);

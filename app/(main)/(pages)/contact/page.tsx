@@ -1,5 +1,6 @@
 import { Container } from "@/components/ui/container";
 import { getMetadata } from "@/config/seo";
+import Link from "next/link";
 
 export const metadata = getMetadata("contact");
 
@@ -34,13 +35,13 @@ export default function ContactPage() {
             <h2 className="text-lg font-semibold mb-2">Privacy &amp; Legal</h2>
             <p className="text-muted-foreground text-sm">
               For privacy-related requests or legal inquiries, please refer to our{" "}
-              <a href="/privacy" className="text-primary underline underline-offset-4">
+              <Link href="/privacy" className="text-primary underline underline-offset-4">
                 Privacy Policy
-              </a>{" "}
+              </Link>{" "}
               and{" "}
-              <a href="/terms" className="text-primary underline underline-offset-4">
+              <Link href="/terms" className="text-primary underline underline-offset-4">
                 Terms of Use
-              </a>
+              </Link>
               .
             </p>
           </div>

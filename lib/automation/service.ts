@@ -5,7 +5,9 @@
  * Consolidates all automation functionality following Next.js best practices
  */
 
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { logs } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { SecurityMonitor, SecurityEventType } from "@/lib/security/monitor";
 import { automationConfig } from "./config";
 import { ContentFileSchema, sanitizeContent } from "./validation";
@@ -14,7 +16,6 @@ import {
   processContentFile,
   saveGenerationLog,
   getGenerationLogs,
-  type PrismaTransactionClient,
 } from "./database";
 import type {
   ContentFile,
@@ -293,12 +294,8 @@ export class AutomationService {
       }
 
       // Use transaction for data consistency
-      await prisma.$transaction(
-        (tx: PrismaTransactionClient) =>
-          processContentFile(tx, contentData, automationConfig.authorId, stats),
-        {
-          timeout: automationConfig.performance.transactionTimeout,
-        }
+      await db.transaction((tx) =>
+        processContentFile(tx, contentData, automationConfig.authorId, stats)
       );
 
       if (automationConfig.logging.enabled) {
@@ -328,11 +325,7 @@ export class AutomationService {
    * Clears generation logs (admin only)
    */
   static async clearGenerationLogs(): Promise<void> {
-    await prisma.log.deleteMany({
-      where: {
-        action: "automation",
-      },
-    });
+    await db.delete(logs).where(eq(logs.action, "automation"));
     if (automationConfig.logging.enabled) {
       console.log("Cleared all generation logs.");
     }

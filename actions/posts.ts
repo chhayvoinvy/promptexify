@@ -1,12 +1,20 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import {
+  posts,
+  categories,
+  tags,
+  postToTag,
+  media,
+} from "@/lib/db/schema";
+import type { PostStatus } from "@/lib/db/schema";
+import { eq, and, inArray, isNull } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { handleAuthRedirect } from "./auth";
 import { revalidateCache, CACHE_TAGS } from "@/lib/cache";
-import { PostStatus } from "@/app/generated/prisma";
 import { withCSRFProtection } from "@/lib/security/csp";
 
 import {
@@ -44,7 +52,7 @@ export const createPostAction = withCSRFProtection(
       const previewVideoPath = formData.get("previewVideoPath") as string;
       const category = formData.get("category") as string;
       const subcategory = formData.get("subcategory") as string;
-      const tags = formData.get("tags") as string;
+      const tagsInput = formData.get("tags") as string;
 
       // Sanitize inputs for enhanced security
       const title = sanitizeInput(rawTitle);
@@ -64,37 +72,26 @@ export const createPostAction = withCSRFProtection(
       let counter = 1;
       
       while (true) {
-        const existingPost = await prisma.post.findFirst({
-          where: { slug },
-          select: { id: true },
-        });
-        
-        if (!existingPost) {
-          break; // Slug is unique
-        }
-        
-        // Generate new slug with counter
+        const [existingPost] = await db
+          .select({ id: posts.id })
+          .from(posts)
+          .where(eq(posts.slug, slug))
+          .limit(1);
+        if (!existingPost) break;
         slug = `${baseSlug}-${counter}`;
         counter++;
-        
-        // Prevent infinite loop
-        if (counter > 1000) {
-          throw new Error("Unable to generate unique slug");
-        }
+        if (counter > 1000) throw new Error("Unable to generate unique slug");
       }
 
-      // Handle publish/status logic based on user role
       let isPublished = false;
-      let status: PostStatus = PostStatus.DRAFT;
+      let status: PostStatus = "DRAFT";
 
       if (user.role === "ADMIN") {
-        // Admin can publish directly and control status
         isPublished = formData.get("isPublished") === "on";
-        status = isPublished ? PostStatus.APPROVED : PostStatus.DRAFT;
+        status = isPublished ? "APPROVED" : "DRAFT";
       } else {
-        // Regular users create posts with PENDING_APPROVAL status
         isPublished = false;
-        status = PostStatus.PENDING_APPROVAL;
+        status = "PENDING_APPROVAL";
       }
 
       const isPremium = formData.get("isPremium") === "on";
@@ -109,23 +106,19 @@ export const createPostAction = withCSRFProtection(
         subcategory && subcategory !== "" && subcategory !== "none"
           ? subcategory
           : category;
-      const categoryRecord = await prisma.category.findUnique({
-        where: { slug: selectedCategorySlug },
-      });
+      const [categoryRecord] = await db
+        .select()
+        .from(categories)
+        .where(eq(categories.slug, selectedCategorySlug))
+        .limit(1);
+      if (!categoryRecord) throw new Error("Invalid category");
 
-      if (!categoryRecord) {
-        throw new Error("Invalid category");
-      }
-
-      // Process and sanitize tags
-      const tagNames = tags
-        ? tags
+      const tagNames = tagsInput
+        ? tagsInput
             .split(",")
             .map((tag) => sanitizeInput(tag.trim()))
             .filter(Boolean)
         : [];
-
-      // Enforce max tags per post according to settings
       const maxTagsPerPost = await (
         await import("@/lib/settings")
       ).getMaxTagsPerPost();
@@ -133,60 +126,57 @@ export const createPostAction = withCSRFProtection(
         throw new Error(`A post may only have up to ${maxTagsPerPost} tags`);
       }
 
-      // Batch tag upserts in a single transaction to avoid N+1 queries
-      const tagConnections = await prisma.$transaction(
-        tagNames
-          .map((tagName) => {
-            const tagSlug = sanitizeTagSlug(tagName);
-            if (!tagSlug) return null;
-            return prisma.tag.upsert({
-              where: { slug: tagSlug },
-              update: {},
-              create: { name: tagName, slug: tagSlug },
-              select: { id: true },
-            });
-          })
-          .filter((op): op is NonNullable<typeof op> => op !== null)
-      );
+      const { newPost } = await db.transaction(async (tx) => {
+        const tagIds: string[] = [];
+        for (const tagName of tagNames) {
+          const tagSlug = sanitizeTagSlug(tagName);
+          if (!tagSlug) continue;
+          const [row] = await tx
+            .insert(tags)
+            .values({ name: tagName, slug: tagSlug })
+            .onConflictDoUpdate({
+              target: tags.slug,
+              set: { name: tagName, updatedAt: new Date() },
+            })
+            .returning({ id: tags.id });
+          if (row) tagIds.push(row.id);
+        }
 
-      // Create the post
-      const newPost = await prisma.post.create({
-        data: {
-          title,
-          slug,
-          description: description || null,
-          content,
-          uploadPath: uploadPath || null,
-          uploadFileType: uploadFileType || null,
-          previewPath: previewPath || null,
-          previewVideoPath: previewVideoPath || null,
-          blurData: blurData || null,
-          isPremium,
-          isPublished,
-          status: status,
-          authorId: user.id,
-          categoryId: categoryRecord.id,
-          tags: {
-            connect: tagConnections,
-          },
-        },
+        const [inserted] = await tx
+          .insert(posts)
+          .values({
+            title,
+            slug,
+            description: description || null,
+            content,
+            uploadPath: uploadPath || null,
+            uploadFileType: uploadFileType ?? null,
+            previewPath: previewPath || null,
+            previewVideoPath: previewVideoPath || null,
+            blurData: blurData || null,
+            isPremium,
+            isPublished,
+            status,
+            authorId: user.id,
+            categoryId: categoryRecord.id,
+          })
+          .returning();
+        if (!inserted) throw new Error("Failed to create post");
+
+        if (tagIds.length > 0) {
+          await tx.insert(postToTag).values(
+            tagIds.map((B) => ({ A: inserted.id, B }))
+          );
+        }
+        return { newPost: inserted };
       });
 
-      // Link media to the post
       const mediaIds = [uploadMediaId].filter(Boolean);
       if (mediaIds.length > 0) {
-        await prisma.media.updateMany({
-          where: {
-            id: {
-              in: mediaIds,
-            },
-            // Ensure we don't overwrite another post's media
-            postId: null,
-          },
-          data: {
-            postId: newPost.id,
-          },
-        });
+        await db
+          .update(media)
+          .set({ postId: newPost.id })
+          .where(and(inArray(media.id, mediaIds), isNull(media.postId)));
       }
 
       // Revalidate cache tags for new post and tags (since tags may have been created)
@@ -258,7 +248,7 @@ export const updatePostAction = withCSRFProtection(
       const previewVideoPath = formData.get("previewVideoPath") as string;
       const category = formData.get("category") as string;
       const subcategory = formData.get("subcategory") as string;
-      const tags = formData.get("tags") as string;
+      const tagsInputUpdate = formData.get("tags") as string;
       const isPremium = formData.get("isPremium") === "on";
 
       // Validate required fields
@@ -279,36 +269,29 @@ export const updatePostAction = withCSRFProtection(
       let counter = 1;
       
       while (true) {
-        const existingPost = await prisma.post.findFirst({
-          where: { 
-            slug,
-            NOT: { id } // Exclude current post from uniqueness check
-          },
-          select: { id: true },
-        });
-        
-        if (!existingPost) {
-          break; // Slug is unique
-        }
-        
-        // Generate new slug with counter
+        const [existingBySlug] = await db
+          .select({ id: posts.id })
+          .from(posts)
+          .where(eq(posts.slug, slug))
+          .limit(1);
+        const conflict = existingBySlug && existingBySlug.id !== id;
+        if (!conflict) break;
         slug = `${baseSlug}-${counter}`;
         counter++;
-        
-        // Prevent infinite loop
-        if (counter > 1000) {
-          throw new Error("Unable to generate unique slug");
-        }
+        if (counter > 1000) throw new Error("Unable to generate unique slug");
       }
 
-      // Check if post exists and user has permission
-      const existingPost = await prisma.post.findUnique({
-        where: { id },
-        include: {
-          author: true,
-          media: true,
-        },
-      });
+      const [postRow] = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, id))
+        .limit(1);
+      if (!postRow) throw new Error("Post not found");
+      const mediaRows = await db
+        .select({ id: media.id })
+        .from(media)
+        .where(eq(media.postId, id));
+      const existingPost = { ...postRow, media: mediaRows };
 
       if (!existingPost) {
         throw new Error("Post not found");
@@ -337,29 +320,27 @@ export const updatePostAction = withCSRFProtection(
         throw new Error("Unauthorized: Invalid user role");
       }
 
-      // Handle publish/status logic based on user role
       let isPublished = existingPost.isPublished;
       let status: PostStatus = existingPost.status as PostStatus;
 
       if (user.role === "ADMIN") {
-        // Admin can control publish status and status
         const requestedPublish = formData.get("isPublished") === "on";
         isPublished = requestedPublish;
-        status = requestedPublish ? PostStatus.APPROVED : PostStatus.DRAFT;
+        status = requestedPublish ? "APPROVED" : "DRAFT";
       } else {
-        // Regular users cannot change publish status - stays pending approval
         isPublished = false;
-        status = PostStatus.PENDING_APPROVAL;
+        status = "PENDING_APPROVAL";
       }
 
-      // Get category ID - prefer subcategory if provided, otherwise use main category
       const selectedCategorySlug =
         subcategory && subcategory !== "" && subcategory !== "none"
           ? subcategory
           : category;
-      const categoryRecord = await prisma.category.findUnique({
-        where: { slug: selectedCategorySlug },
-      });
+      const [categoryRecord] = await db
+        .select()
+        .from(categories)
+        .where(eq(categories.slug, selectedCategorySlug))
+        .limit(1);
 
       if (!categoryRecord) {
         throw new Error("Invalid category");
@@ -379,30 +360,16 @@ export const updatePostAction = withCSRFProtection(
       // IDs of media to be newly associated with the post
       const mediaToLink = newMediaIds.filter((id) => !oldMediaIds.includes(id));
 
-      // Disassociate old media that is no longer used
       if (mediaToUnlink.length > 0) {
-        await prisma.media.updateMany({
-          where: {
-            id: {
-              in: mediaToUnlink,
-            },
-            postId: existingPost.id,
-          },
-          data: {
-            postId: null,
-          },
-        });
+        await db
+          .update(media)
+          .set({ postId: null })
+          .where(and(inArray(media.id, mediaToUnlink), eq(media.postId, existingPost.id)));
       }
 
-      // Process and sanitize tags, and disconnect old tags
-      const newTagNames = tags
-        ? tags
-            .split(",")
-            .map((tag) => tag.trim())
-            .filter(Boolean)
+      const newTagNames = tagsInputUpdate
+        ? tagsInputUpdate.split(",").map((tag) => tag.trim()).filter(Boolean)
         : [];
-
-      // Enforce max tags per post according to settings
       const maxTagsPerPostUpdate = await (
         await import("@/lib/settings")
       ).getMaxTagsPerPost();
@@ -412,57 +379,53 @@ export const updatePostAction = withCSRFProtection(
         );
       }
 
-      // Batch tag upserts in a single transaction to avoid N+1 queries
-      const newTagConnections = await prisma.$transaction(
-        newTagNames
-          .map((tagName) => {
-            const tagSlug = sanitizeTagSlug(tagName);
-            return prisma.tag.upsert({
-              where: { slug: tagSlug },
-              update: {},
-              create: { name: tagName, slug: tagSlug },
-              select: { id: true },
-            });
+      const tagIds: string[] = [];
+      for (const tagName of newTagNames) {
+        const tagSlug = sanitizeTagSlug(tagName);
+        if (!tagSlug) continue;
+        const [row] = await db
+          .insert(tags)
+          .values({ name: tagName, slug: tagSlug })
+          .onConflictDoUpdate({
+            target: tags.slug,
+            set: { name: tagName, updatedAt: new Date() },
           })
-      );
+          .returning({ id: tags.id });
+        if (row) tagIds.push(row.id);
+      }
 
-      // Update the post
-      const updatedPost = await prisma.post.update({
-        where: { id },
-        data: {
+      await db.transaction(async (tx) => {
+        await tx.delete(postToTag).where(eq(postToTag.A, id));
+        if (tagIds.length > 0) {
+          await tx.insert(postToTag).values(tagIds.map((B) => ({ A: id, B })));
+        }
+      });
+
+      await db
+        .update(posts)
+        .set({
           title,
           slug,
           description: description || null,
           content,
           uploadPath: uploadPath || null,
-          uploadFileType: uploadFileType || null,
+          uploadFileType: uploadFileType ?? null,
           previewPath: previewPath || null,
           previewVideoPath: previewVideoPath || null,
           blurData: blurData || null,
           isPremium,
           isPublished,
-          status: status,
+          status,
           categoryId: categoryRecord.id,
-          tags: {
-            set: newTagConnections,
-          },
           updatedAt: new Date(),
-        },
-      });
+        })
+        .where(eq(posts.id, id));
 
-      // Associate new media with the post
       if (mediaToLink.length > 0) {
-        await prisma.media.updateMany({
-          where: {
-            id: {
-              in: mediaToLink,
-            },
-            postId: null, // Only link unassociated media
-          },
-          data: {
-            postId: updatedPost.id,
-          },
-        });
+        await db
+          .update(media)
+          .set({ postId: id })
+          .where(and(inArray(media.id, mediaToLink), isNull(media.postId)));
       }
 
 
@@ -530,29 +493,25 @@ export async function approvePostAction(postId: string) {
       throw new Error("Invalid post ID");
     }
 
-    // Get current post status
-    const existingPost = await prisma.post.findUnique({
-      where: { id: postId },
-      select: { id: true, status: true, title: true },
-    });
+    const [existingPost] = await db
+      .select({ id: posts.id, status: posts.status, title: posts.title })
+      .from(posts)
+      .where(eq(posts.id, postId))
+      .limit(1);
 
-    if (!existingPost) {
-      throw new Error("Post not found");
-    }
-
+    if (!existingPost) throw new Error("Post not found");
     if (existingPost.status !== "PENDING_APPROVAL") {
       throw new Error("Post is not pending approval");
     }
 
-    // Approve and publish the post
-    await prisma.post.update({
-      where: { id: postId },
-      data: {
+    await db
+      .update(posts)
+      .set({
         isPublished: true,
-        status: PostStatus.APPROVED,
+        status: "APPROVED",
         updatedAt: new Date(),
-      },
-    });
+      })
+      .where(eq(posts.id, postId));
 
     // Revalidate relevant paths and caches
     revalidatePath("/posts");
@@ -599,28 +558,25 @@ export async function rejectPostAction(postId: string) {
       throw new Error("Invalid post ID");
     }
 
-    // Fetch current status
-    const existingPost = await prisma.post.findUnique({
-      where: { id: postId },
-      select: { id: true, status: true, title: true },
-    });
+    const [existingPost] = await db
+      .select({ id: posts.id, status: posts.status, title: posts.title })
+      .from(posts)
+      .where(eq(posts.id, postId))
+      .limit(1);
 
-    if (!existingPost) {
-      throw new Error("Post not found");
-    }
-
+    if (!existingPost) throw new Error("Post not found");
     if (existingPost.status !== "PENDING_APPROVAL") {
       throw new Error("Only posts pending approval can be rejected");
     }
 
-    await prisma.post.update({
-      where: { id: postId },
-      data: {
+    await db
+      .update(posts)
+      .set({
         isPublished: false,
-        status: PostStatus.REJECTED,
+        status: "REJECTED",
         updatedAt: new Date(),
-      },
-    });
+      })
+      .where(eq(posts.id, postId));
 
     // Revalidate relevant caches
     revalidatePath("/posts");
@@ -662,39 +618,33 @@ export async function deletePostAction(postId: string) {
       throw new Error("Invalid post ID");
     }
 
-    // Fetch post to verify permissions and get associated media
-    const existingPost = await prisma.post.findUnique({
-      where: { id: postId },
-      select: {
-        id: true,
-        title: true,
-        authorId: true,
-        isPublished: true,
-        status: true,
-        uploadPath: true,
-        uploadFileType: true,
-        previewPath: true,
-        previewVideoPath: true,
-        media: {
-          select: {
-            id: true,
-            relativePath: true,
-            mimeType: true,
-            filename: true,
-          },
-        },
-        _count: {
-          select: {
-            bookmarks: true,
-            favorites: true,
-          },
-        },
-      },
-    });
+    const [postRow] = await db
+      .select({
+        id: posts.id,
+        title: posts.title,
+        authorId: posts.authorId,
+        isPublished: posts.isPublished,
+        status: posts.status,
+        uploadPath: posts.uploadPath,
+        uploadFileType: posts.uploadFileType,
+        previewPath: posts.previewPath,
+        previewVideoPath: posts.previewVideoPath,
+      })
+      .from(posts)
+      .where(eq(posts.id, postId))
+      .limit(1);
+    if (!postRow) throw new Error("Post not found");
 
-    if (!existingPost) {
-      throw new Error("Post not found");
-    }
+    const mediaRows = await db
+      .select({
+        id: media.id,
+        relativePath: media.relativePath,
+        mimeType: media.mimeType,
+        filename: media.filename,
+      })
+      .from(media)
+      .where(eq(media.postId, postId));
+    const existingPost = { ...postRow, media: mediaRows };
 
     // Check user permissions
     if (user.role === "ADMIN") {
@@ -803,18 +753,12 @@ export async function deletePostAction(postId: string) {
       }
     }
 
-    // Delete media records from database before deleting the post
     if (existingPost.media.length > 0) {
-      await prisma.media.deleteMany({
-        where: { postId: postId },
-      });
+      await db.delete(media).where(eq(media.postId, postId));
       console.log(`Deleted ${existingPost.media.length} media records from database`);
     }
 
-    // Delete post and all related data (cascading delete should handle other relations)
-    await prisma.post.delete({
-      where: { id: postId },
-    });
+    await db.delete(posts).where(eq(posts.id, postId));
 
     revalidatePath("/posts");
     revalidatePath("/");
@@ -860,37 +804,29 @@ export async function togglePostPublishAction(postId: string) {
       throw new Error("Invalid post ID");
     }
 
-    // Fetch the post to toggle
-    const existingPost = await prisma.post.findUnique({
-      where: { id: postId },
-      select: { id: true, isPublished: true, title: true },
-    });
+    const [existingPost] = await db
+      .select({ id: posts.id, isPublished: posts.isPublished, title: posts.title })
+      .from(posts)
+      .where(eq(posts.id, postId))
+      .limit(1);
 
-    if (!existingPost) {
-      throw new Error("Post not found");
-    }
+    if (!existingPost) throw new Error("Post not found");
 
-    // Toggle the published status and update status accordingly
     const newPublishedState = !existingPost.isPublished;
-    const newStatus = newPublishedState
-      ? PostStatus.APPROVED
-      : PostStatus.DRAFT;
+    const newStatus = newPublishedState ? "APPROVED" : "DRAFT";
 
-    await prisma.post.update({
-      where: { id: postId },
-      data: {
+    await db
+      .update(posts)
+      .set({
         isPublished: newPublishedState,
         status: newStatus,
         updatedAt: new Date(),
-      },
-    });
+      })
+      .where(eq(posts.id, postId));
 
-    // Revalidate relevant paths and caches
     revalidatePath("/posts");
-    // Removed entry path revalidation to prevent modal performance issues
-    revalidatePath("/"); // Home page might show published posts
+    revalidatePath("/");
 
-    // Invalidate cache for this specific post so edit page shows updated status
     revalidateCache([
       CACHE_TAGS.POSTS,
       CACHE_TAGS.POST_BY_ID,
@@ -932,24 +868,20 @@ export async function togglePostFeaturedAction(postId: string) {
       throw new Error("Invalid post ID");
     }
 
-    const existingPost = await prisma.post.findUnique({
-      where: { id: postId },
-      select: { id: true, isFeatured: true, title: true },
-    });
+    const [existingPost] = await db
+      .select({ id: posts.id, isFeatured: posts.isFeatured, title: posts.title })
+      .from(posts)
+      .where(eq(posts.id, postId))
+      .limit(1);
 
-    if (!existingPost) {
-      throw new Error("Post not found");
-    }
+    if (!existingPost) throw new Error("Post not found");
 
     const newFeaturedState = !existingPost.isFeatured;
 
-    await prisma.post.update({
-      where: { id: postId },
-      data: {
-        isFeatured: newFeaturedState,
-        updatedAt: new Date(),
-      },
-    });
+    await db
+      .update(posts)
+      .set({ isFeatured: newFeaturedState, updatedAt: new Date() })
+      .where(eq(posts.id, postId));
 
     revalidatePath("/posts");
     // Removed entry path revalidations to prevent modal performance issues

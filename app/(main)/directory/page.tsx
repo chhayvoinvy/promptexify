@@ -15,6 +15,7 @@ interface DirectoryPageProps {
     category?: string;
     subcategory?: string;
     premium?: string;
+    sort?: string;
   }>;
 }
 
@@ -24,28 +25,20 @@ export const dynamic = "force-dynamic";
 function DirectoryPageSkeleton() {
   return (
     <Container>
-      {/* Header: Two-column layout skeleton */}
+      {/* Header skeleton */}
       <div className="flex flex-col md:flex-row md:items-start md:justify-between mb-8 gap-4">
-        {/* Left: Title and description skeleton */}
         <div className="flex-1">
           <Skeleton className="h-8 w-48 mb-2" />
           <Skeleton className="h-5 w-full max-w-2xl" />
         </div>
-        {/* Right: Filter button skeleton */}
-        <div className="flex flex-col items-end gap-2 min-w-[200px]">
-          <Skeleton className="h-10 w-32" />
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-9 w-9 rounded-md" />
+          <Skeleton className="h-9 w-[140px] rounded-md" />
         </div>
       </div>
 
-      {/* Active filters skeleton - only show if there might be filters */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Skeleton className="h-4 w-20" />
-        <Skeleton className="h-5 w-24 rounded-full" />
-        <Skeleton className="h-5 w-28 rounded-full" />
-      </div>
-
       {/* Results summary skeleton */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6">
         <Skeleton className="h-4 w-48" />
       </div>
 
@@ -95,14 +88,20 @@ async function DirectoryContent({
         : 12;
 
     const {
-      q: searchQuery,
+      q: qParam,
       category: categoryFilter,
       subcategory: subcategoryFilter,
       premium: premiumFilter,
+      sort: sortParam,
     } = params;
 
+    const searchQuery = typeof qParam === "string" ? qParam.trim() : "";
     const userId = currentUser?.userData?.id;
     const userType = currentUser?.userData?.type || null;
+    const validSorts = ["latest", "popular", "trending", "relevance"] as const;
+    const sortBy = validSorts.includes(sortParam as typeof validSorts[number])
+      ? (sortParam as typeof validSorts[number])
+      : "latest";
 
     // Determine category ID for filtering
     let categoryId: string | undefined;
@@ -128,26 +127,24 @@ async function DirectoryContent({
       isPremium = false;
     }
 
-    // Use optimized queries based on search presence
     let result;
-    if (searchQuery && searchQuery.trim()) {
-      // Use search query
+    if (searchQuery.length > 0) {
       result = await Queries.posts.search(searchQuery, {
         page: 1,
-        limit: postsPageSize, // Use setting
+        limit: postsPageSize,
         userId,
         categoryId,
         isPremium,
+        sortBy: sortBy === "latest" ? "relevance" : sortBy,
       });
     } else {
-      // Use paginated query
       result = await Queries.posts.getPaginated({
         page: 1,
-        limit: postsPageSize, // Use setting
+        limit: postsPageSize,
         userId,
         categoryId,
         isPremium,
-        sortBy: "latest",
+        sortBy: sortBy === "relevance" ? "latest" : sortBy,
       });
     }
 
@@ -155,16 +152,11 @@ async function DirectoryContent({
 
     return (
       <DirectoryClientWrapper
-        categories={categories}
         initialPosts={posts}
         hasNextPage={pagination.hasNextPage}
         totalCount={pagination.totalCount}
         userType={userType}
         pageSize={postsPageSize}
-        searchQuery={searchQuery}
-        categoryFilter={categoryFilter}
-        subcategoryFilter={subcategoryFilter}
-        premiumFilter={premiumFilter}
         pagination={pagination}
       />
     );

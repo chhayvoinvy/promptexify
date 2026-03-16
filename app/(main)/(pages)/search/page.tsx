@@ -64,7 +64,7 @@ async function SearchResults({
       : 12;
 
   const {
-    q: searchQuery,
+    q: qParam,
     category: categoryFilter,
     subcategory: subcategoryFilter,
     premium: premiumFilter,
@@ -72,6 +72,7 @@ async function SearchResults({
     sort: sortBy = "latest",
   } = params;
 
+  const searchQuery = typeof qParam === "string" ? qParam.trim() : "";
   const userId = currentUser?.userData?.id;
   const userType = currentUser?.userData?.type || null;
 
@@ -100,15 +101,21 @@ async function SearchResults({
     isPremium = false;
   }
 
-  // Use search query if provided, otherwise show all posts
+  // Run search only when there is non-empty query; otherwise show paginated list
+  const validSortOptions = ["latest", "popular", "trending", "relevance"] as const;
+  const normalizedSort = validSortOptions.includes(sortBy as typeof validSortOptions[number])
+    ? (sortBy as typeof validSortOptions[number])
+    : "latest";
+
   let result;
-  if (searchQuery && searchQuery.trim()) {
+  if (searchQuery.length > 0) {
     result = await Queries.posts.search(searchQuery, {
       page,
       limit: postsPageSize,
       userId,
       categoryId,
       isPremium,
+      sortBy: normalizedSort === "latest" && page === 1 ? "relevance" : normalizedSort,
     });
   } else {
     result = await Queries.posts.getPaginated({
@@ -117,7 +124,7 @@ async function SearchResults({
       userId,
       categoryId,
       isPremium,
-      sortBy: sortBy as SortOption,
+      sortBy: normalizedSort as SortOption,
     });
   }
 
@@ -125,12 +132,9 @@ async function SearchResults({
 
   return (
     <SearchClientWrapper
-      categories={categories}
       posts={posts}
       userType={userType}
       searchQuery={searchQuery}
-      categoryFilter={categoryFilter}
-      subcategoryFilter={subcategoryFilter}
       pagination={pagination}
       searchParams={params}
     />

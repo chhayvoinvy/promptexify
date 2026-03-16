@@ -2,15 +2,15 @@
 
 /**
  * Migration Script: Ensure Preview Path Consistency
- * 
+ *
  * This script ensures that all posts have consistent preview path data
  * and migrates any missing preview paths where possible.
  */
 
-import { PrismaClient } from "@prisma/client";
+import { db } from "../lib/db";
+import { posts, media } from "../lib/db/schema";
+import { eq, and, isNotNull, inArray } from "drizzle-orm";
 import { getStorageConfig } from "../lib/image/storage";
-
-const prisma = new PrismaClient();
 
 interface MigrationStats {
   totalPosts: number;
@@ -36,34 +36,52 @@ async function migratePreviewPaths(): Promise<MigrationStats> {
   try {
     console.log("🔍 Starting preview path migration...");
 
-    // Get all posts with media
-    const posts = await prisma.post.findMany({
-      where: {
-        uploadPath: { not: null },
-        uploadFileType: { in: ["IMAGE", "VIDEO"] },
-      },
-      select: {
-        id: true,
-        title: true,
-        uploadPath: true,
-        uploadFileType: true,
-        previewPath: true,
-        previewVideoPath: true,
-        media: {
-          select: {
-            id: true,
-            relativePath: true,
-            mimeType: true,
-          },
-        },
-      },
-    });
+    const postsWithMediaList = await db
+      .select({
+        id: posts.id,
+        title: posts.title,
+        uploadPath: posts.uploadPath,
+        uploadFileType: posts.uploadFileType,
+        previewPath: posts.previewPath,
+        previewVideoPath: posts.previewVideoPath,
+      })
+      .from(posts)
+      .where(
+        and(
+          isNotNull(posts.uploadPath),
+          inArray(posts.uploadFileType, ["IMAGE", "VIDEO"])
+        )
+      );
 
-    stats.totalPosts = posts.length;
+    const postIds = postsWithMediaList.map((p) => p.id);
+    const mediaRows: { postId: string | null; id: string; relativePath: string; mimeType: string }[] =
+      postIds.length > 0
+        ? await db
+            .select({
+              postId: media.postId,
+              id: media.id,
+              relativePath: media.relativePath,
+              mimeType: media.mimeType,
+            })
+            .from(media)
+            .where(inArray(media.postId, postIds))
+        : [];
+    const mediaByPostId = new Map<string | null, typeof mediaRows>();
+    for (const m of mediaRows) {
+      const key = m.postId;
+      if (!mediaByPostId.has(key)) mediaByPostId.set(key, []);
+      mediaByPostId.get(key)!.push(m);
+    }
+
+    const postsList = postsWithMediaList.map((p) => ({
+      ...p,
+      media: mediaByPostId.get(p.id) ?? [],
+    }));
+
+    stats.totalPosts = postsList.length;
     console.log(`📊 Found ${stats.totalPosts} posts with media`);
 
-    // Analyze current state
-    for (const post of posts) {
+    for (const post of postsList) {
       if (post.previewPath) {
         stats.postsWithPreviewPath++;
       } else {
@@ -89,8 +107,7 @@ async function migratePreviewPaths(): Promise<MigrationStats> {
     const storageConfig = await getStorageConfig();
     console.log(`💾 Storage type: ${storageConfig.storageType}`);
 
-    // Migrate posts that need preview paths
-    for (const post of posts) {
+    for (const post of postsList) {
       try {
         if (!post.uploadPath) continue;
 
@@ -118,12 +135,11 @@ async function migratePreviewPaths(): Promise<MigrationStats> {
           }
         }
 
-        // Update if needed
         if (needsUpdate) {
-          await prisma.post.update({
-            where: { id: post.id },
-            data: updateData,
-          });
+          await db
+            .update(posts)
+            .set(updateData as Record<string, unknown>)
+            .where(eq(posts.id, post.id));
           stats.migratedCount++;
           console.log(`✅ Updated post ${post.id}`);
         }
@@ -159,21 +175,19 @@ async function migratePreviewPaths(): Promise<MigrationStats> {
 async function validatePreviewPaths(): Promise<void> {
   console.log("\n🔍 Validating preview paths...");
 
-  const posts = await prisma.post.findMany({
-    where: {
-      previewPath: { not: null },
-    },
-    select: {
-      id: true,
-      title: true,
-      previewPath: true,
-      uploadFileType: true,
-    },
-  });
+  const postsWithPreview = await db
+    .select({
+      id: posts.id,
+      title: posts.title,
+      previewPath: posts.previewPath,
+      uploadFileType: posts.uploadFileType,
+    })
+    .from(posts)
+    .where(isNotNull(posts.previewPath));
 
-  console.log(`📊 Found ${posts.length} posts with preview paths`);
+  console.log(`📊 Found ${postsWithPreview.length} posts with preview paths`);
 
-  for (const post of posts) {
+  for (const post of postsWithPreview) {
     if (!post.previewPath) continue;
 
     // Validate preview path format
@@ -206,8 +220,6 @@ async function main() {
   } catch (error) {
     console.error("💥 Script failed:", error);
     process.exit(1);
-  } finally {
-    await prisma.$disconnect();
   }
 }
 

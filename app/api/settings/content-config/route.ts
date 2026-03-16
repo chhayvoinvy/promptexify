@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { settings } from "@/lib/db/schema";
+import { desc } from "drizzle-orm";
 
 /**
  * GET /api/settings/content-config
@@ -7,14 +9,15 @@ import { prisma } from "@/lib/prisma";
  */
 export async function GET() {
   try {
-    const settings = await prisma.settings.findFirst({
-      orderBy: { updatedAt: "desc" },
-      select: { maxTagsPerPost: true },
-    });
+    const [row] = await db
+      .select({ maxTagsPerPost: settings.maxTagsPerPost })
+      .from(settings)
+      .orderBy(desc(settings.updatedAt))
+      .limit(1);
 
     return NextResponse.json({
       success: true,
-      maxTagsPerPost: settings?.maxTagsPerPost ?? 20,
+      maxTagsPerPost: row?.maxTagsPerPost ?? 20,
     });
   } catch (error) {
     console.error("Error fetching content config:", error);

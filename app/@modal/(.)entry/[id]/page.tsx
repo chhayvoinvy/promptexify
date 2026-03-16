@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { PostModal } from "@/components/post-modal";
 import { useAuth } from "@/hooks/use-auth";
 import type { PostWithInteractions } from "@/lib/content";
@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 
 export default function GlobalInterceptedModalPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
   const { user, loading: authLoading } = useAuth();
   const [post, setPost] = useState<PostWithInteractions | null>(null);

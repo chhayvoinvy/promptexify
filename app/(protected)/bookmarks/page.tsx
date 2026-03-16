@@ -54,7 +54,7 @@ async function BookmarksContent() {
 
   // Create a set of favorited post IDs for quick lookup
   const favoritedPostIds = new Set(
-    favorites.map((favorite) => favorite.postId)
+    favorites.map((f) => f.post?.id).filter(Boolean) as string[]
   );
 
   if (bookmarks.length === 0) {
@@ -72,16 +72,18 @@ async function BookmarksContent() {
     );
   }
 
-  // Transform bookmarks to posts with bookmark and favorite status
-  const postsWithBookmarks = bookmarks.map((bookmark) => ({
-    ...bookmark.post,
-    isBookmarked: true,
-    isFavorited: favoritedPostIds.has(bookmark.post.id),
-    _count: {
-      bookmarks: bookmark.post._count?.bookmarks || 0,
-      favorites: bookmark.post._count?.favorites || 0,
-    },
-  }));
+  // Transform bookmarks to posts with bookmark and favorite status (skip if post missing)
+  const postsWithBookmarks = bookmarks
+    .filter((b): b is typeof b & { post: NonNullable<typeof b.post> } => b.post != null)
+    .map((bookmark) => ({
+      ...bookmark.post,
+      isBookmarked: true,
+      isFavorited: favoritedPostIds.has(bookmark.post.id),
+      _count: {
+        bookmarks: bookmark.post._count?.bookmarks || 0,
+        favorites: bookmark.post._count?.favorites || 0,
+      },
+    }));
 
   return (
     <div className="space-y-6">

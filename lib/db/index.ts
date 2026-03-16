@@ -1,45 +1,49 @@
-import { PrismaClient } from "@/app/generated/prisma";
+/**
+ * Drizzle ORM client and database utilities.
+ * Singleton pattern for serverless; compatible with Supabase Postgres.
+ */
+
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import { sql } from "drizzle-orm";
+import * as schema from "./schema";
 
 declare global {
-  // Prevent multiple instances during development
-  var prisma: PrismaClient | undefined;
+  var dbClient: ReturnType<typeof postgres> | undefined;
+  var dbInstance: ReturnType<typeof createDb> | undefined;
 }
 
 /**
- * Enhanced Prisma Client Configuration for Production Performance
- *
- * Key optimizations:
- * - Connection pooling with appropriate limits
- * - Query optimization settings
- * - Logging configuration for monitoring
- * - Error handling and retry logic
+ * Create Drizzle client. Use connection pooler URL for serverless.
+ * Supabase "Transaction" pool mode requires prepare: false.
  */
-const createPrismaClient = () => {
-  return new PrismaClient({
-    // Enhanced logging for performance monitoring
-    log: process.env.NODE_ENV === "development" ? [] : ["error"],
-
-    datasources: {
-      db: {
-        url: process.env.DATABASE_URL,
-      },
-    },
+function createClient() {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error("DATABASE_URL is not set");
+  }
+  return postgres(connectionString, {
+    prepare: process.env.DATABASE_POOLER_MODE === "transaction" ? false : true,
+    max: 10,
   });
-};
+}
 
-/**
- * Singleton Prisma Client Instance
- * Prevents multiple connections in serverless environments
- */
-const prisma = globalThis.prisma ?? createPrismaClient();
+function createDb() {
+  const client = globalThis.dbClient ?? createClient();
+  if (process.env.NODE_ENV === "development") {
+    globalThis.dbClient = client;
+  }
+  return drizzle(client, { schema });
+}
 
-// Store in global for development hot reloading
+export const db = globalThis.dbInstance ?? createDb();
 if (process.env.NODE_ENV === "development") {
-  globalThis.prisma = prisma;
+  globalThis.dbInstance = db;
 }
 
 /**
- * Enhanced error handling wrapper for database operations
+ * Error handling wrapper for database operations.
+ * Maps common DB errors to user-friendly messages.
  */
 export async function withErrorHandling<T>(
   operation: () => Promise<T>,
@@ -50,22 +54,19 @@ export async function withErrorHandling<T>(
   } catch (error) {
     console.error(`Database operation failed in ${context}:`, error);
 
-    // Handle specific Prisma errors
     if (error instanceof Error) {
-      // Connection timeout errors
       if (error.message.includes("timeout")) {
         throw new Error("Database connection timeout. Please try again.");
       }
-
-      // Connection limit errors
       if (error.message.includes("connection limit")) {
         throw new Error(
           "Database connection limit reached. Please try again later."
         );
       }
-
-      // Unique constraint violations
-      if (error.message.includes("Unique constraint")) {
+      if (
+        error.message.includes("Unique constraint") ||
+        error.message.includes("unique constraint")
+      ) {
         throw new Error("A record with this information already exists.");
       }
     }
@@ -74,41 +75,35 @@ export async function withErrorHandling<T>(
   }
 }
 
+/** Transaction client type (same query interface as db, without $client). */
+type TxClient = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 /**
- * Optimized transaction wrapper with retry logic
+ * Transaction wrapper with retry logic.
+ * Operation receives the same db interface (transactional).
  */
 export async function withTransaction<T>(
-  operation: (
-    tx: Omit<
-      PrismaClient,
-      "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
-    >
-  ) => Promise<T>,
+  operation: (tx: TxClient) => Promise<T>,
   maxRetries: number = 3
 ): Promise<T> {
   let lastError: Error | undefined;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      return await prisma.$transaction(operation, {
-        // Transaction timeout (5 seconds)
-        timeout: 5000,
-        // Isolation level for consistency
-        isolationLevel: "ReadCommitted",
-      });
+      return await db.transaction(operation);
     } catch (error) {
       lastError = error as Error;
 
-      // Don't retry certain errors
       if (
         error instanceof Error &&
         (error.message.includes("Unique constraint") ||
-          error.message.includes("Foreign key constraint"))
+          error.message.includes("unique constraint") ||
+          error.message.includes("Foreign key") ||
+          error.message.includes("foreign key"))
       ) {
         throw error;
       }
 
-      // Wait before retry (exponential backoff)
       if (attempt < maxRetries) {
         await new Promise((resolve) =>
           setTimeout(resolve, Math.pow(2, attempt - 1) * 1000)
@@ -121,11 +116,11 @@ export async function withTransaction<T>(
 }
 
 /**
- * Health check function to verify database connectivity
+ * Health check: verify database connectivity.
  */
 export async function checkDatabaseHealth(): Promise<boolean> {
   try {
-    await prisma.$queryRaw`SELECT 1`;
+    await db.execute(sql`SELECT 1`);
     return true;
   } catch (error) {
     console.error("Database health check failed:", error);
@@ -134,24 +129,25 @@ export async function checkDatabaseHealth(): Promise<boolean> {
 }
 
 /**
- * Graceful shutdown function
+ * Graceful shutdown: close the Postgres client.
  */
 export async function disconnectDatabase(): Promise<void> {
   try {
-    await prisma.$disconnect();
+    const client = globalThis.dbClient;
+    if (client) {
+      await client.end();
+      globalThis.dbClient = undefined;
+      globalThis.dbInstance = undefined;
+    }
   } catch (error) {
     console.error("Error disconnecting from database:", error);
   }
 }
 
-// Export the singleton instance
-export { prisma };
-
 /**
- * Performance monitoring utilities
+ * Performance monitoring: track query times and slow query count.
  */
 export class DatabaseMetrics {
-  // Circular buffer for O(1) insertion without array re-indexing
   private static readonly MAX_QUERIES = 100;
   private static queryTimes: number[] = new Array(100).fill(0);
   private static writeIndex = 0;
@@ -159,16 +155,11 @@ export class DatabaseMetrics {
 
   static startQuery(): () => void {
     const start = Date.now();
-
     return () => {
       const duration = Date.now() - start;
-
-      // Write to circular buffer at current position
       this.queryTimes[this.writeIndex] = duration;
       this.writeIndex = (this.writeIndex + 1) % this.MAX_QUERIES;
       if (this.count < this.MAX_QUERIES) this.count++;
-
-      // Log slow queries in development
       if (process.env.NODE_ENV === "development" && duration > 1000) {
         console.warn(`Slow query detected: ${duration}ms`);
       }
@@ -190,4 +181,4 @@ export class DatabaseMetrics {
   }
 }
 
-export default prisma;
+export type { schema };

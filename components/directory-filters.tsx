@@ -9,296 +9,188 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Filter, X } from "@/components/ui/icons";
-import { Icons } from "@/components/ui/icons";
+import { Search, X } from "@/components/ui/icons";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   useState,
   useCallback,
   useTransition,
-  useMemo,
   useEffect,
+  useRef,
 } from "react";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog";
 
-type CategoryWithCount = Awaited<
-  ReturnType<typeof import("@/lib/content").getAllCategories>
->[0];
+type SortOption = "relevance" | "latest" | "popular" | "trending";
+
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: "relevance", label: "Most Relevant" },
+  { value: "latest", label: "Latest" },
+  { value: "popular", label: "Most Popular" },
+  { value: "trending", label: "Trending" },
+];
 
 interface DirectoryFiltersProps {
-  categories: CategoryWithCount[];
+  showSort?: boolean;
 }
 
-export function DirectoryFilters({ categories }: DirectoryFiltersProps) {
+export function DirectoryFilters({ showSort = true }: DirectoryFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-  // Get current values from URL with safety checks and default values
-  const currentQuery = searchParams?.get("q") ?? "";
-  const currentCategory = searchParams?.get("category") ?? "all";
-  const currentSubcategory = searchParams?.get("subcategory") ?? "all";
-  const currentPremium = searchParams?.get("premium") ?? "all";
-
-  // Local state for form inputs - always initialize with default values
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [subcategoryFilter, setSubcategoryFilter] = useState("all");
-  const [premiumFilter, setPremiumFilter] = useState("all");
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Sync local state with URL changes (when user navigates back/forward or initial load)
-  useEffect(() => {
-    setSearchQuery(currentQuery);
-    setCategoryFilter(currentCategory);
-    setSubcategoryFilter(currentSubcategory);
-    setPremiumFilter(currentPremium);
-  }, [currentQuery, currentCategory, currentSubcategory, currentPremium]);
+  const currentSort = (searchParams?.get("sort") as SortOption) ?? "latest";
+  const [sortBy, setSortBy] = useState<SortOption>("latest");
 
-  // Keyboard shortcut for opening filter dialog (Cmd+F / Ctrl+F)
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Check for Cmd+F (Mac) or Ctrl+F (Windows/Linux)
-      if ((event.metaKey || event.ctrlKey) && event.key === 'f') {
-        event.preventDefault(); // Prevent default browser find behavior
-        setIsDialogOpen(true);
+    setSortBy(currentSort);
+  }, [currentSort]);
+
+  // Focus the input when search bar opens
+  useEffect(() => {
+    if (isSearchOpen) {
+      requestAnimationFrame(() => inputRef.current?.focus());
+    }
+  }, [isSearchOpen]);
+
+  // Close on Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isSearchOpen) {
+        setIsSearchOpen(false);
+        setSearchQuery("");
       }
     };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isSearchOpen]);
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, []);
+  const handleSearchSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      const trimmed = searchQuery.trim();
+      if (!trimmed) return;
 
-  // Separate parent and child categories
-  const parentCategories = useMemo(
-    () => categories.filter((cat) => !cat.parent),
-    [categories]
-  );
-
-  const childCategories = useMemo(() => {
-    if (categoryFilter === "all") return [];
-    return categories.filter((cat) => cat.parent?.slug === categoryFilter);
-  }, [categories, categoryFilter]);
-
-  const updateURL = useCallback(
-    (newParams: {
-      q?: string;
-      category?: string;
-      subcategory?: string;
-      premium?: string;
-    }) => {
-      if (!searchParams || !router) return;
-      
-      const params = new URLSearchParams(searchParams.toString());
-
-      Object.entries(newParams).forEach(([key, value]) => {
-        if (value && value !== "all" && value !== "") {
-          params.set(key, value);
-        } else {
-          params.delete(key);
-        }
-      });
+      const params = new URLSearchParams();
+      params.set("q", trimmed);
+      params.set("sort", "relevance");
 
       startTransition(() => {
-        router.push(`/directory?${params.toString()}`);
-        // Close dialog after URL update
-        setIsDialogOpen(false);
+        router.push(`/search?${params.toString()}`);
+        setIsSearchOpen(false);
+        setSearchQuery("");
+      });
+    },
+    [searchQuery, router]
+  );
+
+  const handleSortChange = useCallback(
+    (value: string) => {
+      setSortBy(value as SortOption);
+
+      if (!searchParams || !router) return;
+      const params = new URLSearchParams(searchParams.toString());
+
+      if (value && value !== "latest") {
+        params.set("sort", value);
+      } else {
+        params.delete("sort");
+      }
+
+      const currentPath =
+        typeof window !== "undefined" ? window.location.pathname : "/directory";
+      const queryString = params.toString();
+
+      startTransition(() => {
+        router.push(queryString ? `${currentPath}?${queryString}` : currentPath);
       });
     },
     [router, searchParams]
   );
 
-  const handleCategoryChange = useCallback(
-    (value: string) => {
-      setCategoryFilter(value);
-      // Reset subcategory when parent category changes
-      setSubcategoryFilter("all");
-      // Immediately update URL with new category and reset subcategory
-      updateURL({
-        q: searchQuery,
-        category: value,
-        subcategory: "all",
-        premium: premiumFilter,
-      });
-    },
-    [searchQuery, premiumFilter, updateURL]
-  );
-
-  const handleSubcategoryChange = useCallback(
-    (value: string) => {
-      setSubcategoryFilter(value);
-      // Immediately update URL
-      updateURL({
-        q: searchQuery,
-        category: categoryFilter,
-        subcategory: value,
-        premium: premiumFilter,
-      });
-    },
-    [searchQuery, categoryFilter, premiumFilter, updateURL]
-  );
-
-  // Note: Premium filter is hidden for now, but callback preserved for future use
-  // const handlePremiumChange = useCallback(
-  //   (value: string) => {
-  //     setPremiumFilter(value);
-  //     // Immediately update URL
-  //     updateURL({
-  //       q: searchQuery,
-  //       category: categoryFilter,
-  //       subcategory: subcategoryFilter,
-  //       premium: value,
-  //     });
-  //   },
-  //   [searchQuery, categoryFilter, subcategoryFilter, updateURL]
-  // );
-
-  const handleSearchSubmit = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      updateURL({
-        q: searchQuery,
-        category: categoryFilter,
-        subcategory: subcategoryFilter,
-        premium: premiumFilter,
-      });
-    },
-    [searchQuery, categoryFilter, subcategoryFilter, premiumFilter, updateURL]
-  );
-
-  const clearFilters = useCallback(() => {
+  const clearSearch = useCallback(() => {
     setSearchQuery("");
-    setCategoryFilter("all");
-    setSubcategoryFilter("all");
-    setPremiumFilter("all");
-    if (router) {
-      startTransition(() => {
-        router.push("/directory");
-        // Close dialog after clearing filters
-        setIsDialogOpen(false);
-      });
-    }
-  }, [router]);
+    inputRef.current?.focus();
+  }, []);
+
+  const toggleSearch = useCallback(() => {
+    setIsSearchOpen((prev) => {
+      if (prev) setSearchQuery("");
+      return !prev;
+    });
+  }, []);
 
   return (
-    <div className="space-y-4">
-      {/* Filter button */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Filters</span>
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Icons.command className="h-3 w-3 scale-75" />
-                  <span>+ F</span>
-                </div>
-                {isPending && (
-                  <Badge variant="secondary" className="text-xs">
-                    Updating...
-                  </Badge>
-                )}
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md w-full">
-              <DialogHeader>
-                <DialogTitle>Filter Prompts</DialogTitle>
-              </DialogHeader>
-              <div className="flex flex-col gap-4 mt-2">
-                {/* Search */}
-                <form onSubmit={handleSearchSubmit} className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                    <Input
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search prompts..."
-                      className="pl-10"
-                    />
-                  </div>
-                  <Button type="submit" variant="outline" disabled={isPending}>
-                    Search
-                  </Button>
-                </form>
-                {/* Category Filter */}
-                <Select value={categoryFilter} onValueChange={handleCategoryChange}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="All Categories" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {parentCategories.map((category) => (
-                      <SelectItem key={category.id} value={category.slug}>
-                        {category.name} ({category._count.posts})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {/* Subcategory Filter */}
-                {categoryFilter !== "all" && childCategories.length > 0 && (
-                  <Select
-                    value={subcategoryFilter}
-                    onValueChange={handleSubcategoryChange}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="All Subcategories" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Subcategories</SelectItem>
-                      {childCategories.map((category) => (
-                        <SelectItem key={category.id} value={category.slug}>
-                          {category.name} ({category._count.posts})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-                {/* Premium Filter (Hidden for now) */}
-                {/* <Select value={premiumFilter} onValueChange={handlePremiumChange}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="All Types" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="free">Free</SelectItem>
-                    <SelectItem value="premium">Premium</SelectItem>
-                  </SelectContent>
-                </Select> */}
-                <DialogFooter className="flex flex-row gap-2 justify-between mt-4">
-                  <Button
-                    variant="secondary"
-                    type="button"
-                    onClick={() => {
-                      clearFilters();
-                    }}
-                    disabled={isPending}
-                  >
-                    <X className="h-4 w-4 mr-1" />
-                    Clear All
-                  </Button>
-                  <DialogClose asChild>
-                    <Button type="button" variant="default">
-                      Done
-                    </Button>
-                  </DialogClose>
-                </DialogFooter>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+    <div className="flex items-center gap-2">
+      {/* Expandable search */}
+      <div className="flex items-center gap-2">
+        {isSearchOpen ? (
+          <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-200">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4 pointer-events-none" />
+              <Input
+                ref={inputRef}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search prompts, tags, categories..."
+                className="pl-9 pr-8 h-9 w-[240px] sm:w-[300px] text-sm"
+                autoComplete="off"
+                spellCheck={false}
+              />
+              {searchQuery.length > 0 && (
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Clear search"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            <Button type="submit" size="sm" disabled={isPending || !searchQuery.trim()}>
+              Search
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 shrink-0"
+              onClick={toggleSearch}
+              aria-label="Close search"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </form>
+        ) : (
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-9 w-9"
+            onClick={toggleSearch}
+            aria-label="Open search"
+          >
+            <Search className="h-4 w-4" />
+          </Button>
+        )}
       </div>
+
+      {/* Sort dropdown */}
+      {showSort && !isSearchOpen && (
+        <Select value={sortBy} onValueChange={handleSortChange}>
+          <SelectTrigger className="w-auto min-w-[140px] h-9 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SORT_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
     </div>
   );
 }

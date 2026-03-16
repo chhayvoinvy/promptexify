@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { PostWithInteractions } from "@/lib/content";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { FavoriteButton } from "@/components/favorite-button";
@@ -28,7 +27,8 @@ interface PostPosition {
   height: number;
 }
 
-export function PostMasonryGrid({ posts, userType }: PostMasonryGridProps) {
+export function PostMasonryGrid({ posts, ...rest }: PostMasonryGridProps) {
+  void rest; // userType reserved for future use
   const [postPositions, setPostPositions] = useState<PostPosition[]>([]);
   const [containerHeight, setContainerHeight] = useState(0);
   const [columnWidth, setColumnWidth] = useState(0);

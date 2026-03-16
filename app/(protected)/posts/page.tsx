@@ -152,12 +152,12 @@ interface FilterOption {
 
 interface UserData {
   id: string;
-  role: string;
+  role: string | null;
   email: string;
   name: string | null;
 }
 
-// Category interface based on the getAllCategories return type
+// Category shape from getAllCategories (parent/children may omit _count)
 interface Category {
   id: string;
   name: string;
@@ -165,25 +165,9 @@ interface Category {
   description: string | null;
   createdAt: Date;
   updatedAt: Date;
-  parent: {
-    id: string;
-    name: string;
-    slug: string;
-    _count: {
-      posts: number;
-    };
-  } | null;
-  children: {
-    id: string;
-    name: string;
-    slug: string;
-    _count: {
-      posts: number;
-    };
-  }[];
-  _count: {
-    posts: number;
-  };
+  parent: { id: string; name: string; slug: string } | null;
+  children: { id: string; name: string; slug: string }[];
+  _count?: { posts: number };
 }
 
 // Main content component
@@ -457,7 +441,7 @@ async function PostsManagementContent({
                       <PostActionsDropdown
                         post={post}
                         currentUserId={user.id}
-                        currentUserRole={user.role}
+                        currentUserRole={user.role ?? undefined}
                       />
                     </TableCell>
                   </TableRow>

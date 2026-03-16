@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPostById } from "@/lib/content";
 import { getPublicUrl } from "@/lib/image/storage";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { bookmarks, favorites } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 
 interface RouteParams {
   params: Promise<{
@@ -66,16 +68,16 @@ async function handlePostRequest(request: NextRequest, { params }: RouteParams, 
     const userId = user?.userData?.id;
 
     if (userId) {
-      const [bookmark, favorite] = await Promise.all([
-        prisma.bookmark.findUnique({
-          where: { userId_postId: { userId, postId: id } },
-          select: { id: true },
-        }),
-        prisma.favorite.findUnique({
-          where: { userId_postId: { userId, postId: id } },
-          select: { id: true },
-        }),
-      ]);
+      const [bookmark] = await db
+        .select({ id: bookmarks.id })
+        .from(bookmarks)
+        .where(and(eq(bookmarks.userId, userId), eq(bookmarks.postId, id)))
+        .limit(1);
+      const [favorite] = await db
+        .select({ id: favorites.id })
+        .from(favorites)
+        .where(and(eq(favorites.userId, userId), eq(favorites.postId, id)))
+        .limit(1);
       interactionStatus = {
         isBookmarked: !!bookmark,
         isFavorited: !!favorite,

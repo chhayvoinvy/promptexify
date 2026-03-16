@@ -1,4 +1,6 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { users } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 export interface UserSubscriptionPlan {
   stripeCustomerId?: string | null;
@@ -45,10 +47,7 @@ export async function getUserSubscriptionPlan(
   userId: string
 ): Promise<UserSubscriptionPlan> {
   if (!userId) throw new Error("Missing parameters");
-  const user = await prisma.user.findFirst({
-    where: { id: userId },
-    select: { id: true },
-  });
+  const [user] = await db.select({ id: users.id }).from(users).where(eq(users.id, userId)).limit(1);
   if (!user) throw new Error("User not found");
   return { ...FREE_PLAN };
 }
@@ -61,9 +60,10 @@ export async function getEnhancedUserSubscriptionPlan(
 }
 
 /** No-op: no Stripe to sync. Kept for API compatibility. */
-export async function syncUserSubscriptionWithStripe(
-  _userId: string
-): Promise<{ synced: boolean; message: string }> {
+export async function syncUserSubscriptionWithStripe(): Promise<{
+  synced: boolean;
+  message: string;
+}> {
   return { synced: false, message: "All features are free; no subscription to sync." };
 }
 
@@ -75,7 +75,7 @@ export async function checkAndHandleExpiredSubscriptions(): Promise<{
   return { processedCount: 0, errors: [] };
 }
 
-export async function cleanupPremiumData(_userId: string): Promise<void> {
+export async function cleanupPremiumData(): Promise<void> {
   // No-op
 }
 

@@ -152,7 +152,7 @@ export function SettingsForm() {
         if (result.success && result.data) {
           const settings = result.data;
           form.reset({
-            storageType: settings.storageType,
+            storageType: settings.storageType ?? undefined,
             s3BucketName: settings.s3BucketName || "",
             s3Region: settings.s3Region || "us-east-1",
             s3AccessKeyId: settings.s3AccessKeyId || "",
@@ -165,18 +165,18 @@ export function SettingsForm() {
             doCdnUrl: settings.doCdnUrl || "",
             localBasePath: settings.localBasePath || "/uploads",
             localBaseUrl: settings.localBaseUrl || "/uploads",
-            maxImageSize: settings.maxImageSize,
-            maxVideoSize: settings.maxVideoSize,
-            enableCompression: settings.enableCompression,
-            compressionQuality: settings.compressionQuality,
-            maxTagsPerPost: settings.maxTagsPerPost,
-            enableCaptcha: settings.enableCaptcha,
-            requireApproval: settings.requireApproval,
-            maxPostsPerDay: settings.maxPostsPerDay,
-            maxUploadsPerHour: settings.maxUploadsPerHour,
-            enableAuditLogging: settings.enableAuditLogging,
-            postsPageSize: settings.postsPageSize,
-            featuredPostsLimit: settings.featuredPostsLimit,
+            maxImageSize: settings.maxImageSize ?? undefined,
+            maxVideoSize: settings.maxVideoSize ?? undefined,
+            enableCompression: settings.enableCompression ?? undefined,
+            compressionQuality: settings.compressionQuality ?? undefined,
+            maxTagsPerPost: settings.maxTagsPerPost ?? undefined,
+            enableCaptcha: settings.enableCaptcha ?? undefined,
+            requireApproval: settings.requireApproval ?? undefined,
+            maxPostsPerDay: settings.maxPostsPerDay ?? undefined,
+            maxUploadsPerHour: settings.maxUploadsPerHour ?? undefined,
+            enableAuditLogging: settings.enableAuditLogging ?? undefined,
+            postsPageSize: settings.postsPageSize ?? undefined,
+            featuredPostsLimit: settings.featuredPostsLimit ?? undefined,
           });
         }
       } catch (error) {

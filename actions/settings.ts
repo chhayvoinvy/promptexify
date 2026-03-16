@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { StorageType } from "@/app/generated/prisma";
+import { db } from "@/lib/db";
+import { settings as settingsTable, type StorageType } from "@/lib/db/schema";
+import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { sanitizeInput } from "@/lib/security/sanitize";
 import { clearStorageConfigCache } from "@/lib/image/storage";
@@ -77,18 +78,19 @@ export async function getSettingsAction() {
       };
     }
 
-    // Try to get existing settings
-    let settings = await prisma.settings.findFirst({
-      orderBy: { updatedAt: "desc" },
-    });
+    const [first] = await db
+      .select()
+      .from(settingsTable)
+      .orderBy(desc(settingsTable.updatedAt))
+      .limit(1);
 
-    // If no settings exist, create default settings
+    let settings = first ?? null;
     if (!settings) {
-      settings = await prisma.settings.create({
-        data: {
-          updatedBy: user.userData.id,
-        },
-      });
+      const [created] = await db
+        .insert(settingsTable)
+        .values({ updatedBy: user.userData.id })
+        .returning();
+      settings = created ?? null;
     }
 
     return {
@@ -216,30 +218,35 @@ export async function updateSettingsAction(data: SettingsFormData) {
       }
     }
 
-    // Get existing settings or create new one
-    let settings = await prisma.settings.findFirst({
-      orderBy: { updatedAt: "desc" },
-    });
+    const [existing] = await db
+      .select()
+      .from(settingsTable)
+      .orderBy(desc(settingsTable.updatedAt))
+      .limit(1);
 
-    if (settings) {
-      // Update existing settings
-      settings = await prisma.settings.update({
-        where: { id: settings.id },
-        data: {
+    let settings;
+    if (existing) {
+      const [updated] = await db
+        .update(settingsTable)
+        .set({
           ...sanitizedData,
           storageType: sanitizedData.storageType as StorageType,
           updatedBy: user.userData.id,
-        },
-      });
+          updatedAt: new Date(),
+        })
+        .where(eq(settingsTable.id, existing.id))
+        .returning();
+      settings = updated!;
     } else {
-      // Create new settings
-      settings = await prisma.settings.create({
-        data: {
+      const [created] = await db
+        .insert(settingsTable)
+        .values({
           ...sanitizedData,
           storageType: sanitizedData.storageType as StorageType,
           updatedBy: user.userData.id,
-        },
-      });
+        })
+        .returning();
+      settings = created!;
     }
 
     // Clear all storage-related caches to ensure new settings are used
@@ -269,28 +276,29 @@ export async function updateSettingsAction(data: SettingsFormData) {
  */
 export async function getStorageConfigAction() {
   try {
-    const settings = await prisma.settings.findFirst({
-      orderBy: { updatedAt: "desc" },
-      select: {
-        storageType: true,
-        s3BucketName: true,
-        s3Region: true,
-        s3AccessKeyId: true,
-        s3SecretKey: true,
-        s3CloudfrontUrl: true,
-        doSpaceName: true,
-        doRegion: true,
-        doAccessKeyId: true,
-        doSecretKey: true,
-        doCdnUrl: true,
-        localBasePath: true,
-        localBaseUrl: true,
-        maxImageSize: true,
-        maxVideoSize: true,
-        enableCompression: true,
-        compressionQuality: true,
-      },
-    });
+    const [settings] = await db
+      .select({
+        storageType: settingsTable.storageType,
+        s3BucketName: settingsTable.s3BucketName,
+        s3Region: settingsTable.s3Region,
+        s3AccessKeyId: settingsTable.s3AccessKeyId,
+        s3SecretKey: settingsTable.s3SecretKey,
+        s3CloudfrontUrl: settingsTable.s3CloudfrontUrl,
+        doSpaceName: settingsTable.doSpaceName,
+        doRegion: settingsTable.doRegion,
+        doAccessKeyId: settingsTable.doAccessKeyId,
+        doSecretKey: settingsTable.doSecretKey,
+        doCdnUrl: settingsTable.doCdnUrl,
+        localBasePath: settingsTable.localBasePath,
+        localBaseUrl: settingsTable.localBaseUrl,
+        maxImageSize: settingsTable.maxImageSize,
+        maxVideoSize: settingsTable.maxVideoSize,
+        enableCompression: settingsTable.enableCompression,
+        compressionQuality: settingsTable.compressionQuality,
+      })
+      .from(settingsTable)
+      .orderBy(desc(settingsTable.updatedAt))
+      .limit(1);
 
     // Return default S3 configuration if no settings exist
     if (!settings) {
@@ -345,10 +353,11 @@ export async function resetSettingsToDefaultAction() {
       };
     }
 
-    // Get existing settings or create new one
-    let settings = await prisma.settings.findFirst({
-      orderBy: { updatedAt: "desc" },
-    });
+    const [existingSettings] = await db
+      .select()
+      .from(settingsTable)
+      .orderBy(desc(settingsTable.updatedAt))
+      .limit(1);
 
     const defaultData = {
       storageType: "S3" as StorageType,
@@ -379,24 +388,24 @@ export async function resetSettingsToDefaultAction() {
       updatedBy: user.userData.id,
     };
 
-    if (settings) {
-      // Update existing settings
-      settings = await prisma.settings.update({
-        where: { id: settings.id },
-        data: defaultData,
-      });
+    let settings;
+    if (existingSettings) {
+      const [updated] = await db
+        .update(settingsTable)
+        .set({ ...defaultData, updatedAt: new Date() })
+        .where(eq(settingsTable.id, existingSettings.id))
+        .returning();
+      settings = updated!;
     } else {
-      // Create new settings
-      settings = await prisma.settings.create({
-        data: defaultData,
-      });
+      const [created] = await db
+        .insert(settingsTable)
+        .values(defaultData)
+        .returning();
+      settings = created!;
     }
 
-    // Clear all storage-related caches to ensure new settings are used
     clearStorageConfigCache();
     clearUrlCache();
-
-    // Revalidate relevant pages
     revalidatePath("/settings");
     revalidatePath("/dashboard");
 

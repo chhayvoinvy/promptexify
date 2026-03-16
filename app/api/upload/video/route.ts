@@ -12,7 +12,8 @@ import {
 } from "@/lib/security/sanitize";
 import { CSRFProtection } from "@/lib/security/csp";
 import { SecurityEvents, getClientIP } from "@/lib/security/audit";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { media } from "@/lib/db/schema";
 import { getStorageConfig } from "@/lib/image/storage";
 
 // File magic number validation for additional security
@@ -281,9 +282,9 @@ export async function POST(request: NextRequest) {
       user.userData!.id
     );
 
-    // Create a Media record in the database with video dimensions
-    const newMedia = await prisma.media.create({
-      data: {
+    const [newMedia] = await db
+      .insert(media)
+      .values({
         filename: uploadResult.filename,
         relativePath: uploadResult.relativePath,
         originalName: uploadResult.originalName,
@@ -294,14 +295,14 @@ export async function POST(request: NextRequest) {
         duration: uploadResult.duration,
         uploadedBy: user.userData!.id,
         blurDataUrl: uploadResult.blurDataUrl,
-      },
-    });
+      })
+      .returning();
 
     // Return the upload result along with the new media ID
     return NextResponse.json(
       {
         ...uploadResult,
-        id: newMedia.id,
+        id: newMedia!.id,
         previewPath: uploadResult.previewPath, // Explicitly include previewPath for frontend
         previewVideoPath: uploadResult.previewVideoPath, // Explicitly include previewVideoPath for frontend
       },

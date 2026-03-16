@@ -8,7 +8,7 @@ import {
   ServerSideEncryption,
   ObjectCannedACL,
 } from "@aws-sdk/client-s3";
-import { StorageType } from "@/app/generated/prisma";
+import type { StorageType } from "@/lib/db/schema";
 import {
   generateImageFilename,
   generateVideoFilename,
@@ -84,7 +84,15 @@ export async function getStorageConfig(): Promise<StorageConfig> {
   try {
     const result = await getStorageConfigAction();
     if (result.success && result.data) {
-      cachedStorageConfig = result.data;
+      const d = result.data;
+      cachedStorageConfig = {
+        ...d,
+        storageType: d.storageType ?? "S3",
+        maxImageSize: d.maxImageSize ?? 5 * 1024 * 1024,
+        maxVideoSize: d.maxVideoSize ?? 100 * 1024 * 1024,
+        enableCompression: d.enableCompression ?? false,
+        compressionQuality: d.compressionQuality ?? 0.8,
+      };
       configCacheExpiry = now + CACHE_DURATION;
       return cachedStorageConfig;
     }
@@ -1718,27 +1726,23 @@ export async function cleanupOrphanedMedia(dryRun: boolean = true): Promise<{
     createdAt: Date;
   }>;
 }> {
-  const { prisma } = await import("@/lib/prisma");
+  const { db } = await import("@/lib/db");
+  const { media } = await import("@/lib/db/schema");
+  const { and, eq, lt, isNull } = await import("drizzle-orm");
   const errors: string[] = [];
   let deletedCount = 0;
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-  // Find media records that are not associated with any post
-  // and are older than 24 hours (to avoid deleting recently uploaded files)
-  const orphanedMedia = await prisma.media.findMany({
-    where: {
-      postId: null,
-      createdAt: {
-        lt: new Date(Date.now() - 24 * 60 * 60 * 1000), // 24 hours ago
-      },
-    },
-    select: {
-      id: true,
-      relativePath: true,
-      mimeType: true,
-      uploadedBy: true,
-      createdAt: true,
-    },
-  });
+  const orphanedMedia = await db
+    .select({
+      id: media.id,
+      relativePath: media.relativePath,
+      mimeType: media.mimeType,
+      uploadedBy: media.uploadedBy,
+      createdAt: media.createdAt,
+    })
+    .from(media)
+    .where(and(isNull(media.postId), lt(media.createdAt, cutoff)));
 
   if (dryRun) {
     return {
@@ -1749,30 +1753,26 @@ export async function cleanupOrphanedMedia(dryRun: boolean = true): Promise<{
     };
   }
 
-  // Delete orphaned files from storage and database
-  for (const media of orphanedMedia) {
+  for (const mediaRow of orphanedMedia) {
     try {
-      const fullUrl = await getPublicUrl(media.relativePath);
+      const fullUrl = await getPublicUrl(mediaRow.relativePath);
       let deleteResult = false;
 
-      if (media.mimeType.startsWith("image/")) {
+      if (mediaRow.mimeType.startsWith("image/")) {
         deleteResult = await deleteImage(fullUrl);
-      } else if (media.mimeType.startsWith("video/")) {
+      } else if (mediaRow.mimeType.startsWith("video/")) {
         deleteResult = await deleteVideo(fullUrl);
       }
 
       if (deleteResult) {
-        // Delete from database only if file deletion succeeded
-        await prisma.media.delete({
-          where: { id: media.id },
-        });
+        await db.delete(media).where(eq(media.id, mediaRow.id));
         deletedCount++;
       } else {
-        errors.push(`Failed to delete file: ${media.relativePath}`);
+        errors.push(`Failed to delete file: ${mediaRow.relativePath}`);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      errors.push(`Error processing ${media.relativePath}: ${errorMessage}`);
+      errors.push(`Error processing ${mediaRow.relativePath}: ${errorMessage}`);
     }
   }
 
@@ -1796,26 +1796,24 @@ export async function cleanupOrphanedPreviewFiles(dryRun: boolean = true): Promi
   errors: string[];
   orphanedFiles: string[];
 }> {
-  const { prisma } = await import("@/lib/prisma");
+  const { db } = await import("@/lib/db");
+  const { media } = await import("@/lib/db/schema");
+  const { or, like } = await import("drizzle-orm");
   const config = await getStorageConfig();
   const errors: string[] = [];
   let deletedCount = 0;
   const orphanedFiles: string[] = [];
 
   try {
-    // Get all preview files from database (both preview images and preview videos)
-    const dbPreviewFiles = await prisma.media.findMany({
-      where: {
-        OR: [
-          { relativePath: { startsWith: "preview/" } },
-          { filename: { startsWith: "preview-" } }
-        ]
-      },
-      select: {
-        relativePath: true,
-        filename: true,
-      },
-    });
+    const dbPreviewFiles = await db
+      .select({ relativePath: media.relativePath, filename: media.filename })
+      .from(media)
+      .where(
+        or(
+          like(media.relativePath, "preview/%"),
+          like(media.filename, "preview-%")
+        )
+      );
 
     // Create a set of known preview files for quick lookup
     const knownPreviewFiles = new Set([

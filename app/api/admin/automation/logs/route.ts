@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { logs } from "@/lib/db/schema";
+import { eq, and, desc } from "drizzle-orm";
 
 // GET - Retrieve generation logs from database
 export async function GET() {
   try {
-    // Require admin access
     const user = await requireAdmin();
     if (!user) {
       return NextResponse.json(
@@ -14,20 +15,15 @@ export async function GET() {
       );
     }
 
-    // Fetch automation logs from database
-    const dbLogs = await prisma.log.findMany({
-      where: {
-        action: "automation",
-        entityType: "content_generation",
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      take: 50, // Limit to last 50 logs
-    });
+    const dbLogs = await db
+      .select()
+      .from(logs)
+      .where(and(eq(logs.action, "automation"), eq(logs.entityType, "content_generation")))
+      .orderBy(desc(logs.createdAt))
+      .limit(50);
 
     // Transform database logs to match the expected format
-    const logs = dbLogs.map((log) => {
+    const transformedLogs = dbLogs.map((log) => {
       // Safely extract metadata with proper type checking
       const metadata =
         log.metadata &&
@@ -60,7 +56,7 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({ logs });
+    return NextResponse.json({ logs: transformedLogs });
   } catch (error) {
     console.error("Error reading logs:", error);
     return NextResponse.json({ error: "Failed to read logs" }, { status: 500 });

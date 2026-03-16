@@ -57,9 +57,9 @@ export default function AboutPage() {
 
         <p className="text-sm text-muted-foreground">
           Questions? Visit our{" "}
-          <a href="/contact" className="text-primary underline underline-offset-4">
+          <Link href="/contact" className="text-primary underline underline-offset-4">
             Contact
-          </a>{" "}
+          </Link>{" "}
           page.
         </p>
       </div>

@@ -33,8 +33,8 @@ export interface UserData {
   email: string;
   name?: string | null;
   avatar?: string | null;
-  type: "FREE" | "PREMIUM";
-  role: "USER" | "ADMIN";
+  type: "FREE" | "PREMIUM" | null;
+  role: "USER" | "ADMIN" | null;
   oauth: "GOOGLE" | "EMAIL";
   createdAt: Date;
   updatedAt: Date;

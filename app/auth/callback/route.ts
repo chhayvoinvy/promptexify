@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { users } from "@/lib/db/schema";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
       }
 
       if (data.user) {
-        // Create or update user in Prisma database
+        // Create or update user in database
         await upsertUserInDatabase(data.user);
       }
 
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.redirect(`${origin}/signin`);
 }
 
-// Helper function to create/update user in Prisma database
+// Helper function to create/update user in database
 async function upsertUserInDatabase(supabaseUser: {
   id: string;
   email?: string;
@@ -50,18 +51,13 @@ async function upsertUserInDatabase(supabaseUser: {
   };
 }) {
   try {
-    // Determine OAuth provider - prioritize EMAIL for Magic Link
     const providers = supabaseUser.app_metadata?.providers || [];
     const primaryProvider = supabaseUser.app_metadata?.provider;
 
     let oauthProvider: "GOOGLE" | "EMAIL" = "EMAIL";
-
-    // Check if Google is among the providers
     if (providers.includes("google") || primaryProvider === "google") {
       oauthProvider = "GOOGLE";
-    }
-    // For email/Magic Link authentication, use EMAIL
-    else if (
+    } else if (
       providers.includes("email") ||
       primaryProvider === "email" ||
       !primaryProvider
@@ -76,17 +72,11 @@ async function upsertUserInDatabase(supabaseUser: {
       email.split("@")[0] ||
       "User";
     const avatar = supabaseUser.user_metadata?.avatar_url || undefined;
+    const now = new Date();
 
-    await prisma.user.upsert({
-      where: { id: supabaseUser.id },
-      update: {
-        email,
-        name,
-        avatar,
-        oauth: oauthProvider,
-        updatedAt: new Date(),
-      },
-      create: {
+    await db
+      .insert(users)
+      .values({
         id: supabaseUser.id,
         email,
         name,
@@ -94,14 +84,24 @@ async function upsertUserInDatabase(supabaseUser: {
         oauth: oauthProvider,
         type: "FREE",
         role: "USER",
-      },
-    });
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          email,
+          name,
+          avatar,
+          oauth: oauthProvider,
+          updatedAt: now,
+        },
+      });
 
     console.log(
       `Successfully upserted user: ${email} with provider: ${oauthProvider}`
     );
   } catch (error) {
     console.error("Database upsert error in callback:", error);
-    // Don't throw here to avoid breaking auth flow
   }
 }

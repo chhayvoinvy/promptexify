@@ -1,9 +1,12 @@
 "use server";
 
 import { type FavoriteData, favoriteSchema } from "@/lib/schemas";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { favorites as favoritesTable } from "@/lib/db/schema";
+import { eq, and, desc } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidateCache, CACHE_TAGS } from "@/lib/cache";
+import { Queries } from "@/lib/query";
 
 // Favorite actions
 export async function toggleFavoriteAction(data: FavoriteData) {
@@ -22,26 +25,16 @@ export async function toggleFavoriteAction(data: FavoriteData) {
     }
     const user = currentUser.userData;
 
-    // Check if favorite already exists
-    const existingFavorite = await prisma.favorite.findUnique({
-      where: {
-        userId_postId: {
-          userId: user.id,
-          postId: validatedData.postId,
-        },
-      },
-    });
+    const [existingFavorite] = await db
+      .select()
+      .from(favoritesTable)
+      .where(and(eq(favoritesTable.userId, user.id), eq(favoritesTable.postId, validatedData.postId)))
+      .limit(1);
 
     if (existingFavorite) {
-      // Remove favorite
-      await prisma.favorite.delete({
-        where: {
-          userId_postId: {
-            userId: user.id,
-            postId: validatedData.postId,
-          },
-        },
-      });
+      await db
+        .delete(favoritesTable)
+        .where(and(eq(favoritesTable.userId, user.id), eq(favoritesTable.postId, validatedData.postId)));
 
       // Targeted cache invalidation — only favorite-relevant caches
       await revalidateCache([
@@ -51,12 +44,9 @@ export async function toggleFavoriteAction(data: FavoriteData) {
       ]);
       return { success: true, favorited: false };
     } else {
-      // Add favorite
-      await prisma.favorite.create({
-        data: {
-          userId: user.id,
-          postId: validatedData.postId,
-        },
+      await db.insert(favoritesTable).values({
+        userId: user.id,
+        postId: validatedData.postId,
       });
 
       // Targeted cache invalidation — only favorite-relevant caches
@@ -98,43 +88,18 @@ export async function getUserFavoritesAction() {
     }
     const user = currentUser.userData;
 
-    // Get user's favorites with post details
-    const favorites = await prisma.favorite.findMany({
-      where: {
-        userId: user.id,
-      },
-      include: {
-        post: {
-          include: {
-            author: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-              },
-            },
-            category: {
-              include: {
-                parent: true,
-              },
-            },
-            tags: true,
-            _count: {
-              select: {
-                bookmarks: true,
-                favorites: true,
-              },
-            },
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-
-    return { success: true, favorites };
+    const favoriteRows = await db
+      .select({ postId: favoritesTable.postId, id: favoritesTable.id, createdAt: favoritesTable.createdAt })
+      .from(favoritesTable)
+      .where(eq(favoritesTable.userId, user.id))
+      .orderBy(desc(favoritesTable.createdAt));
+    const favoritesWithPosts = await Promise.all(
+      favoriteRows.map(async (f) => {
+        const post = await Queries.posts.getById(f.postId, user.id);
+        return { id: f.id, createdAt: f.createdAt, post };
+      })
+    );
+    return { success: true, favorites: favoritesWithPosts };
   } catch (error) {
     // Check if this is a Next.js redirect (authentication redirect)
     if (error && typeof error === "object" && "digest" in error) {
@@ -166,16 +131,11 @@ export async function checkFavoriteStatusAction(postId: string) {
     }
     const user = currentUser.userData;
 
-    // Check if post is favorited
-    const favorite = await prisma.favorite.findUnique({
-      where: {
-        userId_postId: {
-          userId: user.id,
-          postId: postId,
-        },
-      },
-    });
-
+    const [favorite] = await db
+      .select()
+      .from(favoritesTable)
+      .where(and(eq(favoritesTable.userId, user.id), eq(favoritesTable.postId, postId)))
+      .limit(1);
     return { success: true, favorited: !!favorite };
   } catch (error) {
     // Check if this is a Next.js redirect (authentication redirect)

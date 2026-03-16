@@ -1,29 +1,32 @@
 /**
  * Automation Database Operations
- *
- * Database interaction functions for the automation system
- * following secure coding practices and OWASP guidelines
+ * Uses Drizzle ORM for all database interactions.
  */
 
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import {
+  users,
+  categories,
+  tags,
+  posts,
+  postToTag,
+  logs,
+} from "@/lib/db/schema";
+import { eq, inArray, desc, and } from "drizzle-orm";
 import { automationConfig } from "./config";
 import type { ContentFile, PostData, TagData, ProcessingStats } from "./types";
 
-// Type for the Prisma Transaction Client
-export type PrismaTransactionClient = Omit<
-  typeof prisma,
-  "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
->;
+/** Type for db or transaction client (both support select/insert/update/delete). */
+export type TransactionClient =
+  | typeof db
+  | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-/**
- * Validates that an author with the given ID exists in the database.
- * Throws an error if the author is not found or doesn't have required permissions.
- */
 export async function validateAuthorExists(authorId: string): Promise<void> {
-  const author = await prisma.user.findUnique({
-    where: { id: authorId },
-    select: { id: true, role: true },
-  });
+  const [author] = await db
+    .select({ id: users.id, role: users.role })
+    .from(users)
+    .where(eq(users.id, authorId))
+    .limit(1);
 
   if (!author) {
     throw new Error(`Author with ID ${authorId} not found`);
@@ -39,41 +42,29 @@ export async function validateAuthorExists(authorId: string): Promise<void> {
   }
 }
 
-/**
- * Processes a single content file within a database transaction.
- * Ensures data consistency and proper error handling.
- */
 export async function processContentFile(
-  tx: PrismaTransactionClient,
+  tx: TransactionClient,
   contentData: ContentFile,
   authorId: string,
   stats: ProcessingStats
 ): Promise<void> {
-  // Create or get category
   const category = await upsertCategory(tx, contentData.category, stats);
+  const tagRows = await upsertTags(tx, contentData.tags, stats);
 
-  // Create or get tags
-  const tags = await upsertTags(tx, contentData.tags, stats);
-
-  // Check for existing posts to avoid duplicates
   const postSlugs = contentData.posts.map((p) => p.slug);
-  const existingPosts = await tx.post.findMany({
-    where: { slug: { in: postSlugs } },
-    select: { slug: true },
-  });
-  const existingPostSlugs = new Set(existingPosts.map((p) => p.slug));
-
-  // Filter out existing posts
+  const existingRows = await tx
+    .select({ slug: posts.slug })
+    .from(posts)
+    .where(inArray(posts.slug, postSlugs));
+  const existingPostSlugs = new Set(existingRows.map((p) => p.slug));
   const newPostsData = contentData.posts.filter(
     (p) => !existingPostSlugs.has(p.slug)
   );
 
-  // Create new posts
   for (const postData of newPostsData) {
-    await createPost(tx, postData, category.id, tags, authorId, stats);
+    await createPost(tx, postData, category.id, tagRows, authorId, stats);
   }
 
-  // Track skipped posts
   const skippedCount = contentData.posts.length - newPostsData.length;
   if (skippedCount > 0) {
     stats.warnings.push(
@@ -82,99 +73,87 @@ export async function processContentFile(
   }
 }
 
-/**
- * Creates or updates a category.
- * Returns the existing category if it already exists.
- */
 async function upsertCategory(
-  tx: PrismaTransactionClient,
+  tx: TransactionClient,
   categorySlug: string,
   stats: ProcessingStats
 ) {
-  const existingCategory = await tx.category.findUnique({
-    where: { slug: categorySlug },
-  });
+  const [existing] = await tx
+    .select()
+    .from(categories)
+    .where(eq(categories.slug, categorySlug))
+    .limit(1);
 
-  if (existingCategory) {
-    return existingCategory;
-  }
+  if (existing) return existing;
 
   stats.categoriesCreated++;
   const categoryName =
     categorySlug.charAt(0).toUpperCase() + categorySlug.slice(1);
-
-  return tx.category.create({
-    data: {
+  const [created] = await tx
+    .insert(categories)
+    .values({
       name: categoryName,
       slug: categorySlug,
       description: `${categoryName} prompts and tools`,
-    },
-  });
+    })
+    .returning();
+  return created!;
 }
 
-/**
- * Creates or updates tags.
- * Returns all requested tags, creating new ones as needed.
- */
 async function upsertTags(
-  tx: PrismaTransactionClient,
+  tx: TransactionClient,
   tagsData: TagData[],
   stats: ProcessingStats
 ) {
   const tagSlugs = tagsData.map((t) => t.slug);
-
-  // Find existing tags
-  const existingTags = await tx.tag.findMany({
-    where: { slug: { in: tagSlugs } },
-  });
-
-  const existingTagSlugs = new Set(existingTags.map((t) => t.slug));
+  const existingRows = await tx
+    .select()
+    .from(tags)
+    .where(inArray(tags.slug, tagSlugs));
+  const existingTagSlugs = new Set(existingRows.map((t) => t.slug));
   const newTagsData = tagsData.filter((t) => !existingTagSlugs.has(t.slug));
 
-  // Create new tags in bulk
-  if (newTagsData.length > 0) {
-    await tx.tag.createMany({
-      data: newTagsData,
-      skipDuplicates: true,
-    });
-    stats.tagsCreated += newTagsData.length;
+  for (const t of newTagsData) {
+    await tx.insert(tags).values({ name: t.name, slug: t.slug });
   }
+  stats.tagsCreated += newTagsData.length;
 
-  // Return all requested tags
-  return tx.tag.findMany({
-    where: { slug: { in: tagSlugs } },
-  });
+  const allRows = await tx
+    .select()
+    .from(tags)
+    .where(inArray(tags.slug, tagSlugs));
+  return allRows.map((r) => ({ id: r.id }));
 }
 
-/**
- * Creates a new post with proper associations.
- * Handles category and tag relationships securely.
- */
 async function createPost(
-  tx: PrismaTransactionClient,
+  tx: TransactionClient,
   postData: PostData,
   categoryId: string,
-  tags: { id: string }[],
+  tagRows: { id: string }[],
   authorId: string,
   stats: ProcessingStats
 ) {
-  await tx.post.create({
-    data: {
-      ...postData,
+  const [post] = await tx
+    .insert(posts)
+    .values({
+      title: postData.title,
+      slug: postData.slug,
+      description: postData.description ?? null,
+      content: postData.content,
       authorId,
       categoryId,
-      tags: {
-        connect: tags.map((tag) => ({ id: tag.id })),
-      },
-    },
-  });
+      isPublished: postData.isPublished ?? false,
+      status: postData.status ?? "DRAFT",
+    })
+    .returning();
+  if (!post) return;
 
+  for (const tag of tagRows) {
+    await tx.insert(postToTag).values({ A: post.id, B: tag.id });
+  }
   stats.postsCreated++;
 }
 
-/**
- * Saves a generation log to the database for audit purposes.
- */
 export async function saveGenerationLog(log: {
   status: "success" | "error";
   message: string;
@@ -186,47 +165,40 @@ export async function saveGenerationLog(log: {
   duration?: number;
 }) {
   try {
-    await prisma.log.create({
-      data: {
-        action: "automation",
-        userId: log.userId,
-        entityType: "content_generation",
-        entityId: null,
-        ipAddress: null,
-        userAgent: null,
-        metadata: {
-          status: log.status,
-          message: log.message,
-          filesProcessed: log.filesProcessed || 0,
-          postsCreated: log.postsCreated || 0,
-          statusMessages: log.statusMessages || [],
-          error: log.error,
-          duration: log.duration || 0,
-        },
-        severity: log.status === "error" ? "ERROR" : "INFO",
+    await db.insert(logs).values({
+      action: "automation",
+      userId: log.userId ?? null,
+      entityType: "content_generation",
+      entityId: null,
+      ipAddress: null,
+      userAgent: null,
+      metadata: {
+        status: log.status,
+        message: log.message,
+        filesProcessed: log.filesProcessed ?? 0,
+        postsCreated: log.postsCreated ?? 0,
+        statusMessages: log.statusMessages ?? [],
+        error: log.error,
+        duration: log.duration ?? 0,
       },
+      severity: log.status === "error" ? "ERROR" : "INFO",
     });
   } catch (error) {
     console.error("Error saving generation log:", error);
   }
 }
 
-/**
- * Retrieves generation logs from the database.
- */
 export async function getGenerationLogs() {
-  const dbLogs = await prisma.log.findMany({
-    where: {
-      action: "automation",
-      entityType: "content_generation",
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    take: 50, // Limit to last 50 logs
-  });
+  const dbLogsRows = await db
+    .select()
+    .from(logs)
+    .where(
+      and(eq(logs.action, "automation"), eq(logs.entityType, "content_generation"))
+    )
+    .orderBy(desc(logs.createdAt))
+    .limit(50);
 
-  return dbLogs.map((log) => {
+  return dbLogsRows.map((log) => {
     const metadata =
       log.metadata &&
       typeof log.metadata === "object" &&
@@ -254,7 +226,7 @@ export async function getGenerationLogs() {
         ? metadata.statusMessages
         : [],
       error: typeof metadata.error === "string" ? metadata.error : undefined,
-      userId: log.userId || undefined,
+      userId: log.userId ?? undefined,
       severity: log.severity,
       duration: typeof metadata.duration === "number" ? metadata.duration : 0,
     };

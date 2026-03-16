@@ -1,321 +1,122 @@
-import { prisma, DatabaseMetrics } from "@/lib/prisma";
+/**
+ * Query layer built on Drizzle ORM.
+ * Replaces Prisma with same caching, memoization, and public API.
+ */
+
+import { db, DatabaseMetrics } from "@/lib/db";
+import {
+  posts,
+  users,
+  categories,
+  tags,
+  postToTag,
+  bookmarks,
+  favorites,
+  media,
+} from "@/lib/db/schema";
 import {
   createCachedFunction,
   CACHE_TAGS,
   CACHE_DURATIONS,
   memoize,
 } from "@/lib/cache";
-import { Prisma } from "@/app/generated/prisma";
+import {
+  eq,
+  and,
+  or,
+  inArray,
+  desc,
+  asc,
+  ilike,
+  sql,
+  exists,
+  aliasedTable,
+  type SQL,
+} from "drizzle-orm";
 
-/**
- * Optimized Query Utilities for Better Performance
- *
- * Key optimizations:
- * - Minimal select statements to reduce data transfer
- * - Proper pagination with cursor-based approach for large datasets
- * - Query result caching with appropriate TTL
- * - Performance monitoring and slow query detection
- * - Consolidated query logic to prevent duplication
- * - Request-scoped memoization for repeated calls
- */
+// -----------------------------------------------------------------------------
+// Types (match previous Prisma payload shapes for compatibility)
+// -----------------------------------------------------------------------------
 
-// Optimized select objects for different use cases
-export const POST_SELECTS = {
-  // Minimal selection for listing pages
-  list: {
-    id: true,
-    title: true,
-    slug: true,
-    description: true,
-    uploadPath: true,
-    uploadFileType: true,
-    previewPath: true,
-    previewVideoPath: true,
-    blurData: true,
-    isPremium: true,
-    isPublished: true,
-    isFeatured: true,
-    status: true,
-    media: {
-      select: {
-        id: true,
-        mimeType: true,
-        relativePath: true,
-        width: true,
-        height: true,
-      },
-    },
-    authorId: true,
-    createdAt: true,
-    updatedAt: true,
-    author: {
-      select: {
-        id: true,
-        name: true,
-        avatar: true,
-        email: true,
-      },
-    },
-    category: {
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        parent: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-          },
-        },
-      },
-    },
-    tags: {
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-      },
-    },
-    _count: {
-      select: {
-        bookmarks: true,
-        favorites: true,
-      },
-    },
-  },
+export interface PostListAuthor {
+  id: string;
+  name: string | null;
+  avatar: string | null;
+  email: string;
+}
 
-  // Full selection for detail pages
-  full: {
-    id: true,
-    title: true,
-    slug: true,
-    description: true,
-    content: true,
-    uploadPath: true,
-    uploadFileType: true,
-    previewPath: true,
-    previewVideoPath: true,
-    blurData: true,
-    isPremium: true,
-    isFeatured: true,
-    isPublished: true,
-    status: true,
-    media: {
-      select: {
-        id: true,
-        mimeType: true,
-        relativePath: true,
-      },
-    },
+export interface PostListCategoryParent {
+  id: string;
+  name: string;
+  slug: string;
+}
 
-    authorId: true,
-    createdAt: true,
-    updatedAt: true,
-    author: {
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        avatar: true,
-      },
-    },
-    category: {
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        parent: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-          },
-        },
-      },
-    },
-    tags: {
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-      },
-    },
-    _count: {
-      select: {
-        favorites: true,
-        bookmarks: true,
-      },
-    },
-  },
+export interface PostListCategory {
+  id: string;
+  name: string;
+  slug: string;
+  parent: PostListCategoryParent | null;
+}
 
-  // API selection with user interaction data
-  api: {
-    id: true,
-    title: true,
-    slug: true,
-    description: true,
-    uploadPath: true,
-    uploadFileType: true,
-    blurData: true,
-    isPremium: true,
-    isPublished: true,
+export interface PostListTag {
+  id: string;
+  name: string;
+  slug: string;
+}
 
-    createdAt: true,
-    updatedAt: true,
-    author: {
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        avatar: true,
-      },
-    },
-    category: {
-      include: {
-        parent: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-          },
-        },
-      },
-    },
-    tags: {
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-      },
-    },
-    _count: {
-      select: {
-        bookmarks: true,
-        favorites: true,
-      },
-    },
-  },
+export interface PostListMedia {
+  id: string;
+  mimeType: string;
+  relativePath: string;
+  width: number | null;
+  height: number | null;
+}
 
-  // Admin selection with additional fields
-  admin: {
-    id: true,
-    title: true,
-    slug: true,
-    description: true,
-    uploadPath: true,
-    uploadFileType: true,
-    blurData: true,
-    isPremium: true,
-    isPublished: true,
-    status: true,
+export interface PostListResult {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  uploadPath: string | null;
+  uploadFileType: "IMAGE" | "VIDEO" | null;
+  previewPath: string | null;
+  previewVideoPath: string | null;
+  blurData: string | null;
+  isPremium: boolean;
+  isPublished: boolean;
+  isFeatured: boolean;
+  status: string;
+  media: PostListMedia[];
+  authorId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  author: PostListAuthor;
+  category: PostListCategory;
+  tags: PostListTag[];
+  _count: { bookmarks: number; favorites: number };
+}
 
-    authorId: true,
-    createdAt: true,
-    updatedAt: true,
-    author: {
-      select: {
-        id: true,
-        name: true,
-        email: true,
-      },
-    },
-    category: {
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-      },
-    },
-    _count: {
-      select: {
-        favorites: true,
-        bookmarks: true,
-      },
-    },
-  },
-} as const;
+export interface PostFullResult extends PostListResult {
+  content: string;
+  media: PostListMedia[];
+}
 
-export const USER_SELECTS = {
-  profile: {
-    id: true,
-    name: true,
-    email: true,
-    avatar: true,
-    type: true,
-    role: true,
-    createdAt: true,
-  },
+export interface PostWithInteractions extends Omit<PostListResult, "bookmarks" | "favorites"> {
+  isBookmarked?: boolean;
+  isFavorited?: boolean;
+}
 
-  admin: {
-    id: true,
-    name: true,
-    email: true,
-    avatar: true,
-    type: true,
-    role: true,
-    stripeCustomerId: true,
-    stripeSubscriptionId: true,
-    stripeCurrentPeriodEnd: true,
-    createdAt: true,
-    updatedAt: true,
-    _count: {
-      select: {
-        posts: true,
-        bookmarks: true,
-        favorites: true,
-      },
-    },
-  },
-} as const;
+export interface PostFullWithInteractions extends Omit<PostFullResult, "bookmarks" | "favorites"> {
+  isBookmarked?: boolean;
+  isFavorited?: boolean;
+}
 
-/**
- * Enhanced pagination interface with cursor support
- */
 export interface PaginationParams {
   page?: number;
   limit?: number;
   cursor?: string;
-  sortBy?: "latest" | "popular" | "trending";
+  sortBy?: "latest" | "popular" | "trending" | "relevance";
 }
-
-// Type definitions for query results
-export type PostListResult = Prisma.PostGetPayload<{
-  select: typeof POST_SELECTS.list;
-}>;
-
-export type PostFullResult = Prisma.PostGetPayload<{
-  select: typeof POST_SELECTS.full;
-}>;
-
-// Types for posts with interaction status
-export type PostWithInteractions = Omit<
-  PostListResult,
-  "bookmarks" | "favorites"
-> & {
-  isBookmarked?: boolean;
-  isFavorited?: boolean;
-  bookmarks?: undefined;
-  favorites?: undefined;
-};
-
-export type PostFullWithInteractions = Omit<
-  PostFullResult,
-  "bookmarks" | "favorites"
-> & {
-  isBookmarked?: boolean;
-  isFavorited?: boolean;
-  bookmarks?: undefined;
-  favorites?: undefined;
-};
-
-type PostGetPaginatedParams = PaginationParams & {
-  includeUnpublished?: boolean;
-  categoryId?: string;
-  authorId?: string;
-  isPremium?: boolean;
-  userId?: string;
-};
 
 export interface PaginatedResult<T> {
   data: T[];
@@ -331,13 +132,112 @@ export interface PaginatedResult<T> {
   };
 }
 
-/**
- * Enhanced Post Queries Class with comprehensive caching
- */
+type PostGetPaginatedParams = PaginationParams & {
+  includeUnpublished?: boolean;
+  categoryId?: string;
+  authorId?: string;
+  isPremium?: boolean;
+  userId?: string;
+};
+
+// Kept for backward compatibility (select shapes no longer used by Drizzle)
+export const POST_SELECTS = { list: {}, full: {}, api: {}, admin: {} } as const;
+export const USER_SELECTS = { profile: {}, admin: {} } as const;
+
+// -----------------------------------------------------------------------------
+// Helpers: fetch tags/media/counts for a set of post ids and merge into list
+// -----------------------------------------------------------------------------
+
+async function getTagsForPostIds(postIds: string[]): Promise<Map<string, PostListTag[]>> {
+  if (postIds.length === 0) return new Map();
+  const rows = await db
+    .select({
+      postId: postToTag.A,
+      id: tags.id,
+      name: tags.name,
+      slug: tags.slug,
+    })
+    .from(postToTag)
+    .innerJoin(tags, eq(postToTag.B, tags.id))
+    .where(inArray(postToTag.A, postIds));
+  const map = new Map<string, PostListTag[]>();
+  for (const r of rows) {
+    const list = map.get(r.postId) ?? [];
+    list.push({ id: r.id, name: r.name, slug: r.slug });
+    map.set(r.postId, list);
+  }
+  return map;
+}
+
+async function getMediaForPostIds(
+  postIds: string[],
+  listShape: boolean
+): Promise<Map<string, PostListMedia[] | { id: string; mimeType: string; relativePath: string }[]>> {
+  if (postIds.length === 0) return new Map();
+  const rows = await db
+    .select({
+      postId: media.postId,
+      id: media.id,
+      mimeType: media.mimeType,
+      relativePath: media.relativePath,
+      width: media.width,
+      height: media.height,
+    })
+    .from(media)
+    .where(inArray(media.postId, postIds));
+  const map = new Map();
+  for (const r of rows) {
+    if (!r.postId) continue;
+    const list = map.get(r.postId) ?? [];
+    if (listShape) {
+      list.push({
+        id: r.id,
+        mimeType: r.mimeType,
+        relativePath: r.relativePath,
+        width: r.width,
+        height: r.height,
+      });
+    } else {
+      list.push({ id: r.id, mimeType: r.mimeType, relativePath: r.relativePath });
+    }
+    map.set(r.postId, list);
+  }
+  return map;
+}
+
+async function getBookmarkAndFavoriteCounts(
+  postIds: string[]
+): Promise<{ bookmarks: Map<string, number>; favorites: Map<string, number> }> {
+  if (postIds.length === 0) {
+    return { bookmarks: new Map(), favorites: new Map() };
+  }
+  const [bookmarkRows, favoriteRows] = await Promise.all([
+    db
+      .select({ postId: bookmarks.postId, count: sql<number>`count(*)::int` })
+      .from(bookmarks)
+      .where(inArray(bookmarks.postId, postIds))
+      .groupBy(bookmarks.postId),
+    db
+      .select({ postId: favorites.postId, count: sql<number>`count(*)::int` })
+      .from(favorites)
+      .where(inArray(favorites.postId, postIds))
+      .groupBy(favorites.postId),
+  ]);
+  const bookmarksMap = new Map<string, number>();
+  const favoritesMap = new Map<string, number>();
+  for (const r of bookmarkRows) bookmarksMap.set(r.postId, r.count);
+  for (const r of favoriteRows) favoritesMap.set(r.postId, r.count);
+  return { bookmarks: bookmarksMap, favorites: favoritesMap };
+}
+
+// Alias for parent category join (same table twice)
+const parentCategory = aliasedTable(categories, "parent_category");
+
+// -----------------------------------------------------------------------------
+// PostQueries
+// -----------------------------------------------------------------------------
+
 export class PostQueries {
-  /**
-   * Get paginated posts with comprehensive filtering and caching
-   */
   static async getPaginated(
     params: PostGetPaginatedParams
   ): Promise<PaginatedResult<PostWithInteractions>> {
@@ -351,107 +251,127 @@ export class PostQueries {
       userId,
       sortBy = "latest",
     } = params;
-
     const skip = (page - 1) * limit;
 
-    // Build where clause with optimized category filtering
-    const where: Prisma.PostWhereInput = {
-      isPublished: includeUnpublished ? undefined : true,
-      ...(authorId && { authorId }),
-      ...(isPremium !== undefined && { isPremium }),
-    };
-
-    // Optimize category filtering - use direct categoryId first, then parent lookup
+    const conditions: (SQL | undefined)[] = [];
+    if (!includeUnpublished) conditions.push(eq(posts.isPublished, true));
+    if (authorId) conditions.push(eq(posts.authorId, authorId));
+    if (isPremium !== undefined) conditions.push(eq(posts.isPremium, isPremium));
     if (categoryId) {
-      where.OR = [{ categoryId }, { category: { parentId: categoryId } }];
+      const subIds = db.select({ id: categories.id }).from(categories).where(eq(categories.parentId, categoryId));
+      const catCond = or(eq(posts.categoryId, categoryId), inArray(posts.categoryId, subIds));
+      if (catCond) conditions.push(catCond);
     }
-
-    // Build order by clause - keep existing structure but optimize query separation
-    const orderBy:
-      | Prisma.PostOrderByWithRelationInput
-      | Prisma.PostOrderByWithRelationInput[] =
-      sortBy === "popular"
-        ? { favorites: { _count: "desc" } }
-        : sortBy === "trending"
-          ? [{ favorites: { _count: "desc" } }, { createdAt: "desc" }]
-          : { createdAt: "desc" };
+    const whereClause = and(...conditions);
 
     const endTimer = DatabaseMetrics.startQuery();
-
     try {
-      // Fetch posts without user interactions first for better performance
-      const [posts, totalCount] = await Promise.all([
-        prisma.post.findMany({
-          where,
-          select: POST_SELECTS.list,
-          orderBy,
-          skip,
-          take: limit,
-        }).catch((error) => {
-          console.error("Post query failed:", error);
-          // Return empty array on query failure
-          return [];
-        }),
-        prisma.post.count({ where }).catch((error) => {
-          console.error("Post count query failed:", error);
-          // Return 0 on count failure
-          return 0;
-        }),
+      const orderByClause =
+        sortBy === "popular"
+          ? [desc(sql`(SELECT count(*) FROM favorites WHERE favorites."postId" = ${posts.id})`)]
+          : sortBy === "trending"
+            ? [
+                desc(sql`(SELECT count(*) FROM favorites WHERE favorites."postId" = ${posts.id})`),
+                desc(posts.createdAt),
+              ]
+            : [desc(posts.createdAt)];
+
+      const rows = await db
+        .select({
+          post: posts,
+          authorId: users.id,
+          authorName: users.name,
+          authorAvatar: users.avatar,
+          authorEmail: users.email,
+          catId: categories.id,
+          catName: categories.name,
+          catSlug: categories.slug,
+          parentId: parentCategory.id,
+          parentName: parentCategory.name,
+          parentSlug: parentCategory.slug,
+        })
+        .from(posts)
+        .leftJoin(users, eq(posts.authorId, users.id))
+        .leftJoin(categories, eq(posts.categoryId, categories.id))
+        .leftJoin(parentCategory, eq(categories.parentId, parentCategory.id))
+        .where(whereClause)
+        .orderBy(...orderByClause)
+        .limit(limit)
+        .offset(skip);
+
+      const countResult = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(posts)
+        .leftJoin(categories, eq(posts.categoryId, categories.id))
+        .leftJoin(parentCategory, eq(categories.parentId, parentCategory.id))
+        .where(whereClause);
+      const totalCount = Number(countResult[0]?.count ?? 0);
+
+      const postIds = rows.map((r) => r.post.id);
+      const [tagsMap, mediaMap, counts] = await Promise.all([
+        getTagsForPostIds(postIds),
+        getMediaForPostIds(postIds, true),
+        getBookmarkAndFavoriteCounts(postIds),
       ]);
 
-      let transformedPosts: PostWithInteractions[];
-
-      // If userId is provided, fetch bookmark/favorite status in a separate optimized query
-      if (userId && posts.length > 0) {
-        const postIds = posts.map((post) => post.id);
-
-        // Fetch all bookmarks and favorites for these posts in one query each
-        const [bookmarks, favorites] = await Promise.all([
-          prisma.bookmark.findMany({
-            where: {
-              userId,
-              postId: { in: postIds },
-            },
-            select: { postId: true },
-          }).catch((error) => {
-            console.warn("Bookmark query failed:", error);
-            return [];
-          }),
-          prisma.favorite.findMany({
-            where: {
-              userId,
-              postId: { in: postIds },
-            },
-            select: { postId: true },
-          }).catch((error) => {
-            console.warn("Favorite query failed:", error);
-            return [];
-          }),
+      let bookmarkSet: Set<string> = new Set();
+      let favoriteSet: Set<string> = new Set();
+      if (userId && postIds.length > 0) {
+        const [userBookmarks, userFavorites] = await Promise.all([
+          db.select({ postId: bookmarks.postId }).from(bookmarks).where(and(eq(bookmarks.userId, userId), inArray(bookmarks.postId, postIds))),
+          db.select({ postId: favorites.postId }).from(favorites).where(and(eq(favorites.userId, userId), inArray(favorites.postId, postIds))),
         ]);
-
-        // Create lookup sets for O(1) access
-        const bookmarkedPostIds = new Set(bookmarks.map((b) => b.postId));
-        const favoritedPostIds = new Set(favorites.map((f) => f.postId));
-
-        // Transform posts with interaction data
-        transformedPosts = posts.map((post) => ({
-          ...post,
-          isBookmarked: bookmarkedPostIds.has(post.id),
-          isFavorited: favoritedPostIds.has(post.id),
-        }));
-      } else {
-        // No user context - no interactions
-        transformedPosts = posts.map((post) => ({
-          ...post,
-          isBookmarked: false,
-          isFavorited: false,
-        }));
+        bookmarkSet = new Set(userBookmarks.map((b) => b.postId));
+        favoriteSet = new Set(userFavorites.map((f) => f.postId));
       }
 
-      const totalPages = Math.ceil(totalCount / limit);
+      const data: PostWithInteractions[] = rows.map((r) => {
+        const p = r.post;
+        return {
+          id: p.id,
+          title: p.title,
+          slug: p.slug,
+          description: p.description,
+          uploadPath: p.uploadPath,
+          uploadFileType: p.uploadFileType,
+          previewPath: p.previewPath,
+          previewVideoPath: p.previewVideoPath,
+          blurData: p.blurData,
+          isPremium: p.isPremium ?? false,
+          isPublished: p.isPublished ?? false,
+          isFeatured: p.isFeatured ?? false,
+          status: p.status ?? "DRAFT",
+          media: (mediaMap.get(p.id) ?? []) as PostListMedia[],
+          authorId: p.authorId,
+          createdAt: p.createdAt!,
+          updatedAt: p.updatedAt!,
+          author: {
+            id: r.authorId ?? "",
+            name: r.authorName,
+            avatar: r.authorAvatar,
+            email: r.authorEmail ?? "",
+          },
+          category: {
+            id: r.catId ?? "",
+            name: r.catName ?? "",
+            slug: r.catSlug ?? "",
+            parent: r.parentId
+              ? { id: r.parentId, name: r.parentName ?? "", slug: r.parentSlug ?? "" }
+              : null,
+          },
+          tags: tagsMap.get(p.id) ?? [],
+          _count: {
+            bookmarks: counts.bookmarks.get(p.id) ?? 0,
+            favorites: counts.favorites.get(p.id) ?? 0,
+          },
+          isBookmarked: userId ? bookmarkSet.has(p.id) : false,
+          isFavorited: userId ? favoriteSet.has(p.id) : false,
+        };
+      });
 
+      const totalPages = Math.ceil(totalCount / limit);
       return {
-        data: transformedPosts,
+        data,
         pagination: {
           totalCount,
           totalPages,
@@ -466,21 +386,20 @@ export class PostQueries {
     }
   }
 
-  /**
-   * Search posts with full-text search and filters
-   */
   static async search(
     query: string,
     params: PaginationParams & {
       userId?: string;
       categoryId?: string;
       isPremium?: boolean;
+      sortBy?: "relevance" | "latest" | "popular" | "trending";
     }
   ): Promise<PaginatedResult<PostWithInteractions>> {
-    const { page = 1, limit = 12, userId, categoryId, isPremium } = params;
+    const { page = 1, limit = 12, userId, categoryId, isPremium, sortBy = "relevance" } = params;
     const skip = (page - 1) * limit;
 
-    const searchTerms = query.trim().split(/\s+/).filter(Boolean);
+    const trimmed = typeof query === "string" ? query.trim() : "";
+    const searchTerms = trimmed.split(/\s+/).filter(Boolean);
     if (searchTerms.length === 0) {
       return {
         data: [],
@@ -495,102 +414,163 @@ export class PostQueries {
       };
     }
 
-    // Build complex search where clause with optimized category filtering
-    const searchWhere: Prisma.PostWhereInput = {
-      isPublished: true,
-      AND: searchTerms.map((term) => ({
-        OR: [
-          { title: { contains: term, mode: "insensitive" } },
-          { description: { contains: term, mode: "insensitive" } },
-          // content search removed — ILIKE on full body causes sequential scans;
-          // title + description + tags give sufficient search coverage
-          { tags: { some: { name: { contains: term, mode: "insensitive" } } } },
-        ],
-      })),
-      ...(isPremium !== undefined && { isPremium }),
-    };
+    // Build a PostgreSQL tsquery with prefix matching on the last term
+    // so typing "reac" matches "react", "reactive", etc.
+    const sanitizedTerms = searchTerms
+      .map((t) => t.replace(/[^a-zA-Z0-9]/g, ""))
+      .filter((t) => t.length > 0);
 
-    // Optimize category filtering - apply after other filters
+    const tsQueryString =
+      sanitizedTerms.length > 0
+        ? sanitizedTerms
+            .map((t, i) => (i === sanitizedTerms.length - 1 ? `${t}:*` : t))
+            .join(" & ")
+        : null;
+
+    const tsvectorExpr = sql`to_tsvector('english', coalesce(${posts.title}, '') || ' ' || coalesce(${posts.description}, ''))`;
+
+    // Full-text search condition using tsquery (when we have valid terms)
+    const fullTextCondition = tsQueryString
+      ? sql`${tsvectorExpr} @@ to_tsquery('english', ${tsQueryString})`
+      : null;
+
+    // Relevance rank expression for ordering
+    const rankExpr = tsQueryString
+      ? sql<number>`ts_rank(${tsvectorExpr}, to_tsquery('english', ${tsQueryString}))`
+      : sql<number>`0`;
+
+    // ilike fallback conditions for broader matching (short queries, special chars, etc.)
+    const ilikeConditions = searchTerms.map((term) =>
+      or(
+        ilike(posts.title, `%${term}%`),
+        ilike(posts.description, `%${term}%`),
+        exists(
+          db
+            .select()
+            .from(postToTag)
+            .innerJoin(tags, eq(postToTag.B, tags.id))
+            .where(and(eq(postToTag.A, posts.id), ilike(tags.name, `%${term}%`)))
+        ),
+        ilike(categories.name, `%${term}%`)
+      )
+    );
+
+    // Combine: full-text OR (all ilike terms must match)
+    const combinedSearch = fullTextCondition
+      ? or(fullTextCondition, and(...ilikeConditions))
+      : and(...ilikeConditions);
+
+    const searchWhere = and(
+      eq(posts.isPublished, true),
+      combinedSearch,
+      isPremium !== undefined ? eq(posts.isPremium, isPremium) : undefined
+    );
+
+    let whereClause: SQL | undefined = searchWhere;
     if (categoryId) {
-      searchWhere.OR = [{ categoryId }, { category: { parentId: categoryId } }];
+      const subIds = db.select({ id: categories.id }).from(categories).where(eq(categories.parentId, categoryId));
+      whereClause = and(searchWhere, or(eq(posts.categoryId, categoryId), inArray(posts.categoryId, subIds)));
     }
 
-    const endTimer = DatabaseMetrics.startQuery();
+    // Determine ordering based on sortBy
+    const popularityExpr = sql`(SELECT count(*) FROM favorites WHERE favorites."postId" = ${posts.id})`;
+    const orderByClause =
+      sortBy === "latest"
+        ? [desc(posts.createdAt)]
+        : sortBy === "popular"
+          ? [desc(popularityExpr), desc(posts.createdAt)]
+          : sortBy === "trending"
+            ? [desc(popularityExpr), desc(posts.createdAt)]
+            : [desc(rankExpr), desc(posts.createdAt)]; // "relevance" (default)
 
+    const endTimer = DatabaseMetrics.startQuery();
     try {
-      // Fetch posts without user interactions first for better performance
-      const [posts, totalCount] = await Promise.all([
-        prisma.post.findMany({
-          where: searchWhere,
-          select: POST_SELECTS.list,
-          orderBy: [{ favorites: { _count: "desc" } }, { createdAt: "desc" }],
-          skip,
-          take: limit,
-        }).catch((error) => {
-          console.error("Search posts query failed:", error);
-          // Return empty array on query failure
-          return [];
-        }),
-        prisma.post.count({ where: searchWhere }).catch((error) => {
-          console.error("Search count query failed:", error);
-          // Return 0 on count failure
-          return 0;
-        }),
+      const rows = await db
+        .select({
+          post: posts,
+          authorId: users.id,
+          authorName: users.name,
+          authorAvatar: users.avatar,
+          authorEmail: users.email,
+          catId: categories.id,
+          catName: categories.name,
+          catSlug: categories.slug,
+          parentId: parentCategory.id,
+          parentName: parentCategory.name,
+          parentSlug: parentCategory.slug,
+        })
+        .from(posts)
+        .leftJoin(users, eq(posts.authorId, users.id))
+        .leftJoin(categories, eq(posts.categoryId, categories.id))
+        .leftJoin(parentCategory, eq(categories.parentId, parentCategory.id))
+        .where(whereClause)
+        .orderBy(...orderByClause)
+        .limit(limit)
+        .offset(skip);
+
+      const countResult = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(posts)
+        .leftJoin(categories, eq(posts.categoryId, categories.id))
+        .leftJoin(parentCategory, eq(categories.parentId, parentCategory.id))
+        .where(whereClause);
+      const totalCount = Number(countResult[0]?.count ?? 0);
+
+      const postIds = rows.map((r) => r.post.id);
+      const [tagsMap, mediaMap, counts] = await Promise.all([
+        getTagsForPostIds(postIds),
+        getMediaForPostIds(postIds, true),
+        getBookmarkAndFavoriteCounts(postIds),
       ]);
 
-      let transformedPosts: PostWithInteractions[];
-
-      // If userId is provided, fetch bookmark/favorite status in optimized separate queries
-      if (userId && posts.length > 0) {
-        const postIds = posts.map((post) => post.id);
-
-        // Fetch all bookmarks and favorites for these posts in one query each
-        const [bookmarks, favorites] = await Promise.all([
-          prisma.bookmark.findMany({
-            where: {
-              userId,
-              postId: { in: postIds },
-            },
-            select: { postId: true },
-          }).catch((error) => {
-            console.warn("Bookmark query failed:", error);
-            return [];
-          }),
-          prisma.favorite.findMany({
-            where: {
-              userId,
-              postId: { in: postIds },
-            },
-            select: { postId: true },
-          }).catch((error) => {
-            console.warn("Favorite query failed:", error);
-            return [];
-          }),
+      let bookmarkSet = new Set<string>();
+      let favoriteSet = new Set<string>();
+      if (userId && postIds.length > 0) {
+        const [userBookmarks, userFavorites] = await Promise.all([
+          db.select({ postId: bookmarks.postId }).from(bookmarks).where(and(eq(bookmarks.userId, userId), inArray(bookmarks.postId, postIds))),
+          db.select({ postId: favorites.postId }).from(favorites).where(and(eq(favorites.userId, userId), inArray(favorites.postId, postIds))),
         ]);
-
-        // Create lookup sets for O(1) access
-        const bookmarkedPostIds = new Set(bookmarks.map((b) => b.postId));
-        const favoritedPostIds = new Set(favorites.map((f) => f.postId));
-
-        // Transform posts with interaction data
-        transformedPosts = posts.map((post) => ({
-          ...post,
-          isBookmarked: bookmarkedPostIds.has(post.id),
-          isFavorited: favoritedPostIds.has(post.id),
-        }));
-      } else {
-        // No user context - no interactions
-        transformedPosts = posts.map((post) => ({
-          ...post,
-          isBookmarked: false,
-          isFavorited: false,
-        }));
+        bookmarkSet = new Set(userBookmarks.map((b) => b.postId));
+        favoriteSet = new Set(userFavorites.map((f) => f.postId));
       }
 
-      const totalPages = Math.ceil(totalCount / limit);
+      const data: PostWithInteractions[] = rows.map((r) => {
+        const p = r.post;
+        return {
+          id: p.id,
+          title: p.title,
+          slug: p.slug,
+          description: p.description,
+          uploadPath: p.uploadPath,
+          uploadFileType: p.uploadFileType,
+          previewPath: p.previewPath,
+          previewVideoPath: p.previewVideoPath,
+          blurData: p.blurData,
+          isPremium: p.isPremium ?? false,
+          isPublished: p.isPublished ?? false,
+          isFeatured: p.isFeatured ?? false,
+          status: p.status ?? "DRAFT",
+          media: (mediaMap.get(p.id) ?? []) as PostListMedia[],
+          authorId: p.authorId,
+          createdAt: p.createdAt!,
+          updatedAt: p.updatedAt!,
+          author: { id: r.authorId ?? "", name: r.authorName, avatar: r.authorAvatar, email: r.authorEmail ?? "" },
+          category: {
+            id: r.catId ?? "",
+            name: r.catName ?? "",
+            slug: r.catSlug ?? "",
+            parent: r.parentId ? { id: r.parentId, name: r.parentName ?? "", slug: r.parentSlug ?? "" } : null,
+          },
+          tags: tagsMap.get(p.id) ?? [],
+          _count: { bookmarks: counts.bookmarks.get(p.id) ?? 0, favorites: counts.favorites.get(p.id) ?? 0 },
+          isBookmarked: userId ? bookmarkSet.has(p.id) : false,
+          isFavorited: userId ? favoriteSet.has(p.id) : false,
+        };
+      });
 
+      const totalPages = Math.ceil(totalCount / limit);
       return {
-        data: transformedPosts,
+        data,
         pagination: {
           totalCount,
           totalPages,
@@ -605,9 +585,6 @@ export class PostQueries {
     }
   }
 
-  /**
-   * Get related posts based on category and tags
-   */
   static async getRelated(
     postId: string,
     categoryId: string,
@@ -616,178 +593,214 @@ export class PostQueries {
     userId?: string
   ): Promise<PostWithInteractions[]> {
     const endTimer = DatabaseMetrics.startQuery();
-
     try {
-      // Strategy: Find posts that share tags or category, excluding current post
-      const relatedPosts = await prisma.post.findMany({
-        where: {
-          isPublished: true,
-          id: { not: postId },
-          OR: [
-            { categoryId },
-            { category: { parentId: categoryId } },
-            ...(tagIds.length > 0
-              ? [{ tags: { some: { id: { in: tagIds } } } }]
-              : []),
-          ],
-        },
-        select: {
-          ...POST_SELECTS.list,
-          ...(userId && {
-            bookmarks: {
-              where: { userId },
-              select: { id: true },
-            },
-            favorites: {
-              where: { userId },
-              select: { id: true },
-            },
-          }),
-        },
-        orderBy: [{ favorites: { _count: "desc" } }, { createdAt: "desc" }],
-        take: limit,
+      const subIds = db.select({ id: categories.id }).from(categories).where(eq(categories.parentId, categoryId));
+      const orConditions: SQL[] = [
+        eq(posts.categoryId, categoryId),
+        inArray(posts.categoryId, subIds),
+      ];
+      if (tagIds.length > 0) {
+        orConditions.push(
+          exists(
+            db
+              .select()
+              .from(postToTag)
+              .where(and(eq(postToTag.A, posts.id), inArray(postToTag.B, tagIds)))
+          )
+        );
+      }
+      const rows = await db
+        .select({
+          post: posts,
+          authorId: users.id,
+          authorName: users.name,
+          authorAvatar: users.avatar,
+          authorEmail: users.email,
+          catId: categories.id,
+          catName: categories.name,
+          catSlug: categories.slug,
+          parentId: parentCategory.id,
+          parentName: parentCategory.name,
+          parentSlug: parentCategory.slug,
+        })
+        .from(posts)
+        .leftJoin(users, eq(posts.authorId, users.id))
+        .leftJoin(categories, eq(posts.categoryId, categories.id))
+        .leftJoin(parentCategory, eq(categories.parentId, parentCategory.id))
+        .where(
+          and(
+            eq(posts.isPublished, true),
+            sql`${posts.id} != ${postId}`,
+            or(...orConditions)
+          )
+        )
+        .orderBy(desc(sql`(SELECT count(*) FROM favorites WHERE favorites."postId" = ${posts.id})`), desc(posts.createdAt))
+        .limit(limit);
+
+      const postIds = rows.map((r) => r.post.id);
+      const [tagsMap, mediaMap, counts] = await Promise.all([
+        getTagsForPostIds(postIds),
+        getMediaForPostIds(postIds, true),
+        getBookmarkAndFavoriteCounts(postIds),
+      ]);
+
+      let bookmarkSet = new Set<string>();
+      let favoriteSet = new Set<string>();
+      if (userId && postIds.length > 0) {
+        const [userBookmarks, userFavorites] = await Promise.all([
+          db.select({ postId: bookmarks.postId }).from(bookmarks).where(and(eq(bookmarks.userId, userId), inArray(bookmarks.postId, postIds))),
+          db.select({ postId: favorites.postId }).from(favorites).where(and(eq(favorites.userId, userId), inArray(favorites.postId, postIds))),
+        ]);
+        bookmarkSet = new Set(userBookmarks.map((b) => b.postId));
+        favoriteSet = new Set(userFavorites.map((f) => f.postId));
+      }
+
+      return rows.map((r) => {
+        const p = r.post;
+        return {
+          id: p.id,
+          title: p.title,
+          slug: p.slug,
+          description: p.description,
+          uploadPath: p.uploadPath,
+          uploadFileType: p.uploadFileType,
+          previewPath: p.previewPath,
+          previewVideoPath: p.previewVideoPath,
+          blurData: p.blurData,
+          isPremium: p.isPremium ?? false,
+          isPublished: p.isPublished ?? false,
+          isFeatured: p.isFeatured ?? false,
+          status: p.status ?? "DRAFT",
+          media: (mediaMap.get(p.id) ?? []) as PostListMedia[],
+          authorId: p.authorId,
+          createdAt: p.createdAt!,
+          updatedAt: p.updatedAt!,
+          author: { id: r.authorId ?? "", name: r.authorName, avatar: r.authorAvatar, email: r.authorEmail ?? "" },
+          category: {
+            id: r.catId ?? "",
+            name: r.catName ?? "",
+            slug: r.catSlug ?? "",
+            parent: r.parentId ? { id: r.parentId, name: r.parentName ?? "", slug: r.parentSlug ?? "" } : null,
+          },
+          tags: tagsMap.get(p.id) ?? [],
+          _count: { bookmarks: counts.bookmarks.get(p.id) ?? 0, favorites: counts.favorites.get(p.id) ?? 0 },
+          isBookmarked: userId ? bookmarkSet.has(p.id) : false,
+          isFavorited: userId ? favoriteSet.has(p.id) : false,
+        };
       });
-
-      // Transform posts to include interaction status
-      const transformedPosts: PostWithInteractions[] = relatedPosts.map(
-        (post) => {
-          const { bookmarks, favorites, ...rest } = post as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-          return {
-            ...rest,
-            isBookmarked: userId ? (bookmarks?.length ?? 0) > 0 : false,
-            isFavorited: userId ? (favorites?.length ?? 0) > 0 : false,
-          };
-        }
-      );
-
-      return transformedPosts;
     } finally {
       endTimer();
     }
   }
 
-  /**
-   * Get post by ID with full details
-   */
-  static async getById(
-    id: string,
-    userId?: string
-  ): Promise<PostFullWithInteractions | null> {
+  static async getById(id: string, userId?: string): Promise<PostFullWithInteractions | null> {
     const endTimer = DatabaseMetrics.startQuery();
-
     try {
-      const post = await prisma.post.findUnique({
-        where: { id },
-        select: {
-          ...POST_SELECTS.full,
-          ...(userId && {
-            bookmarks: {
-              where: { userId },
-              select: { id: true },
-            },
-            favorites: {
-              where: { userId },
-              select: { id: true },
-            },
-          }),
-        },
-      });
-
-      if (!post) return null;
-
-      // Destructure interaction arrays when present and map to boolean flags
-      const { bookmarks, favorites, ...rest } = post as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-
+      const rows = await db
+        .select()
+        .from(posts)
+        .leftJoin(users, eq(posts.authorId, users.id))
+        .leftJoin(categories, eq(posts.categoryId, categories.id))
+        .leftJoin(parentCategory, eq(categories.parentId, parentCategory.id))
+        .where(eq(posts.id, id))
+        .limit(1);
+      const row = rows[0];
+      if (!row) return null;
+      const p = row.posts;
+      const parentCat =
+        (row as { parent_category?: { id: string; name: string; slug: string } | null })
+          .parent_category ?? null;
+      const [tagsList, mediaList, counts] = await Promise.all([
+        getTagsForPostIds([p.id]),
+        getMediaForPostIds([p.id], false),
+        getBookmarkAndFavoriteCounts([p.id]),
+      ]);
+      let isBookmarked = false;
+      let isFavorited = false;
+      if (userId) {
+        const [b] = await db.select().from(bookmarks).where(and(eq(bookmarks.postId, p.id), eq(bookmarks.userId, userId))).limit(1);
+        const [f] = await db.select().from(favorites).where(and(eq(favorites.postId, p.id), eq(favorites.userId, userId))).limit(1);
+        isBookmarked = !!b;
+        isFavorited = !!f;
+      }
       return {
-        ...rest,
-        isBookmarked: userId ? (bookmarks?.length ?? 0) > 0 : false,
-        isFavorited: userId ? (favorites?.length ?? 0) > 0 : false,
+        id: p.id,
+        title: p.title,
+        slug: p.slug,
+        description: p.description,
+        content: p.content,
+        uploadPath: p.uploadPath,
+        uploadFileType: p.uploadFileType,
+        previewPath: p.previewPath,
+        previewVideoPath: p.previewVideoPath,
+        blurData: p.blurData,
+        isPremium: p.isPremium ?? false,
+        isFeatured: p.isFeatured ?? false,
+        isPublished: p.isPublished ?? false,
+        status: p.status ?? "DRAFT",
+        media: (mediaList.get(p.id) ?? []) as { id: string; mimeType: string; relativePath: string }[],
+        authorId: p.authorId,
+        createdAt: p.createdAt!,
+        updatedAt: p.updatedAt!,
+        author: {
+          id: row.users?.id ?? "",
+          name: row.users?.name ?? null,
+          avatar: row.users?.avatar ?? null,
+          email: row.users?.email ?? "",
+        },
+        category: {
+          id: row.categories?.id ?? "",
+          name: row.categories?.name ?? "",
+          slug: row.categories?.slug ?? "",
+          parent: parentCat
+            ? { id: parentCat.id, name: parentCat.name ?? "", slug: parentCat.slug ?? "" }
+            : null,
+        },
+        tags: tagsList.get(p.id) ?? [],
+        _count: { bookmarks: counts.bookmarks.get(p.id) ?? 0, favorites: counts.favorites.get(p.id) ?? 0 },
+        isBookmarked,
+        isFavorited,
       } as PostFullWithInteractions;
     } finally {
       endTimer();
     }
   }
 
-  /**
-   * Get post by slug with full details
-   */
-  static async getBySlug(
-    slug: string,
-    userId?: string
-  ): Promise<PostFullWithInteractions | null> {
+  static async getBySlug(slug: string, userId?: string): Promise<PostFullWithInteractions | null> {
     const endTimer = DatabaseMetrics.startQuery();
-
     try {
-      const post = await prisma.post.findUnique({
-        where: { slug },
-        select: {
-          ...POST_SELECTS.full,
-          ...(userId && {
-            bookmarks: {
-              where: { userId },
-              select: { id: true },
-            },
-            favorites: {
-              where: { userId },
-              select: { id: true },
-            },
-          }),
-        },
-      });
-
-      if (!post) return null;
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { bookmarks, favorites, ...rest } = post as any;
-
-      return {
-        ...rest,
-        isBookmarked: userId ? (bookmarks?.length ?? 0) > 0 : false,
-        isFavorited: userId ? (favorites?.length ?? 0) > 0 : false,
-      } as PostFullWithInteractions;
+      const rows = await db
+        .select()
+        .from(posts)
+        .leftJoin(users, eq(posts.authorId, users.id))
+        .leftJoin(categories, eq(posts.categoryId, categories.id))
+        .leftJoin(parentCategory, eq(categories.parentId, parentCategory.id))
+        .where(eq(posts.slug, slug))
+        .limit(1);
+      const row = rows[0];
+      if (!row) return null;
+      return PostQueries.getById(row.posts.id, userId);
     } finally {
       endTimer();
     }
   }
 
-  /**
-   * Get popular posts (trending)
-   */
-  static async getPopular(
-    limit = 10,
-    userId?: string
-  ): Promise<PostListResult[]> {
+  static async getPopular(limit = 10, userId?: string): Promise<PostListResult[]> {
     const endTimer = DatabaseMetrics.startQuery();
-
     try {
-      const posts = await prisma.post.findMany({
-        where: { isPublished: true },
-        select: {
-          ...POST_SELECTS.list,
-          ...(userId && {
-            bookmarks: {
-              where: { userId },
-              select: { id: true },
-            },
-            favorites: {
-              where: { userId },
-              select: { id: true },
-            },
-          }),
-        },
-        orderBy: [{ favorites: { _count: "desc" } }, { createdAt: "desc" }],
-        take: limit,
+      const result = await PostQueries.getPaginated({
+        page: 1,
+        limit,
+        includeUnpublished: false,
+        sortBy: "popular",
+        userId,
       });
-
-      return posts as PostListResult[];
+      return result.data;
     } finally {
       endTimer();
     }
   }
 
-  /**
-   * Get efficient post statistics for dashboard
-   */
   static async getStats(params: {
     authorId?: string;
     includeUnpublished?: boolean;
@@ -802,267 +815,227 @@ export class PostQueries {
     featured: number;
   }> {
     const endTimer = DatabaseMetrics.startQuery();
-
     try {
-      const baseWhere: Prisma.PostWhereInput = {
-        ...(params.authorId && { authorId: params.authorId }),
-        ...(params.categoryId && {
-          OR: [
-            { categoryId: params.categoryId },
-            { category: { parentId: params.categoryId } },
-          ],
-        }),
-      };
-
-      const grouped = await prisma.post.groupBy({
-          by: ["status", "isPublished", "isPremium", "isFeatured"],
-          where: baseWhere,
-          _count: true,
-        });
-
-      // Derive individual counts from grouped results
-      let total = 0;
-      let published = 0;
-      let draft = 0;
-      let pending = 0;
-      let rejected = 0;
-      let premium = 0;
-      let featured = 0;
-
-      for (const row of grouped) {
-        const count = row._count;
-
-        // Count towards total based on includeUnpublished flag
-        if (params.includeUnpublished || row.isPublished) {
-          total += count;
-        }
-        if (row.isPublished) published += count;
-        if (row.status === "DRAFT") draft += count;
-        if (row.status === "PENDING_APPROVAL") pending += count;
-        if (row.status === "REJECTED") rejected += count;
-        if (row.isPremium && row.isPublished) premium += count;
-        if (row.isFeatured && row.isPublished) featured += count;
+      const conditions: (SQL | undefined)[] = [];
+      if (params.authorId) conditions.push(eq(posts.authorId, params.authorId));
+      if (params.categoryId) {
+        const subIds = db.select({ id: categories.id }).from(categories).where(eq(categories.parentId, params.categoryId));
+        const catCond = or(eq(posts.categoryId, params.categoryId), inArray(posts.categoryId, subIds));
+        if (catCond) conditions.push(catCond);
       }
+      const whereClause = and(...conditions);
 
-      return {
-        total,
-        published,
-        draft,
-        pending,
-        rejected,
-        premium,
-        featured,
-      };
+      const rows = await db
+        .select({
+          status: posts.status,
+          isPublished: posts.isPublished,
+          isPremium: posts.isPremium,
+          isFeatured: posts.isFeatured,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(posts)
+        .leftJoin(categories, eq(posts.categoryId, categories.id))
+        .leftJoin(parentCategory, eq(categories.parentId, parentCategory.id))
+        .where(whereClause)
+        .groupBy(posts.status, posts.isPublished, posts.isPremium, posts.isFeatured);
+
+      let total = 0,
+        published = 0,
+        draft = 0,
+        pending = 0,
+        rejected = 0,
+        premium = 0,
+        featured = 0;
+      for (const r of rows) {
+        const c = r.count;
+        if (params.includeUnpublished || r.isPublished) total += c;
+        if (r.isPublished) published += c;
+        if (r.status === "DRAFT") draft += c;
+        if (r.status === "PENDING_APPROVAL") pending += c;
+        if (r.status === "REJECTED") rejected += c;
+        if (r.isPremium && r.isPublished) premium += c;
+        if (r.isFeatured && r.isPublished) featured += c;
+      }
+      return { total, published, draft, pending, rejected, premium, featured };
     } finally {
       endTimer();
     }
   }
 }
 
-/**
- * Enhanced Metadata Queries for Categories and Tags
- */
+// -----------------------------------------------------------------------------
+// MetadataQueries
+// -----------------------------------------------------------------------------
+
 export class MetadataQueries {
-  /**
-   * Get all categories with post counts
-   */
   static async getAllCategories() {
     const endTimer = DatabaseMetrics.startQuery();
-
     try {
-      return await prisma.category.findMany({
-        select: {
+      const rows = await db.query.categories.findMany({
+        columns: {
           id: true,
           name: true,
           slug: true,
           description: true,
           createdAt: true,
           updatedAt: true,
-          parent: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-            },
-          },
-          children: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-            },
-            orderBy: { createdAt: "asc" },
-          },
-          _count: {
-            select: {
-              posts: {
-                where: { isPublished: true },
-              },
-            },
-          },
         },
-        orderBy: { createdAt: "asc" },
+        with: {
+          parent: { columns: { id: true, name: true, slug: true } },
+          children: { columns: { id: true, name: true, slug: true } },
+        },
+        orderBy: asc(categories.createdAt),
       });
+
+      const postCounts = await db
+        .select({ categoryId: posts.categoryId, count: sql<number>`count(*)::int` })
+        .from(posts)
+        .where(eq(posts.isPublished, true))
+        .groupBy(posts.categoryId);
+      const countMap = new Map(postCounts.map((r) => [r.categoryId, r.count]));
+
+      return rows.map((c) => ({
+        id: c.id,
+        name: c.name,
+        slug: c.slug,
+        description: c.description,
+        createdAt: c.createdAt,
+        updatedAt: c.updatedAt,
+        parent: c.parent,
+        children: c.children ?? [],
+        _count: { posts: countMap.get(c.id) ?? 0 },
+      }));
     } finally {
       endTimer();
     }
   }
 
-  /**
-   * Get all tags with post counts
-   */
   static async getAllTags() {
     const endTimer = DatabaseMetrics.startQuery();
-
     try {
-      return await prisma.tag.findMany({
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          createdAt: true,
-          _count: {
-            select: {
-              posts: {
-                where: { isPublished: true },
-              },
-            },
-          },
-        },
-        orderBy: { name: "asc" },
-      });
+      const tagRows = await db.select().from(tags).orderBy(asc(tags.name));
+      const postTagCounts = await db
+        .select({ tagId: postToTag.B, count: sql<number>`count(*)::int` })
+        .from(postToTag)
+        .innerJoin(posts, eq(postToTag.A, posts.id))
+        .where(eq(posts.isPublished, true))
+        .groupBy(postToTag.B);
+      const countMap = new Map(postTagCounts.map((r) => [r.tagId, r.count]));
+
+      return tagRows.map((t) => ({
+        id: t.id,
+        name: t.name,
+        slug: t.slug,
+        createdAt: t.createdAt,
+        _count: { posts: countMap.get(t.id) ?? 0 },
+      }));
     } finally {
       endTimer();
     }
   }
 
-  /**
-   * Get popular tags (most used)
-   */
   static async getPopularTags(limit = 20) {
     const endTimer = DatabaseMetrics.startQuery();
-
     try {
-      return await prisma.tag.findMany({
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          _count: {
-            select: {
-              posts: {
-                where: { isPublished: true },
-              },
-            },
-          },
-        },
-        orderBy: {
-          posts: {
-            _count: "desc",
-          },
-        },
-        take: limit,
-      });
+      const rows = await db
+        .select({
+          tagId: postToTag.B,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(postToTag)
+        .innerJoin(posts, eq(postToTag.A, posts.id))
+        .where(eq(posts.isPublished, true))
+        .groupBy(postToTag.B)
+        .orderBy(desc(sql`count(*)`))
+        .limit(limit);
+
+      const tagIds = rows.map((r) => r.tagId);
+      if (tagIds.length === 0) return [];
+      const tagList = await db.select().from(tags).where(inArray(tags.id, tagIds));
+      const tagMap = new Map(tagList.map((t) => [t.id, t]));
+      const countMap = new Map(rows.map((r) => [r.tagId, r.count]));
+
+      return rows.map((r) => {
+        const t = tagMap.get(r.tagId);
+        if (!t) return null;
+        return { id: t.id, name: t.name, slug: t.slug, _count: { posts: countMap.get(r.tagId) ?? 0 } };
+      }).filter(Boolean) as { id: string; name: string; slug: string; _count: { posts: number } }[];
     } finally {
       endTimer();
     }
   }
 }
 
-/**
- * Cached versions of common queries with request-scoped memoization
- */
+// -----------------------------------------------------------------------------
+// Cached and memoized exports
+// -----------------------------------------------------------------------------
 
-// Memoized functions for request deduplication
 const memoizedGetPaginated = memoize(
   (params: PostGetPaginatedParams) => PostQueries.getPaginated(params),
   (params) => `posts-paginated-${JSON.stringify(params)}`
 );
-
 const memoizedSearch = memoize(
   (
     query: string,
-    params: PaginationParams & {
-      userId?: string;
-      categoryId?: string;
-      isPremium?: boolean;
-    }
+    params: PaginationParams & { userId?: string; categoryId?: string; isPremium?: boolean }
   ) => PostQueries.search(query, params),
   (query, params) => `posts-search-${query}-${JSON.stringify(params)}`
 );
-
 const memoizedGetRelated = memoize(
-  (
-    postId: string,
-    categoryId: string,
-    tagIds: string[],
-    limit: number,
-    userId?: string
-  ) => PostQueries.getRelated(postId, categoryId, tagIds, limit, userId),
+  (postId: string, categoryId: string, tagIds: string[], limit: number, userId?: string) =>
+    PostQueries.getRelated(postId, categoryId, tagIds, limit, userId),
   (postId, categoryId, tagIds, limit, userId) =>
-    `related-${postId}-${categoryId}-${tagIds.join(",")}-${limit}-${
-      userId || "anon"
-    }`
+    `related-${postId}-${categoryId}-${tagIds.join(",")}-${limit}-${userId || "anon"}`
 );
 
-// Cached versions with appropriate TTLs
 export const getCachedPosts = createCachedFunction(
   memoizedGetPaginated,
   "posts-paginated",
   CACHE_DURATIONS.POSTS_LIST,
   [CACHE_TAGS.POSTS]
 );
-
 export const getCachedPostSearch = createCachedFunction(
   memoizedSearch,
   "posts-search",
   CACHE_DURATIONS.SEARCH,
   [CACHE_TAGS.SEARCH_RESULTS, CACHE_TAGS.POSTS]
 );
-
 export const getCachedRelatedPosts = createCachedFunction(
   memoizedGetRelated,
   "related-posts",
   CACHE_DURATIONS.POSTS_LIST,
   [CACHE_TAGS.RELATED_POSTS]
 );
-
 export const getCachedPostById = createCachedFunction(
   (id: string, userId?: string) => PostQueries.getById(id, userId),
   "post-by-id",
   CACHE_DURATIONS.POST_DETAIL,
   [CACHE_TAGS.POST_BY_ID]
 );
-
 export const getCachedPostBySlug = createCachedFunction(
   (slug: string, userId?: string) => PostQueries.getBySlug(slug, userId),
   "post-by-slug",
   CACHE_DURATIONS.POST_DETAIL,
   [CACHE_TAGS.POST_BY_SLUG]
 );
-
 export const getCachedPopularPosts = createCachedFunction(
   (limit: number, userId?: string) => PostQueries.getPopular(limit, userId),
   "popular-posts",
   CACHE_DURATIONS.POPULAR_CONTENT,
   [CACHE_TAGS.POPULAR_POSTS]
 );
-
-// Cached metadata queries
 export const getCachedCategories = createCachedFunction(
   MetadataQueries.getAllCategories,
   "all-categories",
   CACHE_DURATIONS.STATIC_DATA,
   [CACHE_TAGS.CATEGORIES]
 );
-
 export const getCachedTags = createCachedFunction(
   MetadataQueries.getAllTags,
   "all-tags",
   CACHE_DURATIONS.STATIC_DATA,
   [CACHE_TAGS.TAGS]
 );
-
 export const getCachedPopularTags = createCachedFunction(
   (limit: number) => MetadataQueries.getPopularTags(limit),
   "popular-tags",
@@ -1070,71 +1043,30 @@ export const getCachedPopularTags = createCachedFunction(
   [CACHE_TAGS.TAGS]
 );
 
-/**
- * Consolidated query interface for easy consumption
- * Uses cached versions for anonymous users, direct methods for authenticated users
- */
 export const Queries = {
-  // Posts
   posts: {
-    // For paginated queries, use direct method if userId is present to avoid stale user data
-    getPaginated: (params: PostGetPaginatedParams) => {
-      return params.userId
-        ? PostQueries.getPaginated(params)
-        : getCachedPosts(params);
-    },
-
-    // For search queries, use direct method if userId is present
+    getPaginated: (params: PostGetPaginatedParams) =>
+      params.userId ? PostQueries.getPaginated(params) : getCachedPosts(params),
     search: (
       query: string,
-      params: PaginationParams & {
-        userId?: string;
-        categoryId?: string;
-        isPremium?: boolean;
-      }
-    ) => {
-      return params.userId
-        ? PostQueries.search(query, params)
-        : getCachedPostSearch(query, params);
-    },
-
-    // Always use direct method for getById to ensure fresh user data
+      params: PaginationParams & { userId?: string; categoryId?: string; isPremium?: boolean }
+    ) => (params.userId ? PostQueries.search(query, params) : getCachedPostSearch(query, params)),
     getById: PostQueries.getById,
-
-    // Always use direct method for getBySlug to ensure fresh user data
     getBySlug: PostQueries.getBySlug,
-
-    // For related posts, use direct method if userId is present
     getRelated: (
       postId: string,
       categoryId: string,
       tagIds: string[],
       limit: number,
       userId?: string
-    ) => {
-      return userId
+    ) =>
+      userId
         ? PostQueries.getRelated(postId, categoryId, tagIds, limit, userId)
-        : getCachedRelatedPosts(postId, categoryId, tagIds, limit, userId);
-    },
-
-    // For popular posts, use direct method if userId is present
-    getPopular: (limit: number, userId?: string) => {
-      return userId
-        ? PostQueries.getPopular(limit, userId)
-        : getCachedPopularPosts(limit, userId);
-    },
-
-    // Stats queries - always direct for fresh data
+        : getCachedRelatedPosts(postId, categoryId, tagIds, limit, userId),
+    getPopular: (limit: number, userId?: string) =>
+      userId ? PostQueries.getPopular(limit, userId) : getCachedPopularPosts(limit, userId),
     getStats: PostQueries.getStats,
   },
-
-  // Metadata queries can remain cached as they don't contain user-specific data
-  categories: {
-    getAll: getCachedCategories,
-  },
-
-  tags: {
-    getAll: getCachedTags,
-    getPopular: getCachedPopularTags,
-  },
+  categories: { getAll: getCachedCategories },
+  tags: { getAll: getCachedTags, getPopular: getCachedPopularTags },
 } as const;

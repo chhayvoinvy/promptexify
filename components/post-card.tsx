@@ -29,13 +29,14 @@ interface PostCardProps {
 
 export function PostCard({
   post,
-  userType,
   width,
   onVideoStateChange,
   isVideoMuted = true,
   onVideoMuteChange,
   playingVideo,
+  ...rest
 }: PostCardProps) {
+  void rest; // userType and other optional props reserved for future use
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 

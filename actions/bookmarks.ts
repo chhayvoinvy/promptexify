@@ -1,9 +1,12 @@
 "use server";
 
 import { type BookmarkData, bookmarkSchema } from "@/lib/schemas";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { bookmarks as bookmarksTable } from "@/lib/db/schema";
+import { eq, and, desc } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidateCache, CACHE_TAGS } from "@/lib/cache";
+import { Queries } from "@/lib/query";
 
 // Bookmark actions
 export async function toggleBookmarkAction(data: BookmarkData) {
@@ -22,26 +25,16 @@ export async function toggleBookmarkAction(data: BookmarkData) {
     }
     const user = currentUser.userData;
 
-    // Check if bookmark already exists
-    const existingBookmark = await prisma.bookmark.findUnique({
-      where: {
-        userId_postId: {
-          userId: user.id,
-          postId: validatedData.postId,
-        },
-      },
-    });
+    const [existingBookmark] = await db
+      .select()
+      .from(bookmarksTable)
+      .where(and(eq(bookmarksTable.userId, user.id), eq(bookmarksTable.postId, validatedData.postId)))
+      .limit(1);
 
     if (existingBookmark) {
-      // Remove bookmark
-      await prisma.bookmark.delete({
-        where: {
-          userId_postId: {
-            userId: user.id,
-            postId: validatedData.postId,
-          },
-        },
-      });
+      await db
+        .delete(bookmarksTable)
+        .where(and(eq(bookmarksTable.userId, user.id), eq(bookmarksTable.postId, validatedData.postId)));
 
       // Targeted cache invalidation — only bookmark-relevant caches
       await revalidateCache([
@@ -50,12 +43,9 @@ export async function toggleBookmarkAction(data: BookmarkData) {
       ]);
       return { success: true, bookmarked: false };
     } else {
-      // Add bookmark
-      await prisma.bookmark.create({
-        data: {
-          userId: user.id,
-          postId: validatedData.postId,
-        },
+      await db.insert(bookmarksTable).values({
+        userId: user.id,
+        postId: validatedData.postId,
       });
 
       // Targeted cache invalidation — only bookmark-relevant caches
@@ -96,50 +86,18 @@ export async function getUserBookmarksAction() {
     }
     const user = currentUser.userData;
 
-    // Get user's bookmarks with post details
-    const bookmarks = await prisma.bookmark.findMany({
-      where: {
-        userId: user.id,
-      },
-      include: {
-        post: {
-          include: {
-            media: {
-              select: {
-                id: true,
-                mimeType: true,
-                relativePath: true,
-              },
-            },
-            author: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-              },
-            },
-            category: {
-              include: {
-                parent: true,
-              },
-            },
-            tags: true,
-            _count: {
-              select: {
-                bookmarks: true,
-                favorites: true,
-              },
-            },
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-
-    return { success: true, bookmarks };
+    const bookmarkRows = await db
+      .select({ postId: bookmarksTable.postId, id: bookmarksTable.id, createdAt: bookmarksTable.createdAt })
+      .from(bookmarksTable)
+      .where(eq(bookmarksTable.userId, user.id))
+      .orderBy(desc(bookmarksTable.createdAt));
+    const bookmarksWithPosts = await Promise.all(
+      bookmarkRows.map(async (b) => {
+        const post = await Queries.posts.getById(b.postId, user.id);
+        return { id: b.id, createdAt: b.createdAt, post };
+      })
+    );
+    return { success: true, bookmarks: bookmarksWithPosts };
   } catch (error) {
     // Check if this is a Next.js redirect (authentication redirect)
     if (error && typeof error === "object" && "digest" in error) {
@@ -171,16 +129,11 @@ export async function checkBookmarkStatusAction(postId: string) {
     }
     const user = currentUser.userData;
 
-    // Check if post is bookmarked
-    const bookmark = await prisma.bookmark.findUnique({
-      where: {
-        userId_postId: {
-          userId: user.id,
-          postId: postId,
-        },
-      },
-    });
-
+    const [bookmark] = await db
+      .select()
+      .from(bookmarksTable)
+      .where(and(eq(bookmarksTable.userId, user.id), eq(bookmarksTable.postId, postId)))
+      .limit(1);
     return { success: true, bookmarked: !!bookmark };
   } catch (error) {
     // Check if this is a Next.js redirect (authentication redirect)

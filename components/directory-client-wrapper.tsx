@@ -4,23 +4,16 @@ import { DirectoryFilters } from "@/components/directory-filters";
 import { InfinitePostGrid } from "@/components/infinite-scroll-grid";
 import { Container } from "@/components/ui/container";
 import { PostWithInteractions } from "@/lib/content";
-import { Badge } from "@/components/ui/badge";
-
-type CategoryWithCount = Awaited<
-  ReturnType<typeof import("@/lib/content").getAllCategories>
->[0];
+import { Button } from "@/components/ui/button";
+import { Search } from "@/components/ui/icons";
+import Link from "next/link";
 
 interface DirectoryClientWrapperProps {
-  categories: CategoryWithCount[];
   initialPosts: PostWithInteractions[];
   hasNextPage: boolean;
   totalCount: number;
   userType?: "FREE" | "PREMIUM" | null;
   pageSize: number;
-  searchQuery?: string;
-  categoryFilter?: string;
-  subcategoryFilter?: string;
-  premiumFilter?: string;
   pagination: {
     totalCount: number;
     hasNextPage: boolean;
@@ -28,112 +21,56 @@ interface DirectoryClientWrapperProps {
 }
 
 export function DirectoryClientWrapper({
-  categories,
   initialPosts,
   userType,
   pageSize,
-  searchQuery,
-  categoryFilter,
-  subcategoryFilter,
-  premiumFilter,
   pagination,
 }: DirectoryClientWrapperProps) {
-  // Separate parent and child categories for active filter display
-  const parentCategories = categories.filter((cat) => !cat.parent);
-  const childCategories = categoryFilter && categoryFilter !== "all" 
-    ? categories.filter((cat) => cat.parent?.slug === categoryFilter)
-    : [];
-
-  const hasActiveFilters =
-    searchQuery ||
-    (categoryFilter && categoryFilter !== "all") ||
-    (subcategoryFilter && subcategoryFilter !== "all") ||
-    false;
-
   return (
     <Container>
-      {/* Header: Two-column layout */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-start md:justify-between mb-8 gap-4">
-        {/* Left: Title and description */}
         <div className="flex-1">
           <h1 className="text-2xl font-bold mb-2">Prompt Directory</h1>
           <p className="text-muted-foreground text-lg max-w-2xl">
             Find the perfect prompt for your creative and professional needs.
           </p>
         </div>
-        {/* Right: Filter button */}
-        <div className="flex flex-col items-end gap-2 min-w-[200px]">
-          <DirectoryFilters categories={categories} />
+        <div className="flex items-center gap-2">
+          <DirectoryFilters />
         </div>
       </div>
 
-      {/* Active filters summary */}
-      {hasActiveFilters && (
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <span className="text-xs text-muted-foreground">Active filters:</span>
-          {searchQuery && (
-            <Badge variant="secondary" className="text-xs">
-              Search: &ldquo;{searchQuery}&rdquo;
-            </Badge>
-          )}
-          {categoryFilter && categoryFilter !== "all" && (
-            <Badge variant="secondary" className="text-xs">
-              Category: {parentCategories.find((c) => c.slug === categoryFilter)?.name}
-            </Badge>
-          )}
-          {subcategoryFilter && subcategoryFilter !== "all" && (
-            <Badge variant="secondary" className="text-xs">
-              Subcategory: {childCategories.find((c) => c.slug === subcategoryFilter)?.name}
-            </Badge>
-          )}
-        </div>
-      )}
-
       {/* Results Summary */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6">
         <p className="text-xs text-muted-foreground">
-          {searchQuery ? (
-            <>
-              Found {pagination.totalCount} result
-              {pagination.totalCount !== 1 ? "s" : ""} for &quot;{searchQuery}
-              &quot;
-            </>
-          ) : (
-            <>
-              Showing {pagination.totalCount} prompt
-              {pagination.totalCount !== 1 ? "s" : ""}
-              {((categoryFilter && categoryFilter !== "all") ||
-                (subcategoryFilter && subcategoryFilter !== "all")) && (
-                <>
-                  {" "}
-                  {subcategoryFilter && subcategoryFilter !== "all" ? (
-                    <>
-                      in{" "}
-                      {categories.find((c) => c.slug === subcategoryFilter)
-                        ?.name || subcategoryFilter}
-                    </>
-                  ) : (
-                    <>
-                      in{" "}
-                      {categories.find((c) => c.slug === categoryFilter)
-                        ?.name || categoryFilter}
-                    </>
-                  )}
-                </>
-              )}
-            </>
-          )}
+          Showing {pagination.totalCount} prompt{pagination.totalCount !== 1 ? "s" : ""}
         </p>
       </div>
 
-      {/* Posts Grid with Infinite Scroll */}
-      <InfinitePostGrid
-        initialPosts={initialPosts}
-        hasNextPage={pagination.hasNextPage}
-        totalCount={pagination.totalCount}
-        userType={userType}
-        pageSize={pageSize}
-      />
+      {/* Posts Grid */}
+      {initialPosts.length > 0 ? (
+        <InfinitePostGrid
+          initialPosts={initialPosts}
+          hasNextPage={pagination.hasNextPage}
+          totalCount={pagination.totalCount}
+          userType={userType}
+          pageSize={pageSize}
+        />
+      ) : (
+        <div className="text-center py-16">
+          <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+            <Search className="h-8 w-8 text-muted-foreground/50" />
+          </div>
+          <h3 className="text-lg font-semibold mb-2">No prompts found</h3>
+          <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+            No prompts are available right now. Check back later!
+          </p>
+          <Button variant="outline" asChild>
+            <Link href="/directory">Refresh</Link>
+          </Button>
+        </div>
+      )}
     </Container>
   );
-} 
+}

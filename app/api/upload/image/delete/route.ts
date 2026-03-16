@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { deleteImage, getStorageConfig } from "@/lib/image/storage";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { media } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { CSRFProtection } from "@/lib/security/csp";
 
@@ -128,14 +130,14 @@ export async function DELETE(request: NextRequest) {
 
     // Verify ownership via database — this is the authoritative check.
     // The filename-prefix heuristic is removed; only the DB ownership record is trusted.
-    let mediaRecord = null;
+    let mediaRecord: { id: string } | null = null;
     if (user.userData?.role === "USER") {
-      mediaRecord = await prisma.media.findFirst({
-        where: {
-          filename: filename,
-          uploadedBy: user.userData.id,
-        },
-      });
+      const [row] = await db
+        .select()
+        .from(media)
+        .where(and(eq(media.filename, filename), eq(media.uploadedBy, user.userData.id)))
+        .limit(1);
+      mediaRecord = row ?? null;
       if (!mediaRecord) {
         return NextResponse.json(
           { error: "Image not found or permission denied" },
@@ -143,10 +145,8 @@ export async function DELETE(request: NextRequest) {
         );
       }
     } else {
-      // Admins can delete any file; look up record only for DB cleanup
-      mediaRecord = await prisma.media.findFirst({
-        where: { filename: filename },
-      });
+      const [row] = await db.select().from(media).where(eq(media.filename, filename)).limit(1);
+      mediaRecord = row ?? null;
     }
 
     // Convert relative URL to full URL if needed for deletion
@@ -199,9 +199,7 @@ export async function DELETE(request: NextRequest) {
       
       if (mediaRecord) {
         try {
-          await prisma.media.delete({
-            where: { id: mediaRecord.id },
-          });
+          await db.delete(media).where(eq(media.id, mediaRecord.id));
           
           databaseCleanupResult = { success: true, recordFound: true };
           console.log(`Successfully deleted Media record for filename: ${filename}`);

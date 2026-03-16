@@ -5,7 +5,9 @@
  * This script checks that posts have the correct preview paths and video preview paths
  */
 
-import { prisma } from "../lib/prisma";
+import { db } from "../lib/db";
+import { posts } from "../lib/db/schema";
+import { and, isNotNull, inArray } from "drizzle-orm";
 import { existsSync } from "fs";
 import { join } from "path";
 
@@ -13,24 +15,25 @@ async function testPreviewPaths() {
   console.log("🔍 Testing preview path implementation...\n");
 
   try {
-    // Get a sample of posts with media
-    const posts = await prisma.post.findMany({
-      where: {
-        uploadPath: { not: null },
-        uploadFileType: { in: ["IMAGE", "VIDEO"] },
-      },
-      select: {
-        id: true,
-        title: true,
-        uploadPath: true,
-        uploadFileType: true,
-        previewPath: true,
-        previewVideoPath: true,
-      },
-      take: 10,
-    });
+    const postsWithMedia = await db
+      .select({
+        id: posts.id,
+        title: posts.title,
+        uploadPath: posts.uploadPath,
+        uploadFileType: posts.uploadFileType,
+        previewPath: posts.previewPath,
+        previewVideoPath: posts.previewVideoPath,
+      })
+      .from(posts)
+      .where(
+        and(
+          isNotNull(posts.uploadPath),
+          inArray(posts.uploadFileType, ["IMAGE", "VIDEO"])
+        )
+      )
+      .limit(10);
 
-    console.log(`📊 Found ${posts.length} posts with media\n`);
+    console.log(`📊 Found ${postsWithMedia.length} posts with media\n`);
 
     // Test file existence for local storage
     const testFileExistence = (path: string): boolean => {
@@ -41,7 +44,7 @@ async function testPreviewPaths() {
       return existsSync(filePath);
     };
 
-    posts.forEach((post, index) => {
+    postsWithMedia.forEach((post, index) => {
       console.log(`📝 Post ${index + 1}: ${post.title}`);
       console.log(`   ID: ${post.id}`);
       console.log(`   Type: ${post.uploadFileType}`);
@@ -72,8 +75,8 @@ async function testPreviewPaths() {
     });
 
     // Check path patterns
-    const imagePosts = posts.filter(p => p.uploadFileType === "IMAGE");
-    const videoPosts = posts.filter(p => p.uploadFileType === "VIDEO");
+    const imagePosts = postsWithMedia.filter(p => p.uploadFileType === "IMAGE");
+    const videoPosts = postsWithMedia.filter(p => p.uploadFileType === "VIDEO");
 
     console.log("📈 Summary:");
     console.log(`   Images: ${imagePosts.length}`);
@@ -95,8 +98,8 @@ async function testPreviewPaths() {
     // Check path patterns
     console.log("\n🔍 Path Pattern Analysis:");
     
-    const previewPaths = posts.filter(p => p.previewPath).map(p => p.previewPath!);
-    const previewVideoPaths = posts.filter(p => p.previewVideoPath).map(p => p.previewVideoPath!);
+    const previewPaths = postsWithMedia.filter(p => p.previewPath).map(p => p.previewPath!);
+    const previewVideoPaths = postsWithMedia.filter(p => p.previewVideoPath).map(p => p.previewVideoPath!);
     
     console.log(`   Preview paths (${previewPaths.length}):`);
     previewPaths.slice(0, 3).forEach(path => console.log(`     ${path}`));
@@ -124,8 +127,6 @@ async function testPreviewPaths() {
     
   } catch (error) {
     console.error("❌ Test failed:", error);
-  } finally {
-    await prisma.$disconnect();
   }
 }
 

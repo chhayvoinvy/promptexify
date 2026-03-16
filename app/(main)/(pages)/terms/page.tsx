@@ -1,5 +1,6 @@
 import { Container } from "@/components/ui/container";
 import { getMetadata } from "@/config/seo";
+import Link from "next/link";
 
 export const metadata = getMetadata("terms");
 
@@ -59,9 +60,9 @@ export default function TermsOfUsePage() {
           <h2 className="text-2xl font-semibold mb-4">6. Contact</h2>
           <p className="text-muted-foreground leading-relaxed">
             For questions about these terms, please visit our{" "}
-            <a href="/contact" className="text-primary underline underline-offset-4">
+            <Link href="/contact" className="text-primary underline underline-offset-4">
               Contact
-            </a>{" "}
+            </Link>{" "}
             page.
           </p>
         </section>

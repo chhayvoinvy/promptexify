@@ -111,40 +111,60 @@ export async function middleware(request: NextRequest) {
     }
 
     // ------------------
-    // GLOBAL API RATE LIMIT
+    // PATH-BASED API RATE LIMITS (one bucket per request to avoid double-counting)
     // ------------------
     if (request.nextUrl.pathname.startsWith("/api/")) {
+      const pathname = request.nextUrl.pathname;
       const clientId = getClientIdentifier(request as unknown as Request);
-      const rateLimitResult = await rateLimits.api(clientId);
+
+      // Apply the strictest applicable limit per path to reduce abuse
+      let rateLimitResult;
+      if (pathname.startsWith("/api/upload/")) {
+        rateLimitResult = await rateLimits.upload(clientId);
+      } else if (pathname.startsWith("/api/admin/")) {
+        rateLimitResult = await rateLimits.admin(clientId);
+      } else if (pathname.startsWith("/api/auth/")) {
+        rateLimitResult = await rateLimits.auth(clientId);
+      } else if (pathname.startsWith("/api/media/resolve") || pathname.startsWith("/api/media/preview/")) {
+        rateLimitResult = await rateLimits.mediaResolve(clientId);
+      } else {
+        rateLimitResult = await rateLimits.api(clientId);
+      }
+
       // Attach rate-limit headers so clients can introspect remaining quota
       Object.entries(getRateLimitHeaders(rateLimitResult)).forEach(
         ([key, value]) => response.headers.set(key, String(value))
       );
 
       if (!rateLimitResult.allowed) {
-        // Log rate limit violation with more details
-        console.warn(`🚫 Rate limit exceeded for ${clientId} on ${request.nextUrl.pathname} - IP: ${clientIp}`);
+        const retryAfterSec = Math.ceil(
+          (rateLimitResult.resetTime - Date.now()) / 1000
+        );
+        console.warn(
+          `[RATE_LIMIT] Exceeded for ${clientId} on ${pathname} - IP: ${clientIp}`
+        );
         await SecurityEvents.rateLimitExceeded(
           clientId,
-          request.nextUrl.pathname,
-          clientIp
+          pathname,
+          request.headers.get("user-agent") ?? undefined
         );
 
         return NextResponse.json(
           {
             error: "Too many requests",
             code: "RATE_LIMIT_EXCEEDED",
-            resetTime: rateLimitResult.resetTime,
-            retryAfter: Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000),
+            retryAfter: retryAfterSec,
           },
           {
             status: 429,
             headers: {
-              ...securityHeaders,
+              ...Object.fromEntries(response.headers.entries()),
               ...Object.fromEntries(
-                Object.entries(getRateLimitHeaders(rateLimitResult)).map(([key, value]) => [key, String(value)])
+                Object.entries(getRateLimitHeaders(rateLimitResult)).map(
+                  ([k, v]) => [k, String(v)]
+                )
               ),
-              "Retry-After": String(Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)),
+              "Retry-After": String(retryAfterSec),
             },
           }
         );

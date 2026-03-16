@@ -1,6 +1,16 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import {
+  users,
+  bookmarks,
+  favorites,
+  posts,
+  categories,
+  tags,
+} from "@/lib/db/schema";
+import { eq, and, desc, gte, lt, sql } from "drizzle-orm";
+import { Queries } from "@/lib/query";
 import { requireAuth, getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
@@ -109,14 +119,10 @@ export const updateUserProfileAction = withCSRFProtection(
         };
       }
 
-      // Update user profile in database
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          name: name,
-          updatedAt: new Date(),
-        },
-      });
+      await db
+        .update(users)
+        .set({ name, updatedAt: new Date() })
+        .where(eq(users.id, user.id));
 
       // Revalidate the account page to show updated data
       revalidatePath("/account");
@@ -151,21 +157,21 @@ export async function getUserProfileAction() {
       };
     }
 
-    // Get user profile data from Prisma
-    const userProfile = await prisma.user.findUnique({
-      where: { id: currentUser.id },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        avatar: true,
-        type: true,
-        role: true,
-        oauth: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    const [userProfile] = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        avatar: users.avatar,
+        type: users.type,
+        role: users.role,
+        oauth: users.oauth,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      })
+      .from(users)
+      .where(eq(users.id, currentUser.id))
+      .limit(1);
 
     if (!userProfile) {
       return {
@@ -207,54 +213,29 @@ export async function getUserDashboardStatsAction() {
     }
     const user = currentUser.userData;
 
-    // Execute all queries in parallel for better performance
-    const [totalBookmarks, recentFavorites] = await Promise.all([
-      // Get total bookmarks count
-      prisma.bookmark.count({
-        where: {
-          userId: user.id,
-        },
-      }),
-
-      // Get recent favorite posts (limit 5)
-      prisma.favorite.findMany({
-        where: {
-          userId: user.id,
-        },
-        include: {
-          post: {
-            include: {
-              author: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                  avatar: true,
-                },
-              },
-              category: {
-                select: {
-                  id: true,
-                  name: true,
-                  slug: true,
-                },
-              },
-              tags: {
-                select: {
-                  id: true,
-                  name: true,
-                  slug: true,
-                },
-              },
-            },
-          },
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-        take: 5, // Limit to 5 most recent favorites
-      }),
+    const [bookmarkCountResult, favRows] = await Promise.all([
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(bookmarks)
+        .where(eq(bookmarks.userId, user.id)),
+      db
+        .select({
+          id: favorites.id,
+          postId: favorites.postId,
+          createdAt: favorites.createdAt,
+        })
+        .from(favorites)
+        .where(eq(favorites.userId, user.id))
+        .orderBy(desc(favorites.createdAt))
+        .limit(5),
     ]);
+    const totalBookmarks = bookmarkCountResult[0]?.count ?? 0;
+    const recentFavorites = await Promise.all(
+      favRows.map(async (row) => {
+        const post = await Queries.posts.getById(row.postId);
+        return post ? { id: row.id, createdAt: row.createdAt, post } : null;
+      })
+    ).then((arr) => arr.filter((x): x is NonNullable<typeof x> => x !== null));
 
     return {
       success: true,
@@ -303,11 +284,11 @@ export async function getUserFavoritesCountAction() {
     }
     const user = currentUser.userData;
 
-    const totalFavorites = await prisma.favorite.count({
-      where: {
-        userId: user.id,
-      },
-    });
+    const [favCountRow] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(favorites)
+      .where(eq(favorites.userId, user.id));
+    const totalFavorites = favCountRow?.count ?? 0;
 
     return {
       success: true,
@@ -360,37 +341,52 @@ export async function getAllUsersActivityAction() {
       };
     }
 
-    // Get all users with their activity data
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        avatar: true,
-        type: true,
-        role: true,
-        oauth: true,
-        createdAt: true,
-        updatedAt: true,
-        _count: {
-          select: {
-            posts: {
-              where: { isPublished: true },
-            },
-            bookmarks: true,
-            favorites: true,
-          },
-        },
+    const userRows = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        avatar: users.avatar,
+        type: users.type,
+        role: users.role,
+        oauth: users.oauth,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      })
+      .from(users)
+      .orderBy(desc(users.createdAt));
+    const userIds = userRows.map((u) => u.id);
+    const [postCounts, bookmarkCounts, favoriteCounts] = await Promise.all([
+      db
+        .select({ authorId: posts.authorId, count: sql<number>`count(*)::int` })
+        .from(posts)
+        .where(eq(posts.isPublished, true))
+        .groupBy(posts.authorId),
+      db
+        .select({ userId: bookmarks.userId, count: sql<number>`count(*)::int` })
+        .from(bookmarks)
+        .groupBy(bookmarks.userId),
+      db
+        .select({ userId: favorites.userId, count: sql<number>`count(*)::int` })
+        .from(favorites)
+        .groupBy(favorites.userId),
+    ]);
+    const postsByUser = new Map(postCounts.map((r) => [r.authorId, r.count ?? 0]));
+    const bookmarksByUser = new Map(bookmarkCounts.map((r) => [r.userId, r.count ?? 0]));
+    const favoritesByUser = new Map(favoriteCounts.map((r) => [r.userId, r.count ?? 0]));
+    const usersWithCounts = userRows.map((u) => ({
+      ...u,
+      _count: {
+        posts: postsByUser.get(u.id) ?? 0,
+        bookmarks: bookmarksByUser.get(u.id) ?? 0,
+        favorites: favoritesByUser.get(u.id) ?? 0,
       },
-      orderBy: { createdAt: "desc" },
-    });
+    }));
 
-    // Get Supabase client to fetch auth data
     const supabase = await createClient();
 
-    // Fetch last sign-in data for all users from Supabase auth
     const usersWithLastLogin = await Promise.all(
-      users.map(async (user) => {
+      usersWithCounts.map(async (user) => {
         try {
           // Get user data from Supabase auth using the user ID
           const { data: authUser } = await supabase.auth.getUser(user.id);
@@ -409,8 +405,7 @@ export async function getAllUsersActivityAction() {
       })
     );
 
-    // Transform the data to match our schema requirements
-    const usersActivity = usersWithLastLogin.map((user, index) => ({
+    const usersActivity = usersWithLastLogin.map((user: (typeof usersWithCounts)[number] & { lastSignInAt: string | null }, index: number) => ({
       id: index + 1, // Use index for table row ID
       userId: user.id, // Keep the actual user ID
       name: user.name || "Unnamed User",
@@ -457,11 +452,19 @@ export async function getAdminDashboardStatsAction() {
       };
     }
 
-    // Get current date and date 30 days ago for growth calculation
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const sixtyDaysAgo = new Date(thirtyDaysAgo.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    // Get all statistics in parallel for better performance
+    const count = async (
+      table: typeof posts | typeof users | typeof categories | typeof tags,
+      where?: ReturnType<typeof and>
+    ) => {
+      const q = db.select({ count: sql<number>`count(*)::int` }).from(table);
+      const [row] = where ? await q.where(where) : await q;
+      return row?.count ?? 0;
+    };
+
     const [
       totalPosts,
       totalUsers,
@@ -476,71 +479,25 @@ export async function getAdminDashboardStatsAction() {
       previousMonthCategories,
       previousMonthTags,
     ] = await Promise.all([
-      // Current totals
-      prisma.post.count({
-        where: { isPublished: true },
-      }),
-      prisma.user.count(),
-      prisma.category.count(),
-      prisma.tag.count(),
-
-      // New items this month
-      prisma.post.count({
-        where: {
-          isPublished: true,
-          createdAt: { gte: thirtyDaysAgo },
-        },
-      }),
-      prisma.user.count({
-        where: {
-          createdAt: { gte: thirtyDaysAgo },
-        },
-      }),
-      prisma.category.count({
-        where: {
-          createdAt: { gte: thirtyDaysAgo },
-        },
-      }),
-      prisma.tag.count({
-        where: {
-          createdAt: { gte: thirtyDaysAgo },
-        },
-      }),
-
-      // Previous month data for growth calculation
-      prisma.post.count({
-        where: {
-          isPublished: true,
-          createdAt: {
-            gte: new Date(thirtyDaysAgo.getTime() - 30 * 24 * 60 * 60 * 1000),
-            lt: thirtyDaysAgo,
-          },
-        },
-      }),
-      prisma.user.count({
-        where: {
-          createdAt: {
-            gte: new Date(thirtyDaysAgo.getTime() - 30 * 24 * 60 * 60 * 1000),
-            lt: thirtyDaysAgo,
-          },
-        },
-      }),
-      prisma.category.count({
-        where: {
-          createdAt: {
-            gte: new Date(thirtyDaysAgo.getTime() - 30 * 24 * 60 * 60 * 1000),
-            lt: thirtyDaysAgo,
-          },
-        },
-      }),
-      prisma.tag.count({
-        where: {
-          createdAt: {
-            gte: new Date(thirtyDaysAgo.getTime() - 30 * 24 * 60 * 60 * 1000),
-            lt: thirtyDaysAgo,
-          },
-        },
-      }),
+      count(posts, eq(posts.isPublished, true)),
+      count(users),
+      count(categories),
+      count(tags),
+      count(posts, and(eq(posts.isPublished, true), gte(posts.createdAt, thirtyDaysAgo))),
+      count(users, gte(users.createdAt, thirtyDaysAgo)),
+      count(categories, gte(categories.createdAt, thirtyDaysAgo)),
+      count(tags, gte(tags.createdAt, thirtyDaysAgo)),
+      count(
+        posts,
+        and(
+          eq(posts.isPublished, true),
+          gte(posts.createdAt, sixtyDaysAgo),
+          lt(posts.createdAt, thirtyDaysAgo)
+        )
+      ),
+      count(users, and(gte(users.createdAt, sixtyDaysAgo), lt(users.createdAt, thirtyDaysAgo))),
+      count(categories, and(gte(categories.createdAt, sixtyDaysAgo), lt(categories.createdAt, thirtyDaysAgo))),
+      count(tags, and(gte(tags.createdAt, sixtyDaysAgo), lt(tags.createdAt, thirtyDaysAgo))),
     ]);
 
     // Calculate growth percentages
@@ -566,54 +523,46 @@ export async function getAdminDashboardStatsAction() {
       previousMonthTags
     );
 
-    // Get additional insights
-    const [
-      totalBookmarks,
-      totalFavorites,
-      popularCategories,
-      recentActivity,
-    ] = await Promise.all([
-      prisma.bookmark.count(),
-      prisma.favorite.count(),
-
-      // Get top 3 most popular categories by post count
-      prisma.category.findMany({
-        select: {
-          id: true,
-          name: true,
-          _count: {
-            select: {
-              posts: {
-                where: { isPublished: true },
-              },
-            },
-          },
-        },
-        orderBy: {
-          posts: {
-            _count: "desc",
-          },
-        },
-        take: 3,
-      }),
-
-      // Get recent activity (last 5 published posts)
-      prisma.post.findMany({
-        where: { isPublished: true },
-        select: {
-          id: true,
-          title: true,
-          createdAt: true,
-          author: {
-            select: {
-              name: true,
-            },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-        take: 5,
-      }),
+    const [bookmarkCountRow, favCountRow, categoryCountRows, recentRows] = await Promise.all([
+      db.select({ count: sql<number>`count(*)::int` }).from(bookmarks),
+      db.select({ count: sql<number>`count(*)::int` }).from(favorites),
+      db
+        .select({
+          id: categories.id,
+          name: categories.name,
+          count: sql<number>`count(*)::int`.as("count"),
+        })
+        .from(categories)
+        .innerJoin(posts, and(eq(posts.categoryId, categories.id), eq(posts.isPublished, true)))
+        .groupBy(categories.id, categories.name)
+        .orderBy(desc(sql`count(*)`))
+        .limit(3),
+      db
+        .select({
+          id: posts.id,
+          title: posts.title,
+          createdAt: posts.createdAt,
+          authorName: users.name,
+        })
+        .from(posts)
+        .innerJoin(users, eq(posts.authorId, users.id))
+        .where(eq(posts.isPublished, true))
+        .orderBy(desc(posts.createdAt))
+        .limit(5),
     ]);
+    const totalBookmarks = bookmarkCountRow[0]?.count ?? 0;
+    const totalFavorites = favCountRow[0]?.count ?? 0;
+    const popularCategories = categoryCountRows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      _count: { posts: r.count ?? 0 },
+    }));
+    const recentActivity = recentRows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      createdAt: r.createdAt,
+      author: { name: r.authorName },
+    }));
 
     return {
       success: true,

@@ -1,4 +1,6 @@
-import { prisma } from "./prisma";
+import { db } from "@/lib/db";
+import { settings } from "@/lib/db/schema";
+import { desc } from "drizzle-orm";
 
 // Cache the maxTagsPerPost value in memory for a short period so that we
 // don't hit the database on every request. Five-minute cache is usually
@@ -19,12 +21,13 @@ export async function getMaxTagsPerPost(): Promise<number> {
     return cachedMaxTagsPerPost;
   }
 
-  const settings = await prisma.settings.findFirst({
-    orderBy: { updatedAt: "desc" },
-    select: { maxTagsPerPost: true },
-  });
+  const [row] = await db
+    .select({ maxTagsPerPost: settings.maxTagsPerPost })
+    .from(settings)
+    .orderBy(desc(settings.updatedAt))
+    .limit(1);
 
-  cachedMaxTagsPerPost = settings?.maxTagsPerPost ?? 20;
+  cachedMaxTagsPerPost = row?.maxTagsPerPost ?? 20;
   cacheExpiry = now + CACHE_DURATION_MS;
 
   return cachedMaxTagsPerPost;

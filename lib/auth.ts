@@ -4,7 +4,9 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { users } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { getBaseUrl } from "@/lib/utils";
 import {
   signInSchema,
@@ -232,10 +234,12 @@ export const getCurrentUser = cache(async () => {
 
     if (!user) return null;
 
-    // Get additional user data from Prisma
-    const userData = await prisma.user.findUnique({
-      where: { id: user.id },
-    });
+    // Get additional user data from database
+    const [userData] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, user.id))
+      .limit(1);
 
     return {
       ...user,
@@ -327,7 +331,7 @@ export async function requireUserAccess(allowedPaths: string[]) {
 }
 
 /** All users have full access; no paid tiers. */
-export async function hasActivePremiumSubscription(_userId: string): Promise<boolean> {
+export async function hasActivePremiumSubscription(): Promise<boolean> {
   return true;
 }
 
@@ -338,7 +342,7 @@ export async function requirePremiumAccess() {
     redirect("/signin");
   }
 
-  const hasPremium = await hasActivePremiumSubscription(user.id);
+  const hasPremium = await hasActivePremiumSubscription();
 
   if (!hasPremium) {
     redirect("/dashboard");
@@ -347,7 +351,7 @@ export async function requirePremiumAccess() {
   return user;
 }
 
-// Helper function to create/update user in Prisma database
+// Helper function to create/update user in database
 export async function upsertUserInDatabase(supabaseUser: {
   id: string;
   email?: string;
@@ -362,18 +366,13 @@ export async function upsertUserInDatabase(supabaseUser: {
   };
 }) {
   try {
-    // Determine OAuth provider - prioritize EMAIL for Magic Link
     const providers = supabaseUser.app_metadata?.providers || [];
     const primaryProvider = supabaseUser.app_metadata?.provider;
 
     let oauthProvider: "GOOGLE" | "EMAIL" = "EMAIL";
-
-    // Check if Google is among the providers
     if (providers.includes("google") || primaryProvider === "google") {
       oauthProvider = "GOOGLE";
-    }
-    // For email/Magic Link authentication, use EMAIL
-    else if (
+    } else if (
       providers.includes("email") ||
       primaryProvider === "email" ||
       !primaryProvider
@@ -388,17 +387,11 @@ export async function upsertUserInDatabase(supabaseUser: {
       email.split("@")[0] ||
       "User";
     const avatar = supabaseUser.user_metadata?.avatar_url || undefined;
+    const now = new Date();
 
-    await prisma.user.upsert({
-      where: { id: supabaseUser.id },
-      update: {
-        email,
-        name,
-        avatar,
-        oauth: oauthProvider,
-        updatedAt: new Date(),
-      },
-      create: {
+    await db
+      .insert(users)
+      .values({
         id: supabaseUser.id,
         email,
         name,
@@ -406,10 +399,20 @@ export async function upsertUserInDatabase(supabaseUser: {
         oauth: oauthProvider,
         type: "FREE",
         role: "USER",
-      },
-    });
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          email,
+          name,
+          avatar,
+          oauth: oauthProvider,
+          updatedAt: now,
+        },
+      });
   } catch (error) {
     console.error("Database upsert error:", error);
-    // Don't throw here to avoid breaking auth flow
   }
 }

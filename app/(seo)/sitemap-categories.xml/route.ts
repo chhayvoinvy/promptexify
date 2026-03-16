@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { withErrorHandling } from "@/lib/prisma";
+import { withErrorHandling } from "@/lib/db";
 import { getAllCategories } from "@/lib/content";
 
 export async function GET(request: NextRequest) {

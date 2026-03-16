@@ -97,15 +97,25 @@ export async function checkRateLimit(
 ): Promise<RateLimitResult> {
   const { identifier, limit, window } = config;
   
-  // Bypass rate limiting in development for localhost or when explicitly disabled
+  // Bypass only when explicitly opted-in (e.g. E2E tests). Never bypass in production.
+  if (process.env.DISABLE_RATE_LIMITS === "true") {
+    return {
+      allowed: true,
+      count: 0,
+      remaining: limit,
+      resetTime: Date.now() + window,
+      blocked: false,
+    };
+  }
+
+  // In development, allow a more lenient localhost bypass for local dev only
   if (process.env.NODE_ENV === "development") {
-    const isLocalhost = identifier.includes("127.0.0.1") || 
-                       identifier.includes("::1") || 
-                       identifier.includes("localhost") ||
-                       identifier.includes("unknown");
-    
-    // Allow bypass if explicitly disabled or localhost
-    if (process.env.DISABLE_RATE_LIMITS === "true" || isLocalhost) {
+    const isLocalhost =
+      identifier.includes("127.0.0.1") ||
+      identifier.includes("::1") ||
+      identifier.includes("localhost") ||
+      identifier === "ip:unknown";
+    if (isLocalhost) {
       return {
         allowed: true,
         count: 0,
@@ -207,34 +217,20 @@ function createRateLimits() {
   const config = getRateLimitConfig();
 
   return {
-    // Authentication endpoints
     auth: createRateLimit(config.auth.limit, config.auth.window),
-
-    // File upload endpoints
     upload: createRateLimit(config.upload.limit, config.upload.window),
-
-    // Post creation
     createPost: createRateLimit(
       config.createPost.limit,
       config.createPost.window
     ),
-
-    // Tag creation
     createTag: createRateLimit(config.createTag.limit, config.createTag.window),
-
-    // General API endpoints
     api: createRateLimit(config.api.limit, config.api.window),
-
-    // Search endpoints
+    admin: createRateLimit(config.admin.limit, config.admin.window),
     search: createRateLimit(config.search.limit, config.search.window),
-
-    // Bookmark/favorite actions
     interactions: createRateLimit(
       config.interactions.limit,
       config.interactions.window
     ),
-
-    // Media resolution endpoints
     mediaResolve: createRateLimit(
       config.mediaResolve.limit,
       config.mediaResolve.window

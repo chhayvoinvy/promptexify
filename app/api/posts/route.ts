@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
     const rawParams = {
       page: searchParams.get("page") || "1",
       limit: searchParams.get("limit") || "12",
-      q: searchParams.get("q") || "",
+      q: (searchParams.get("q") ?? "").trim(),
       category: searchParams.get("category") || "",
       subcategory: searchParams.get("subcategory") || "",
       premium: searchParams.get("premium") || "",
@@ -112,20 +112,27 @@ export async function GET(request: NextRequest) {
       limit = 12;
     }
 
+    // Sanitize only when we have non-empty input; otherwise keep empty so we use paginated list
     let searchQuery: string;
-    try {
-      searchQuery = await sanitizeSearchQuery(rawParams.q);
-    } catch (sanitizeError) {
-      console.error("[POSTS-API] Search query sanitization failed:", sanitizeError);
-      // Use simple fallback sanitization that doesn't use JSDOM
-      searchQuery = simpleSanitizeQuery(rawParams.q);
+    if (!rawParams.q || rawParams.q.length === 0) {
+      searchQuery = "";
+    } else {
+      try {
+        searchQuery = (await sanitizeSearchQuery(rawParams.q)).trim();
+      } catch (sanitizeError) {
+        console.error("[POSTS-API] Search query sanitization failed:", sanitizeError);
+        searchQuery = simpleSanitizeQuery(rawParams.q).trim();
+      }
     }
+
+    // Do not run search when input is empty or whitespace-only
+    const hasSearchQuery = searchQuery.length > 0;
 
     const categoryFilter = rawParams.category;
     const subcategoryFilter = rawParams.subcategory;
     const premiumFilter = rawParams.premium;
-    const sortBy = ["latest", "popular", "trending"].includes(rawParams.sortBy)
-      ? (rawParams.sortBy as "latest" | "popular" | "trending")
+    const sortBy = ["latest", "popular", "trending", "relevance"].includes(rawParams.sortBy)
+      ? (rawParams.sortBy as "latest" | "popular" | "trending" | "relevance")
       : "latest";
 
     // Get categories to convert slugs to IDs with error handling
@@ -169,30 +176,30 @@ export async function GET(request: NextRequest) {
 
     let result;
 
-    // Use search or paginated query based on search query presence
+    // Use search only when we have non-empty query; otherwise use paginated list
     try {
       console.log(`[POSTS-API] Executing query - page: ${page}, limit: ${limit}, userId: ${userId || 'anonymous'}, categoryId: ${categoryId || 'none'}`);
-      
-      if (searchQuery && searchQuery.trim()) {
-        console.log(`[POSTS-API] Using search query: "${searchQuery}"`);
-        // Use optimized search query
+
+      if (hasSearchQuery) {
+        console.log(`[POSTS-API] Using search query: "${searchQuery}" sortBy: ${sortBy}`);
         result = await Queries.posts.search(searchQuery, {
           page,
           limit,
           userId,
           categoryId,
           isPremium,
+          sortBy: sortBy as "relevance" | "latest" | "popular" | "trending",
         });
       } else {
-        console.log(`[POSTS-API] Using paginated query with sortBy: ${sortBy}`);
-        // Use optimized paginated query
+        const paginatedSort = sortBy === "relevance" ? "latest" : sortBy;
+        console.log(`[POSTS-API] Using paginated query with sortBy: ${paginatedSort}`);
         result = await Queries.posts.getPaginated({
           page,
           limit,
           userId,
           categoryId,
           isPremium,
-          sortBy,
+          sortBy: paginatedSort,
         });
       }
       

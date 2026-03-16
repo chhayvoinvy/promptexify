@@ -213,8 +213,10 @@ function createRateLimits() {
         createPost: { limit: 3, window: 60 * 1000 }, // 3 posts per minute
         createTag: { limit: 15, window: 60 * 1000 }, // 15 tags per minute
         api: { limit: 60, window: 60 * 1000 }, // 60 requests per minute
+        admin: { limit: 30, window: 60 * 1000 }, // 30 admin requests per minute (stricter)
         search: { limit: 30, window: 60 * 1000 }, // 30 searches per minute
         interactions: { limit: 100, window: 60 * 1000 }, // 100 interactions per minute
+        mediaResolve: { limit: 100, window: 60 * 1000 }, // 100 media URL resolves per minute
       }
     : {
         // More lenient rate limits in development
@@ -223,8 +225,10 @@ function createRateLimits() {
         createPost: { limit: 10, window: 60 * 1000 }, // 10 posts per minute
         createTag: { limit: 50, window: 60 * 1000 }, // 50 tags per minute
         api: { limit: 200, window: 60 * 1000 }, // 200 requests per minute
+        admin: { limit: 100, window: 60 * 1000 }, // 100 admin requests per minute
         search: { limit: 100, window: 60 * 1000 }, // 100 searches per minute
         interactions: { limit: 500, window: 60 * 1000 }, // 500 interactions per minute
+        mediaResolve: { limit: 500, window: 60 * 1000 }, // 500 media resolves per minute
       };
 
   return {
@@ -246,6 +250,9 @@ function createRateLimits() {
     // General API endpoints
     api: createRateLimit(config.api.limit, config.api.window),
 
+    // Admin endpoints (stricter to reduce abuse surface)
+    admin: createRateLimit(config.admin.limit, config.admin.window),
+
     // Search endpoints
     search: createRateLimit(config.search.limit, config.search.window),
 
@@ -253,6 +260,12 @@ function createRateLimits() {
     interactions: createRateLimit(
       config.interactions.limit,
       config.interactions.window
+    ),
+
+    // Media URL resolution (e.g. signed URLs)
+    mediaResolve: createRateLimit(
+      config.mediaResolve.limit,
+      config.mediaResolve.window
     ),
   };
 }

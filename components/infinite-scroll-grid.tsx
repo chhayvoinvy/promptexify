@@ -47,8 +47,7 @@ export function InfinitePostGrid({
   const hasNextPageRef = useRef(initialHasNextPage);
   const currentPageRef = useRef(1);
 
-  // Create a stable key for the search params to detect changes
-  // Only include actual filtering parameters, ignore modal/entry params
+  // Create a stable key from filtering parameters to detect changes
   const searchParamsKey = useMemo(() => {
     if (!searchParams) return "";
 
@@ -57,11 +56,13 @@ export function InfinitePostGrid({
     const category = searchParams.get("category");
     const subcategory = searchParams.get("subcategory");
     const premium = searchParams.get("premium");
+    const sort = searchParams.get("sort");
 
     if (q) params.set("q", q);
     if (category) params.set("category", category);
     if (subcategory) params.set("subcategory", subcategory);
     if (premium) params.set("premium", premium);
+    if (sort) params.set("sort", sort);
 
     return params.toString();
   }, [searchParams]);
@@ -135,16 +136,18 @@ export function InfinitePostGrid({
       params.set("page", nextPage.toString());
       params.set("limit", pageSize.toString());
 
-      // Add current search parameters
-      const q = searchParams?.get("q");
+      const qRaw = searchParams?.get("q");
+      const q = qRaw?.trim();
       const category = searchParams?.get("category");
       const subcategory = searchParams?.get("subcategory");
       const premium = searchParams?.get("premium");
+      const sort = searchParams?.get("sort");
 
-      if (q) params.set("q", q);
+      if (q && q.length > 0) params.set("q", q);
       if (category) params.set("category", category);
       if (subcategory) params.set("subcategory", subcategory);
       if (premium) params.set("premium", premium);
+      if (sort) params.set("sortBy", sort);
 
       const response = await fetch(`/api/posts?${params.toString()}`);
 

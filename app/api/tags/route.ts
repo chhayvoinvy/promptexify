@@ -1,7 +1,9 @@
 import { NextResponse, NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getAllTags } from "@/lib/content";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { tags as tagsTable } from "@/lib/db/schema";
+import { eq, or, ilike } from "drizzle-orm";
 import { createTagSchema } from "@/lib/schemas";
 import {
   rateLimits,
@@ -223,15 +225,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check for existing tag with same name or slug (case-insensitive)
-    const existingTag = await prisma.tag.findFirst({
-      where: {
-        OR: [
-          { name: { equals: sanitizedName, mode: "insensitive" } },
-          { slug: finalSlug },
-        ],
-      },
-    });
+    const [existingTag] = await db
+      .select()
+      .from(tagsTable)
+      .where(or(ilike(tagsTable.name, sanitizedName), eq(tagsTable.slug, finalSlug)))
+      .limit(1);
 
     if (existingTag) {
       // Return specific error message based on what matched
@@ -264,18 +262,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create the tag with sanitized data
-    const newTag = await prisma.tag.create({
-      data: {
-        name: sanitizedName,
-        slug: finalSlug,
-      },
-    });
+    const [newTag] = await db
+      .insert(tagsTable)
+      .values({ name: sanitizedName, slug: finalSlug })
+      .returning();
 
     // Invalidate tags cache so new tag appears immediately
     revalidateCache(CACHE_TAGS.TAGS);
 
-    return NextResponse.json(newTag, {
+    return NextResponse.json(newTag!, {
       status: 201,
       headers: {
         ...SECURITY_HEADERS,

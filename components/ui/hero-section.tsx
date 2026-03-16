@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useMousePosition } from "@/hooks/use-mouse-position";
 import { AnimatedBackground } from "@/components/ui/animated-background";
 import { GridBackground } from "@/components/ui/grid-background";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Container } from "@/components/ui/container";
-import { Search } from "@/components/ui/icons";
+import { Search, X } from "@/components/ui/icons";
 import { motion, Variants } from "framer-motion";
 
 interface HeroSectionProps {
@@ -21,6 +21,8 @@ export function HeroSection({
 }: HeroSectionProps = {}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [inputValue, setInputValue] = useState(searchQuery ?? "");
 
   const update = useCallback(({ x, y }: { x: number; y: number }) => {
     if (!overlayRef.current) {
@@ -36,6 +38,11 @@ export function HeroSection({
   }, []);
 
   useMousePosition(containerRef, update);
+
+  const clearInput = useCallback(() => {
+    setInputValue("");
+    inputRef.current?.focus();
+  }, []);
 
   const FADE_IN_ANIMATION_VARIANTS: Variants = {
     hidden: { opacity: 0, y: 10 },
@@ -106,17 +113,30 @@ export function HeroSection({
             action="/search"
             className="relative max-w-xl mx-auto"
           >
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5 pointer-events-none" />
             <Input
+              ref={inputRef}
               name="q"
               placeholder="Search rules, MCP, skills, prompts, or tags..."
-              defaultValue={searchQuery}
-              className="px-10 py-6 text-lg border-2 rounded-xl focus:border-primary bg-background/90"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              className="px-12 py-6 text-lg border-2 rounded-xl focus:border-primary bg-background/90"
+              autoComplete="off"
+              spellCheck={false}
             />
-            {/* Preserve sort parameter in search */}
-            {sort !== "latest" && (
-              <input type="hidden" name="sort" value={sort} />
+            {/* Clear button */}
+            {inputValue.length > 0 && (
+              <button
+                type="button"
+                onClick={clearInput}
+                className="absolute right-[90px] top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
             )}
+            {/* Preserve sort parameter when submitting search, default to relevance */}
+            <input type="hidden" name="sort" value={sort !== "latest" ? sort : "relevance"} />
             <Button
               type="submit"
               className="absolute right-2 top-1/2 transform -translate-y-1/2"
@@ -124,6 +144,13 @@ export function HeroSection({
               Search
             </Button>
           </motion.form>
+          {/* Keyboard hint */}
+          <motion.p
+            variants={FADE_IN_ANIMATION_VARIANTS}
+            className="text-xs text-muted-foreground/60 mt-3"
+          >
+            Search by title, description, tags, or category name
+          </motion.p>
         </motion.div>
       </Container>
     </section>

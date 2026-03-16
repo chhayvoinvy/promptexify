@@ -3,7 +3,9 @@
  * Tracks sensitive operations and security events
  */
 
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { logs } from "@/lib/db/schema";
+import { desc, sql, gte, inArray } from "drizzle-orm";
 
 export interface AuditEvent {
   action: string;
@@ -96,20 +98,15 @@ export async function logAuditEvent(event: AuditEvent) {
  */
 async function storeAuditEvent(event: AuditEvent | SecurityEvent) {
   try {
-    await prisma.log.create({
-      data: {
-        action: event.action,
-        userId: event.userId,
-        entityType: event.entityType,
-        entityId: event.entityId,
-        ipAddress: event.ipAddress,
-        userAgent: event.userAgent,
-        metadata: event.metadata,
-        severity: event.severity,
-        // Add threat type for security events
-        ...(("threatType" in event && { threatType: event.threatType }) || {}),
-        ...(("blocked" in event && { blocked: event.blocked }) || {}),
-      },
+    await db.insert(logs).values({
+      action: event.action,
+      userId: event.userId,
+      entityType: event.entityType,
+      entityId: event.entityId,
+      ipAddress: event.ipAddress,
+      userAgent: event.userAgent,
+      metadata: event.metadata ?? undefined,
+      severity: event.severity,
     });
   } catch (error) {
     console.error("Failed to store audit event in database:", error);
@@ -275,17 +272,12 @@ export function sanitizeUserAgent(userAgent: string | null): string {
  */
 export async function getRecentSecurityEvents(limit = 50) {
   try {
-    return await prisma.log.findMany({
-      where: {
-        severity: {
-          in: ["HIGH", "CRITICAL"],
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      take: limit,
-    });
+    return await db
+      .select()
+      .from(logs)
+      .where(inArray(logs.severity, ["HIGH", "CRITICAL"]))
+      .orderBy(desc(logs.createdAt))
+      .limit(limit);
   } catch (error) {
     console.error("Failed to fetch recent security events:", error);
     return [];
@@ -298,22 +290,14 @@ export async function getRecentSecurityEvents(limit = 50) {
 export async function getSecurityStats(hours = 24) {
   try {
     const since = new Date(Date.now() - hours * 60 * 60 * 1000);
-
-    const stats = await prisma.log.groupBy({
-      by: ["severity"],
-      where: {
-        createdAt: {
-          gte: since,
-        },
-      },
-      _count: {
-        severity: true,
-      },
-    });
-
-    return stats.reduce(
-      (acc, stat) => {
-        acc[stat.severity.toLowerCase()] = stat._count.severity;
+    const rows = await db
+      .select({ severity: logs.severity, count: sql<number>`count(*)::int` })
+      .from(logs)
+      .where(gte(logs.createdAt, since))
+      .groupBy(logs.severity);
+    return rows.reduce(
+      (acc, row) => {
+        acc[row.severity.toLowerCase()] = row.count;
         return acc;
       },
       {} as Record<string, number>

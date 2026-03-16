@@ -2,7 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // Turbopack config for `next dev --turbopack`. Webpack config below is used for `next build`.
-  turbopack: {},
+  // serverExternalPackages applies to both. Explicit resolveExtensions so Next.js detects Turbopack config.
+  turbopack: {
+    resolveExtensions: [".tsx", ".ts", ".jsx", ".js", ".mjs", ".json"],
+  },
 
   // Fix Supabase realtime-js webpack warnings (applies to production build)
   webpack: (config, { isServer, dev }) => {

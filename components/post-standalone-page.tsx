@@ -36,8 +36,9 @@ interface PostStandalonePageProps {
 export function PostStandalonePage({
   post,
   relatedPosts = [],
-  userType,
+  ...rest
 }: PostStandalonePageProps) {
+  void rest; // userType reserved for future use
   const router = useRouter();
   const [isCopied, setIsCopied] = useState(false);
   const [isShared, setIsShared] = useState(false);

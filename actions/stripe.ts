@@ -10,7 +10,7 @@ export type StripeActionResponse = {
 
 /** No-op: re-export for billing page compatibility. All users are free. */
 export async function syncUserSubscriptionWithStripe(userId: string) {
-  return syncFromLib(userId);
+  return syncFromLib();
 }
 
 /** No-op: no paid plans. Kept for callers that still reference it. */

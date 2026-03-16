@@ -9,8 +9,8 @@ interface UserData {
   email: string;
   name: string;
   avatar?: string | null;
-  role: "USER" | "ADMIN";
-  type: "FREE" | "PREMIUM";
+  role: "USER" | "ADMIN" | null;
+  type: "FREE" | "PREMIUM" | null;
   oauth: "GOOGLE" | "EMAIL";
   createdAt: Date;
   updatedAt: Date;

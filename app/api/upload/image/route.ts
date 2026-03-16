@@ -10,9 +10,18 @@ import {
   validateFileExtension,
   SECURITY_HEADERS,
 } from "@/lib/security/sanitize";
+import {
+  unauthorizedResponse,
+  forbiddenResponse,
+  rateLimitExceededResponse,
+  validationErrorResponse,
+  serverErrorResponse,
+  methodNotAllowedResponse,
+} from "@/lib/api-response";
 import { CSRFProtection } from "@/lib/security/csp";
 import { SecurityEvents, getClientIP } from "@/lib/security/audit";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { media } from "@/lib/db/schema";
 import { getStorageConfig } from "@/lib/image/storage";
 
 // File magic number validation for additional security
@@ -58,48 +67,22 @@ export async function POST(request: NextRequest) {
     // Authentication check - only authenticated users can upload
     const user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json(
-        { error: "Authentication required" },
-        {
-          status: 401,
-          headers: SECURITY_HEADERS,
-        }
-      );
+      return unauthorizedResponse("Authentication required");
     }
 
     // Role check - allow both ADMIN and USER
     if (user.userData?.role !== "ADMIN" && user.userData?.role !== "USER") {
-      return NextResponse.json(
-        { error: "Insufficient permissions" },
-        {
-          status: 403,
-          headers: SECURITY_HEADERS,
-        }
-      );
+      return forbiddenResponse("Insufficient permissions");
     }
 
-    // Rate limiting for file uploads
+    // Rate limiting for file uploads (in addition to middleware bucket)
     const clientId = getClientIdentifier(request, user.userData?.id);
     const rateLimitResult = await rateLimits.upload(clientId);
 
     if (!rateLimitResult.allowed) {
-      return NextResponse.json(
-        {
-          error: "Too many upload requests. Please try again later.",
-          retryAfter: Math.ceil(
-            (rateLimitResult.resetTime - Date.now()) / 1000
-          ),
-        },
-        {
-          status: 429,
-          headers: {
-            ...SECURITY_HEADERS,
-            ...getRateLimitHeaders(rateLimitResult),
-            "Retry-After": String(
-              Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)
-            ),
-          },
-        }
+      return rateLimitExceededResponse(
+        rateLimitResult,
+        getRateLimitHeaders(rateLimitResult)
       );
     }
 
@@ -108,38 +91,20 @@ export async function POST(request: NextRequest) {
     try {
       formData = await request.formData();
     } catch {
-      return NextResponse.json(
-        { error: "Invalid form data" },
-        {
-          status: 400,
-          headers: SECURITY_HEADERS,
-        }
-      );
+      return validationErrorResponse("Invalid form data");
     }
 
     const csrfToken = CSRFProtection.getTokenFromFormData(formData);
     const isValidCSRF = await CSRFProtection.validateToken(csrfToken);
     if (!isValidCSRF) {
-      return NextResponse.json(
-        { error: "Invalid CSRF token" },
-        {
-          status: 403,
-          headers: SECURITY_HEADERS,
-        }
-      );
+      return forbiddenResponse("Invalid CSRF token", "CSRF_INVALID");
     }
 
     const file = formData.get("image") as File;
 
     // Input validation
     if (!file) {
-      return NextResponse.json(
-        { error: "No image file provided" },
-        {
-          status: 400,
-          headers: SECURITY_HEADERS,
-        }
-      );
+      return validationErrorResponse("No image file provided", "MISSING_FILE");
     }
 
     // Get storage configuration from database
@@ -154,54 +119,29 @@ export async function POST(request: NextRequest) {
 
     // File size validation
     if (file.size > uploadConfig.maxImageSize) {
-      return NextResponse.json(
-        {
-          error: `File size too large. Maximum size is ${
-            uploadConfig.maxImageSize / (1024 * 1024)
-          }MB`,
-        },
-        {
-          status: 400,
-          headers: SECURITY_HEADERS,
-        }
+      return validationErrorResponse(
+        `File size too large. Maximum size is ${uploadConfig.maxImageSize / (1024 * 1024)}MB`,
+        "FILE_TOO_LARGE"
       );
     }
 
     // Empty file check
     if (file.size === 0) {
-      return NextResponse.json(
-        { error: "Empty file provided" },
-        {
-          status: 400,
-          headers: SECURITY_HEADERS,
-        }
-      );
+      return validationErrorResponse("Empty file provided", "EMPTY_FILE");
     }
 
     // File type validation
     if (!allowedImageTypes.includes(file.type)) {
-      return NextResponse.json(
-        {
-          error:
-            "Invalid file type. Only JPEG, PNG, WebP, and AVIF images are allowed",
-          allowedTypes: allowedImageTypes,
-        },
-        {
-          status: 400,
-          headers: SECURITY_HEADERS,
-        }
+      return validationErrorResponse(
+        "Invalid file type. Only JPEG, PNG, WebP, and AVIF images are allowed",
+        "INVALID_FILE_TYPE",
+        { allowedTypes: allowedImageTypes }
       );
     }
 
     // Filename validation
     if (!validateFileExtension(file.name)) {
-      return NextResponse.json(
-        { error: "Invalid file extension" },
-        {
-          status: 400,
-          headers: SECURITY_HEADERS,
-        }
-      );
+      return validationErrorResponse("Invalid file extension", "INVALID_EXTENSION");
     }
 
     // File signature validation for additional security
@@ -214,22 +154,13 @@ export async function POST(request: NextRequest) {
           file.type,
           getClientIP(request)
         );
-        return NextResponse.json(
-          { error: "File signature doesn't match declared type" },
-          {
-            status: 400,
-            headers: SECURITY_HEADERS,
-          }
+        return validationErrorResponse(
+          "File signature doesn't match declared type",
+          "INVALID_SIGNATURE"
         );
       }
     } catch {
-      return NextResponse.json(
-        { error: "Unable to validate file content" },
-        {
-          status: 400,
-          headers: SECURITY_HEADERS,
-        }
-      );
+      return validationErrorResponse("Unable to validate file content", "VALIDATION_ERROR");
     }
 
     // No title sanitization needed - using actual filename from uploaded file
@@ -240,9 +171,9 @@ export async function POST(request: NextRequest) {
       user.userData?.id
     );
 
-    // Create a Media record in the database
-    const newMedia = await prisma.media.create({
-      data: {
+    const [newMedia] = await db
+      .insert(media)
+      .values({
         filename: uploadResult.filename,
         relativePath: uploadResult.relativePath,
         originalName: uploadResult.originalName,
@@ -252,15 +183,14 @@ export async function POST(request: NextRequest) {
         height: uploadResult.height,
         uploadedBy: user.userData!.id,
         blurDataUrl: uploadResult.blurDataUrl,
-      },
-    });
+      })
+      .returning();
 
-    // Return the upload result along with the new media ID
     return NextResponse.json(
       {
         ...uploadResult,
-        id: newMedia.id,
-        previewPath: uploadResult.previewPath, // Explicitly include previewPath for frontend
+        id: newMedia!.id,
+        previewPath: uploadResult.previewPath,
       },
       {
         status: 200,
@@ -272,74 +202,23 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("Image upload error:", error);
-
-    // Don't expose internal error details to client
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error occurred";
-    const isDevMode = process.env.NODE_ENV === "development";
-
-    return NextResponse.json(
-      {
-        error: "Failed to upload image",
-        ...(isDevMode && { details: errorMessage }),
-      },
-      {
-        status: 500,
-        headers: SECURITY_HEADERS,
-      }
-    );
+    return serverErrorResponse("Failed to upload image", error);
   }
 }
 
 // Explicitly deny other HTTP methods
 export async function GET() {
-  return NextResponse.json(
-    { error: "Method not allowed" },
-    {
-      status: 405,
-      headers: {
-        ...SECURITY_HEADERS,
-        Allow: "POST",
-      },
-    }
-  );
+  return methodNotAllowedResponse("POST");
 }
 
 export async function PUT() {
-  return NextResponse.json(
-    { error: "Method not allowed" },
-    {
-      status: 405,
-      headers: {
-        ...SECURITY_HEADERS,
-        Allow: "POST",
-      },
-    }
-  );
+  return methodNotAllowedResponse("POST");
 }
 
 export async function DELETE() {
-  return NextResponse.json(
-    { error: "Method not allowed" },
-    {
-      status: 405,
-      headers: {
-        ...SECURITY_HEADERS,
-        Allow: "POST",
-      },
-    }
-  );
+  return methodNotAllowedResponse("POST");
 }
 
 export async function PATCH() {
-  return NextResponse.json(
-    { error: "Method not allowed" },
-    {
-      status: 405,
-      headers: {
-        ...SECURITY_HEADERS,
-        Allow: "POST",
-      },
-    }
-  );
+  return methodNotAllowedResponse("POST");
 }

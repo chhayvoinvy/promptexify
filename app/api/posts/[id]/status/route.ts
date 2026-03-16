@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { posts, bookmarks, favorites } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 import { SECURITY_HEADERS } from "@/lib/security/sanitize";
 
 interface RouteParams {
@@ -31,11 +33,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Check if post exists and is published
-    const post = await prisma.post.findUnique({
-      where: { id },
-      select: { id: true, isPublished: true },
-    });
+    const [post] = await db
+      .select({ id: posts.id, isPublished: posts.isPublished })
+      .from(posts)
+      .where(eq(posts.id, id))
+      .limit(1);
 
     if (!post || !post.isPublished) {
       return NextResponse.json(
@@ -44,25 +46,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Get bookmark and favorite status
-    const [bookmark, favorite] = await Promise.all([
-      prisma.bookmark.findUnique({
-        where: {
-          userId_postId: {
-            userId,
-            postId: id,
-          },
-        },
-      }),
-      prisma.favorite.findUnique({
-        where: {
-          userId_postId: {
-            userId,
-            postId: id,
-          },
-        },
-      }),
-    ]);
+    const [bookmark] = await db
+      .select()
+      .from(bookmarks)
+      .where(and(eq(bookmarks.userId, userId), eq(bookmarks.postId, id)))
+      .limit(1);
+    const [favorite] = await db
+      .select()
+      .from(favorites)
+      .where(and(eq(favorites.userId, userId), eq(favorites.postId, id)))
+      .limit(1);
 
     return NextResponse.json(
       {

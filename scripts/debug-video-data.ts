@@ -5,7 +5,9 @@
  * This script provides diagnostic information for troubleshooting video loading issues
  */
 
-import { prisma } from "../lib/prisma";
+import { db } from "../lib/db";
+import { posts } from "../lib/db/schema";
+import { eq, desc, isNotNull, and } from "drizzle-orm";
 import { existsSync } from "fs";
 import { join } from "path";
 
@@ -13,26 +15,25 @@ async function debugVideoData() {
   console.log("🔍 Debugging video data and preview system...\n");
 
   try {
-    // Get all video posts
-    const videoPosts = await prisma.post.findMany({
-      where: {
-        uploadFileType: "VIDEO",
-        uploadPath: { not: null },
-      },
-      select: {
-        id: true,
-        title: true,
-        uploadPath: true,
-        uploadFileType: true,
-        previewPath: true,
-        previewVideoPath: true,
-        createdAt: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      take: 5,
-    });
+    const videoPosts = await db
+      .select({
+        id: posts.id,
+        title: posts.title,
+        uploadPath: posts.uploadPath,
+        uploadFileType: posts.uploadFileType,
+        previewPath: posts.previewPath,
+        previewVideoPath: posts.previewVideoPath,
+        createdAt: posts.createdAt,
+      })
+      .from(posts)
+      .where(
+        and(
+          eq(posts.uploadFileType, "VIDEO"),
+          isNotNull(posts.uploadPath)
+        )
+      )
+      .orderBy(desc(posts.createdAt))
+      .limit(5);
 
     console.log(`📊 Found ${videoPosts.length} video posts\n`);
 
@@ -124,8 +125,6 @@ async function debugVideoData() {
     
   } catch (error) {
     console.error("❌ Debug failed:", error);
-  } finally {
-    await prisma.$disconnect();
   }
 }
 

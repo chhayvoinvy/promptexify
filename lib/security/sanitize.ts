@@ -770,12 +770,13 @@ export function getRateLimitConfig() {
     return {
       auth: { limit: 5, window: 15 * 60 * 1000 }, // 5 requests per 15 minutes
       upload: { limit: 10, window: 60 * 1000 }, // 10 uploads per minute
-      createPost: { limit: 3, window: 60 * 1000 }, // 3 posts per minute (stricter)
-      createTag: { limit: 15, window: 60 * 1000 }, // 15 tags per minute (stricter)
-      api: { limit: 60, window: 60 * 1000 }, // 60 requests per minute (stricter)
-      search: { limit: 30, window: 60 * 1000 }, // 30 searches per minute (stricter)
-      interactions: { limit: 100, window: 60 * 1000 }, // 100 interactions per minute (stricter)
-      mediaResolve: { limit: 100, window: 60 * 1000 }, // 100 media resolves per minute (stricter)
+      createPost: { limit: 3, window: 60 * 1000 }, // 3 posts per minute
+      createTag: { limit: 15, window: 60 * 1000 }, // 15 tags per minute
+      api: { limit: 60, window: 60 * 1000 }, // 60 requests per minute
+      admin: { limit: 30, window: 60 * 1000 }, // 30 admin requests per minute
+      search: { limit: 30, window: 60 * 1000 }, // 30 searches per minute
+      interactions: { limit: 100, window: 60 * 1000 }, // 100 interactions per minute
+      mediaResolve: { limit: 100, window: 60 * 1000 }, // 100 media resolves per minute
     };
   } else {
     // More lenient rate limits in development
@@ -785,9 +786,10 @@ export function getRateLimitConfig() {
       createPost: { limit: 20, window: 60 * 1000 }, // 20 posts per minute
       createTag: { limit: 100, window: 60 * 1000 }, // 100 tags per minute
       api: { limit: 500, window: 60 * 1000 }, // 500 requests per minute
+      admin: { limit: 100, window: 60 * 1000 }, // 100 admin requests per minute
       search: { limit: 200, window: 60 * 1000 }, // 200 searches per minute
       interactions: { limit: 1000, window: 60 * 1000 }, // 1000 interactions per minute
-      mediaResolve: { limit: 1000, window: 60 * 1000 }, // 1000 media resolves per minute (very lenient)
+      mediaResolve: { limit: 1000, window: 60 * 1000 }, // 1000 media resolves per minute
     };
   }
 }

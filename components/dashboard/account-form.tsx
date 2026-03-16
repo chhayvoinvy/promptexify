@@ -16,7 +16,6 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { User, Mail, Calendar, Shield } from "@/components/ui/icons";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface AccountFormProps {
   user: {
@@ -24,8 +23,8 @@ interface AccountFormProps {
     email: string;
     name: string | null;
     avatar: string | null;
-    type: "FREE" | "PREMIUM";
-    role: "USER" | "ADMIN";
+    type: "FREE" | "PREMIUM" | null;
+    role: "USER" | "ADMIN" | null;
     oauth: "GOOGLE" | "EMAIL";
     createdAt: Date;
     updatedAt: Date;
